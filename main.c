@@ -82,7 +82,6 @@ void set_frequency(int freq)
 
 static void cmd_offset(BaseSequentialStream *chp, int argc, char *argv[])
 {
-    int freq;
     if (argc != 1) {
         chprintf(chp, "usage: offset {frequency offset(Hz)}\r\n");
         return;
@@ -161,8 +160,8 @@ void i2s_end_callback(I2SDriver *i2sp, size_t offset, size_t n)
   int32_t cnt_e;
 #endif
   int16_t *p = &rx_buffer[offset];
-  uint32_t i;
   (void)i2sp;
+  (void)n;
   palSetPad(GPIOC, GPIOC_LED);
 
   if (request_dump > 0) {

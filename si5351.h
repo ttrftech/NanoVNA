@@ -4,14 +4,15 @@
 #define SI5351_MULTISYNTH_DIV_4  4
 #define SI5351_MULTISYNTH_DIV_6  6
 #define SI5351_MULTISYNTH_DIV_8  8
-#define SI5351_R_DIV_1		0
-#define SI5351_R_DIV_2		1
-#define SI5351_R_DIV_4		2
-#define SI5351_R_DIV_8		3
-#define SI5351_R_DIV_16		4
-#define SI5351_R_DIV_32		5
-#define SI5351_R_DIV_64		6
-#define SI5351_R_DIV_128	7
+#define SI5351_R_DIV_1		(0<<4)
+#define SI5351_R_DIV_2		(1<<4)
+#define SI5351_R_DIV_4		(2<<4)
+#define SI5351_R_DIV_8		(3<<4)
+#define SI5351_R_DIV_16		(4<<4)
+#define SI5351_R_DIV_32		(5<<4)
+#define SI5351_R_DIV_64		(6<<4)
+#define SI5351_R_DIV_128	(7<<4)
+#define SI5351_DIVBY4 		(3<<2)
 
 #define SI5351_REG_3_OUTPUT_ENABLE_CONTROL 3
 #define SI5351_REG_16_CLK0_CONTROL	16

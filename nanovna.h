@@ -15,6 +15,8 @@ extern void tlv320aic3204_set_gain(int lgain, int rgain);
 extern void tlv320aic3204_set_digital_gain(int gain);
 extern void tlv320aic3204_set_volume(int gain);
 extern void tlv320aic3204_agc_config(tlv320aic3204_agc_config_t *conf);
+extern void tlv320aic3204_select_in1(void);
+extern void tlv320aic3204_select_in3(void);
 
 extern void ui_init(void);
 extern void ui_process(void);

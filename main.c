@@ -76,8 +76,12 @@ int32_t frequency = 10000000;
 void set_frequency(int freq)
 {
     frequency = freq;
+#if 0
     si5351_set_frequency(0, freq + frequency_offset);
     si5351_set_frequency(1, freq);
+#else
+    si5351_set_frequency_with_offset(freq, frequency_offset);
+#endif
 }
 
 static void cmd_offset(BaseSequentialStream *chp, int argc, char *argv[])

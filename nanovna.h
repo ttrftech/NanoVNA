@@ -33,4 +33,4 @@ extern int16_t buffer_q[];
 void dsp_process(int16_t *src, int16_t *dst, size_t len);
 void set_agc_mode(int agcmode);
 
-void si5351_set_frequency_with_offset(int freq, int offset);
+void si5351_set_frequency_with_offset(int freq, int offset, uint8_t drive_strength);

@@ -72,6 +72,7 @@ static void cmd_reset(BaseSequentialStream *chp, int argc, char *argv[])
 
 int32_t frequency_offset = 5000;
 int32_t frequency = 10000000;
+uint8_t drive_strength = SI5351_CLK_DRIVE_STRENGTH_2MA;
 
 void set_frequency(int freq)
 {
@@ -80,7 +81,7 @@ void set_frequency(int freq)
     si5351_set_frequency(0, freq + frequency_offset);
     si5351_set_frequency(1, freq);
 #else
-    si5351_set_frequency_with_offset(freq, frequency_offset);
+    si5351_set_frequency_with_offset(freq, frequency_offset, drive_strength);
 #endif
 }
 
@@ -105,6 +106,18 @@ static void cmd_freq(BaseSequentialStream *chp, int argc, char *argv[])
     freq = atoi(argv[0]);
     set_frequency(freq);
 }
+
+static void cmd_power(BaseSequentialStream *chp, int argc, char *argv[])
+{
+    if (argc != 1) {
+        chprintf(chp, "usage: power {0-3}\r\n");
+        return;
+    }
+    drive_strength = atoi(argv[0]);
+    set_frequency(frequency);
+}
+
+
 
 static void cmd_time(BaseSequentialStream *chp, int argc, char *argv[])
 {
@@ -304,6 +317,7 @@ static const ShellCommand commands[] =
     { "port", cmd_port },
     { "stat", cmd_stat },
     { "gain", cmd_gain },
+    { "power", cmd_power },
     { NULL, NULL }
 };
 

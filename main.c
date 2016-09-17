@@ -46,8 +46,9 @@ static THD_FUNCTION(Thread1, arg)
     palSetPadMode(GPIOC, 13, PAL_MODE_OUTPUT_PUSHPULL);
     while (1)
     {
-      systime_t time = serusbcfg.usbp->state == USB_ACTIVE ? 250 : 500;
-      palClearPad(GPIOC, 13);
+      systime_t time = 500;
+      if (serusbcfg.usbp->state != USB_ACTIVE)
+        palClearPad(GPIOC, 13);
       chThdSleepMilliseconds(time);
       palSetPad(GPIOC, 13);
       chThdSleepMilliseconds(time);
@@ -129,7 +130,8 @@ static void cmd_time(BaseSequentialStream *chp, int argc, char *argv[])
 
 
 static const DACConfig dac1cfg1 = {
-  init:         2047U,
+  //init:         2047U,
+  init:         1922U,
   datamode:     DAC_DHRM_12BIT_RIGHT
 };
 
@@ -179,7 +181,7 @@ void i2s_end_callback(I2SDriver *i2sp, size_t offset, size_t n)
   int16_t *p = &rx_buffer[offset];
   (void)i2sp;
   (void)n;
-  palSetPad(GPIOC, GPIOC_LED);
+  //palSetPad(GPIOC, GPIOC_LED);
 
   if (request_dump > 0) {
     if (request_dump == 1)
@@ -195,7 +197,7 @@ void i2s_end_callback(I2SDriver *i2sp, size_t offset, size_t n)
   stat.last_counter_value = cnt_s;
 #endif
   stat.callback_count++;
-  palClearPad(GPIOC, GPIOC_LED);
+  //palClearPad(GPIOC, GPIOC_LED);
 }
 
 static const I2SConfig i2sconfig = {
@@ -227,6 +229,7 @@ static void cmd_data(BaseSequentialStream *chp, int argc, char *argv[])
 #else
   int16_t *buf = dump_buffer;
   request_dump = 3;
+  palClearPad(GPIOC, GPIOC_LED);
   while (request_dump)
     ;
   for (i = 0; i < AUDIO_BUFFER_LEN; ) {
@@ -235,6 +238,7 @@ static void cmd_data(BaseSequentialStream *chp, int argc, char *argv[])
     }
     chprintf(chp, "\r\n");
   }
+  palSetPad(GPIOC, GPIOC_LED);
 #endif
 }
 
@@ -385,10 +389,12 @@ int main(void)
     while (1)
     {
     if (SDU1.config->usbp->state == USB_ACTIVE) {
+      //palSetPad(GPIOC, GPIOC_LED);
       thread_t *shelltp = chThdCreateFromHeap(NULL, SHELL_WA_SIZE,
                                               "shell", NORMALPRIO + 1,
                                               shellThread, (void *)&shell_cfg1);
       chThdWait(shelltp);               /* Waiting termination.             */
+      //palClearPad(GPIOC, GPIOC_LED);
     }
 	chThdSleepMilliseconds(1000);
     }

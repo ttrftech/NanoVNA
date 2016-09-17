@@ -238,12 +238,6 @@ si5351_set_frequency_fixeddiv(int channel, int pll, int freq, int div,
     int32_t pllfreq = freq * div;
     int32_t multi = pllfreq / XTALFREQ;
     int32_t num = pllfreq - multi * XTALFREQ;
-#if 0
-    //int32_t denom = 1000000;
-    int32_t denom = 520000;
-    int32_t k = XTALFREQ / denom;
-    num /= k;
-#else
     int32_t denom = XTALFREQ;
     int32_t k = gcd(num, denom);
     num /= k;
@@ -252,7 +246,6 @@ si5351_set_frequency_fixeddiv(int channel, int pll, int freq, int div,
       num >>= 1;
       denom >>= 1;
     }
-#endif
     si5351_setupPLL(pll, multi, num, denom);
     si5351_setupMultisynth(channel, pll, div, 0, 1, drive_strength);
 }

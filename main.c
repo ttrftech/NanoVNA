@@ -170,7 +170,7 @@ int16_t rx_buffer[AUDIO_BUFFER_LEN * 2];
 
 int16_t dump_buffer[AUDIO_BUFFER_LEN];
 volatile int16_t request_dump = 0;
-
+int16_t dump_selection = 0;
 
 void i2s_end_callback(I2SDriver *i2sp, size_t offset, size_t n)
 {
@@ -181,14 +181,21 @@ void i2s_end_callback(I2SDriver *i2sp, size_t offset, size_t n)
   int16_t *p = &rx_buffer[offset];
   (void)i2sp;
   (void)n;
-  //palSetPad(GPIOC, GPIOC_LED);
+  palClearPad(GPIOC, GPIOC_LED);
+
+  dsp_process(p, n);
 
   if (request_dump > 0) {
+    if (dump_selection == 1)
+      p = samp_buf;
+    else if (dump_selection == 2)
+      p = ref_buf;
+    else if (dump_selection == 3)
+      p = refq_buf;
     if (request_dump == 1)
       memcpy(dump_buffer, p, sizeof dump_buffer);
     --request_dump;
   }
-  //dsp_process(p, n);
 
 #if PORT_SUPPORTS_RT
   cnt_e = port_rt_get_counter_value();
@@ -197,7 +204,7 @@ void i2s_end_callback(I2SDriver *i2sp, size_t offset, size_t n)
   stat.last_counter_value = cnt_s;
 #endif
   stat.callback_count++;
-  //palClearPad(GPIOC, GPIOC_LED);
+  palSetPad(GPIOC, GPIOC_LED);
 }
 
 static const I2SConfig i2sconfig = {
@@ -213,33 +220,29 @@ static const I2SConfig i2sconfig = {
 static void cmd_data(BaseSequentialStream *chp, int argc, char *argv[])
 {
   int i, j;
+  int len;
   (void)argc;
   (void)argv;
 
-#if 0  
-  int16_t *buf = rx_buffer;
-  i2sStopExchange(&I2SD2);
-  for (i = 0; i < AUDIO_BUFFER_LEN; ) {
-    for (j = 0; j < 16; j++, i++) {
-      chprintf(chp, "%04x ", 0xffff & (int)buf[i]);
-    }
-    chprintf(chp, "\r\n");
-  }
-  i2sStartExchange(&I2SD2);
-#else
   int16_t *buf = dump_buffer;
+
+  if (argc == 1)
+    dump_selection = atoi(argv[0]);
+
   request_dump = 3;
-  palClearPad(GPIOC, GPIOC_LED);
+  //palClearPad(GPIOC, GPIOC_LED);
   while (request_dump)
     ;
-  for (i = 0; i < AUDIO_BUFFER_LEN; ) {
+  len = AUDIO_BUFFER_LEN;
+  if (dump_selection != 0)
+    len /= 2;
+  for (i = 0; i < len; ) {
     for (j = 0; j < 16; j++, i++) {
       chprintf(chp, "%04x ", 0xffff & (int)buf[i]);
     }
     chprintf(chp, "\r\n");
   }
-  palSetPad(GPIOC, GPIOC_LED);
-#endif
+  //palSetPad(GPIOC, GPIOC_LED);
 }
 
 static void cmd_gain(BaseSequentialStream *chp, int argc, char *argv[])

@@ -27,10 +27,14 @@ extern void ui_process(void);
 extern int16_t rx_buffer[];
 extern int16_t tx_buffer[];
 
-extern int16_t buffer_i[];
-extern int16_t buffer_q[];
+#define STATE_LEN 32
+#define SAMPLE_LEN 240
 
-void dsp_process(int16_t *src, int16_t *dst, size_t len);
-void set_agc_mode(int agcmode);
+extern int16_t ref_state[];
+extern int16_t ref_buf[];
+extern int16_t refq_buf[];
+extern int16_t samp_buf[];
+
+void dsp_process(int16_t *src, size_t len);
 
 void si5351_set_frequency_with_offset(int freq, int offset, uint8_t drive_strength);

@@ -53,10 +53,13 @@ si5351_init(void)
 
 void si5351_disable_output(void)
 {
+  uint8_t reg[4];
   si5351_write(SI5351_REG_3_OUTPUT_ENABLE_CONTROL, 0xff);
-  si5351_write(SI5351_REG_16_CLK0_CONTROL, 0x80);
-  si5351_write(SI5351_REG_17_CLK1_CONTROL, 0x80);
-  si5351_write(SI5351_REG_18_CLK2_CONTROL, 0x80);
+  reg[0] = SI5351_REG_16_CLK0_CONTROL;
+  reg[1] = SI5351_CLK_POWERDOWN;
+  reg[2] = SI5351_CLK_POWERDOWN;
+  reg[3] = SI5351_CLK_POWERDOWN;
+  si5351_bulk_write(reg, 4);
 }
 
 void si5351_enable_output(void)
@@ -80,8 +83,6 @@ void si5351_setupPLL(uint8_t pll, /* SI5351_PLL_A or SI5351_PLL_B */
     SI5351_REG_26_PLL_A,
     SI5351_REG_34_PLL_B
   };
-  uint8_t baseaddr = pllreg_base[pll];
-
   uint32_t P1;
   uint32_t P2;
   uint32_t P3;
@@ -115,14 +116,17 @@ void si5351_setupPLL(uint8_t pll, /* SI5351_PLL_A or SI5351_PLL_B */
   }
 
   /* The datasheet is a nightmare of typos and inconsistencies here! */
-  si5351_write(baseaddr,   (P3 & 0x0000FF00) >> 8);
-  si5351_write(baseaddr+1, (P3 & 0x000000FF));
-  si5351_write(baseaddr+2, (P1 & 0x00030000) >> 16);
-  si5351_write(baseaddr+3, (P1 & 0x0000FF00) >> 8);
-  si5351_write(baseaddr+4, (P1 & 0x000000FF));
-  si5351_write(baseaddr+5, ((P3 & 0x000F0000) >> 12) | ((P2 & 0x000F0000) >> 16) );
-  si5351_write(baseaddr+6, (P2 & 0x0000FF00) >> 8);
-  si5351_write(baseaddr+7, (P2 & 0x000000FF));
+  uint8_t reg[9];
+  reg[0] = pllreg_base[pll];
+  reg[1] = (P3 & 0x0000FF00) >> 8;
+  reg[2] = (P3 & 0x000000FF);
+  reg[3] = (P1 & 0x00030000) >> 16;
+  reg[4] = (P1 & 0x0000FF00) >> 8;
+  reg[5] = (P1 & 0x000000FF);
+  reg[6] = ((P3 & 0x000F0000) >> 12) | ((P2 & 0x000F0000) >> 16);
+  reg[7] = (P2 & 0x0000FF00) >> 8;
+  reg[8] = (P2 & 0x000000FF);
+  si5351_bulk_write(reg, 9);
 }
 
 void 
@@ -139,7 +143,6 @@ si5351_setupMultisynth(uint8_t     output,
     SI5351_REG_50_MULTISYNTH1,
     SI5351_REG_58_MULTISYNTH2,
   };
-  uint8_t baseaddr = msreg_base[output];
   const uint8_t clkctrl[] = {
     SI5351_REG_16_CLK0_CONTROL,
     SI5351_REG_17_CLK1_CONTROL,
@@ -179,14 +182,17 @@ si5351_setupMultisynth(uint8_t     output,
   }
 
   /* Set the MSx config registers */
-  si5351_write(baseaddr,   (P3 & 0x0000FF00) >> 8);
-  si5351_write(baseaddr+1, (P3 & 0x000000FF));
-  si5351_write(baseaddr+2, ((P1 & 0x00030000) >> 16) | div4);
-  si5351_write(baseaddr+3, (P1 & 0x0000FF00) >> 8);
-  si5351_write(baseaddr+4, (P1 & 0x000000FF));
-  si5351_write(baseaddr+5, ((P3 & 0x000F0000) >> 12) | ((P2 & 0x000F0000) >> 16));
-  si5351_write(baseaddr+6, (P2 & 0x0000FF00) >> 8);
-  si5351_write(baseaddr+7, (P2 & 0x000000FF));
+  uint8_t reg[9];
+  reg[0] = msreg_base[output];
+  reg[1] = (P3 & 0x0000FF00) >> 8;
+  reg[2] = (P3 & 0x000000FF);
+  reg[3] = ((P1 & 0x00030000) >> 16) | div4;
+  reg[4] = (P1 & 0x0000FF00) >> 8;
+  reg[5] = (P1 & 0x000000FF);
+  reg[6] = ((P3 & 0x000F0000) >> 12) | ((P2 & 0x000F0000) >> 16);
+  reg[7] = (P2 & 0x0000FF00) >> 8;
+  reg[8] = (P2 & 0x000000FF);
+  si5351_bulk_write(reg, 9);
 
   /* Configure the clk control and enable the output */
   dat = drive_strength | SI5351_CLK_INPUT_MULTISYNTH_N;

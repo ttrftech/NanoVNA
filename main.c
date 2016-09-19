@@ -13,7 +13,8 @@ RTCDateTime timespec;
 
 
 static const I2CConfig i2ccfg = {
-  0x00902025, //voodoo magic
+  0x00300506, //voodoo magic 400kHz @ HSI 8MHz
+  //0x00902025, //voodoo magic
   //0x00420F13,  // 100kHz @ 72MHz
   0,
   0
@@ -143,14 +144,7 @@ static void cmd_dac(BaseSequentialStream *chp, int argc, char *argv[])
         return;
     }
     value = atoi(argv[0]);
-#if 1
     dacPutChannelX(&DACD2, 0, value);
-#else
-    if (value & 1)
-      palSetPad(GPIOA, 5);
-    else
-      palClearPad(GPIOA, 5);
-#endif
 }
 
 
@@ -187,7 +181,7 @@ void i2s_end_callback(I2SDriver *i2sp, size_t offset, size_t n)
   int16_t *p = &rx_buffer[offset];
   (void)i2sp;
   (void)n;
-  palClearPad(GPIOC, GPIOC_LED);
+  //palClearPad(GPIOC, GPIOC_LED);
 
   if (!dsp_disabled)
     dsp_process(p, n);
@@ -219,7 +213,7 @@ void i2s_end_callback(I2SDriver *i2sp, size_t offset, size_t n)
   stat.last_counter_value = cnt_s;
 #endif
   stat.callback_count++;
-  palSetPad(GPIOC, GPIOC_LED);
+  //palSetPad(GPIOC, GPIOC_LED);
 }
 
 static const I2SConfig i2sconfig = {
@@ -261,7 +255,7 @@ static void cmd_gamma(BaseSequentialStream *chp, int argc, char *argv[])
   (void)argc;
   (void)argv;
 
-  wait_count = 3;
+  wait_count = 4;
   while (wait_count)
     ;
   dsp_disabled = TRUE;
@@ -269,6 +263,47 @@ static void cmd_gamma(BaseSequentialStream *chp, int argc, char *argv[])
   dsp_disabled = FALSE;
 
   chprintf(chp, "%d %d\r\n", gamma_real, gamma_imag);
+}
+
+static void cmd_scan(BaseSequentialStream *chp, int argc, char *argv[])
+{
+  int i;
+  int len = 100;
+  (void)argc;
+  (void)argv;
+
+  for (i = 1; i <= len; i++) {
+    int32_t freq = i * 3000000L;
+    wait_count = 4;
+    while (wait_count)
+      ;
+    dsp_disabled = TRUE;
+    set_frequency(freq);
+    palClearPad(GPIOC, GPIOC_LED);
+    calclate_gamma();
+    palSetPad(GPIOC, GPIOC_LED);
+    dsp_disabled = FALSE;
+    chprintf(chp, "%d %d %d\r\n", freq, gamma_real, gamma_imag);
+  }
+}
+
+static void cmd_test(BaseSequentialStream *chp, int argc, char *argv[])
+{
+  int i;
+  (void)argc;
+  (void)argv;
+
+  for (i = 0; i < 100; i++) {
+    palClearPad(GPIOC, GPIOC_LED);
+    set_frequency(10000000);
+    palSetPad(GPIOC, GPIOC_LED);
+    chThdSleepMilliseconds(50);
+
+    palClearPad(GPIOC, GPIOC_LED);
+    set_frequency(100000000);
+    palSetPad(GPIOC, GPIOC_LED);
+    chThdSleepMilliseconds(50);
+  }
 }
 
 static void cmd_gain(BaseSequentialStream *chp, int argc, char *argv[])
@@ -352,6 +387,8 @@ static const ShellCommand commands[] =
     { "gain", cmd_gain },
     { "power", cmd_power },
     { "gamma", cmd_gamma },
+    { "scan", cmd_scan },
+    { "test", cmd_test },
     { NULL, NULL }
 };
 

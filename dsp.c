@@ -3,7 +3,8 @@
 
 int16_t ref_state[STATE_LEN];
 int16_t ref_buf[SAMPLE_LEN];
-int16_t refq_buf[SAMPLE_LEN];
+//int16_t refq_buf[SAMPLE_LEN];
+int16_t refiq_buf[AUDIO_BUFFER_LEN];
 
 int16_t samp_buf[SAMPLE_LEN];
 
@@ -30,7 +31,8 @@ static void
 hilbert_transform(void)
 { 
   __SIMD32_TYPE *src = __SIMD32_CONST(ref_state);
-  __SIMD32_TYPE *dst = __SIMD32_CONST(refq_buf);
+  //__SIMD32_TYPE *dst = __SIMD32_CONST(refq_buf);
+  __SIMD32_TYPE *dst = __SIMD32_CONST(refiq_buf);
   int j;
 
   for (j = 0; j < SAMPLE_LEN / 2; j++) {
@@ -39,6 +41,7 @@ hilbert_transform(void)
     int32_t accn0 = 0;
     int32_t acc1 = 0;
     int32_t accn1 = 0;
+    int32_t s;
 
     for (i = 0; i < 8; i += 2) {
       uint32_t c = *(uint32_t*)&hilbert31_coeffs[i];
@@ -59,7 +62,9 @@ hilbert_transform(void)
     }
     acc0 -= accn0;
     acc1 -= accn1;
-    *dst++ = __PKHTB(acc0, acc1, 16);
+    //*dst++ = __PKHTB(acc0, acc1, 16);
+    *dst++ = __PKHTB(acc1<<1, src[OFFSET-1], 16);
+    *dst++ = __PKHTB(acc0<<1, src[OFFSET], 0);
     src++;
   }
 
@@ -68,6 +73,32 @@ hilbert_transform(void)
     *dst++ = *src++;
   }
 }
+
+void calclate_gamma(void)
+{
+  __SIMD32_TYPE *r = __SIMD32_CONST(refiq_buf);
+  __SIMD32_TYPE *s = __SIMD32_CONST(samp_buf);
+  q31_t acc_r = 0;
+  q31_t acc_i = 0;
+  q31_t acc_ref = 0;
+  int i;
+
+  for (i = 0; i < SAMPLE_LEN/2; i++) {
+    __SIMD32_TYPE s0 = *s++;
+    __SIMD32_TYPE r0 = *r++;
+    __SIMD32_TYPE r1 = *r++;
+    __SIMD32_TYPE rr = __PKHBT(r1, r0, 16);
+    __SIMD32_TYPE ri = __PKHTB(r0, r1, 16);
+    acc_r = __SMLAD(rr, s0, acc_r);
+    acc_i = __SMLAD(ri, s0, acc_i);
+    acc_ref = __SMLAD(r0, r0, acc_ref);
+    acc_ref = __SMLAD(r1, r1, acc_ref);
+  }
+  acc_ref = sqrt(acc_ref / SAMPLE_LEN) / 65536;
+  gamma_real = acc_r / acc_ref;
+  gamma_imag = acc_i / acc_ref;
+}
+
 
 void
 dsp_process(int16_t *capture, size_t length)
@@ -87,3 +118,4 @@ dsp_process(int16_t *capture, size_t length)
 
   hilbert_transform();
 }
+

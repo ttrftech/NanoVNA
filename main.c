@@ -172,6 +172,10 @@ int16_t dump_buffer[AUDIO_BUFFER_LEN];
 volatile int16_t request_dump = 0;
 int16_t dump_selection = 0;
 
+volatile int16_t request_calcgamma = 0;
+int32_t gamma_real;
+int32_t gamma_imag;
+
 void i2s_end_callback(I2SDriver *i2sp, size_t offset, size_t n)
 {
 #if PORT_SUPPORTS_RT
@@ -191,10 +195,16 @@ void i2s_end_callback(I2SDriver *i2sp, size_t offset, size_t n)
     else if (dump_selection == 2)
       p = ref_buf;
     else if (dump_selection == 3)
-      p = refq_buf;
+      p = refiq_buf;
     if (request_dump == 1)
       memcpy(dump_buffer, p, sizeof dump_buffer);
     --request_dump;
+  }
+
+  if (request_calcgamma > 0) {
+    if (request_calcgamma == 1)
+      calclate_gamma();
+    --request_calcgamma;
   }
 
 #if PORT_SUPPORTS_RT
@@ -221,10 +231,6 @@ static void cmd_data(BaseSequentialStream *chp, int argc, char *argv[])
 {
   int i, j;
   int len;
-  (void)argc;
-  (void)argv;
-
-  int16_t *buf = dump_buffer;
 
   if (argc == 1)
     dump_selection = atoi(argv[0]);
@@ -234,15 +240,28 @@ static void cmd_data(BaseSequentialStream *chp, int argc, char *argv[])
   while (request_dump)
     ;
   len = AUDIO_BUFFER_LEN;
-  if (dump_selection != 0)
+  if (dump_selection == 1 || dump_selection == 2)
     len /= 2;
   for (i = 0; i < len; ) {
     for (j = 0; j < 16; j++, i++) {
-      chprintf(chp, "%04x ", 0xffff & (int)buf[i]);
+      chprintf(chp, "%04x ", 0xffff & (int)dump_buffer[i]);
     }
     chprintf(chp, "\r\n");
   }
   //palSetPad(GPIOC, GPIOC_LED);
+}
+
+static void cmd_gamma(BaseSequentialStream *chp, int argc, char *argv[])
+{
+  (void)argc;
+  (void)argv;
+
+  request_calcgamma = 3;
+  //palClearPad(GPIOC, GPIOC_LED);
+
+  while (request_calcgamma)
+    ;
+  chprintf(chp, "%d %d\r\n", gamma_real, gamma_imag);
 }
 
 static void cmd_gain(BaseSequentialStream *chp, int argc, char *argv[])
@@ -325,6 +344,7 @@ static const ShellCommand commands[] =
     { "stat", cmd_stat },
     { "gain", cmd_gain },
     { "power", cmd_power },
+    { "gamma", cmd_gamma },
     { NULL, NULL }
 };
 

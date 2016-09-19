@@ -94,9 +94,9 @@ void calclate_gamma(void)
     acc_ref = __SMLAD(r0, r0, acc_ref);
     acc_ref = __SMLAD(r1, r1, acc_ref);
   }
-  acc_ref = sqrt(acc_ref / SAMPLE_LEN) / 65536;
-  gamma_real = acc_r / acc_ref;
-  gamma_imag = acc_i / acc_ref;
+  //acc_ref = sqrt(acc_ref / SAMPLE_LEN) / 65536;
+  gamma_real = acc_r / 65536;
+  gamma_imag = acc_i / 65536;
 }
 
 

@@ -169,12 +169,14 @@ static struct {
 int16_t rx_buffer[AUDIO_BUFFER_LEN * 2];
 
 int16_t dump_buffer[AUDIO_BUFFER_LEN];
-volatile int16_t request_dump = 0;
+volatile int16_t wait_count = 0;
 int16_t dump_selection = 0;
 
-volatile int16_t request_calcgamma = 0;
+int16_t dsp_disabled = FALSE;
 int32_t gamma_real;
 int32_t gamma_imag;
+
+
 
 void i2s_end_callback(I2SDriver *i2sp, size_t offset, size_t n)
 {
@@ -187,25 +189,28 @@ void i2s_end_callback(I2SDriver *i2sp, size_t offset, size_t n)
   (void)n;
   palClearPad(GPIOC, GPIOC_LED);
 
-  dsp_process(p, n);
+  if (!dsp_disabled)
+    dsp_process(p, n);
 
-  if (request_dump > 0) {
+  if (wait_count > 0) {
     if (dump_selection == 1)
       p = samp_buf;
     else if (dump_selection == 2)
       p = ref_buf;
     else if (dump_selection == 3)
       p = refiq_buf;
-    if (request_dump == 1)
+    if (wait_count == 1)
       memcpy(dump_buffer, p, sizeof dump_buffer);
-    --request_dump;
+    --wait_count;
   }
 
+#if 0
   if (request_calcgamma > 0) {
     if (request_calcgamma == 1)
       calclate_gamma();
     --request_calcgamma;
   }
+#endif
 
 #if PORT_SUPPORTS_RT
   cnt_e = port_rt_get_counter_value();
@@ -235,9 +240,9 @@ static void cmd_data(BaseSequentialStream *chp, int argc, char *argv[])
   if (argc == 1)
     dump_selection = atoi(argv[0]);
 
-  request_dump = 3;
+  wait_count = 3;
   //palClearPad(GPIOC, GPIOC_LED);
-  while (request_dump)
+  while (wait_count)
     ;
   len = AUDIO_BUFFER_LEN;
   if (dump_selection == 1 || dump_selection == 2)
@@ -256,11 +261,13 @@ static void cmd_gamma(BaseSequentialStream *chp, int argc, char *argv[])
   (void)argc;
   (void)argv;
 
-  request_calcgamma = 3;
-  //palClearPad(GPIOC, GPIOC_LED);
-
-  while (request_calcgamma)
+  wait_count = 3;
+  while (wait_count)
     ;
+  dsp_disabled = TRUE;
+  calclate_gamma();
+  dsp_disabled = FALSE;
+
   chprintf(chp, "%d %d\r\n", gamma_real, gamma_imag);
 }
 

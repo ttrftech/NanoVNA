@@ -76,14 +76,17 @@ int32_t frequency_offset = 5000;
 int32_t frequency = 10000000;
 uint8_t drive_strength = SI5351_CLK_DRIVE_STRENGTH_2MA;
 
-void set_frequency(int freq)
+int set_frequency(int freq)
 {
-    frequency = freq;
 #if 0
     si5351_set_frequency(0, freq + frequency_offset);
     si5351_set_frequency(1, freq);
+    frequency = freq;
 #else
-    si5351_set_frequency_with_offset(freq, frequency_offset, drive_strength);
+    int delay;
+    delay = si5351_set_frequency_with_offset(freq, frequency_offset, drive_strength);
+    frequency = freq;
+    return delay;
 #endif
 }
 
@@ -269,21 +272,30 @@ static void cmd_scan(BaseSequentialStream *chp, int argc, char *argv[])
 {
   int i;
   int len = 100;
+  int32_t freq, cur_freq, step;
+  int delay;
   (void)argc;
   (void)argv;
 
-  for (i = 1; i <= len; i++) {
-    int32_t freq = i * 3000000L;
-    wait_count = 4;
+  freq = 3000000;
+  step = 3000000;
+  delay = set_frequency(freq);
+  delay += 2;
+  for (i = 0; i < len; i++) {
+    cur_freq = freq;
+    freq = freq + step;
+    wait_count = delay;
     while (wait_count)
       ;
-    dsp_disabled = TRUE;
-    set_frequency(freq);
+    //dsp_disabled = TRUE;
+    __disable_irq();
+    delay = set_frequency(freq);
     palClearPad(GPIOC, GPIOC_LED);
     calclate_gamma();
     palSetPad(GPIOC, GPIOC_LED);
-    dsp_disabled = FALSE;
-    chprintf(chp, "%d %d %d\r\n", freq, gamma_real, gamma_imag);
+    //dsp_disabled = FALSE;
+    __enable_irq();
+    chprintf(chp, "%d %d %d\r\n", cur_freq, gamma_real, gamma_imag);
   }
 }
 
@@ -300,7 +312,7 @@ static void cmd_test(BaseSequentialStream *chp, int argc, char *argv[])
     chThdSleepMilliseconds(50);
 
     palClearPad(GPIOC, GPIOC_LED);
-    set_frequency(100000000);
+    set_frequency(90000000);
     palSetPad(GPIOC, GPIOC_LED);
     chThdSleepMilliseconds(50);
   }

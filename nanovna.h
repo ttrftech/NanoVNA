@@ -43,4 +43,4 @@ extern int32_t gamma_imag;
 void dsp_process(int16_t *src, size_t len);
 void calclate_gamma(void);
 
-void si5351_set_frequency_with_offset(int freq, int offset, uint8_t drive_strength);
+int si5351_set_frequency_with_offset(int freq, int offset, uint8_t drive_strength);

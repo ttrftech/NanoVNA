@@ -273,6 +273,9 @@ si5351_set_frequency(int channel, int freq, uint8_t drive_strength)
   }
 }
 
+
+int current_band = -1;
+
 /*
  * configure output as follows:
  * CLK0: frequency + offset
@@ -280,33 +283,63 @@ si5351_set_frequency(int channel, int freq, uint8_t drive_strength)
  * CLK2: fixed 8MHz
  */
 #define CLK2_FREQUENCY 8000000L
-void
+int
 si5351_set_frequency_with_offset(int freq, int offset, uint8_t drive_strength)
 {
-  si5351_disable_output();
+  int band;
+  int delay = 1;
   if (freq <= 100000000) {
+    band = 0;
+  } else if (freq < 150000000) {
+    band = 1;
+  } else {
+    band = 2;
+  }
+
+  if (current_band != band)
+    si5351_disable_output();
+
+  switch (band) {
+  case 0:
     // fractional divider mode. only PLL A is used.
-    si5351_setupPLL(SI5351_PLL_A, 32, 0, 1);
+    //if (current_band != 0)
+      si5351_setupPLL(SI5351_PLL_A, 32, 0, 1);
     si5351_set_frequency_fixedpll(0, SI5351_PLL_A, PLLFREQ, freq + offset,
                                   SI5351_CLK_DRIVE_STRENGTH_2MA);
     si5351_set_frequency_fixedpll(1, SI5351_PLL_A, PLLFREQ, freq, drive_strength);
-    si5351_set_frequency_fixedpll(2, SI5351_PLL_A, PLLFREQ, CLK2_FREQUENCY,
-                                  SI5351_CLK_DRIVE_STRENGTH_2MA);
-  } else if (freq < 150000000) {
+    //if (current_band != 0)
+      si5351_set_frequency_fixedpll(2, SI5351_PLL_A, PLLFREQ, CLK2_FREQUENCY,
+                                    SI5351_CLK_DRIVE_STRENGTH_2MA);
+    //delay = 1;
+    delay = 2;
+    break;
+
+  case 1:
     // div by 6 mode. both PLL A and B are dedicated for CLK0, CLK1
     si5351_set_frequency_fixeddiv(0, SI5351_PLL_A, freq + offset, 6,
                                   SI5351_CLK_DRIVE_STRENGTH_2MA);
     si5351_set_frequency_fixeddiv(1, SI5351_PLL_B, freq, 6, drive_strength);
     si5351_set_frequency_fixedpll(2, SI5351_PLL_B, freq * 6, CLK2_FREQUENCY,
                                   SI5351_CLK_DRIVE_STRENGTH_2MA);
-  } else {
+    delay = 2;
+    break;
+
+  case 2:
     // div by 4 mode. both PLL A and B are dedicated for CLK0, CLK1
-    si5351_set_frequency_fixeddiv(0, SI5351_PLL_A, freq + offset, 4,
-                                  SI5351_CLK_DRIVE_STRENGTH_2MA);
     si5351_set_frequency_fixeddiv(1, SI5351_PLL_B, freq, 4, drive_strength);
     si5351_set_frequency_fixedpll(2, SI5351_PLL_B, freq * 4, CLK2_FREQUENCY,
                                   SI5351_CLK_DRIVE_STRENGTH_2MA);
+    si5351_set_frequency_fixeddiv(0, SI5351_PLL_A, freq + offset, 4,
+                                  SI5351_CLK_DRIVE_STRENGTH_2MA);
+    delay = 2;
+    break;
   }
-  si5351_reset_pll();
-  si5351_enable_output();
+
+  if (current_band != band) {
+    si5351_reset_pll();
+    si5351_enable_output();
+    delay += 5;
+  }
+  current_band = band;
+  return delay;
 }

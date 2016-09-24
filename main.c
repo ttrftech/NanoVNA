@@ -268,20 +268,24 @@ static void cmd_gamma(BaseSequentialStream *chp, int argc, char *argv[])
   chprintf(chp, "%d %d\r\n", gamma_real, gamma_imag);
 }
 
+
+int32_t freq_start = 1000000;
+int32_t freq_stop = 300000000;
+int16_t sweep_points = 101;
+
 static void cmd_scan(BaseSequentialStream *chp, int argc, char *argv[])
 {
   int i;
-  int len = 100;
   int32_t freq, cur_freq, step;
   int delay;
   (void)argc;
   (void)argv;
 
-  freq = 3000000;
-  step = 3000000;
+  freq = freq_start;
+  step = (freq_stop - freq_start) / (sweep_points-1);
   delay = set_frequency(freq);
   delay += 2;
-  for (i = 0; i < len; i++) {
+  for (i = 0; i < sweep_points; i++) {
     cur_freq = freq;
     freq = freq + step;
     wait_count = delay;
@@ -296,6 +300,41 @@ static void cmd_scan(BaseSequentialStream *chp, int argc, char *argv[])
     //dsp_disabled = FALSE;
     __enable_irq();
     chprintf(chp, "%d %d %d\r\n", cur_freq, gamma_real, gamma_imag);
+  }
+}
+
+static void cmd_sweep(BaseSequentialStream *chp, int argc, char *argv[])
+{
+  if (argc == 0) {
+    chprintf(chp, "%d %d %d\r\n", freq_start, freq_stop, sweep_points);
+    return;
+  } else if (argc > 3) {
+    chprintf(chp, "usage: sweep {start(Hz)} [stop] [points]\r\n");
+    return;
+  }
+  if (argc >= 1) {
+    int32_t x = atoi(argv[0]);
+    if (x < 300000) {
+      chprintf(chp, "bad parameter\r\n");
+      return;
+    }
+    freq_start = x;
+  }
+  if (argc >= 2) {
+    int32_t x = atoi(argv[1]);
+    if (x < 300000 || x <= freq_start) {
+      chprintf(chp, "bad parameter\r\n");
+      return;
+    }
+    freq_stop = x;
+  }
+  if (argc >= 3) {
+    int32_t x = atoi(argv[2]);
+    if (x < 1 || x > 1601) {
+      chprintf(chp, "bad parameter\r\n");
+      return;
+    }
+    sweep_points = x;
   }
 }
 
@@ -400,6 +439,7 @@ static const ShellCommand commands[] =
     { "power", cmd_power },
     { "gamma", cmd_gamma },
     { "scan", cmd_scan },
+    { "sweep", cmd_sweep },
     { "test", cmd_test },
     { NULL, NULL }
 };

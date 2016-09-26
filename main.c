@@ -344,6 +344,7 @@ static void cmd_test(BaseSequentialStream *chp, int argc, char *argv[])
   (void)argc;
   (void)argv;
 
+#if 0
   for (i = 0; i < 100; i++) {
     palClearPad(GPIOC, GPIOC_LED);
     set_frequency(10000000);
@@ -355,6 +356,20 @@ static void cmd_test(BaseSequentialStream *chp, int argc, char *argv[])
     palSetPad(GPIOC, GPIOC_LED);
     chThdSleepMilliseconds(50);
   }
+#endif
+
+#if 1
+  int mode = 0;
+  if (argc >= 1)
+    mode = atoi(argv[0]);
+
+  for (i = 0; i < 20; i++) {
+    palClearPad(GPIOC, GPIOC_LED);
+    ili9341_test(mode);
+    palSetPad(GPIOC, GPIOC_LED);
+    chThdSleepMilliseconds(50);
+  }
+#endif
 }
 
 static void cmd_gain(BaseSequentialStream *chp, int argc, char *argv[])
@@ -486,6 +501,11 @@ int main(void)
     chThdSleepMilliseconds(100);
     usbStart(serusbcfg.usbp, &usbcfg);
     usbConnectBus(serusbcfg.usbp);
+
+  /*
+   * SPI LCD Initialize
+   */
+  ili9341_init();
 
   /*
    * I2S Initialize

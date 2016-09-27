@@ -37,7 +37,9 @@ int I2CRead(int addr, uint8_t d0)
     return buf[0];
 }
 
-static THD_WORKING_AREA(waThread1, 128);
+void scan_lcd(void);
+
+static THD_WORKING_AREA(waThread1, 512);
 static THD_FUNCTION(Thread1, arg)
 {
     (void)arg;
@@ -47,12 +49,16 @@ static THD_FUNCTION(Thread1, arg)
     palSetPadMode(GPIOC, 13, PAL_MODE_OUTPUT_PUSHPULL);
     while (1)
     {
+#if 0
       systime_t time = 500;
       if (serusbcfg.usbp->state != USB_ACTIVE)
         palClearPad(GPIOC, 13);
       chThdSleepMilliseconds(time);
       palSetPad(GPIOC, 13);
       chThdSleepMilliseconds(time);
+#else
+      scan_lcd();
+#endif
     }
 }
 
@@ -303,6 +309,45 @@ static void cmd_scan(BaseSequentialStream *chp, int argc, char *argv[])
   }
 }
 
+void scan_lcd(void)
+{
+  int i;
+  int32_t freq, cur_freq, step;
+  int delay;
+  int first = TRUE;
+
+  freq = freq_start;
+  step = (freq_stop - freq_start) / (sweep_points-1);
+  delay = set_frequency(freq);
+  delay += 2;
+  for (i = 0; i < sweep_points; i++) {
+    cur_freq = freq;
+    freq = freq + step;
+    wait_count = delay;
+    while (wait_count)
+      ;
+    palClearPad(GPIOC, GPIOC_LED);
+    //dsp_disabled = TRUE;
+    __disable_irq();
+    delay = set_frequency(freq);
+    calclate_gamma();
+    //dsp_disabled = FALSE;
+    __enable_irq();
+    //chprintf(chp, "%d %d %d\r\n", cur_freq, gamma_real, gamma_imag);
+    sweep_plot(cur_freq, first);
+    first = FALSE;
+    palSetPad(GPIOC, GPIOC_LED);
+  }
+  sweep_tail();
+}
+
+static void cmd_scan_lcd(BaseSequentialStream *chp, int argc, char *argv[])
+{
+  (void)argc;
+  (void)argv;
+  scan_lcd();
+}
+
 static void cmd_sweep(BaseSequentialStream *chp, int argc, char *argv[])
 {
   if (argc == 0) {
@@ -456,6 +501,7 @@ static const ShellCommand commands[] =
     { "scan", cmd_scan },
     { "sweep", cmd_sweep },
     { "test", cmd_test },
+    { "plot", cmd_scan_lcd },
     { NULL, NULL }
 };
 
@@ -523,7 +569,7 @@ int main(void)
 
     chThdCreateStatic(waThread1, sizeof(waThread1), NORMALPRIO, Thread1, NULL);
 
-    set_frequency(10000000);
+    //set_frequency(10000000);
 
     while (1)
     {

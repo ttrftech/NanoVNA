@@ -211,14 +211,27 @@ void ili9341_pixel(int x, int y, int color)
 
 void ili9341_fill(int x, int y, int w, int h, int color)
 {
-	uint8_t xx[4] = { x >> 8, x, (x+w) >> 8, (x+w) };
-	uint8_t yy[4] = { y >> 8, y, (y+h) >> 8, (y+h) };
+	uint8_t xx[4] = { x >> 8, x, (x+w-1) >> 8, (x+w-1) };
+	uint8_t yy[4] = { y >> 8, y, (y+h-1) >> 8, (y+h-1) };
     int len = w * h;
 	send_command(0x2A, 4, xx);
     send_command(0x2B, 4, yy);
     send_command(0x2C, 0, NULL);
     while (len-- > 0) 
       ssp_senddata16(color);
+}
+
+void ili9341_bulk(int x, int y, int w, int h)
+{
+	uint8_t xx[4] = { x >> 8, x, (x+w-1) >> 8, (x+w-1) };
+	uint8_t yy[4] = { y >> 8, y, (y+h-1) >> 8, (y+h-1) };
+	uint16_t *buf = spi_buffer;
+    int len = w * h;
+	send_command(0x2A, 4, xx);
+	send_command(0x2B, 4, yy);
+	send_command(0x2C, 0, NULL);
+    while (len-- > 0) 
+      ssp_senddata16(*buf++);
 }
 
 typedef struct {
@@ -264,6 +277,29 @@ ili9341_drawfont(uint8_t ch, const font_t *font, int x, int y, uint16_t fg, uint
       ssp_senddata16(*buf++);
 }
 
+
+void
+draw_grid(int n, int m, int w, int h, int x, int y, uint16_t fg, uint16_t bg)
+{
+  int ww = w*n+1;
+  int hh = h*m+1;
+  int xx = x;
+  int yy = y;
+  int i;
+
+  ili9341_fill(x, y, ww, hh, bg);
+
+  for (i = 0; i <= n; i++) {
+    ili9341_fill(xx, y, 1, hh, fg);
+    xx += w;
+  }
+  for (i = 0; i <= m; i++) {
+    ili9341_fill(x, yy, ww, 1, fg);
+    yy += h;
+  }
+}
+
+
 const uint16_t colormap[] = {
   RGB565(255,0,0), RGB565(0,255,0), RGB565(0,0,255),
   RGB565(255,255,0), RGB565(0,255,255), RGB565(255,0,255)
@@ -301,8 +337,160 @@ ili9341_test(int mode)
       ili9341_drawfont(i, &NF20x24, i*20, 120, colormap[i%6], 0x0000);
     break;
 #endif
+  case 4:
+    draw_grid(10, 8, 29, 29, 15, 0, 0xffff, 0);
+    break;
   }
 }
+
+
+
+float prev_value;
+int prev_freq;
+int prev_x;
+
+int32_t fstart = 0;
+int32_t fend = 300000000;
+
+#define OFFSETX 15
+#define OFFSETY 0
+#define WIDTH 291
+#define HEIGHT 233
+
+
+int
+circle_grid(int x, int y, int r)
+{
+  int d = x*x + y*y - r*r;
+  if (d <= -r)
+    return 1;
+  if (d >= r)
+    return -1;
+  return 0;
+}
+
+int
+smith_grid(int x, int y)
+{
+  int d = circle_grid(x-146, y-116, 116);
+  int c = 0x7bef;
+  if (d < 0)
+    return 0;
+  else if (d == 0)
+    return c;
+  x -= 146+116;
+  y -= 116;
+
+  if (circle_grid(x, y+58, 58) == 0)
+    return c;
+  if (circle_grid(x, y-58, 58) == 0)
+    return c;
+  d = circle_grid(x+29, y, 29);
+  if (d > 0) return 0;
+  if (d == 0) return c;
+  if (circle_grid(x, y+116, 116) == 0)
+    return c;
+  if (circle_grid(x, y-116, 116) == 0)
+    return c;
+  d = circle_grid(x+58, y, 58);
+  if (d > 0) return 0;
+  if (d == 0) return c;
+  if (circle_grid(x, y+232, 232) == 0)
+    return c;
+  if (circle_grid(x, y-232, 232) == 0)
+    return c;
+  if (circle_grid(x+87, y, 87) == 0)
+    return c;
+  return 0;
+}
+
+int
+rectangular_grid(int x, int y)
+{
+  int c = 0x7bef;
+  if (((x * 6) % (WIDTH-1)) < 6)
+    return c;
+  if ((y % 29) == 0)
+    return c;
+  return 0;
+}
+
+int
+set_strut_grid(int x)
+{
+  uint16_t *buf = spi_buffer;
+  int y;
+
+  for (y = 0; y < HEIGHT; y++) {
+    int c = 0;
+    c |= smith_grid(x, y);
+    c |= rectangular_grid(x, y);
+    *buf++ = c;
+  }
+  return y;
+}
+
+void
+draw_on_strut(int v0, int v1, int color)
+{
+  int v, d;
+  if (v0 < 0) v0 = 0;
+  if (v1 < 0) v1 = 0;
+  if (v0 >= HEIGHT) v0 = HEIGHT-1;
+  if (v1 >= HEIGHT) v1 = HEIGHT-1;
+  if (v0 == v1) {
+    v = v0; d = 1;
+  } else if (v0 < v1) {
+    v = v0; d = v1 - v0;
+  } else {
+    v = v1; d = v0 - v1;
+  }
+  while (d-- > 0)
+    spi_buffer[v++] = color;
+}
+
+void sweep_plot(int32_t freq, int first)
+{
+  float value = 10 - log10f(gamma_real*gamma_real + gamma_imag*gamma_imag);
+  int curr_x = ((float)WIDTH * (freq - fstart) / (fend - fstart));
+  value *= 29;
+
+  if (first) {
+    prev_freq = freq;
+    prev_value = value;
+    prev_x = 0;
+    while (prev_x < curr_x) {
+      int len = set_strut_grid(prev_x);
+      ili9341_bulk(OFFSETX + prev_x, OFFSETY, 1, len);
+      prev_x++;
+    }
+  } else {
+    int w = curr_x - prev_x;
+    float d = (value - prev_value) / w;
+
+    while (prev_x < curr_x) {
+      int len = set_strut_grid(prev_x);
+      int v0 = prev_value;
+      int v1;
+      prev_value += d;
+      v1 = prev_value;
+      draw_on_strut(v0, v1, RGB565(0,255,255));
+      ili9341_bulk(OFFSETX + prev_x, OFFSETY, 1, len);
+      prev_x++;
+    }
+  }
+}
+
+void sweep_tail()
+{
+  while (prev_x < WIDTH) {
+    int len = set_strut_grid(prev_x);
+    ili9341_bulk(OFFSETX + prev_x, OFFSETY, 1, len);
+    prev_x++;
+  }
+}
+
+
 
 #if 0
 void

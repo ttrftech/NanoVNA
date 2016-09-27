@@ -48,6 +48,9 @@ int si5351_set_frequency_with_offset(int freq, int offset, uint8_t drive_strengt
 void ili9341_init(void);
 void ili9341_test(int mode);
 
+void sweep_plot(int32_t freq, int first);
+void sweep_tail();
+
 extern const uint16_t x5x7_bits [];
 extern const uint32_t numfont20x24[][24];
 

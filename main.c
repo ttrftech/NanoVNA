@@ -8,6 +8,7 @@
 #include <shell.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 
 RTCDateTime timespec;
 
@@ -82,6 +83,7 @@ resume_sweep(void)
 
 static void cmd_pause(BaseSequentialStream *chp, int argc, char *argv[])
 {
+    (void)chp;
     (void)argc;
     (void)argv;
     pause_sweep();
@@ -89,6 +91,7 @@ static void cmd_pause(BaseSequentialStream *chp, int argc, char *argv[])
 
 static void cmd_resume(BaseSequentialStream *chp, int argc, char *argv[])
 {
+    (void)chp;
     (void)argc;
     (void)argv;
     resume_sweep();
@@ -210,8 +213,7 @@ volatile int16_t wait_count = 0;
 int16_t dump_selection = 0;
 
 int16_t dsp_disabled = FALSE;
-int32_t gamma_real;
-int32_t gamma_imag;
+float measured[4];
 
 
 
@@ -240,14 +242,6 @@ void i2s_end_callback(I2SDriver *i2sp, size_t offset, size_t n)
       memcpy(dump_buffer, p, sizeof dump_buffer);
     --wait_count;
   }
-
-#if 0
-  if (request_calcgamma > 0) {
-    if (request_calcgamma == 1)
-      calclate_gamma();
-    --request_calcgamma;
-  }
-#endif
 
 #if PORT_SUPPORTS_RT
   cnt_e = port_rt_get_counter_value();
@@ -304,10 +298,10 @@ static void cmd_gamma(BaseSequentialStream *chp, int argc, char *argv[])
   while (wait_count)
     ;
   dsp_disabled = TRUE;
-  calclate_gamma();
+  calclate_gamma(&measured[0]);
   dsp_disabled = FALSE;
 
-  chprintf(chp, "%d %d\r\n", gamma_real, gamma_imag);
+  chprintf(chp, "%d %d %d %d\r\n", measured[0], measured[1], measured[2], measured[3]);
 }
 
 
@@ -318,7 +312,7 @@ int16_t sweep_points = 101;
 static void cmd_scan(BaseSequentialStream *chp, int argc, char *argv[])
 {
   int i;
-  int32_t freq, cur_freq, step;
+  int32_t freq, step;
   int delay;
   (void)argc;
   (void)argv;
@@ -329,7 +323,6 @@ static void cmd_scan(BaseSequentialStream *chp, int argc, char *argv[])
   delay = set_frequency(freq);
   delay += 2;
   for (i = 0; i < sweep_points; i++) {
-    cur_freq = freq;
     freq = freq + step;
     wait_count = delay;
     while (wait_count)
@@ -338,11 +331,11 @@ static void cmd_scan(BaseSequentialStream *chp, int argc, char *argv[])
     __disable_irq();
     delay = set_frequency(freq);
     palClearPad(GPIOC, GPIOC_LED);
-    calclate_gamma();
+    calclate_gamma(&measured[0]);
     palSetPad(GPIOC, GPIOC_LED);
     //dsp_disabled = FALSE;
     __enable_irq();
-    chprintf(chp, "%d %d %d\r\n", cur_freq, gamma_real, gamma_imag);
+    chprintf(chp, "%d %d %d %d\r\n", measured[0], measured[1], measured[2], measured[3]);
   }
 }
 
@@ -361,16 +354,14 @@ void scan_lcd(void)
     cur_freq = freq;
     freq = freq + step;
     wait_count = delay;
+    tlv320aic3204_select_in3();
     while (wait_count)
       ;
     palClearPad(GPIOC, GPIOC_LED);
-    //dsp_disabled = TRUE;
     __disable_irq();
     delay = set_frequency(freq);
-    calclate_gamma();
-    //dsp_disabled = FALSE;
+    calclate_gamma(&measured[0]);
     __enable_irq();
-    //chprintf(chp, "%d %d %d\r\n", cur_freq, gamma_real, gamma_imag);
     sweep_plot(cur_freq, first);
     first = FALSE;
     palSetPad(GPIOC, GPIOC_LED);
@@ -380,6 +371,7 @@ void scan_lcd(void)
 
 static void cmd_scan_lcd(BaseSequentialStream *chp, int argc, char *argv[])
 {
+  (void)chp;
   (void)argc;
   (void)argv;
   pause_sweep();
@@ -424,6 +416,7 @@ static void cmd_sweep(BaseSequentialStream *chp, int argc, char *argv[])
 static void cmd_test(BaseSequentialStream *chp, int argc, char *argv[])
 {
   int i;
+  (void)chp;
   (void)argc;
   (void)argv;
 
@@ -505,8 +498,8 @@ static void cmd_stat(BaseSequentialStream *chp, int argc, char *argv[])
     acc0 += (p[i] - ave0)*(p[i] - ave0);
     acc1 += (p[i+1] - ave1)*(p[i+1] - ave1);
   }
-  stat.rms[0] = sqrt(acc0 / count);
-  stat.rms[1] = sqrt(acc1 / count);
+  stat.rms[0] = sqrtf(acc0 / count);
+  stat.rms[1] = sqrtf(acc1 / count);
   stat.ave[0] = ave0;
   stat.ave[1] = ave1;
 

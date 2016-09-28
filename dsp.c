@@ -73,7 +73,7 @@ hilbert_transform(void)
   }
 }
 
-void calclate_gamma(void)
+void calclate_gamma(float *gamma)
 #if 0
 {
   __SIMD32_TYPE *r = __SIMD32_CONST(refiq_buf);
@@ -103,23 +103,23 @@ void calclate_gamma(void)
   int16_t *r = refiq_buf;
   int16_t *s = samp_buf;
   int len = SAMPLE_LEN/5;
-  double acc_r = 0;
-  double acc_i = 0;
-  double acc_ref = 0;
+  float acc_r = 0;
+  float acc_i = 0;
+  float acc_ref = 0;
   int i;
-  double rn;
+  float rn;
 
   for (i = 0; i < len; i++) {
     int16_t s0 = *s++;
     int16_t rr = *r++;
     int16_t ri = *r++;
-    acc_r += (double)(s0 * rr);
-    acc_i += (double)(s0 * ri);
-    acc_ref += (double)rr*rr + (double)ri*ri;
+    acc_r += (float)(s0 * rr);
+    acc_i += (float)(s0 * ri);
+    acc_ref += (float)rr*rr + (float)ri*ri;
   }
   rn = sqrtf(acc_ref / len);
-  gamma_real = 16 * acc_r / rn / len;
-  gamma_imag = 16 * acc_i / rn / len;
+  gamma[0] = 16 * acc_r / rn / len;
+  gamma[1] = 16 * acc_i / rn / len;
 }
 #endif
 

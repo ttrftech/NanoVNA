@@ -296,8 +296,10 @@ si5351_set_frequency_with_offset(int freq, int offset, uint8_t drive_strength)
     band = 2;
   }
 
+#if 0
   if (current_band != band)
     si5351_disable_output();
+#endif
 
   switch (band) {
   case 0:
@@ -335,11 +337,13 @@ si5351_set_frequency_with_offset(int freq, int offset, uint8_t drive_strength)
     break;
   }
 
+  si5351_reset_pll();
+#if 0
   if (current_band != band) {
-    si5351_reset_pll();
     si5351_enable_output();
     delay += 5;
   }
+#endif
   current_band = band;
   return delay;
 }

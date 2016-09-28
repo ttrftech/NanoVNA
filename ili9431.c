@@ -1,3 +1,4 @@
+#include <math.h>
 #include "ch.h"
 #include "hal.h"
 #include "nanovna.h"
@@ -451,7 +452,7 @@ draw_on_strut(int v0, int v1, int color)
 
 void sweep_plot(int32_t freq, int first)
 {
-  float value = 10 - log10f(gamma_real*gamma_real + gamma_imag*gamma_imag);
+  float value = 11 - log10f(measured[0]*measured[0] + measured[1]*measured[1]);
   int curr_x = ((float)WIDTH * (freq - fstart) / (fend - fstart));
   value *= 29;
 

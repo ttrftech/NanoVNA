@@ -37,11 +37,10 @@ extern int16_t samp_buf[];
 //extern int16_t refq_buf[];
 extern int16_t refiq_buf[];
 
-extern int32_t gamma_real;
-extern int32_t gamma_imag;
+extern float measured[4];
 
 void dsp_process(int16_t *src, size_t len);
-void calclate_gamma(void);
+void calclate_gamma(float *gamma);
 
 int si5351_set_frequency_with_offset(int freq, int offset, uint8_t drive_strength);
 
@@ -49,7 +48,7 @@ void ili9341_init(void);
 void ili9341_test(int mode);
 
 void sweep_plot(int32_t freq, int first);
-void sweep_tail();
+void sweep_tail(void);
 
 extern const uint16_t x5x7_bits [];
 extern const uint32_t numfont20x24[][24];

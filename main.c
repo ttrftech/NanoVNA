@@ -359,9 +359,18 @@ void scan_lcd(void)
       ;
     palClearPad(GPIOC, GPIOC_LED);
     __disable_irq();
-    delay = set_frequency(freq);
     calclate_gamma(&measured[0]);
     __enable_irq();
+
+    tlv320aic3204_select_in1();
+    wait_count = 2;
+    while (wait_count)
+      ;
+    __disable_irq();
+    calclate_gamma(&measured[2]);
+    __enable_irq();
+
+    delay = set_frequency(freq);
     sweep_plot(cur_freq, first);
     first = FALSE;
     palSetPad(GPIOC, GPIOC_LED);

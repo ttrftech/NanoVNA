@@ -346,7 +346,6 @@ ili9341_test(int mode)
 
 
 
-float prev_value;
 int prev_freq;
 int prev_x;
 
@@ -432,9 +431,10 @@ set_strut_grid(int x)
 }
 
 void
-draw_on_strut(int v0, int v1, int color)
+draw_on_strut(int v0, int d, int color)
 {
-  int v, d;
+  int v;
+  int v1 = v0 + d;
   if (v0 < 0) v0 = 0;
   if (v1 < 0) v1 = 0;
   if (v0 >= HEIGHT) v0 = HEIGHT-1;
@@ -450,15 +450,32 @@ draw_on_strut(int v0, int v1, int color)
     spi_buffer[v++] = color;
 }
 
+struct {
+  float value;
+  float prev_value;
+  float d;
+  uint16_t color;
+} trace[2] = {
+  { 0, 0, 0, RGB565(0,255,255) },
+  { 0, 0, 0, RGB565(255,0,255) }
+};
+
+float logmag(float *v)
+{
+  return 11 - log10f(v[0]*v[0] + v[1]*v[1]);
+}
+
+
 void sweep_plot(int32_t freq, int first)
 {
-  float value = 11 - log10f(measured[0]*measured[0] + measured[1]*measured[1]);
   int curr_x = ((float)WIDTH * (freq - fstart) / (fend - fstart));
-  value *= 29;
+  //float value = 11 - log10f(measured[0]*measured[0] + measured[1]*measured[1]);
+  //value *= 29;
+  trace[0].value = logmag(&measured[0]) * 29;
+  trace[1].value = logmag(&measured[2]) * 29;
 
   if (first) {
     prev_freq = freq;
-    prev_value = value;
     prev_x = 0;
     while (prev_x < curr_x) {
       int len = set_strut_grid(prev_x);
@@ -467,19 +484,21 @@ void sweep_plot(int32_t freq, int first)
     }
   } else {
     int w = curr_x - prev_x;
-    float d = (value - prev_value) / w;
+    trace[0].d = (trace[0].value - trace[0].prev_value) / w;
+    trace[1].d = (trace[1].value - trace[1].prev_value) / w;
 
     while (prev_x < curr_x) {
       int len = set_strut_grid(prev_x);
-      int v0 = prev_value;
-      int v1;
-      prev_value += d;
-      v1 = prev_value;
-      draw_on_strut(v0, v1, RGB565(0,255,255));
+      draw_on_strut(trace[0].prev_value, trace[0].d, trace[0].color);
+      trace[0].prev_value += trace[0].d;
+      draw_on_strut(trace[1].prev_value, trace[1].d, trace[1].color);
+      trace[1].prev_value += trace[1].d;
       ili9341_bulk(OFFSETX + prev_x, OFFSETY, 1, len);
       prev_x++;
     }
   }
+  trace[0].prev_value = trace[0].value;
+  trace[1].prev_value = trace[1].value;
 }
 
 void sweep_tail()

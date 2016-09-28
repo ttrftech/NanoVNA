@@ -39,6 +39,10 @@ int I2CRead(int addr, uint8_t d0)
 
 void scan_lcd(void);
 
+static MUTEX_DECL(mutex);
+
+
+
 static THD_WORKING_AREA(waThread1, 512);
 static THD_FUNCTION(Thread1, arg)
 {
@@ -57,9 +61,37 @@ static THD_FUNCTION(Thread1, arg)
       palSetPad(GPIOC, 13);
       chThdSleepMilliseconds(time);
 #else
+      chMtxLock(&mutex);
       scan_lcd();
+      chMtxUnlock(&mutex);
 #endif
     }
+}
+
+void
+pause_sweep(void)
+{
+  chMtxLock(&mutex);
+}
+
+void
+resume_sweep(void)
+{
+  chMtxUnlockAll();
+}
+
+static void cmd_pause(BaseSequentialStream *chp, int argc, char *argv[])
+{
+    (void)argc;
+    (void)argv;
+    pause_sweep();
+}
+
+static void cmd_resume(BaseSequentialStream *chp, int argc, char *argv[])
+{
+    (void)argc;
+    (void)argv;
+    resume_sweep();
 }
 
 static void cmd_reset(BaseSequentialStream *chp, int argc, char *argv[])
@@ -77,6 +109,7 @@ static void cmd_reset(BaseSequentialStream *chp, int argc, char *argv[])
     while (1)
 	;
 }
+
 
 int32_t frequency_offset = 5000;
 int32_t frequency = 10000000;
@@ -110,6 +143,7 @@ static void cmd_offset(BaseSequentialStream *chp, int argc, char *argv[])
 static void cmd_freq(BaseSequentialStream *chp, int argc, char *argv[])
 {
     int freq;
+    pause_sweep();
     if (argc != 1) {
         chprintf(chp, "usage: freq {frequency(Hz)}\r\n");
         return;
@@ -240,6 +274,7 @@ static void cmd_data(BaseSequentialStream *chp, int argc, char *argv[])
   int i, j;
   int len;
 
+  pause_sweep();
   if (argc == 1)
     dump_selection = atoi(argv[0]);
 
@@ -264,6 +299,7 @@ static void cmd_gamma(BaseSequentialStream *chp, int argc, char *argv[])
   (void)argc;
   (void)argv;
 
+  pause_sweep();
   wait_count = 4;
   while (wait_count)
     ;
@@ -287,6 +323,7 @@ static void cmd_scan(BaseSequentialStream *chp, int argc, char *argv[])
   (void)argc;
   (void)argv;
 
+  pause_sweep();
   freq = freq_start;
   step = (freq_stop - freq_start) / (sweep_points-1);
   delay = set_frequency(freq);
@@ -345,6 +382,7 @@ static void cmd_scan_lcd(BaseSequentialStream *chp, int argc, char *argv[])
 {
   (void)argc;
   (void)argv;
+  pause_sweep();
   scan_lcd();
 }
 
@@ -389,6 +427,7 @@ static void cmd_test(BaseSequentialStream *chp, int argc, char *argv[])
   (void)argc;
   (void)argv;
 
+  pause_sweep();
 #if 0
   for (i = 0; i < 100; i++) {
     palClearPad(GPIOC, GPIOC_LED);
@@ -502,6 +541,8 @@ static const ShellCommand commands[] =
     { "sweep", cmd_sweep },
     { "test", cmd_test },
     { "plot", cmd_scan_lcd },
+    { "pause", cmd_pause },
+    { "resume", cmd_resume },
     { NULL, NULL }
 };
 
@@ -515,6 +556,8 @@ int main(void)
 {
     halInit();
     chSysInit();
+
+    chMtxObjectInit(&mutex);
 
     /*
      * Starting DAC1 driver, setting up the output pin as analog as suggested

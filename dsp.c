@@ -102,7 +102,7 @@ void calclate_gamma(float *gamma)
 {
   int16_t *r = refiq_buf;
   int16_t *s = samp_buf;
-  int len = SAMPLE_LEN/5;
+  int len = SAMPLE_LEN;
   float acc_r = 0;
   float acc_i = 0;
   float acc_ref = 0;

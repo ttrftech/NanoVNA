@@ -346,25 +346,48 @@ ili9341_test(int mode)
 
 
 
-int prev_freq;
 int prev_x;
 
 int32_t fstart = 0;
-int32_t fend = 300000000;
+int32_t fstop = 300000000;
+int32_t fspan = 300000000;
+int32_t fgrid = 50000000;
 
 #define OFFSETX 15
 #define OFFSETY 0
 #define WIDTH 291
 #define HEIGHT 233
 
+void set_sweep(int32_t start, int stop)
+{
+  int32_t gdigit = 100000000;
+  int32_t grid;
+  fstart = start;
+  fstop = stop;
+  fspan = stop - start;
+
+  while (gdigit > 100) {
+    grid = 5 * gdigit;
+    if (fspan / grid >= 5)
+      break;
+    grid = 2 * gdigit;
+    if (fspan / grid >= 5)
+      break;
+    grid = gdigit;
+    if (fspan / grid >= 5)
+      break;
+    gdigit /= 10;
+  }
+  fgrid = grid;
+}
 
 int
-circle_grid(int x, int y, int r)
+circle_inout(int x, int y, int r)
 {
   int d = x*x + y*y - r*r;
   if (d <= -r)
     return 1;
-  if (d >= r)
+  if (d > r)
     return -1;
   return 0;
 }
@@ -372,7 +395,7 @@ circle_grid(int x, int y, int r)
 int
 smith_grid(int x, int y)
 {
-  int d = circle_grid(x-146, y-116, 116);
+  int d = circle_inout(x-146, y-116, 116);
   int c = 0x7bef;
   if (d < 0)
     return 0;
@@ -380,26 +403,26 @@ smith_grid(int x, int y)
     return c;
   x -= 146+116;
   y -= 116;
-
-  if (circle_grid(x, y+58, 58) == 0)
+  
+  if (circle_inout(x, y+58, 58) == 0)
     return c;
-  if (circle_grid(x, y-58, 58) == 0)
+  if (circle_inout(x, y-58, 58) == 0)
     return c;
-  d = circle_grid(x+29, y, 29);
+  d = circle_inout(x+29, y, 29);
   if (d > 0) return 0;
   if (d == 0) return c;
-  if (circle_grid(x, y+116, 116) == 0)
+  if (circle_inout(x, y+116, 116) == 0)
     return c;
-  if (circle_grid(x, y-116, 116) == 0)
+  if (circle_inout(x, y-116, 116) == 0)
     return c;
-  d = circle_grid(x+58, y, 58);
+  d = circle_inout(x+58, y, 58);
   if (d > 0) return 0;
   if (d == 0) return c;
-  if (circle_grid(x, y+232, 232) == 0)
+  if (circle_inout(x, y+232, 232) == 0)
     return c;
-  if (circle_grid(x, y-232, 232) == 0)
+  if (circle_inout(x, y-232, 232) == 0)
     return c;
-  if (circle_grid(x+87, y, 87) == 0)
+  if (circle_inout(x+87, y, 87) == 0)
     return c;
   return 0;
 }
@@ -407,8 +430,12 @@ smith_grid(int x, int y)
 int
 rectangular_grid(int x, int y)
 {
+#define FREQ(x) (((x) * (fspan / 1000) / (WIDTH-1)) * 1000 + fstart)
   int c = 0x7bef;
-  if (((x * 6) % (WIDTH-1)) < 6)
+  int32_t n = FREQ(x-1) / fgrid;
+  int32_t m = FREQ(x) / fgrid;
+  if ((m - n) > 0)
+  //if (((x * 6) % (WIDTH-1)) < 6)
     return c;
   if ((y % 29) == 0)
     return c;
@@ -440,11 +467,11 @@ draw_on_strut(int v0, int d, int color)
   if (v0 >= HEIGHT) v0 = HEIGHT-1;
   if (v1 >= HEIGHT) v1 = HEIGHT-1;
   if (v0 == v1) {
-    v = v0; d = 1;
+    v = v0; d = 2;
   } else if (v0 < v1) {
-    v = v0; d = v1 - v0;
+    v = v0; d = v1 - v0 + 1;
   } else {
-    v = v1; d = v0 - v1;
+    v = v1; d = v0 - v1 + 1;
   }
   while (d-- > 0)
     spi_buffer[v++] = color;
@@ -465,17 +492,15 @@ float logmag(float *v)
   return 11 - log10f(v[0]*v[0] + v[1]*v[1]);
 }
 
-
 void sweep_plot(int32_t freq, int first)
 {
-  int curr_x = ((float)WIDTH * (freq - fstart) / (fend - fstart));
+  int curr_x = ((float)WIDTH * (freq - fstart) / fspan);
   //float value = 11 - log10f(measured[0]*measured[0] + measured[1]*measured[1]);
   //value *= 29;
   trace[0].value = logmag(&measured[0]) * 29;
   trace[1].value = logmag(&measured[2]) * 29;
 
   if (first) {
-    prev_freq = freq;
     prev_x = 0;
     while (prev_x < curr_x) {
       int len = set_strut_grid(prev_x);

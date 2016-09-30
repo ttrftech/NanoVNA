@@ -22,13 +22,13 @@ extern void ui_init(void);
 extern void ui_process(void);
 
 // 5ms @ 48kHz
-#define AUDIO_BUFFER_LEN 480
+#define AUDIO_BUFFER_LEN 96
 
 extern int16_t rx_buffer[];
 extern int16_t tx_buffer[];
 
 #define STATE_LEN 32
-#define SAMPLE_LEN 240
+#define SAMPLE_LEN 48
 
 extern int16_t ref_state[];
 extern int16_t ref_buf[];
@@ -47,6 +47,7 @@ int si5351_set_frequency_with_offset(int freq, int offset, uint8_t drive_strengt
 void ili9341_init(void);
 void ili9341_test(int mode);
 
+void set_sweep(int32_t start, int stop);
 void sweep_plot(int32_t freq, int first);
 void sweep_tail(void);
 

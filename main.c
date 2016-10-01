@@ -348,7 +348,6 @@ void scan_lcd(void)
 
   freq = freq_start;
   step = (freq_stop - freq_start) / (sweep_points-1);
-  set_sweep(freq_start, freq_stop);
   delay = set_frequency(freq);
   delay += 2;
   for (i = 0; i < sweep_points; i++) {
@@ -421,6 +420,7 @@ static void cmd_sweep(BaseSequentialStream *chp, int argc, char *argv[])
     }
     sweep_points = x;
   }
+  set_sweep(freq_start, freq_stop);
 }
 
 static void cmd_test(BaseSequentialStream *chp, int argc, char *argv[])
@@ -598,6 +598,7 @@ int main(void)
    * SPI LCD Initialize
    */
   ili9341_init();
+  redraw();
 
   /*
    * I2S Initialize

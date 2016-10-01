@@ -50,6 +50,7 @@ void ili9341_test(int mode);
 void set_sweep(int32_t start, int stop);
 void sweep_plot(int32_t freq, int first);
 void sweep_tail(void);
+void redraw(void);
 
 extern const uint16_t x5x7_bits [];
 extern const uint32_t numfont20x24[][24];

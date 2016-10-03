@@ -37,8 +37,6 @@ extern int16_t samp_buf[];
 //extern int16_t refq_buf[];
 extern int16_t refiq_buf[];
 
-extern float measured[4];
-
 void dsp_process(int16_t *src, size_t len);
 void calclate_gamma(float *gamma);
 
@@ -48,9 +46,10 @@ void ili9341_init(void);
 void ili9341_test(int mode);
 
 void set_sweep(int32_t start, int stop);
-void sweep_plot(int32_t freq, int first);
+void sweep_plot(int32_t freq, int first, float measured[4]);
 void sweep_tail(void);
 void redraw(void);
+void polar_plot(float measured[101][4]);
 
 extern const uint16_t x5x7_bits [];
 extern const uint32_t numfont20x24[][24];

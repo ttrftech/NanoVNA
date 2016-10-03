@@ -11,7 +11,7 @@
 #define DC_CMD			palClearPad(GPIOB, 7)
 #define DC_DATA			palSetPad(GPIOB, 7)
 
-#define RGB565(r,g,b)     ( (((r)<<8)&0xf800) | (((g)<<3)&0x07e0) | (((b)>>3)&0x001f) )
+#define RGB565(b,r,g)     ( (((b)<<8)&0xfc00) | (((r)<<2)&0x03e0) | (((g)>>3)&0x001f) )
 
 uint16_t spi_buffer[1024];
 
@@ -71,15 +71,38 @@ ssp_databit16(void)
   //LPC_SSP1->CR0 = (LPC_SSP1->CR0 & 0xf0) | SSP_DATABIT_16;
 }
 
+
+const stm32_dma_stream_t  *dmatx;
+uint32_t txdmamode;
+
+static void spi_lld_serve_tx_interrupt(SPIDriver *spip, uint32_t flags) {
+  (void)spip;
+  (void)flags;
+}
+
 void
 spi_init(void)
 {
   rccEnableSPI1(FALSE);
 
+  dmatx     = STM32_DMA_STREAM(STM32_SPI_SPI1_TX_DMA_STREAM);
+  txdmamode = STM32_DMA_CR_CHSEL(SPI1_TX_DMA_CHANNEL) |
+    STM32_DMA_CR_PL(STM32_SPI_SPI1_DMA_PRIORITY) |
+    STM32_DMA_CR_DIR_M2P |
+    STM32_DMA_CR_DMEIE |
+    STM32_DMA_CR_TEIE |
+    STM32_DMA_CR_PSIZE_HWORD |
+    STM32_DMA_CR_MSIZE_HWORD;
+  dmaStreamAllocate(dmatx,
+                    STM32_SPI_SPI1_IRQ_PRIORITY,
+                    (stm32_dmaisr_t)spi_lld_serve_tx_interrupt,
+                    NULL);
+  dmaStreamSetPeripheral(dmatx, &SPI1->DR);
+
   //spiStart(&SPID1, &spicfg);       /* Setup transfer parameters.       */
   SPI1->CR1 = 0;
   SPI1->CR1 = SPI_CR1_MSTR | SPI_CR1_BIDIOE | SPI_CR1_SSM | SPI_CR1_SSI;// | SPI_CR1_BR_1;
-  SPI1->CR2 = 0x0700;
+  SPI1->CR2 = 0x0700 | SPI_CR2_TXDMAEN;
   SPI1->CR1 |= SPI_CR1_SPE;  
 }
 
@@ -226,6 +249,7 @@ void ili9341_fill(int x, int y, int w, int h, int color)
       ssp_senddata16(color);
 }
 
+#if 0
 void ili9341_bulk(int x, int y, int w, int h)
 {
 	uint8_t xx[4] = { x >> 8, x, (x+w-1) >> 8, (x+w-1) };
@@ -238,6 +262,62 @@ void ili9341_bulk(int x, int y, int w, int h)
     while (len-- > 0) 
       ssp_senddata16(*buf++);
 }
+#else
+void ili9341_bulk(int x, int y, int w, int h)
+{
+	uint8_t xx[4] = { x >> 8, x, (x+w-1) >> 8, (x+w-1) };
+	uint8_t yy[4] = { y >> 8, y, (y+h-1) >> 8, (y+h-1) };
+    int len = w * h;
+
+	send_command(0x2A, 4, xx);
+	send_command(0x2B, 4, yy);
+	send_command(0x2C, 0, NULL);
+
+    dmaStreamSetMemory0(dmatx, spi_buffer);
+    dmaStreamSetTransactionSize(dmatx, len);
+    dmaStreamSetMode(dmatx, txdmamode | STM32_DMA_CR_MINC);
+    dmaStreamEnable(dmatx);
+    dmaWaitCompletion(dmatx);
+}
+#endif
+
+#define SWAP(x,y) do { int z=x; x = y; y = z; } while(0)
+
+void
+ili9341_line(int x0, int y0, int x1, int y1, uint16_t fg)
+{
+  if (x0 > x1) {
+    SWAP(x0, x1);
+    SWAP(y0, y1);
+  }
+
+  while (x0 <= x1) {
+    int dx = x1 - x0 + 1;
+    int dy = y1 - y0;
+    if (dy >= 0) {
+      dy++;
+      if (dy > dx) {
+        dy /= dx; dx = 1;
+      } else {
+        dx /= dy; dy = 1;
+      }
+    } else {
+      dy--;
+      if (-dy > dx) {
+        dy /= dx; dx = 1;
+      } else {
+        dx /= -dy; dy = -1;
+      }
+    }
+    if (dy > 0)
+      ili9341_fill(x0, y0, dx, dy, fg);
+    else
+      ili9341_fill(x0, y0+dy, dx, -dy, fg);
+    x0 += dx;
+    y0 += dy;
+  }
+}
+
 
 typedef struct {
 	uint16_t width;
@@ -283,6 +363,7 @@ ili9341_drawfont(uint8_t ch, const font_t *font, int x, int y, uint16_t fg, uint
 }
 
 
+#if 0
 void
 draw_grid(int n, int m, int w, int h, int x, int y, uint16_t fg, uint16_t bg)
 {
@@ -303,7 +384,7 @@ draw_grid(int n, int m, int w, int h, int x, int y, uint16_t fg, uint16_t bg)
     yy += h;
   }
 }
-
+#endif
 
 const uint16_t colormap[] = {
   RGB565(255,0,0), RGB565(0,255,0), RGB565(0,0,255),
@@ -342,8 +423,16 @@ ili9341_test(int mode)
       ili9341_drawfont(i, &NF20x24, i*20, 120, colormap[i%6], 0x0000);
     break;
 #endif
+#if 0
   case 4:
     draw_grid(10, 8, 29, 29, 15, 0, 0xffff, 0);
+    break;
+#endif
+  case 4:
+    ili9341_line(0, 0, 15, 100, 0xffff);
+    ili9341_line(0, 0, 100, 100, 0xffff);
+    ili9341_line(0, 15, 100, 0, 0xffff);
+    ili9341_line(0, 100, 100, 0, 0xffff);
     break;
   }
 }
@@ -356,6 +445,8 @@ int32_t fstart = 0;
 int32_t fstop = 300000000;
 int32_t fspan = 300000000;
 int32_t fgrid = 50000000;
+int grid_offset;
+int grid_width;
 
 #define OFFSETX 15
 #define OFFSETY 0
@@ -386,6 +477,9 @@ void set_sweep(int32_t start, int stop)
     gdigit /= 10;
   }
   fgrid = grid;
+
+  grid_offset = (WIDTH-1) * ((fstart % fgrid) / 100) / (fspan / 100);
+  grid_width = (WIDTH-1) * (fgrid / 100) / (fspan / 100);
 
   draw_frequencies();
 }
@@ -441,10 +535,11 @@ rectangular_grid(int x, int y)
 {
 #define FREQ(x) (((x) * (fspan / 1000) / (WIDTH-1)) * 1000 + fstart)
   int c = grid_color;
-  int32_t n = FREQ(x-1) / fgrid;
-  int32_t m = FREQ(x) / fgrid;
-  if ((m - n) > 0)
+  //int32_t n = FREQ(x-1) / fgrid;
+  //int32_t m = FREQ(x) / fgrid;
+  //if ((m - n) > 0)
   //if (((x * 6) % (WIDTH-1)) < 6)
+  if (((x - grid_offset) % grid_width) == 0)
     return c;
   if (x == 0 || x == (WIDTH-1))
     return c;
@@ -484,17 +579,22 @@ draw_on_strut(int v0, int d, int color)
     v = v1; d = v0 - v1 + 1;
   }
   while (d-- > 0)
-    spi_buffer[v++] = color;
+    spi_buffer[v++] |= color;
 }
 
+#define TRACES_MAX 4
+
 struct {
+  int enabled;
   float value;
   float prev_value;
   float d;
   uint16_t color;
-} trace[2] = {
-  { 0, 0, 0, RGB565(0,255,255) },
-  { 0, 0, 0, RGB565(255,0,40) }
+} trace[TRACES_MAX] = {
+  { 1, 0, 0, 0, RGB565(0,255,255) },
+  { 1, 0, 0, 0, RGB565(255,0,40) },
+  { 0, 0, 0, 0, RGB565(0,0,255) },
+  { 0, 0, 0, 0, RGB565(0,255,0) }
 };
 
 float logmag(float *v)
@@ -502,13 +602,23 @@ float logmag(float *v)
   return 11 - log10f(v[0]*v[0] + v[1]*v[1]);
 }
 
-void sweep_plot(int32_t freq, int first)
+float phase(float *v)
+{
+  return 4 + 2 * atan2f(v[1], v[0]) / M_PI;
+}
+
+void sweep_plot(int32_t freq, int first, float *measured)
 {
   int curr_x = ((float)WIDTH * (freq - fstart) / fspan);
-  //float value = 11 - log10f(measured[0]*measured[0] + measured[1]*measured[1]);
-  //value *= 29;
-  trace[0].value = logmag(&measured[0]) * 29;
-  trace[1].value = logmag(&measured[2]) * 29;
+  int i;
+  if (trace[0].enabled)
+    trace[0].value = logmag(&measured[0]) * 29;
+  if (trace[1].enabled)
+    trace[1].value = logmag(&measured[2]) * 29;
+  if (trace[2].enabled)
+    trace[2].value = phase(&measured[0]) * 29;
+  if (trace[3].enabled)
+    trace[3].value = phase(&measured[2]) * 29;
 
   if (first) {
     prev_x = 0;
@@ -519,21 +629,24 @@ void sweep_plot(int32_t freq, int first)
     }
   } else {
     int w = curr_x - prev_x;
-    trace[0].d = (trace[0].value - trace[0].prev_value) / w;
-    trace[1].d = (trace[1].value - trace[1].prev_value) / w;
+    for (i = 0; i < TRACES_MAX; i++)
+      if (trace[i].enabled)
+        trace[i].d = (trace[i].value - trace[i].prev_value) / w;
 
     while (prev_x < curr_x) {
       int len = set_strut_grid(prev_x);
-      draw_on_strut(trace[0].prev_value, trace[0].d, trace[0].color);
-      trace[0].prev_value += trace[0].d;
-      draw_on_strut(trace[1].prev_value, trace[1].d, trace[1].color);
-      trace[1].prev_value += trace[1].d;
+      for (i = 0; i < TRACES_MAX; i++)
+        if (trace[i].enabled) {
+          draw_on_strut(trace[i].prev_value, trace[i].d, trace[i].color);
+          trace[i].prev_value += trace[i].d;
+        }
       ili9341_bulk(OFFSETX + prev_x, OFFSETY, 1, len);
       prev_x++;
     }
   }
-  trace[0].prev_value = trace[0].value;
-  trace[1].prev_value = trace[1].value;
+  for (i = 0; i < TRACES_MAX; i++)
+    if (trace[i].enabled)
+      trace[i].prev_value = trace[i].value;
 }
 
 void sweep_tail()
@@ -544,6 +657,35 @@ void sweep_tail()
     prev_x++;
   }
 }
+
+void
+cartesian_scale(float re, float im, int *xp, int *yp)
+{
+  float scale = 4e-3;
+  int x = WIDTH / 2 - re * scale;
+  int y = HEIGHT / 2 + im * scale;
+  if (x < 0) x = 0;
+  if (y < 0) y = 0;
+  if (x > WIDTH) x = WIDTH;
+  if (y > HEIGHT) y = HEIGHT;
+  *xp = OFFSETX + x;
+  *yp = OFFSETY + y;
+}
+
+void polar_plot(float measured[101][4])
+{
+  int x0, y0;
+  int i;
+  cartesian_scale(measured[0][1], measured[0][0], &x0, &y0);
+  for (i = 1; i < 101; i++) {
+    int x1, y1;
+    cartesian_scale(measured[i][1], measured[i][0], &x1, &y1);
+    ili9341_line(x0, y0, x1, y1, trace[2].color);
+    x0 = x1;
+    y0 = y1;
+  }
+}
+
 
 void
 ili9341_drawchar_5x7(uint8_t ch, int x, int y, uint16_t fg, uint16_t bg)

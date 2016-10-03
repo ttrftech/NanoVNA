@@ -213,8 +213,8 @@ volatile int16_t wait_count = 0;
 int16_t dump_selection = 0;
 
 int16_t dsp_disabled = FALSE;
-float measured[4];
-
+float measured[101][4];
+uint32_t frequencies[101];
 
 
 void i2s_end_callback(I2SDriver *i2sp, size_t offset, size_t n)
@@ -290,18 +290,19 @@ static void cmd_data(BaseSequentialStream *chp, int argc, char *argv[])
 
 static void cmd_gamma(BaseSequentialStream *chp, int argc, char *argv[])
 {
+  float gamma[2];
   (void)argc;
   (void)argv;
-
+  
   pause_sweep();
   wait_count = 4;
   while (wait_count)
     ;
   dsp_disabled = TRUE;
-  calclate_gamma(&measured[0]);
+  calclate_gamma(gamma);
   dsp_disabled = FALSE;
 
-  chprintf(chp, "%d %d %d %d\r\n", measured[0], measured[1], measured[2], measured[3]);
+  chprintf(chp, "%d %d\r\n", gamma[0], gamma[1]);
 }
 
 
@@ -311,6 +312,7 @@ int16_t sweep_points = 101;
 
 static void cmd_scan(BaseSequentialStream *chp, int argc, char *argv[])
 {
+  float gamma[2];
   int i;
   int32_t freq, step;
   int delay;
@@ -331,35 +333,30 @@ static void cmd_scan(BaseSequentialStream *chp, int argc, char *argv[])
     __disable_irq();
     delay = set_frequency(freq);
     palClearPad(GPIOC, GPIOC_LED);
-    calclate_gamma(&measured[0]);
+    calclate_gamma(gamma);
     palSetPad(GPIOC, GPIOC_LED);
     //dsp_disabled = FALSE;
     __enable_irq();
-    chprintf(chp, "%d %d %d %d\r\n", measured[0], measured[1], measured[2], measured[3]);
+    chprintf(chp, "%d %d\r\n", gamma[0], gamma[1]);
   }
 }
 
 void scan_lcd(void)
 {
   int i;
-  int32_t freq, cur_freq, step;
   int delay;
   int first = TRUE;
 
-  freq = freq_start;
-  step = (freq_stop - freq_start) / (sweep_points-1);
-  delay = set_frequency(freq);
+  delay = set_frequency(frequencies[0]);
   delay += 2;
   for (i = 0; i < sweep_points; i++) {
-    cur_freq = freq;
-    freq = freq + step;
     wait_count = delay;
     tlv320aic3204_select_in3();
     while (wait_count)
       ;
     palClearPad(GPIOC, GPIOC_LED);
     __disable_irq();
-    calclate_gamma(&measured[0]);
+    calclate_gamma(&measured[i][0]);
     __enable_irq();
 
     tlv320aic3204_select_in1();
@@ -367,15 +364,24 @@ void scan_lcd(void)
     while (wait_count)
       ;
     __disable_irq();
-    calclate_gamma(&measured[2]);
+    calclate_gamma(&measured[i][2]);
     __enable_irq();
 
-    delay = set_frequency(freq);
-    sweep_plot(cur_freq, first);
+    delay = set_frequency(frequencies[(i+1)%sweep_points]);
+#if 0
+    sweep_plot(frequencies[i], first, measured[i]);
     first = FALSE;
+#endif
     palSetPad(GPIOC, GPIOC_LED);
   }
+#if 1
+  for (i = 0; i < sweep_points; i++) {
+    sweep_plot(frequencies[i], first, measured[i]);
+    first = FALSE;
+  }  
+#endif
   sweep_tail();
+  polar_plot(measured);
 }
 
 static void cmd_scan_lcd(BaseSequentialStream *chp, int argc, char *argv[])
@@ -385,6 +391,16 @@ static void cmd_scan_lcd(BaseSequentialStream *chp, int argc, char *argv[])
   (void)argv;
   pause_sweep();
   scan_lcd();
+}
+
+
+void
+set_frequencies(void)
+{
+  int i;
+  int32_t span = (freq_stop - freq_start)/100;
+  for (i = 0; i < sweep_points; i++)
+    frequencies[i] = freq_start + span * i / (sweep_points - 1) * 100;
 }
 
 static void cmd_sweep(BaseSequentialStream *chp, int argc, char *argv[])
@@ -420,6 +436,8 @@ static void cmd_sweep(BaseSequentialStream *chp, int argc, char *argv[])
     }
     sweep_points = x;
   }
+
+  set_frequencies();
   set_sweep(freq_start, freq_stop);
 }
 
@@ -598,7 +616,12 @@ int main(void)
    * SPI LCD Initialize
    */
   ili9341_init();
+  set_sweep(freq_start, freq_stop);
   redraw();
+
+  /*
+   */
+  set_frequencies();
 
   /*
    * I2S Initialize

@@ -783,22 +783,22 @@ force_set_markmap(void)
   memset(markmap[current_mappage], 0xff, sizeof markmap[current_mappage]);
 }
 
-void plot_into_index(float measured[101][4])
+void plot_into_index(float measured[101][2][2])
 {
   int i, t;
   for (i = 0; i < 101; i++) {
     int x = i * (WIDTH-1) / (101-1);
     for (t = 0; t < TRACES_MAX; t++) {
-      int n = (t % 2)*2;
+      int n = t % 2;
       if (!trace[t].enabled)
         continue;
       if (trace[t].polar) {
         int x1, y1;
-        cartesian_scale(measured[i][n+1], measured[i][n], &x1, &y1);
+        cartesian_scale(measured[i][n][1], measured[i][n][0], &x1, &y1);
         trace_index[t][i] = INDEX(x1, y1, i);
         //mark_map(x1>>5, y1>>5);
       } else {
-        int y1 = logmag(&measured[i][n]) * 29;
+        int y1 = logmag(measured[i][n]) * 29;
         trace_index[t][i] = INDEX(x, y1, i);
         //mark_map(x>>5, y1>>5);
       }

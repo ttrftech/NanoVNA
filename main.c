@@ -44,7 +44,7 @@ static MUTEX_DECL(mutex);
 
 
 
-static THD_WORKING_AREA(waThread1, 512);
+static THD_WORKING_AREA(waThread1, 384);
 static THD_FUNCTION(Thread1, arg)
 {
     (void)arg;
@@ -213,8 +213,18 @@ volatile int16_t wait_count = 0;
 int16_t dump_selection = 0;
 
 int16_t dsp_disabled = FALSE;
-float measured[101][4];
+float measured[101][2][2];
 uint32_t frequencies[101];
+
+float caldata[101][5][2];
+uint16_t cal_status;
+
+#define CAL_LOAD 0
+#define CAL_OPEN 1
+#define CAL_SHORT 2
+#define CAL_THRU 3
+#define CAL_ISOLN 4
+
 
 
 void i2s_end_callback(I2SDriver *i2sp, size_t offset, size_t n)
@@ -364,7 +374,7 @@ void scan_lcd(void)
     while (wait_count)
       ;
     __disable_irq();
-    calclate_gamma(&measured[i][2]);
+    calclate_gamma(&measured[i][1]);
     __enable_irq();
 
     delay = set_frequency(frequencies[(i+1)%sweep_points]);
@@ -444,6 +454,30 @@ static void cmd_sweep(BaseSequentialStream *chp, int argc, char *argv[])
   set_frequencies();
   set_sweep(freq_start, freq_stop);
 }
+
+
+
+
+
+
+static void cmd_cal(BaseSequentialStream *chp, int argc, char *argv[])
+{
+  
+  if (argc == 0) {
+    chprintf(chp, "%d\r\n", cal_status);
+    return;
+  }
+
+  char *cmd = argv[1];
+  int s;
+  if (strcmp(cmd, "load")) {
+    cal_status |= CAL_LOAD;
+    memcpy(caldata[CAL_LOAD], measured[0], sizeof measured[0]);
+  } 
+
+}
+
+
 
 static void cmd_test(BaseSequentialStream *chp, int argc, char *argv[])
 {
@@ -547,7 +581,7 @@ static void cmd_stat(BaseSequentialStream *chp, int argc, char *argv[])
 
 
 
-#define SHELL_WA_SIZE THD_WORKING_AREA_SIZE(2048)
+#define SHELL_WA_SIZE THD_WORKING_AREA_SIZE(384)
 
 static const ShellCommand commands[] =
 {
@@ -568,6 +602,7 @@ static const ShellCommand commands[] =
     { "plot", cmd_scan_lcd },
     { "pause", cmd_pause },
     { "resume", cmd_resume },
+    { "cal", cmd_cal },
     { NULL, NULL }
 };
 

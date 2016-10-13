@@ -1,4 +1,5 @@
 #include <math.h>
+#include <string.h>
 #include "ch.h"
 #include "hal.h"
 #include "chprintf.h"
@@ -13,10 +14,11 @@
 
 #define RGB565(b,r,g)     ( (((b)<<8)&0xfc00) | (((r)<<2)&0x03e0) | (((g)>>3)&0x001f) )
 
+static inline void force_set_markmap(void);
+
 uint16_t spi_buffer[1024];
 
 void draw_frequencies(void);
-
 
 static const SPIConfig spicfg = {
   NULL,
@@ -222,6 +224,8 @@ ili9341_init(void)
   chThdSleepMilliseconds(100);
   send_command(0x29, 0, NULL); // display on
   //spiReleaseBus(&SPID1);              /* Ownership release.               */
+
+  force_set_markmap();
 }
 
 void ili9341_pixel(int x, int y, int color)
@@ -363,29 +367,6 @@ ili9341_drawfont(uint8_t ch, const font_t *font, int x, int y, uint16_t fg, uint
 }
 
 
-#if 0
-void
-draw_grid(int n, int m, int w, int h, int x, int y, uint16_t fg, uint16_t bg)
-{
-  int ww = w*n+1;
-  int hh = h*m+1;
-  int xx = x;
-  int yy = y;
-  int i;
-
-  ili9341_fill(x, y, ww, hh, bg);
-
-  for (i = 0; i <= n; i++) {
-    ili9341_fill(xx, y, 1, hh, fg);
-    xx += w;
-  }
-  for (i = 0; i <= m; i++) {
-    ili9341_fill(x, yy, ww, 1, fg);
-    yy += h;
-  }
-}
-#endif
-
 const uint16_t colormap[] = {
   RGB565(255,0,0), RGB565(0,255,0), RGB565(0,0,255),
   RGB565(255,255,0), RGB565(0,255,255), RGB565(255,0,255)
@@ -479,8 +460,9 @@ void set_sweep(int32_t start, int stop)
   fgrid = grid;
 
   grid_offset = (WIDTH-1) * ((fstart % fgrid) / 100) / (fspan / 100);
-  grid_width = (WIDTH-1) * (fgrid / 100) / (fspan / 100);
+  grid_width = (WIDTH-1) * (fgrid / 100) / (fspan / 1000);
 
+  force_set_markmap();
   draw_frequencies();
 }
 
@@ -539,7 +521,8 @@ rectangular_grid(int x, int y)
   //int32_t m = FREQ(x) / fgrid;
   //if ((m - n) > 0)
   //if (((x * 6) % (WIDTH-1)) < 6)
-  if (((x - grid_offset) % grid_width) == 0)
+  //if (((x - grid_offset) % grid_width) == 0)
+  if ((((x + grid_offset) * 10) % grid_width) < 10)
     return c;
   if (x == 0 || x == (WIDTH-1))
     return c;
@@ -590,12 +573,15 @@ struct {
   float prev_value;
   float d;
   uint16_t color;
+  uint8_t polar;
 } trace[TRACES_MAX] = {
-  { 1, 0, 0, 0, RGB565(0,255,255) },
-  { 1, 0, 0, 0, RGB565(255,0,40) },
-  { 0, 0, 0, 0, RGB565(0,0,255) },
-  { 0, 0, 0, 0, RGB565(0,255,0) }
+  { 1, 0, 0, 0, RGB565(0,255,255), 0 },
+  { 1, 0, 0, 0, RGB565(255,0,40), 0 },
+  { 1, 0, 0, 0, RGB565(0,0,255), 1 },
+  { 0, 0, 0, 0, RGB565(0,255,0), 1 }
 };
+
+uint32_t trace_index[TRACES_MAX][101];
 
 float logmag(float *v)
 {
@@ -668,8 +654,8 @@ cartesian_scale(float re, float im, int *xp, int *yp)
   if (y < 0) y = 0;
   if (x > WIDTH) x = WIDTH;
   if (y > HEIGHT) y = HEIGHT;
-  *xp = OFFSETX + x;
-  *yp = OFFSETY + y;
+  *xp = x;
+  *yp = y;
 }
 
 void polar_plot(float measured[101][4])
@@ -686,6 +672,431 @@ void polar_plot(float measured[101][4])
   }
 }
 
+
+#define INDEX(x, y, n) \
+  ((((x)&0x03e0UL)<<22) | (((y)&0x03e0UL)<<17) | (((n)&0x0fffUL)<<10)  \
+ | (((x)&0x1fUL)<<5) | ((y)&0x1fUL))
+#define CELL_X(i) (int)((((i)>>5)&0x1f) | (((i)>>22)&0x03e0))
+#define CELL_Y(i) (int)(((i)&0x1f) | (((i)>>17)&0x03e0))
+#define CELL_N(i) (int)(((i)>>10)&0xfff)
+
+#define CELL_X0(i) (int)(((i)>>22)&0x03e0)
+#define CELL_Y0(i) (int)(((i)>>17)&0x03e0)
+
+#define CELL_P(i, x, y) (((((x)&0x03e0UL)<<22) | (((y)&0x03e0UL)<<17)) == ((i)&0xffc00000UL))
+
+#define CELLWIDTH 32
+#define CELLHEIGHT 32
+
+
+inline void swap(uint32_t *a, uint32_t *b)
+{
+  uint32_t t=*a; *a=*b; *b=t;
+}
+
+void insertionsort(uint32_t *arr, int start, int end)
+{
+  int i;
+  for (i = start + 1; i < end; i++) {
+    uint32_t val = arr[i];
+    int j = i - 1;
+    while (j >= start && val > arr[j]) {
+      arr[j + 1] = arr[j];
+      j--;
+    }
+    arr[j + 1] = val;
+  }
+}
+
+void quicksort(uint32_t *arr, int beg, int end)
+{
+  if (end - beg <= 1) 
+    return;
+  else if (end - beg < 10) {
+    insertionsort(arr, beg, end);
+  } else {
+    int l = beg;
+    int r = end-1;
+    uint32_t piv = arr[(beg + end) / 2];
+    while (l < r) {
+      while (arr[l] < piv)
+        l++;
+      while (arr[r] > piv)
+        r--;
+      if (l < r)
+        swap(&arr[l], &arr[r]);
+    }
+
+    quicksort(arr, beg, l);
+    quicksort(arr, r, end);
+  }
+}
+
+#if 0
+uint32_t polar_index[101];
+
+void polar_plot2index(float measured[101][4])
+{
+  int i;
+  for (i = 0; i < 101; i++) {
+    int x1, y1;
+    cartesian_scale(measured[i][1], measured[i][0], &x1, &y1);
+    polar_index[i] = INDEX(x1, y1, i);
+  }
+  quicksort(polar_index, 0, 101);
+}
+#endif
+
+
+uint16_t markmap[2][8];
+uint16_t current_mappage = 0;
+
+static inline void
+mark_map(int x, int y)
+{
+  if (y >= 0 && y < 8 && x >= 0 && x < 16)
+    markmap[current_mappage][y] |= 1<<x;
+}
+
+static inline int
+is_mapmarked(int x, int y)
+{
+  uint16_t bit = 1<<x;
+  return (markmap[0][y] & bit) || (markmap[1][y] & bit);
+}
+
+static void
+swap_markmap(void)
+{
+  current_mappage = 1 - current_mappage;
+}
+
+static inline void
+clear_markmap(void)
+{
+  memset(markmap[current_mappage], 0, sizeof markmap[current_mappage]);
+}
+
+static inline void
+force_set_markmap(void)
+{
+  memset(markmap[current_mappage], 0xff, sizeof markmap[current_mappage]);
+}
+
+void plot_into_index(float measured[101][4])
+{
+  int i, t;
+  for (i = 0; i < 101; i++) {
+    int x = i * (WIDTH-1) / (101-1);
+    for (t = 0; t < TRACES_MAX; t++) {
+      int n = (t % 2)*2;
+      if (!trace[t].enabled)
+        continue;
+      if (trace[t].polar) {
+        int x1, y1;
+        cartesian_scale(measured[i][n+1], measured[i][n], &x1, &y1);
+        trace_index[t][i] = INDEX(x1, y1, i);
+        //mark_map(x1>>5, y1>>5);
+      } else {
+        int y1 = logmag(&measured[i][n]) * 29;
+        trace_index[t][i] = INDEX(x, y1, i);
+        //mark_map(x>>5, y1>>5);
+      }
+    }
+  }
+#if 0
+  for (t = 0; t < TRACES_MAX; t++)
+    if (trace[t].enabled && trace[t].polar)
+      quicksort(trace_index[t], 0, 101);
+#endif
+
+  /* mark cells between each neighber points */
+  for (t = 0; t < TRACES_MAX; t++) {
+    int x0 = CELL_X(trace_index[t][0]);
+    int y0 = CELL_Y(trace_index[t][0]);
+    int m0 = x0 >> 5;
+    int n0 = y0 >> 5;
+    mark_map(m0, n0);
+    for (i = 1; i < 101; i++) {
+      int x1 = CELL_X(trace_index[t][i]);
+      int y1 = CELL_Y(trace_index[t][i]);
+      int m1 = x1 >> 5;
+      int n1 = y1 >> 5;
+      while (m0 != m1 || n0 != n1) {
+        if (m0 == m1) {
+          if (n0 < n1) n0++; else n0--;
+        } else if (n0 == n1) {
+          if (m0 < m1) m0++; else m0--;
+        } else {
+          int x = (m0 < m1) ? (m0 + 1)<<5 : m0<<5;
+          int y = (n0 < n1) ? (n0 + 1)<<5 : n0<<5;
+          int sgn = (n0 < n1) ? 1 : -1;
+          if (sgn*(y-y0)*(x1-x0) < sgn*(x-x0)*(y1-y0)) {
+            if (m0 < m1) m0++;
+            else m0--;
+          } else {
+            if (n0 < n1) n0++;
+            else n0--;
+          }
+        }
+        mark_map(m0, n0);
+      }
+      x0 = x1;
+      y0 = y1;
+      m0 = m1;
+      n0 = n1;
+    }
+  }
+}
+
+void
+line_in_cell(int w, int h, int x0, int y0, int x1, int y1, int c)
+{
+  if (x0 > x1) {
+    SWAP(x0, x1);
+    SWAP(y0, y1);
+  }
+
+  while (x0 <= x1) {
+    int dx = x1 - x0 + 1;
+    int dy = y1 - y0;
+    if (dy >= 0) {
+      dy++;
+      if (dy > dx) {
+        dy /= dx; dx = 1;
+      } else {
+        dx /= dy; dy = 1;
+      }
+    } else {
+      dy--;
+      if (-dy > dx) {
+        dy /= dx; dx = 1;
+      } else {
+        dx /= -dy; dy = -1;
+      }
+    }
+
+    if (dx == 1) {
+      if (dy > 0) {
+        while (dy-- > 0) {
+          if (y0 >= 0 && y0 < h && x0 >= 0 && x0 < w)
+            spi_buffer[y0*w+x0] = c;
+          y0++;
+        }
+      } else {
+        while (dy++ < 0) {
+          if (y0 >= 0 && y0 < h && x0 >= 0 && x0 < w)
+            spi_buffer[y0*w+x0] = c;
+          y0--;
+        }
+      }
+      x0++;
+    } else {
+      while (dx-- > 0) {
+        if (y0 >= 0 && y0 < h && x0 >= 0 && x0 < w)
+          spi_buffer[y0*w+x0] = c;
+        x0++;
+      }
+      y0 += dy;
+    }
+  }
+}
+
+int
+search_index(int x, int y, uint32_t index[101], int *i0, int *i1)
+{
+  int i, j;
+  int head = 0;
+  int tail = 101;
+  x &= 0x03e0;
+  y &= 0x03e0;
+  while (head < tail) {
+    i = (head + tail) / 2;
+    if (x < CELL_X0(index[i]))
+      tail = i+1;
+    else if (x > CELL_X0(index[i]))
+      head = i;
+    else if (y < CELL_Y0(index[i]))
+      tail = i+1;
+    else if (y > CELL_Y0(index[i]))
+      head = i;
+    else
+      break;
+  }
+
+  if (x != CELL_X0(index[i]) || y != CELL_Y0(index[i]))
+    return FALSE;
+    
+  j = i;
+  while (j > 0 && x == CELL_X0(index[j-1]) && y == CELL_Y0(index[j-1]))
+    j--;
+  *i0 = j;
+  j = i;
+  while (j < 100 && x == CELL_X0(index[j+1]) && y == CELL_Y0(index[j+1]))
+    j++;
+  *i1 = j;
+  return TRUE;
+}
+
+int
+search_index_x(int x, uint32_t index[101], int *i0, int *i1)
+{
+  int i, j;
+  int head = 0;
+  int tail = 101;
+  x &= 0x03e0;
+  while (head < tail) {
+    i = (head + tail) / 2;
+    if (x < CELL_X0(index[i]))
+      tail = i+1;
+    else if (x > CELL_X0(index[i]))
+      head = i;
+    else
+      break;
+  }
+
+  if (x != CELL_X0(index[i]))
+    return FALSE;
+
+  j = i;
+  while (j > 0 && x == CELL_X0(index[j-1]))
+    j--;
+  *i0 = j;
+  j = i;
+  while (j < 100 && x == CELL_X0(index[j+1]))
+    j++;
+  *i1 = j;
+  return TRUE;
+}
+
+void
+draw_marker(int w, int h, int x, int y, int c, int ch)
+{
+  int i, j;
+  for (j = 10; j >= 0; j--) {
+    int j0 = j / 2;
+    for (i = -j0; i <= j0; i++) {
+      int x0 = x + i;
+      int y0 = y - j;
+      int cc = c;
+      if (j <= 9 && j > 2 && i >= -1 && i <= 3) {
+        uint16_t bits = x5x7_bits[(ch * 7) + (9-j)];
+        if (bits & (0x8000>>(i+1)))
+          cc = 0;
+      }
+      if (y0 >= 0 && y0 < h && x0 >= 0 && x0 < w)
+        spi_buffer[y0*w+x0] = cc;
+    }
+  }
+}
+
+void
+draw_cell(int m, int n)
+{
+  int x0 = m * CELLWIDTH;
+  int y0 = n * CELLHEIGHT;
+  int w = CELLWIDTH;
+  int h = CELLHEIGHT;
+  int x, y;
+  int i0, i1;
+  int i;
+  int t;
+  if (x0 + w > WIDTH)
+    w = WIDTH - x0;
+  if (y0 + h > HEIGHT)
+    h = HEIGHT - y0;
+
+  /* draw grid */
+  for (y = 0; y < h; y++) {
+    for (x = 0; x < w; x++) {
+      uint16_t c = rectangular_grid(x+x0, y+y0);
+      c |= smith_grid(x+x0, y+y0);
+      spi_buffer[y * w + x] = c;
+    }
+  }
+
+#if 1
+  /* draw rectanglar plot */
+  if (search_index_x(x0, trace_index[0], &i0, &i1)) {
+    for (t = 0; t < TRACES_MAX; t++) {
+      if (!trace[t].enabled || trace[t].polar)
+        continue;
+      if (i0 > 0)
+        i0--;
+      for (i = i0; i < i1; i++) {
+        int x1 = CELL_X(trace_index[t][i]);
+        int x2 = CELL_X(trace_index[t][i+1]);
+        int y1 = CELL_Y(trace_index[t][i]);
+        int y2 = CELL_Y(trace_index[t][i+1]);
+        int c = trace[t].color;
+        line_in_cell(w, h, x1 - x0, y1 - y0, x2 - x0, y2 - y0, c);
+      }
+    }
+  }
+#endif
+#if 1
+  /* draw polar plot */
+  for (t = 0; t < TRACES_MAX; t++) {
+    int c = trace[t].color;
+    if (!trace[t].enabled || !trace[t].polar)
+      continue;
+    for (i = 1; i < 101; i++) {
+      //uint32_t index = trace_index[t][i];
+      //uint32_t pindex = trace_index[t][i-1];
+      //if (!CELL_P(index, x0, y0) && !CELL_P(pindex, x0, y0))
+      //  continue;
+      int x1 = CELL_X(trace_index[t][i-1]);
+      int x2 = CELL_X(trace_index[t][i]);
+      int y1 = CELL_Y(trace_index[t][i-1]);
+      int y2 = CELL_Y(trace_index[t][i]);
+      line_in_cell(w, h, x1 - x0, y1 - y0, x2 - x0, y2 - y0, c);
+    }
+  }
+#endif
+#if 0
+  /* draw polar plot */
+  for (t = 0; t < TRACES_MAX; t++) {
+    int prev = -100;
+    int c = trace[t].color;
+    if (!trace[t].enabled || !trace[t].polar)
+      continue;
+    if (search_index(x0, y0, trace_index[t], &i0, &i1)) {
+      for (i = i0; i < i1; i++) {
+        uint32_t index = trace_index[t][i];
+        uint32_t pindex;
+        int n = i;
+        if (!CELL_P(index, x0, y0))
+          continue;
+        n = CELL_N(index);
+        if (n - prev == 1) {
+          pindex = trace_index[t][prev];
+          line_in_cell(w, h, CELL_X(pindex) - x0, CELL_Y(pindex) - y0, CELL_X(index) - x0, CELL_Y(index) - y0, c);
+          }
+          prev = n;
+      }
+    }
+  }
+#endif
+  if (m == 0 && n == 0) {
+    draw_marker(w, h, 8, 12, trace[0].color, '1');
+    draw_marker(w, h, 18, 20, trace[1].color, '2');
+    draw_marker(w, h, 4, 30, trace[2].color, '3');
+  }
+
+  ili9341_bulk(OFFSETX + x0, OFFSETY + y0, w, h);
+}
+
+void
+draw_cell_all(void)
+{
+  int m, n;
+  for (m = 0; m < (WIDTH+CELLWIDTH-1) / CELLWIDTH; m++)
+    for (n = 0; n < (HEIGHT+CELLHEIGHT-1) / CELLHEIGHT; n++)
+      if (is_mapmarked(m, n))
+        draw_cell(m, n);
+  swap_markmap();
+  clear_markmap();
+}
 
 void
 ili9341_drawchar_5x7(uint8_t ch, int x, int y, uint16_t fg, uint16_t bg)

@@ -51,6 +51,9 @@ void sweep_tail(void);
 void redraw(void);
 void polar_plot(float measured[101][4]);
 
+void plot_into_index(float measured[101][4]);
+void draw_cell_all(void);
+
 extern const uint16_t x5x7_bits [];
 extern const uint32_t numfont20x24[][24];
 

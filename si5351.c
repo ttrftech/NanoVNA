@@ -334,12 +334,13 @@ si5351_set_frequency_with_offset(int freq, int offset, uint8_t drive_strength)
   }
 
   si5351_reset_pll();
-#if 0
   if (current_band != band) {
+#if 0
     si5351_enable_output();
-    delay += 5;
-  }
 #endif
+    delay += 0;
+  }
+
   current_band = band;
   return delay;
 }

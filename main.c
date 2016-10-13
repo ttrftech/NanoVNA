@@ -360,7 +360,7 @@ void scan_lcd(void)
     __enable_irq();
 
     tlv320aic3204_select_in1();
-    wait_count = 3;
+    wait_count = 2;
     while (wait_count)
       ;
     __disable_irq();
@@ -374,14 +374,18 @@ void scan_lcd(void)
 #endif
     palSetPad(GPIOC, GPIOC_LED);
   }
-#if 1
+#if 0
   for (i = 0; i < sweep_points; i++) {
     sweep_plot(frequencies[i], first, measured[i]);
     first = FALSE;
   }  
 #endif
+#if 0
   sweep_tail();
   polar_plot(measured);
+#endif
+  plot_into_index(measured);
+  draw_cell_all();
 }
 
 static void cmd_scan_lcd(BaseSequentialStream *chp, int argc, char *argv[])

@@ -51,6 +51,23 @@ void sweep_tail(void);
 void redraw(void);
 void polar_plot(float measured[101][4]);
 
+extern uint16_t cal_status;
+extern float cal_data[101][5][2];
+
+#define CAL_LOAD 0
+#define CAL_OPEN 1
+#define CAL_SHORT 2
+#define CAL_THRU 3
+#define CAL_ISOLN 4
+
+#define CALSTAT_LOAD (1<<0)
+#define CALSTAT_OPEN (1<<1)
+#define CALSTAT_SHORT (1<<2)
+#define CALSTAT_THRU (1<<3)
+#define CALSTAT_ISOLN (1<<4)
+#define CALSTAT_APPLY (1<<5)
+
+
 void plot_into_index(float measured[101][2][2]);
 void draw_cell_all(void);
 

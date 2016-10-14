@@ -647,7 +647,8 @@ void sweep_tail()
 void
 cartesian_scale(float re, float im, int *xp, int *yp)
 {
-  float scale = 4e-3;
+  //float scale = 4e-3;
+  float scale = 4e-4;
   int x = WIDTH / 2 - re * scale;
   int y = HEIGHT / 2 + im * scale;
   if (x < 0) x = 0;
@@ -786,21 +787,55 @@ force_set_markmap(void)
 void plot_into_index(float measured[101][2][2])
 {
   int i, t;
+  float coeff[2];
   for (i = 0; i < 101; i++) {
     int x = i * (WIDTH-1) / (101-1);
     for (t = 0; t < TRACES_MAX; t++) {
       int n = t % 2;
       if (!trace[t].enabled)
         continue;
+
+      coeff[0] = measured[i][n][0];
+      coeff[1] = measured[i][n][1];
+      if (cal_status & CALSTAT_APPLY) {
+        if (n == 0) {
+          float sq = cal_data[i][CAL_OPEN][0] * cal_data[i][CAL_OPEN][0] 
+            + cal_data[i][CAL_OPEN][1] * cal_data[i][CAL_OPEN][1];
+          sq /= 1e5;
+          float m0 = measured[i][n][0];
+          float m1 = measured[i][n][1];
+          if (cal_status & CALSTAT_LOAD) {
+            m0 -= cal_data[i][CAL_LOAD][0];
+            m1 -= cal_data[i][CAL_LOAD][1];
+          }
+          coeff[0] = (m0 * cal_data[i][CAL_OPEN][0]
+                      + m1 * cal_data[i][CAL_OPEN][1]) / sq;
+          coeff[1] = (m1 * cal_data[i][CAL_OPEN][0]
+                      - m0 * cal_data[i][CAL_OPEN][1]) / sq;
+        } else {
+          float sq = cal_data[i][CAL_THRU][0] * cal_data[i][CAL_THRU][0] 
+            + cal_data[i][CAL_THRU][1] * cal_data[i][CAL_THRU][1];
+          sq /= 1e5;
+          float m0 = measured[i][n][0];
+          float m1 = measured[i][n][1];
+          if (cal_status & CALSTAT_ISOLN) {
+            m0 -= cal_data[i][CAL_ISOLN][0];
+            m1 -= cal_data[i][CAL_ISOLN][1];
+          }
+          coeff[0] = (m0 * cal_data[i][CAL_THRU][0]
+                      + m1 * cal_data[i][CAL_THRU][1]) / sq;
+          coeff[1] = (m1 * cal_data[i][CAL_THRU][0]
+                      - m0 * cal_data[i][CAL_THRU][1]) / sq;
+        }
+      }
+
       if (trace[t].polar) {
         int x1, y1;
-        cartesian_scale(measured[i][n][1], measured[i][n][0], &x1, &y1);
+        cartesian_scale(coeff[1], coeff[0], &x1, &y1);
         trace_index[t][i] = INDEX(x1, y1, i);
-        //mark_map(x1>>5, y1>>5);
       } else {
-        int y1 = logmag(measured[i][n]) * 29;
+        int y1 = logmag(coeff) * 29;
         trace_index[t][i] = INDEX(x, y1, i);
-        //mark_map(x>>5, y1>>5);
       }
     }
   }

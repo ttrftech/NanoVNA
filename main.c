@@ -216,14 +216,8 @@ int16_t dsp_disabled = FALSE;
 float measured[101][2][2];
 uint32_t frequencies[101];
 
-float caldata[101][5][2];
 uint16_t cal_status;
-
-#define CAL_LOAD 0
-#define CAL_OPEN 1
-#define CAL_SHORT 2
-#define CAL_THRU 3
-#define CAL_ISOLN 4
+float cal_data[101][5][2];
 
 
 
@@ -468,13 +462,50 @@ static void cmd_cal(BaseSequentialStream *chp, int argc, char *argv[])
     return;
   }
 
-  char *cmd = argv[1];
-  int s;
-  if (strcmp(cmd, "load")) {
-    cal_status |= CAL_LOAD;
-    memcpy(caldata[CAL_LOAD], measured[0], sizeof measured[0]);
-  } 
+  char *cmd = argv[0];
+  int s, d, i;
+  if (strcmp(cmd, "load") == 0) {
+    cal_status |= CALSTAT_LOAD;
+    s = 0;
+    d = CAL_LOAD;
+  } else if (strcmp(cmd, "open") == 0) {
+    cal_status |= CALSTAT_OPEN;
+    s = 0;
+    d = CAL_OPEN;
+  } else if (strcmp(cmd, "short") == 0) {
+    cal_status |= CALSTAT_SHORT;
+    s = 0;
+    d = CAL_SHORT;
+  } else if (strcmp(cmd, "thru") == 0) {
+    cal_status |= CALSTAT_THRU;
+    s = 1;
+    d = CAL_THRU;
+  } else if (strcmp(cmd, "isoln") == 0) {
+    cal_status |= CALSTAT_ISOLN;
+    s = 1;
+    d = CAL_ISOLN;
+  } else if (strcmp(cmd, "done") == 0) {
+    cal_status |= CALSTAT_APPLY;
+    return;
+  } else if (strcmp(cmd, "reset") == 0) {
+    cal_status = 0;
+    return;
+  } else if (strcmp(cmd, "data") == 0) {
+    chprintf(chp, "%d %d\r\n", cal_data[0][CAL_LOAD][0], cal_data[0][CAL_LOAD][1]);
+    chprintf(chp, "%d %d\r\n", cal_data[0][CAL_OPEN][0], cal_data[0][CAL_OPEN][1]);
+    chprintf(chp, "%d %d\r\n", cal_data[0][CAL_SHORT][0], cal_data[0][CAL_SHORT][1]);
+    chprintf(chp, "%d %d\r\n", cal_data[0][CAL_THRU][0], cal_data[0][CAL_THRU][1]);
+    chprintf(chp, "%d %d\r\n", cal_data[0][CAL_ISOLN][0], cal_data[0][CAL_ISOLN][1]);
+    return;
+  } else {
+    chprintf(chp, "usage: cal {load|open|short|thru|isoln|done}\r\n");
+    return;
+  }
 
+  for (i = 0; i < 101; i++) {
+    cal_data[i][d][0] = measured[i][s][0];
+    cal_data[i][d][1] = measured[i][s][1];
+  }
 }
 
 

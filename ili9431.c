@@ -596,6 +596,7 @@ float phase(float *v)
   return 4 + 2 * atan2f(v[1], v[0]) / M_PI;
 }
 
+#if 0
 void sweep_plot(int32_t freq, int first, float *measured)
 {
   int curr_x = ((float)WIDTH * (freq - fstart) / fspan);
@@ -646,6 +647,7 @@ void sweep_tail()
     prev_x++;
   }
 }
+#endif
 
 #define RADIUS ((HEIGHT-1)/2)
 void
@@ -663,6 +665,7 @@ cartesian_scale(float re, float im, int *xp, int *yp)
   *yp = HEIGHT/2 - y;
 }
 
+#if 0
 void polar_plot(float measured[101][4])
 {
   int x0, y0;
@@ -676,7 +679,7 @@ void polar_plot(float measured[101][4])
     y0 = y1;
   }
 }
-
+#endif
 
 #define INDEX(x, y, n) \
   ((((x)&0x03e0UL)<<22) | (((y)&0x03e0UL)<<17) | (((n)&0x0fffUL)<<10)  \
@@ -788,7 +791,7 @@ force_set_markmap(void)
   memset(markmap[current_mappage], 0xff, sizeof markmap[current_mappage]);
 }
 
-void plot_into_index(float measured[101][2][2])
+void plot_into_index(float measured[2][101][2])
 {
   int i, t;
   float coeff[2];
@@ -799,38 +802,39 @@ void plot_into_index(float measured[101][2][2])
       if (!trace[t].enabled)
         continue;
 
-      coeff[0] = measured[i][n][0];
-      coeff[1] = measured[i][n][1];
+      coeff[0] = measured[n][i][0];
+      coeff[1] = measured[n][i][1];
+#if 0
       if (cal_status & CALSTAT_APPLY) {
         if (n == 0) {
-          float sq = cal_data[i][CAL_OPEN][0] * cal_data[i][CAL_OPEN][0] 
-            + cal_data[i][CAL_OPEN][1] * cal_data[i][CAL_OPEN][1];
-          float m0 = measured[i][n][0];
-          float m1 = measured[i][n][1];
+          float sq = cal_data[CAL_OPEN][i][0] * cal_data[CAL_OPEN][i][0] 
+            + cal_data[CAL_OPEN][i][1] * cal_data[CAL_OPEN][i][1];
+          float m0 = measured[n][i][0];
+          float m1 = measured[n][i][1];
           if (cal_status & CALSTAT_LOAD) {
-            m0 -= cal_data[i][CAL_LOAD][0];
-            m1 -= cal_data[i][CAL_LOAD][1];
+            m0 -= cal_data[CAL_LOAD][i][0];
+            m1 -= cal_data[CAL_LOAD][i][1];
           }
-          coeff[0] = (m0 * cal_data[i][CAL_OPEN][0]
-                      + m1 * cal_data[i][CAL_OPEN][1]) / sq;
-          coeff[1] = (m1 * cal_data[i][CAL_OPEN][0]
-                      - m0 * cal_data[i][CAL_OPEN][1]) / sq;
+          coeff[0] = (m0 * cal_data[CAL_OPEN][i][0]
+                      + m1 * cal_data[CAL_OPEN][i][1]) / sq;
+          coeff[1] = (m1 * cal_data[CAL_OPEN][i][0]
+                      - m0 * cal_data[CAL_OPEN][i][1]) / sq;
         } else {
-          float sq = cal_data[i][CAL_THRU][0] * cal_data[i][CAL_THRU][0] 
-            + cal_data[i][CAL_THRU][1] * cal_data[i][CAL_THRU][1];
-          float m0 = measured[i][n][0];
-          float m1 = measured[i][n][1];
+          float sq = cal_data[CAL_THRU][i][0] * cal_data[CAL_THRU][i][0] 
+            + cal_data[CAL_THRU][i][1] * cal_data[CAL_THRU][i][1];
+          float m0 = measured[n][i][0];
+          float m1 = measured[n][i][1];
           if (cal_status & CALSTAT_ISOLN) {
-            m0 -= cal_data[i][CAL_ISOLN][0];
-            m1 -= cal_data[i][CAL_ISOLN][1];
+            m0 -= cal_data[CAL_ISOLN][i][0];
+            m1 -= cal_data[CAL_ISOLN][i][1];
           }
-          coeff[0] = (m0 * cal_data[i][CAL_THRU][0]
-                      + m1 * cal_data[i][CAL_THRU][1]) / sq;
-          coeff[1] = (m1 * cal_data[i][CAL_THRU][0]
-                      - m0 * cal_data[i][CAL_THRU][1]) / sq;
+          coeff[0] = (m0 * cal_data[CAL_THRU][i][0]
+                      + m1 * cal_data[CAL_THRU][i][1]) / sq;
+          coeff[1] = (m1 * cal_data[CAL_THRU][i][0]
+                      - m0 * cal_data[CAL_THRU][i][1]) / sq;
         }
       }
-
+#endif
       if (trace[t].polar) {
         int x1, y1;
         cartesian_scale(coeff[0], coeff[1], &x1, &y1);

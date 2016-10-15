@@ -12,6 +12,8 @@
 
 RTCDateTime timespec;
 
+static void apply_error_term(void);
+
 
 static const I2CConfig i2ccfg = {
   0x00300506, //voodoo magic 400kHz @ HSI 8MHz
@@ -44,7 +46,7 @@ static MUTEX_DECL(mutex);
 
 
 
-static THD_WORKING_AREA(waThread1, 384);
+static THD_WORKING_AREA(waThread1, 400);
 static THD_FUNCTION(Thread1, arg)
 {
     (void)arg;
@@ -213,11 +215,11 @@ volatile int16_t wait_count = 0;
 int16_t dump_selection = 0;
 
 int16_t dsp_disabled = FALSE;
-float measured[101][2][2];
+float measured[2][101][2];
 uint32_t frequencies[101];
 
 uint16_t cal_status;
-float cal_data[101][5][2];
+float cal_data[5][101][2];
 
 
 
@@ -349,7 +351,7 @@ void scan_lcd(void)
 {
   int i;
   int delay;
-  int first = TRUE;
+  //int first = TRUE;
 
   delay = set_frequency(frequencies[0]);
   delay += 2;
@@ -360,7 +362,7 @@ void scan_lcd(void)
       ;
     palClearPad(GPIOC, GPIOC_LED);
     __disable_irq();
-    calclate_gamma(&measured[i][0]);
+    calclate_gamma(measured[0][i]);
     __enable_irq();
 
     tlv320aic3204_select_in1();
@@ -368,19 +370,19 @@ void scan_lcd(void)
     while (wait_count)
       ;
     __disable_irq();
-    calclate_gamma(&measured[i][1]);
+    calclate_gamma(measured[1][i]);
     __enable_irq();
 
     delay = set_frequency(frequencies[(i+1)%sweep_points]);
 #if 0
-    sweep_plot(frequencies[i], first, measured[i]);
+    sweep_plot(frequencies[i], first, measured[0][i], measured[1][i]);
     first = FALSE;
 #endif
     palSetPad(GPIOC, GPIOC_LED);
   }
 #if 0
   for (i = 0; i < sweep_points; i++) {
-    sweep_plot(frequencies[i], first, measured[i]);
+    sweep_plot(frequencies[i], first, measured[0][i], measured[1][i]);
     first = FALSE;
   }  
 #endif
@@ -388,6 +390,8 @@ void scan_lcd(void)
   sweep_tail();
   polar_plot(measured);
 #endif
+  if (cal_status & CALSTAT_APPLY)
+    apply_error_term();
   plot_into_index(measured);
   draw_cell_all();
 }
@@ -450,65 +454,202 @@ static void cmd_sweep(BaseSequentialStream *chp, int argc, char *argv[])
 }
 
 
+static void
+eterm_set(int term, float re, float im)
+{
+  int i;
+  for (i = 0; i < 101; i++) {
+    cal_data[term][i][0] = re;
+    cal_data[term][i][1] = im;
+  }
+}
 
+static void
+eterm_copy(int dst, int src)
+{
+  memcpy(cal_data[dst], cal_data[src], sizeof cal_data[dst]);
+}
 
+static void
+eterm_calc_es(void)
+{
+  int i;
+  for (i = 0; i < 101; i++) {
+    // S11mo’= S11mo - Ed
+    // S11ms’= S11ms - Ed
+    float s11or = cal_data[CAL_OPEN][i][0] - cal_data[ETERM_ED][i][0];
+    float s11oi = cal_data[CAL_OPEN][i][1] - cal_data[ETERM_ED][i][1];
+    float s11sr = cal_data[CAL_SHORT][i][0] - cal_data[ETERM_ED][i][0];
+    float s11si = cal_data[CAL_SHORT][i][1] - cal_data[ETERM_ED][i][1];
+    // Es = (S11mo' + S11ms’)/(S11mo' - S11ms’)
+    float numr = s11or + s11sr;
+    float numi = s11oi + s11si;
+    float denomr = s11or - s11sr;
+    float denomi = s11oi - s11si;
+    float sq = denomr*denomr+denomi*denomi;
+    cal_data[ETERM_ES][i][0] = (numr*denomr + numi*denomi)/sq;
+    cal_data[ETERM_ES][i][1] = (numi*denomr - numr*denomi)/sq;
+  }
+  cal_status &= ~CALSTAT_SHORT;
+  cal_status |= CALSTAT_ES;
+}
 
+static void
+eterm_calc_er(int sign)
+{
+  int i;
+  for (i = 0; i < 101; i++) {
+    // Er = sign*(1-Es)S11mo'
+    float esr = 1 - cal_data[ETERM_ES][i][0];
+    float esi = -cal_data[ETERM_ES][i][1];
+    float err = esr * cal_data[CAL_OPEN][i][0] - esi * cal_data[CAL_OPEN][i][1];
+    float eri = esr * cal_data[CAL_OPEN][i][1] + esi * cal_data[CAL_OPEN][i][0];
+    if (sign < 0) {
+      err = -err;
+      eri = -eri;
+    }
+    cal_data[ETERM_ER][i][0] = err;
+    cal_data[ETERM_ER][i][1] = eri;
+  }
+  cal_status &= ~CALSTAT_OPEN;
+  cal_status |= CALSTAT_ER;
+}
+
+// CAUTION: Et is inversed for efficiency
+static void
+eterm_calc_et(void)
+{
+  int i;
+  for (i = 0; i < 101; i++) {
+    // Et = 1/(S21mt - Ex)(1 - Es)
+    float esr = 1 - cal_data[ETERM_ES][i][0];
+    float esi = -cal_data[ETERM_ES][i][1];
+    float s21mr = cal_data[CAL_THRU][i][0] - cal_data[CAL_ISOLN][i][0];
+    float s21mi = cal_data[CAL_THRU][i][1] - cal_data[CAL_ISOLN][i][1];
+    float etr = esr * s21mr - esi * s21mi;
+    float eti = esr * s21mi + esi * s21mr;
+    float sq = etr*etr + eti*eti;
+    float invr = etr / sq;
+    float invi = -eti / sq;
+    cal_data[ETERM_ET][i][0] = invr;
+    cal_data[ETERM_ET][i][1] = invi;
+  }
+  cal_status &= ~CALSTAT_THRU;
+  cal_status |= CALSTAT_ET;
+}
+
+void apply_error_term(void)
+{
+  int i;
+  for (i = 0; i < 101; i++) {
+    // S11m' = S11m - Ed
+    // S11a = S11m' / (Er + Es S11m')
+    float s11mr = measured[0][i][0] - cal_data[ETERM_ED][i][0];
+    float s11mi = measured[0][i][1] - cal_data[ETERM_ED][i][1];
+    float err = cal_data[ETERM_ER][i][0] + s11mr * cal_data[ETERM_ES][i][0] - s11mi * cal_data[ETERM_ES][i][1];
+    float eri = cal_data[ETERM_ER][i][1] + s11mr * cal_data[ETERM_ES][i][1] + s11mi * cal_data[ETERM_ES][i][0];
+    float sq = err*err + eri*eri;
+    float s11ar = (s11mr * err + s11mi * eri) / sq;
+    float s11ai = (s11mi * err - s11mr * eri) / sq;
+    measured[0][i][0] = s11ar;
+    measured[0][i][1] = s11ai;
+
+    // CAUTION: Et is inversed for efficiency
+    // S21m' = S21m - Ex
+    // S21a = S21m' (1-EsS11a)Et
+    float s21mr = measured[1][i][0] - cal_data[ETERM_EX][i][0];
+    float s21mi = measured[1][i][1] - cal_data[ETERM_EX][i][1];
+    float esr = 1 - (cal_data[ETERM_ES][i][0] * s11ar - cal_data[ETERM_ES][i][1] * s11ai);
+    float esi = - (cal_data[ETERM_ES][i][1] * s11ar + cal_data[ETERM_ES][i][0] * s11ai);
+    float etr = esr * cal_data[ETERM_ET][i][0] - esi * cal_data[ETERM_ET][i][1];
+    float eti = esr * cal_data[ETERM_ET][i][1] + esi * cal_data[ETERM_ET][i][0];
+    float s21ar = s21mr * etr - s21mi * eti;
+    float s21ai = s21mi * etr + s21mr * eti;
+    measured[1][i][0] = s21ar;
+    measured[1][i][1] = s21ai;
+  }
+}
 
 static void cmd_cal(BaseSequentialStream *chp, int argc, char *argv[])
 {
-  
+  const char *items[] = { "load", "open", "short", "thru", "isoln", "Es", "Er", "Et", "cal'ed" };
+
   if (argc == 0) {
-    chprintf(chp, "%d\r\n", cal_status);
+    int i;
+    for (i = 0; i < 9; i++) {
+      if (cal_status & (1<<i))
+        chprintf(chp, "%s ", items[i]);
+    }
+    chprintf(chp, "\r\n");
     return;
   }
 
   char *cmd = argv[0];
-  int s, d, i;
   if (strcmp(cmd, "load") == 0) {
     cal_status |= CALSTAT_LOAD;
-    s = 0;
-    d = CAL_LOAD;
+    memcpy(cal_data[CAL_LOAD], measured[0], sizeof measured[0]);
   } else if (strcmp(cmd, "open") == 0) {
     cal_status |= CALSTAT_OPEN;
-    s = 0;
-    d = CAL_OPEN;
+    memcpy(cal_data[CAL_OPEN], measured[0], sizeof measured[0]);
   } else if (strcmp(cmd, "short") == 0) {
     cal_status |= CALSTAT_SHORT;
-    s = 0;
-    d = CAL_SHORT;
+    memcpy(cal_data[CAL_SHORT], measured[0], sizeof measured[0]);
   } else if (strcmp(cmd, "thru") == 0) {
     cal_status |= CALSTAT_THRU;
-    s = 1;
-    d = CAL_THRU;
+    memcpy(cal_data[CAL_THRU], measured[1], sizeof measured[0]);
   } else if (strcmp(cmd, "isoln") == 0) {
     cal_status |= CALSTAT_ISOLN;
-    s = 1;
-    d = CAL_ISOLN;
+    memcpy(cal_data[CAL_ISOLN], measured[1], sizeof measured[0]);
   } else if (strcmp(cmd, "done") == 0) {
+    if (!(cal_status & CALSTAT_LOAD))
+      eterm_set(ETERM_ED, 0.0, 0.0);
+    if ((cal_status & CALSTAT_SHORT) && (cal_status & CALSTAT_OPEN)) {
+      eterm_calc_es();
+      eterm_calc_er(1);
+    } else if (cal_status & CALSTAT_OPEN) {
+      eterm_set(ETERM_ES, 0.0, 0.0);
+      eterm_calc_er(1);
+    } else if (cal_status & CALSTAT_SHORT) {
+      eterm_copy(CAL_OPEN, CAL_SHORT);
+      eterm_set(ETERM_ES, 0.0, 0.0);
+      cal_status &= ~CALSTAT_SHORT;
+      eterm_calc_er(-1);
+    } else {
+      eterm_set(ETERM_ER, 1.0, 0.0);
+      eterm_set(ETERM_ES, 0.0, 0.0);
+    }
+    
+    if (!(cal_status & CALSTAT_ISOLN))
+      eterm_set(ETERM_EX, 0.0, 0.0);
+    if (cal_status & CALSTAT_THRU) {
+      eterm_calc_et();
+    } else {
+      eterm_set(ETERM_ET, 1.0, 0.0);
+    }
+
     cal_status |= CALSTAT_APPLY;
+    return;
+  } else if (strcmp(cmd, "on") == 0) {
+    cal_status |= CALSTAT_APPLY;
+    return;
+  } else if (strcmp(cmd, "off") == 0) {
+    cal_status &= ~CALSTAT_APPLY;
     return;
   } else if (strcmp(cmd, "reset") == 0) {
     cal_status = 0;
     return;
   } else if (strcmp(cmd, "data") == 0) {
-    chprintf(chp, "%d %d\r\n", cal_data[0][CAL_LOAD][0], cal_data[0][CAL_LOAD][1]);
-    chprintf(chp, "%d %d\r\n", cal_data[0][CAL_OPEN][0], cal_data[0][CAL_OPEN][1]);
-    chprintf(chp, "%d %d\r\n", cal_data[0][CAL_SHORT][0], cal_data[0][CAL_SHORT][1]);
-    chprintf(chp, "%d %d\r\n", cal_data[0][CAL_THRU][0], cal_data[0][CAL_THRU][1]);
-    chprintf(chp, "%d %d\r\n", cal_data[0][CAL_ISOLN][0], cal_data[0][CAL_ISOLN][1]);
+    chprintf(chp, "%d %d\r\n", (int)cal_data[CAL_LOAD][0][0], (int)cal_data[CAL_LOAD][0][1]);
+    chprintf(chp, "%d %d\r\n", (int)cal_data[CAL_OPEN][0][0], (int)cal_data[CAL_OPEN][0][1]);
+    chprintf(chp, "%d %d\r\n", (int)cal_data[CAL_SHORT][0][0], (int)cal_data[CAL_SHORT][0][1]);
+    chprintf(chp, "%d %d\r\n", (int)cal_data[CAL_THRU][0][0], (int)cal_data[CAL_THRU][0][1]);
+    chprintf(chp, "%d %d\r\n", (int)cal_data[CAL_ISOLN][0][0], (int)cal_data[CAL_ISOLN][0][1]);
     return;
   } else {
     chprintf(chp, "usage: cal {load|open|short|thru|isoln|done}\r\n");
     return;
   }
-
-  for (i = 0; i < 101; i++) {
-    cal_data[i][d][0] = measured[i][s][0];
-    cal_data[i][d][1] = measured[i][s][1];
-  }
 }
-
-
 
 static void cmd_test(BaseSequentialStream *chp, int argc, char *argv[])
 {
@@ -612,7 +753,7 @@ static void cmd_stat(BaseSequentialStream *chp, int argc, char *argv[])
 
 
 
-#define SHELL_WA_SIZE THD_WORKING_AREA_SIZE(384)
+#define SHELL_WA_SIZE THD_WORKING_AREA_SIZE(400)
 
 static const ShellCommand commands[] =
 {

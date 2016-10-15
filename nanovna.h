@@ -46,13 +46,15 @@ void ili9341_init(void);
 void ili9341_test(int mode);
 
 void set_sweep(int32_t start, int stop);
-void sweep_plot(int32_t freq, int first, float measured[4]);
+#if 0
+void sweep_plot(int32_t freq, int first, float port0[2], float port1[2]);
 void sweep_tail(void);
+#endif
 void redraw(void);
 void polar_plot(float measured[101][4]);
 
 extern uint16_t cal_status;
-extern float cal_data[101][5][2];
+extern float cal_data[5][101][2];
 
 #define CAL_LOAD 0
 #define CAL_OPEN 1
@@ -65,10 +67,21 @@ extern float cal_data[101][5][2];
 #define CALSTAT_SHORT (1<<2)
 #define CALSTAT_THRU (1<<3)
 #define CALSTAT_ISOLN (1<<4)
-#define CALSTAT_APPLY (1<<5)
+#define CALSTAT_ES (1<<5)
+#define CALSTAT_ER (1<<6)
+#define CALSTAT_ET (1<<7)
+#define CALSTAT_ED CALSTAT_LOAD
+#define CALSTAT_EX CALSTAT_ISOLN
+#define CALSTAT_APPLY (1<<8)
+
+#define ETERM_ED 0 /* error term directivity */
+#define ETERM_ER 1 /* error term refrection tracking */
+#define ETERM_ES 2 /* error term source match */
+#define ETERM_ET 3 /* error term transmission tracking */
+#define ETERM_EX 4 /* error term isolation */
 
 
-void plot_into_index(float measured[101][2][2]);
+void plot_into_index(float measured[2][101][2]);
 void draw_cell_all(void);
 
 extern const uint16_t x5x7_bits [];

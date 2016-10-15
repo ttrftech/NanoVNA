@@ -585,7 +585,10 @@ uint32_t trace_index[TRACES_MAX][101];
 
 float logmag(float *v)
 {
-  return 11 - log10f(v[0]*v[0] + v[1]*v[1]);
+  float x = 1 - log10f(v[0]*v[0] + v[1]*v[1]);
+  if (x < 0) x = 0;
+  if (x > 8) x = 8;
+  return x;
 }
 
 float phase(float *v)
@@ -644,19 +647,20 @@ void sweep_tail()
   }
 }
 
+#define RADIUS ((HEIGHT-1)/2)
 void
 cartesian_scale(float re, float im, int *xp, int *yp)
 {
   //float scale = 4e-3;
-  float scale = 4e-4;
-  int x = WIDTH / 2 - re * scale;
-  int y = HEIGHT / 2 + im * scale;
-  if (x < 0) x = 0;
-  if (y < 0) y = 0;
-  if (x > WIDTH) x = WIDTH;
-  if (y > HEIGHT) y = HEIGHT;
-  *xp = x;
-  *yp = y;
+  float scale = RADIUS;
+  int x = re * scale;
+  int y = im * scale;
+  if (x < -RADIUS) x = -RADIUS;
+  if (y < -RADIUS) y = -RADIUS;
+  if (x > RADIUS) x = RADIUS;
+  if (y > RADIUS) y = RADIUS;
+  *xp = WIDTH/2 + x;
+  *yp = HEIGHT/2 - y;
 }
 
 void polar_plot(float measured[101][4])
@@ -801,7 +805,6 @@ void plot_into_index(float measured[101][2][2])
         if (n == 0) {
           float sq = cal_data[i][CAL_OPEN][0] * cal_data[i][CAL_OPEN][0] 
             + cal_data[i][CAL_OPEN][1] * cal_data[i][CAL_OPEN][1];
-          sq /= 1e5;
           float m0 = measured[i][n][0];
           float m1 = measured[i][n][1];
           if (cal_status & CALSTAT_LOAD) {
@@ -815,7 +818,6 @@ void plot_into_index(float measured[101][2][2])
         } else {
           float sq = cal_data[i][CAL_THRU][0] * cal_data[i][CAL_THRU][0] 
             + cal_data[i][CAL_THRU][1] * cal_data[i][CAL_THRU][1];
-          sq /= 1e5;
           float m0 = measured[i][n][0];
           float m1 = measured[i][n][1];
           if (cal_status & CALSTAT_ISOLN) {
@@ -831,7 +833,7 @@ void plot_into_index(float measured[101][2][2])
 
       if (trace[t].polar) {
         int x1, y1;
-        cartesian_scale(coeff[1], coeff[0], &x1, &y1);
+        cartesian_scale(coeff[0], coeff[1], &x1, &y1);
         trace_index[t][i] = INDEX(x1, y1, i);
       } else {
         int y1 = logmag(coeff) * 29;

@@ -111,15 +111,15 @@ void calclate_gamma(float *gamma)
 
   for (i = 0; i < len; i++) {
     int16_t s0 = *s++;
-    int16_t rr = *r++;
     int16_t ri = *r++;
+    int16_t rr = *r++;
     acc_r += (float)(s0 * rr);
     acc_i += (float)(s0 * ri);
     acc_ref += (float)rr*rr + (float)ri*ri;
   }
-  rn = sqrtf(acc_ref / len);
-  gamma[0] = 16 * acc_r / rn / len;
-  gamma[1] = 16 * acc_i / rn / len;
+  rn = sqrtf(acc_ref / len) * 1e3 * len;
+  gamma[0] = -acc_r / rn;
+  gamma[1] = acc_i / rn;
 }
 #endif
 

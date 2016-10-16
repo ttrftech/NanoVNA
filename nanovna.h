@@ -46,15 +46,24 @@ void ili9341_init(void);
 void ili9341_test(int mode);
 
 void set_sweep(int32_t start, int stop);
-#if 0
-void sweep_plot(int32_t freq, int first, float port0[2], float port1[2]);
-void sweep_tail(void);
-#endif
 void redraw(void);
-void polar_plot(float measured[101][4]);
 
-extern uint16_t cal_status;
-extern float cal_data[5][101][2];
+#define TRACES_MAX 4
+
+enum {
+  TRC_LOGMAG, TRC_PHASE, TRC_SMITH, TRC_ADMIT, TRC_POLAR, TRC_LINEAR, TRC_SWR
+};
+
+typedef struct {
+  int enabled;
+  int type;
+  int source;
+  uint16_t color;
+  uint8_t polar;
+} trace_t;
+
+extern trace_t trace[TRACES_MAX];
+
 
 #define CAL_LOAD 0
 #define CAL_OPEN 1

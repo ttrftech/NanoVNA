@@ -108,16 +108,6 @@ spi_init(void)
   SPI1->CR1 |= SPI_CR1_SPE;  
 }
 
-#if 0
-void
-spi_test(void)
-{
-    spiSelect(&SPID1);                  /* Slave Select assertion.          */
-    spiSend(&SPID1, 512, txbuf);        /* Atomic transfer operations.      */
-    spiUnselect(&SPID1);                /* Slave Select de-assertion.       */
-}
-#endif
-
 void
 send_command(uint8_t cmd, int len, const uint8_t *data)
 {
@@ -565,20 +555,11 @@ draw_on_strut(int v0, int d, int color)
     spi_buffer[v++] |= color;
 }
 
-#define TRACES_MAX 4
-
-struct {
-  int enabled;
-  float value;
-  float prev_value;
-  float d;
-  uint16_t color;
-  uint8_t polar;
-} trace[TRACES_MAX] = {
-  { 1, 0, 0, 0, RGB565(0,255,255), 0 },
-  { 1, 0, 0, 0, RGB565(255,0,40), 0 },
-  { 1, 0, 0, 0, RGB565(0,0,255), 1 },
-  { 0, 0, 0, 0, RGB565(0,255,0), 1 }
+trace_t trace[TRACES_MAX] = {
+  { 1, TRC_LOGMAG, 0, RGB565(0,255,255), 0 },
+  { 1, TRC_LOGMAG, 1, RGB565(255,0,40), 0 },
+  { 1, TRC_SMITH, 0, RGB565(0,0,255), 1 },
+  { 0, TRC_SMITH, 1, RGB565(0,255,0), 1 }
 };
 
 uint32_t trace_index[TRACES_MAX][101];
@@ -596,58 +577,24 @@ float phase(float *v)
   return 4 + 2 * atan2f(v[1], v[0]) / M_PI;
 }
 
-#if 0
-void sweep_plot(int32_t freq, int first, float *measured)
+float linear(float *v)
 {
-  int curr_x = ((float)WIDTH * (freq - fstart) / fspan);
-  int i;
-  if (trace[0].enabled)
-    trace[0].value = logmag(&measured[0]) * 29;
-  if (trace[1].enabled)
-    trace[1].value = logmag(&measured[2]) * 29;
-  if (trace[2].enabled)
-    trace[2].value = phase(&measured[0]) * 29;
-  if (trace[3].enabled)
-    trace[3].value = phase(&measured[2]) * 29;
-
-  if (first) {
-    prev_x = 0;
-    while (prev_x < curr_x) {
-      int len = set_strut_grid(prev_x);
-      ili9341_bulk(OFFSETX + prev_x, OFFSETY, 1, len);
-      prev_x++;
-    }
-  } else {
-    int w = curr_x - prev_x;
-    for (i = 0; i < TRACES_MAX; i++)
-      if (trace[i].enabled)
-        trace[i].d = (trace[i].value - trace[i].prev_value) / w;
-
-    while (prev_x < curr_x) {
-      int len = set_strut_grid(prev_x);
-      for (i = 0; i < TRACES_MAX; i++)
-        if (trace[i].enabled) {
-          draw_on_strut(trace[i].prev_value, trace[i].d, trace[i].color);
-          trace[i].prev_value += trace[i].d;
-        }
-      ili9341_bulk(OFFSETX + prev_x, OFFSETY, 1, len);
-      prev_x++;
-    }
-  }
-  for (i = 0; i < TRACES_MAX; i++)
-    if (trace[i].enabled)
-      trace[i].prev_value = trace[i].value;
+  float x = 8 - sqrt(v[0]*v[0] + v[1]*v[1]) * 8;
+  if (x < 0) x = 0;
+  if (x > 8) x = 8;
+  return x;
 }
 
-void sweep_tail()
+float swr(float *v)
 {
-  while (prev_x < WIDTH) {
-    int len = set_strut_grid(prev_x);
-    ili9341_bulk(OFFSETX + prev_x, OFFSETY, 1, len);
-    prev_x++;
-  }
+  float x = sqrt(v[0]*v[0] + v[1]*v[1]);
+  float vswr = (1 + x)/(1 - x);
+  x = 9 - vswr;
+  if (x < 0) x = 0;
+  if (x > 8) x = 8;
+  return x;
 }
-#endif
+
 
 #define RADIUS ((HEIGHT-1)/2)
 void
@@ -664,22 +611,6 @@ cartesian_scale(float re, float im, int *xp, int *yp)
   *xp = WIDTH/2 + x;
   *yp = HEIGHT/2 - y;
 }
-
-#if 0
-void polar_plot(float measured[101][4])
-{
-  int x0, y0;
-  int i;
-  cartesian_scale(measured[0][1], measured[0][0], &x0, &y0);
-  for (i = 1; i < 101; i++) {
-    int x1, y1;
-    cartesian_scale(measured[i][1], measured[i][0], &x1, &y1);
-    ili9341_line(x0, y0, x1, y1, trace[2].color);
-    x0 = x1;
-    y0 = y1;
-  }
-}
-#endif
 
 #define INDEX(x, y, n) \
   ((((x)&0x03e0UL)<<22) | (((y)&0x03e0UL)<<17) | (((n)&0x0fffUL)<<10)  \
@@ -740,21 +671,6 @@ void quicksort(uint32_t *arr, int beg, int end)
   }
 }
 
-#if 0
-uint32_t polar_index[101];
-
-void polar_plot2index(float measured[101][4])
-{
-  int i;
-  for (i = 0; i < 101; i++) {
-    int x1, y1;
-    cartesian_scale(measured[i][1], measured[i][0], &x1, &y1);
-    polar_index[i] = INDEX(x1, y1, i);
-  }
-  quicksort(polar_index, 0, 101);
-}
-#endif
-
 
 uint16_t markmap[2][8];
 uint16_t current_mappage = 0;
@@ -791,58 +707,48 @@ force_set_markmap(void)
   memset(markmap[current_mappage], 0xff, sizeof markmap[current_mappage]);
 }
 
+uint32_t
+trace_into_index(int x, int t, int i, float coeff[2])
+{
+  int x1, y1;
+  uint32_t idx = 0;
+
+  switch (trace[t].type) {
+  case TRC_LOGMAG:
+    y1 = logmag(coeff) * 29;
+    idx = INDEX(x, y1, i);
+    break;
+  case TRC_PHASE:
+    y1 = phase(coeff) * 29;
+    idx = INDEX(x, y1, i);
+    break;
+  case TRC_LINEAR:
+    y1 = linear(coeff) * 29;
+    idx = INDEX(x, y1, i);
+    break;
+  case TRC_SWR:
+    y1 = swr(coeff) * 29;
+    idx = INDEX(x, y1, i);
+    break;
+  case TRC_SMITH:
+  case TRC_POLAR:
+    cartesian_scale(coeff[0], coeff[1], &x1, &y1);
+    idx = INDEX(x1, y1, i);
+    break;
+  }
+  return idx;
+}
+
 void plot_into_index(float measured[2][101][2])
 {
   int i, t;
-  float coeff[2];
   for (i = 0; i < 101; i++) {
     int x = i * (WIDTH-1) / (101-1);
     for (t = 0; t < TRACES_MAX; t++) {
-      int n = t % 2;
       if (!trace[t].enabled)
         continue;
-
-      coeff[0] = measured[n][i][0];
-      coeff[1] = measured[n][i][1];
-#if 0
-      if (cal_status & CALSTAT_APPLY) {
-        if (n == 0) {
-          float sq = cal_data[CAL_OPEN][i][0] * cal_data[CAL_OPEN][i][0] 
-            + cal_data[CAL_OPEN][i][1] * cal_data[CAL_OPEN][i][1];
-          float m0 = measured[n][i][0];
-          float m1 = measured[n][i][1];
-          if (cal_status & CALSTAT_LOAD) {
-            m0 -= cal_data[CAL_LOAD][i][0];
-            m1 -= cal_data[CAL_LOAD][i][1];
-          }
-          coeff[0] = (m0 * cal_data[CAL_OPEN][i][0]
-                      + m1 * cal_data[CAL_OPEN][i][1]) / sq;
-          coeff[1] = (m1 * cal_data[CAL_OPEN][i][0]
-                      - m0 * cal_data[CAL_OPEN][i][1]) / sq;
-        } else {
-          float sq = cal_data[CAL_THRU][i][0] * cal_data[CAL_THRU][i][0] 
-            + cal_data[CAL_THRU][i][1] * cal_data[CAL_THRU][i][1];
-          float m0 = measured[n][i][0];
-          float m1 = measured[n][i][1];
-          if (cal_status & CALSTAT_ISOLN) {
-            m0 -= cal_data[CAL_ISOLN][i][0];
-            m1 -= cal_data[CAL_ISOLN][i][1];
-          }
-          coeff[0] = (m0 * cal_data[CAL_THRU][i][0]
-                      + m1 * cal_data[CAL_THRU][i][1]) / sq;
-          coeff[1] = (m1 * cal_data[CAL_THRU][i][0]
-                      - m0 * cal_data[CAL_THRU][i][1]) / sq;
-        }
-      }
-#endif
-      if (trace[t].polar) {
-        int x1, y1;
-        cartesian_scale(coeff[0], coeff[1], &x1, &y1);
-        trace_index[t][i] = INDEX(x1, y1, i);
-      } else {
-        int y1 = logmag(coeff) * 29;
-        trace_index[t][i] = INDEX(x, y1, i);
-      }
+      int n = trace[t].source;
+      trace_index[t][i] = trace_into_index(x, t, i, measured[n][i]);
     }
   }
 #if 0

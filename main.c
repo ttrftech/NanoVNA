@@ -684,6 +684,82 @@ static void cmd_recall(BaseSequentialStream *chp, int argc, char *argv[])
   caldata_recall();
 }
 
+
+const char *trc_type_name[] = {
+  "LogMAG", "Phase", "Smith", "Admit", "Polar", "Linear", "SWR"
+};
+const char *trc_source_name[] = {
+  "S11", "S21"
+};
+
+static void cmd_trace(BaseSequentialStream *chp, int argc, char *argv[])
+{
+  int t;
+  (void)chp;
+  if (argc == 0) {
+    for (t = 0; t < 4; t++) {
+      if (trace[t].enabled) {
+        const char *type = trc_type_name[trace[t].type];
+        const char *source = trc_source_name[trace[t].source];
+        chprintf(chp, "%d %s %s\r\n", t, type, source);
+      }
+    }
+    return;
+  } 
+  t = atoi(argv[0]);
+  if (t < 0 || t >= 4)
+    goto usage;
+  if (argc == 1) {
+    const char *type = trc_type_name[trace[t].type];
+    const char *source = trc_source_name[trace[t].source];
+    chprintf(chp, "%d %s %s\r\n", t, type, source);
+    return;
+  }
+  if (argc > 1) {
+    if (strcmp(argv[1], "logmag") == 0) {
+      trace[t].type = TRC_LOGMAG;
+      trace[t].polar = FALSE;
+      trace[t].enabled = TRUE;
+    } else if (strcmp(argv[1], "phase") == 0) {
+      trace[t].type = TRC_PHASE;
+      trace[t].polar = FALSE;
+      trace[t].enabled = TRUE;
+    } else if (strcmp(argv[1], "polar") == 0) {
+      trace[t].type = TRC_POLAR;
+      trace[t].polar = TRUE;
+      trace[t].enabled = TRUE;
+    } else if (strcmp(argv[1], "smith") == 0) {
+      trace[t].type = TRC_SMITH;
+      trace[t].polar = TRUE;
+      trace[t].enabled = TRUE;
+    } else if (strcmp(argv[1], "admit") == 0) {
+      trace[t].type = TRC_ADMIT;
+      trace[t].polar = TRUE;
+      trace[t].enabled = TRUE;
+    } else if (strcmp(argv[1], "linear") == 0) {
+      trace[t].type = TRC_LINEAR;
+      trace[t].polar = FALSE;
+      trace[t].enabled = TRUE;
+    } else if (strcmp(argv[1], "swr") == 0) {
+      trace[t].type = TRC_SWR;
+      trace[t].polar = FALSE;
+      trace[t].enabled = TRUE;
+    } else if (strcmp(argv[1], "off") == 0) {
+      trace[t].enabled = FALSE;
+    } 
+  }
+  if (argc > 2) {
+    int src = atoi(argv[2]);
+    if (src != 0 && src != 1)
+      goto usage;
+    trace[t].source = src;
+  }  
+
+  return;
+ usage:
+  chprintf(chp, "trace [n] [logmag|phase|smith|swr] [src]\r\n");
+}
+
 static void cmd_test(BaseSequentialStream *chp, int argc, char *argv[])
 {
   int i;
@@ -810,6 +886,7 @@ static const ShellCommand commands[] =
     { "cal", cmd_cal },
     { "save", cmd_save },
     { "recall", cmd_recall },
+    { "trace", cmd_trace },
     { NULL, NULL }
 };
 

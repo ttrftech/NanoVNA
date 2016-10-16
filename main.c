@@ -500,10 +500,12 @@ eterm_calc_er(int sign)
   int i;
   for (i = 0; i < 101; i++) {
     // Er = sign*(1-Es)S11mo'
+    float s11or = cal_data[CAL_OPEN][i][0] - cal_data[ETERM_ED][i][0];
+    float s11oi = cal_data[CAL_OPEN][i][1] - cal_data[ETERM_ED][i][1];
     float esr = 1 - cal_data[ETERM_ES][i][0];
     float esi = -cal_data[ETERM_ES][i][1];
-    float err = esr * cal_data[CAL_OPEN][i][0] - esi * cal_data[CAL_OPEN][i][1];
-    float eri = esr * cal_data[CAL_OPEN][i][1] + esi * cal_data[CAL_OPEN][i][0];
+    float err = esr * s11or - esi * s11oi;
+    float eri = esr * s11oi + esi * s11or;
     if (sign < 0) {
       err = -err;
       eri = -eri;
@@ -639,14 +641,14 @@ static void cmd_cal(BaseSequentialStream *chp, int argc, char *argv[])
     cal_status = 0;
     return;
   } else if (strcmp(cmd, "data") == 0) {
-    chprintf(chp, "%d %d\r\n", (int)cal_data[CAL_LOAD][0][0], (int)cal_data[CAL_LOAD][0][1]);
-    chprintf(chp, "%d %d\r\n", (int)cal_data[CAL_OPEN][0][0], (int)cal_data[CAL_OPEN][0][1]);
-    chprintf(chp, "%d %d\r\n", (int)cal_data[CAL_SHORT][0][0], (int)cal_data[CAL_SHORT][0][1]);
-    chprintf(chp, "%d %d\r\n", (int)cal_data[CAL_THRU][0][0], (int)cal_data[CAL_THRU][0][1]);
-    chprintf(chp, "%d %d\r\n", (int)cal_data[CAL_ISOLN][0][0], (int)cal_data[CAL_ISOLN][0][1]);
+    chprintf(chp, "%d %d\r\n", (int)cal_data[CAL_LOAD][0][0]*10000, (int)cal_data[CAL_LOAD][0][1]*10000);
+    chprintf(chp, "%d %d\r\n", (int)cal_data[CAL_OPEN][0][0]*10000, (int)cal_data[CAL_OPEN][0][1]*10000);
+    chprintf(chp, "%d %d\r\n", (int)cal_data[CAL_SHORT][0][0]*10000, (int)cal_data[CAL_SHORT][0][1]*10000);
+    chprintf(chp, "%d %d\r\n", (int)cal_data[CAL_THRU][0][0]*10000, (int)cal_data[CAL_THRU][0][1]*10000);
+    chprintf(chp, "%d %d\r\n", (int)cal_data[CAL_ISOLN][0][0]*10000, (int)cal_data[CAL_ISOLN][0][1]*10000);
     return;
   } else {
-    chprintf(chp, "usage: cal {load|open|short|thru|isoln|done}\r\n");
+    chprintf(chp, "usage: cal [load|open|short|thru|isoln|done|reset|on|off]\r\n");
     return;
   }
 }

@@ -641,11 +641,11 @@ static void cmd_cal(BaseSequentialStream *chp, int argc, char *argv[])
     cal_status = 0;
     return;
   } else if (strcmp(cmd, "data") == 0) {
-    chprintf(chp, "%d %d\r\n", (int)cal_data[CAL_LOAD][0][0]*10000, (int)cal_data[CAL_LOAD][0][1]*10000);
-    chprintf(chp, "%d %d\r\n", (int)cal_data[CAL_OPEN][0][0]*10000, (int)cal_data[CAL_OPEN][0][1]*10000);
-    chprintf(chp, "%d %d\r\n", (int)cal_data[CAL_SHORT][0][0]*10000, (int)cal_data[CAL_SHORT][0][1]*10000);
-    chprintf(chp, "%d %d\r\n", (int)cal_data[CAL_THRU][0][0]*10000, (int)cal_data[CAL_THRU][0][1]*10000);
-    chprintf(chp, "%d %d\r\n", (int)cal_data[CAL_ISOLN][0][0]*10000, (int)cal_data[CAL_ISOLN][0][1]*10000);
+    chprintf(chp, "%f %f\r\n", cal_data[CAL_LOAD][0][0], cal_data[CAL_LOAD][0][1]);
+    chprintf(chp, "%f %f\r\n", cal_data[CAL_OPEN][0][0], cal_data[CAL_OPEN][0][1]);
+    chprintf(chp, "%f %f\r\n", cal_data[CAL_SHORT][0][0], cal_data[CAL_SHORT][0][1]);
+    chprintf(chp, "%f %f\r\n", cal_data[CAL_THRU][0][0], cal_data[CAL_THRU][0][1]);
+    chprintf(chp, "%f %f\r\n", cal_data[CAL_ISOLN][0][0], cal_data[CAL_ISOLN][0][1]);
     return;
   } else {
     chprintf(chp, "usage: cal [load|open|short|thru|isoln|done|reset|on|off]\r\n");

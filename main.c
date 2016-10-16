@@ -216,10 +216,6 @@ int16_t dump_selection = 0;
 
 int16_t dsp_disabled = FALSE;
 float measured[2][101][2];
-uint32_t frequencies[101];
-
-uint16_t cal_status;
-float cal_data[5][101][2];
 
 
 
@@ -311,10 +307,29 @@ static void cmd_gamma(BaseSequentialStream *chp, int argc, char *argv[])
   chprintf(chp, "%d %d\r\n", gamma[0], gamma[1]);
 }
 
-
+#if 0
 int32_t freq_start = 1000000;
 int32_t freq_stop = 300000000;
 int16_t sweep_points = 101;
+
+uint32_t frequencies[101];
+uint16_t cal_status;
+float cal_data[5][101][2];
+#endif
+
+config_t current_config = {
+  /* magic */   CONFIG_MAGIC,
+  /* freq_start */   1000000,
+  /* freq_stop */  300000000,
+  /* sweep_points */     101,
+  /* cal_status */         0,
+  /* frequencies */       {},
+  /* cal_data */          {},
+  /* checksum */           0
+};
+config_t *active = &current_config;
+
+
 
 static void cmd_scan(BaseSequentialStream *chp, int argc, char *argv[])
 {
@@ -653,6 +668,22 @@ static void cmd_cal(BaseSequentialStream *chp, int argc, char *argv[])
   }
 }
 
+static void cmd_save(BaseSequentialStream *chp, int argc, char *argv[])
+{
+  (void)chp;
+  (void)argc;
+  (void)argv;
+  caldata_save();
+}
+
+static void cmd_recall(BaseSequentialStream *chp, int argc, char *argv[])
+{
+  (void)chp;
+  (void)argc;
+  (void)argv;
+  caldata_recall();
+}
+
 static void cmd_test(BaseSequentialStream *chp, int argc, char *argv[])
 {
   int i;
@@ -777,6 +808,8 @@ static const ShellCommand commands[] =
     { "pause", cmd_pause },
     { "resume", cmd_resume },
     { "cal", cmd_cal },
+    { "save", cmd_save },
+    { "recall", cmd_recall },
     { NULL, NULL }
 };
 
@@ -829,6 +862,9 @@ int main(void)
    * SPI LCD Initialize
    */
   ili9341_init();
+
+  caldata_recall();
+
   set_sweep(freq_start, freq_stop);
   redraw();
 

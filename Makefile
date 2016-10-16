@@ -100,7 +100,8 @@ include $(CHIBIOS)/os/hal/lib/streams/streams.mk
 include $(CHIBIOS)/os/various/shell/shell.mk
 
 # Define linker script file here
-LDSCRIPT= $(STARTUPLD)/STM32F072xB.ld
+#LDSCRIPT= $(STARTUPLD)/STM32F072xB.ld
+LDSCRIPT= STM32F072xB.ld
 
 CMSIS = CMSIS
 DSPLIBINC = ${CMSIS}/Include
@@ -119,7 +120,7 @@ CSRC = $(STARTUPSRC) \
        $(SHELLSRC) \
        $(DSPLIBSRC) \
        usbcfg.c \
-       main.c si5351.c si5351_low.c tlv320aic3204.c dsp.c ili9431.c numfont20x24.c Font5x7.c
+       main.c si5351.c si5351_low.c tlv320aic3204.c dsp.c ili9431.c numfont20x24.c Font5x7.c flash.c
 
 #       $(TESTSRC) \
 

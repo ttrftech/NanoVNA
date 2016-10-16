@@ -420,7 +420,7 @@ ili9341_test(int mode)
 
 
 
-int prev_x;
+//int prev_x;
 
 int32_t fstart = 0;
 int32_t fstop = 300000000;

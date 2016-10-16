@@ -87,3 +87,29 @@ void draw_cell_all(void);
 extern const uint16_t x5x7_bits [];
 extern const uint32_t numfont20x24[][24];
 
+int caldata_save(void);
+int caldata_recall(void);
+
+typedef struct {
+  int32_t magic;
+  int32_t _freq_start;
+  int32_t _freq_stop;
+  int16_t _sweep_points;
+  uint16_t _cal_status;
+
+  uint32_t _frequencies[101];
+  float _cal_data[5][101][2];
+  int32_t checksum;
+} config_t;
+
+#define CONFIG_MAGIC 0x436f4e45 /* 'CoNF' */
+
+extern config_t *active;
+extern config_t current_config;
+
+#define freq_start active->_freq_start
+#define freq_stop active->_freq_stop
+#define sweep_points active->_sweep_points
+#define cal_status active->_cal_status
+#define frequencies active->_frequencies
+#define cal_data active->_cal_data

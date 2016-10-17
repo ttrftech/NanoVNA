@@ -46,7 +46,7 @@ static MUTEX_DECL(mutex);
 
 
 
-static THD_WORKING_AREA(waThread1, 400);
+static THD_WORKING_AREA(waThread1, 384);
 static THD_FUNCTION(Thread1, arg)
 {
     (void)arg;
@@ -347,7 +347,7 @@ static void cmd_scan(BaseSequentialStream *chp, int argc, char *argv[])
   delay += 2;
   for (i = 0; i < sweep_points; i++) {
     freq = freq + step;
-    wait_count = delay;
+    wait_count = delay + 1;
     while (wait_count)
       ;
     //dsp_disabled = TRUE;
@@ -371,7 +371,7 @@ void scan_lcd(void)
   delay = set_frequency(frequencies[0]);
   delay += 2;
   for (i = 0; i < sweep_points; i++) {
-    wait_count = delay;
+    wait_count = delay + 1;
     tlv320aic3204_select_in3();
     while (wait_count)
       ;
@@ -381,7 +381,7 @@ void scan_lcd(void)
     __enable_irq();
 
     tlv320aic3204_select_in1();
-    wait_count = 2;
+    wait_count = 2 + 1;
     while (wait_count)
       ;
     __disable_irq();
@@ -862,7 +862,7 @@ static void cmd_stat(BaseSequentialStream *chp, int argc, char *argv[])
 
 
 
-#define SHELL_WA_SIZE THD_WORKING_AREA_SIZE(400)
+#define SHELL_WA_SIZE THD_WORKING_AREA_SIZE(460)
 
 static const ShellCommand commands[] =
 {
@@ -940,6 +940,7 @@ int main(void)
    */
   ili9341_init();
 
+  /* restore config and calibration data from flash memory */
   caldata_recall();
 
   set_sweep(freq_start, freq_stop);

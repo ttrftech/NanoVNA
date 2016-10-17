@@ -559,7 +559,7 @@ trace_t trace[TRACES_MAX] = {
   { 1, TRC_LOGMAG, 0, RGB565(0,255,255), 0 },
   { 1, TRC_LOGMAG, 1, RGB565(255,0,40), 0 },
   { 1, TRC_SMITH, 0, RGB565(0,0,255), 1 },
-  { 0, TRC_SMITH, 1, RGB565(0,255,0), 1 }
+  { 1, TRC_PHASE, 1, RGB565(50,255,0), 1 }
 };
 
 uint32_t trace_index[TRACES_MAX][101];
@@ -731,6 +731,7 @@ trace_into_index(int x, int t, int i, float coeff[2])
     idx = INDEX(x, y1, i);
     break;
   case TRC_SMITH:
+  case TRC_ADMIT:
   case TRC_POLAR:
     cartesian_scale(coeff[0], coeff[1], &x1, &y1);
     idx = INDEX(x1, y1, i);

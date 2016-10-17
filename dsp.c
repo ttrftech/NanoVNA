@@ -8,7 +8,7 @@ int16_t refiq_buf[AUDIO_BUFFER_LEN];
 
 int16_t samp_buf[SAMPLE_LEN];
 
-
+#if 0
 // Bi-Quad IIR Filter state
 q15_t bq_state1[4 * 4];
 q15_t bq_state2[4 * 4];
@@ -22,6 +22,7 @@ q15_t bq_coeffs[] = {
 
 arm_biquad_casd_df1_inst_q15 bq1 = { 3, bq_state1, bq_coeffs, 1};
 arm_biquad_casd_df1_inst_q15 bq2 = { 3, bq_state2, bq_coeffs, 1};
+#endif
 
 const q15_t hilbert31_coeffs[] = {
   20570, 6125, 2918, 1456, 682, 279, 91, 19 
@@ -67,6 +68,7 @@ hilbert_transform(void)
     src++;
   }
 
+  /* copy last samples as fir state onto buffer */
   dst = __SIMD32_CONST(ref_state);
   for (j = 0; j < STATE_LEN / 2; j++) {
     *dst++ = *src++;
@@ -109,10 +111,24 @@ void calclate_gamma(float *gamma)
   int i;
   float rn;
 
+  int32_t offset_s0 = 0;
+  int32_t offset_r0 = 0;
+  int32_t offset_i0 = 0;
   for (i = 0; i < len; i++) {
-    int16_t s0 = *s++;
-    int16_t ri = *r++;
-    int16_t rr = *r++;
+    offset_s0 += *s++;
+    offset_i0 += *r++;
+    offset_r0 += *r++;
+  }
+  offset_s0 /= len;
+  offset_r0 /= len;
+  offset_i0 /= len;
+
+  r = refiq_buf;
+  s = samp_buf;
+  for (i = 0; i < len; i++) {
+    int16_t s0 = *s++ - offset_s0;
+    int16_t ri = *r++ - offset_i0;
+    int16_t rr = *r++ - offset_r0;
     acc_r += (float)(s0 * rr);
     acc_i += (float)(s0 * ri);
     acc_ref += (float)rr*rr + (float)ri*ri;

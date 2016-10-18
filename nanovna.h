@@ -85,8 +85,8 @@ extern trace_t trace[TRACES_MAX];
 #define CALSTAT_APPLY (1<<8)
 
 #define ETERM_ED 0 /* error term directivity */
-#define ETERM_ER 1 /* error term refrection tracking */
-#define ETERM_ES 2 /* error term source match */
+#define ETERM_ES 1 /* error term source match */
+#define ETERM_ER 2 /* error term refrection tracking */
 #define ETERM_ET 3 /* error term transmission tracking */
 #define ETERM_EX 4 /* error term isolation */
 

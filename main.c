@@ -490,22 +490,32 @@ eterm_calc_es(void)
 {
   int i;
   for (i = 0; i < 101; i++) {
+    // z=1/(jwc*z0) = 1/(2*pi*f*c*z0)  Note: normalized with Z0
+    // s11ao = (z-1)/(z+1) = (1-1/z)/(1+1/z) = (1-jwcz0)/(1+jwcz0)
+    // prepare 1/s11ao for effeiciency
+    float c = 150e-15;
+    float z0 = 50;
+    float z = 6.2832 * frequencies[i] * c * z0;
+    float sq = 1 + z*z;
+    float s11aor = (1 - z*z) / sq;
+    float s11aoi = 2*z / sq;
+
     // S11mo’= S11mo - Ed
     // S11ms’= S11ms - Ed
     float s11or = cal_data[CAL_OPEN][i][0] - cal_data[ETERM_ED][i][0];
     float s11oi = cal_data[CAL_OPEN][i][1] - cal_data[ETERM_ED][i][1];
     float s11sr = cal_data[CAL_SHORT][i][0] - cal_data[ETERM_ED][i][0];
     float s11si = cal_data[CAL_SHORT][i][1] - cal_data[ETERM_ED][i][1];
-    // Es = (S11mo' + S11ms’)/(S11mo' - S11ms’)
-    float numr = s11or + s11sr;
-    float numi = s11oi + s11si;
+    // Es = (S11mo'/s11ao + S11ms’)/(S11mo' - S11ms’)
+    float numr = s11sr + s11or * s11aor - s11oi * s11aoi;
+    float numi = s11si + s11oi * s11aor + s11or * s11aoi;
     float denomr = s11or - s11sr;
     float denomi = s11oi - s11si;
-    float sq = denomr*denomr+denomi*denomi;
+    sq = denomr*denomr+denomi*denomi;
     cal_data[ETERM_ES][i][0] = (numr*denomr + numi*denomi)/sq;
     cal_data[ETERM_ES][i][1] = (numi*denomr - numr*denomi)/sq;
   }
-  cal_status &= ~CALSTAT_SHORT;
+  cal_status &= ~CALSTAT_OPEN;
   cal_status |= CALSTAT_ES;
 }
 
@@ -514,11 +524,16 @@ eterm_calc_er(int sign)
 {
   int i;
   for (i = 0; i < 101; i++) {
-    // Er = sign*(1-Es)S11mo'
-    float s11or = cal_data[CAL_OPEN][i][0] - cal_data[ETERM_ED][i][0];
-    float s11oi = cal_data[CAL_OPEN][i][1] - cal_data[ETERM_ED][i][1];
-    float esr = 1 - cal_data[ETERM_ES][i][0];
-    float esi = -cal_data[ETERM_ES][i][1];
+    // Er = sign*(1-sign*Es)S11mo'
+    float s11or = cal_data[CAL_SHORT][i][0] - cal_data[ETERM_ED][i][0];
+    float s11oi = cal_data[CAL_SHORT][i][1] - cal_data[ETERM_ED][i][1];
+    float esr = cal_data[ETERM_ES][i][0];
+    float esi = cal_data[ETERM_ES][i][1];
+    if (sign > 0) {
+      esr = -esr;
+      esi = -esi;
+    }
+    esr = 1 + esr;
     float err = esr * s11or - esi * s11oi;
     float eri = esr * s11oi + esi * s11or;
     if (sign < 0) {
@@ -528,7 +543,7 @@ eterm_calc_er(int sign)
     cal_data[ETERM_ER][i][0] = err;
     cal_data[ETERM_ER][i][1] = eri;
   }
-  cal_status &= ~CALSTAT_OPEN;
+  cal_status &= ~CALSTAT_SHORT;
   cal_status |= CALSTAT_ER;
 }
 
@@ -622,12 +637,12 @@ static void cmd_cal(BaseSequentialStream *chp, int argc, char *argv[])
       eterm_set(ETERM_ED, 0.0, 0.0);
     if ((cal_status & CALSTAT_SHORT) && (cal_status & CALSTAT_OPEN)) {
       eterm_calc_es();
-      eterm_calc_er(1);
+      eterm_calc_er(-1);
     } else if (cal_status & CALSTAT_OPEN) {
+      eterm_copy(CAL_SHORT, CAL_OPEN);
       eterm_set(ETERM_ES, 0.0, 0.0);
       eterm_calc_er(1);
     } else if (cal_status & CALSTAT_SHORT) {
-      eterm_copy(CAL_OPEN, CAL_SHORT);
       eterm_set(ETERM_ES, 0.0, 0.0);
       cal_status &= ~CALSTAT_SHORT;
       eterm_calc_er(-1);

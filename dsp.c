@@ -135,7 +135,7 @@ void calclate_gamma(float *gamma)
   }
   rn = sqrtf(acc_ref / len) * 2e3 * len;
   gamma[0] = -acc_r / rn;
-  gamma[1] = acc_i / rn;
+  gamma[1] = -acc_i / rn;
 }
 #endif
 

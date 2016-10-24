@@ -58,7 +58,8 @@ enum {
 typedef struct {
   int enabled;
   int type;
-  int source;
+  int channel;
+  float scale;
   uint16_t color;
   uint8_t polar;
 } trace_t;

@@ -556,10 +556,10 @@ draw_on_strut(int v0, int d, int color)
 }
 
 trace_t trace[TRACES_MAX] = {
-  { 1, TRC_LOGMAG, 0, RGB565(0,255,255), 0 },
-  { 1, TRC_LOGMAG, 1, RGB565(255,0,40), 0 },
-  { 1, TRC_SMITH, 0, RGB565(0,0,255), 1 },
-  { 1, TRC_PHASE, 1, RGB565(50,255,0), 1 }
+  { 1, TRC_LOGMAG, 0, 1.0, RGB565(0,255,255), 0 },
+  { 1, TRC_LOGMAG, 1, 1.0, RGB565(255,0,40), 0 },
+  { 1, TRC_SMITH, 0, 1.0, RGB565(0,0,255), 1 },
+  { 1, TRC_PHASE, 1, 1.0, RGB565(50,255,0), 1 }
 };
 
 uint32_t trace_index[TRACES_MAX][101];
@@ -598,12 +598,11 @@ float swr(float *v)
 
 #define RADIUS ((HEIGHT-1)/2)
 void
-cartesian_scale(float re, float im, int *xp, int *yp)
+cartesian_scale(float re, float im, int *xp, int *yp, float scale)
 {
   //float scale = 4e-3;
-  float scale = RADIUS;
-  int x = re * scale;
-  int y = im * scale;
+  int x = re * RADIUS * scale;
+  int y = im * RADIUS * scale;
   if (x < -RADIUS) x = -RADIUS;
   if (y < -RADIUS) y = -RADIUS;
   if (x > RADIUS) x = RADIUS;
@@ -733,7 +732,7 @@ trace_into_index(int x, int t, int i, float coeff[2])
   case TRC_SMITH:
   case TRC_ADMIT:
   case TRC_POLAR:
-    cartesian_scale(coeff[0], coeff[1], &x1, &y1);
+    cartesian_scale(coeff[0], coeff[1], &x1, &y1, trace[t].scale);
     idx = INDEX(x1, y1, i);
     break;
   }
@@ -748,7 +747,7 @@ void plot_into_index(float measured[2][101][2])
     for (t = 0; t < TRACES_MAX; t++) {
       if (!trace[t].enabled)
         continue;
-      int n = trace[t].source;
+      int n = trace[t].channel;
       trace_index[t][i] = trace_into_index(x, t, i, measured[n][i]);
     }
   }
@@ -1025,10 +1024,24 @@ draw_cell(int m, int n)
     }
   }
 #endif
+
+#if 0
   if (m == 0 && n == 0) {
     draw_marker(w, h, 8, 12, trace[0].color, '1');
     draw_marker(w, h, 18, 20, trace[1].color, '2');
     draw_marker(w, h, 4, 30, trace[2].color, '3');
+  }
+#endif
+
+  i = 30;
+  for (t = 0; t < TRACES_MAX; t++) {
+    if (!trace[t].enabled)
+      continue;
+    uint32_t index = trace_index[t][i];
+    int x = CELL_X(index) - x0;
+    int y = CELL_Y(index) - y0;
+    if (x > -12 && x < w+12 && y >= 0 && y < h+12)
+      draw_marker(w, h, x, y, trace[t].color, '1');
   }
 
   ili9341_bulk(OFFSETX + x0, OFFSETY + y0, w, h);

@@ -267,6 +267,29 @@ static const I2SConfig i2sconfig = {
 
 static void cmd_data(BaseSequentialStream *chp, int argc, char *argv[])
 {
+  int i;
+  int len;
+  int sel = 0;
+
+  if (argc == 1)
+    sel = atoi(argv[0]);
+  if (sel == 0 || sel == 1) {
+    pause_sweep();
+    for (i = 0; i < 101; i++) {
+      chprintf(chp, "%f %f\r\n", measured[sel][i][0], measured[sel][i][1]);
+    }
+  } else if (sel >= 2 && sel < 7) {
+    pause_sweep();
+    for (i = 0; i < 101; i++) {
+      chprintf(chp, "%f %f\r\n", cal_data[sel-2][i][0], cal_data[sel-2][i][1]);
+    }
+  } else {
+    chprintf(chp, "usage: data [array]\r\n");
+  }
+}
+
+static void cmd_dump(BaseSequentialStream *chp, int argc, char *argv[])
+{
   int i, j;
   int len;
 
@@ -371,7 +394,7 @@ void scan_lcd(void)
   delay = set_frequency(frequencies[0]);
   delay += 2;
   for (i = 0; i < sweep_points; i++) {
-    wait_count = delay + 1;
+    wait_count = delay + 2;
     tlv320aic3204_select_in3();
     while (wait_count)
       ;
@@ -381,7 +404,7 @@ void scan_lcd(void)
     __enable_irq();
 
     tlv320aic3204_select_in1();
-    wait_count = 2 + 1;
+    wait_count = 2 + 2;
     while (wait_count)
       ;
     __disable_irq();
@@ -485,6 +508,32 @@ eterm_copy(int dst, int src)
   memcpy(cal_data[dst], cal_data[src], sizeof cal_data[dst]);
 }
 
+
+struct open_model {
+  float c0;
+  float c1;
+  float c2;
+  float c3;
+} open_model = { 50, 0, -300, 27 };
+
+#if 1
+static void
+adjust_ed(void)
+{
+  int i;
+  for (i = 0; i < 101; i++) {
+    // z=1/(jwc*z0) = 1/(2*pi*f*c*z0)  Note: normalized with Z0
+    // s11ao = (z-1)/(z+1) = (1-1/z)/(1+1/z) = (1-jwcz0)/(1+jwcz0)
+    // prepare 1/s11ao for effeiciency
+    float c = 1000e-15;
+    float z0 = 50;
+    //float z = 6.2832 * frequencies[i] * c * z0;
+    float z = 0.02;
+    cal_data[ETERM_ED][i][0] += z;
+  }
+}
+#endif
+
 static void
 eterm_calc_es(void)
 {
@@ -493,7 +542,8 @@ eterm_calc_es(void)
     // z=1/(jwc*z0) = 1/(2*pi*f*c*z0)  Note: normalized with Z0
     // s11ao = (z-1)/(z+1) = (1-1/z)/(1+1/z) = (1-jwcz0)/(1+jwcz0)
     // prepare 1/s11ao for effeiciency
-    float c = 150e-15;
+    float c = 50e-15;
+    //float c = 1.707e-12;
     float z0 = 50;
     float z = 6.2832 * frequencies[i] * c * z0;
     float sq = 1 + z*z;
@@ -524,9 +574,9 @@ eterm_calc_er(int sign)
 {
   int i;
   for (i = 0; i < 101; i++) {
-    // Er = sign*(1-sign*Es)S11mo'
-    float s11or = cal_data[CAL_SHORT][i][0] - cal_data[ETERM_ED][i][0];
-    float s11oi = cal_data[CAL_SHORT][i][1] - cal_data[ETERM_ED][i][1];
+    // Er = sign*(1-sign*Es)S11ms'
+    float s11sr = cal_data[CAL_SHORT][i][0] - cal_data[ETERM_ED][i][0];
+    float s11si = cal_data[CAL_SHORT][i][1] - cal_data[ETERM_ED][i][1];
     float esr = cal_data[ETERM_ES][i][0];
     float esi = cal_data[ETERM_ES][i][1];
     if (sign > 0) {
@@ -534,14 +584,15 @@ eterm_calc_er(int sign)
       esi = -esi;
     }
     esr = 1 + esr;
-    float err = esr * s11or - esi * s11oi;
-    float eri = esr * s11oi + esi * s11or;
+    float err = esr * s11sr - esi * s11si;
+    float eri = esr * s11si + esi * s11sr;
     if (sign < 0) {
       err = -err;
       eri = -eri;
     }
     cal_data[ETERM_ER][i][0] = err;
     cal_data[ETERM_ER][i][1] = eri;
+    cal_data[ETERM_ES][i][1] = 0;
   }
   cal_status &= ~CALSTAT_SHORT;
   cal_status |= CALSTAT_ER;
@@ -619,22 +670,35 @@ static void cmd_cal(BaseSequentialStream *chp, int argc, char *argv[])
   char *cmd = argv[0];
   if (strcmp(cmd, "load") == 0) {
     cal_status |= CALSTAT_LOAD;
+    chMtxLock(&mutex);
     memcpy(cal_data[CAL_LOAD], measured[0], sizeof measured[0]);
+    chMtxUnlock(&mutex);
   } else if (strcmp(cmd, "open") == 0) {
     cal_status |= CALSTAT_OPEN;
+    cal_status &= ~(CALSTAT_ES|CALSTAT_APPLY);
+    chMtxLock(&mutex);
     memcpy(cal_data[CAL_OPEN], measured[0], sizeof measured[0]);
+    chMtxUnlock(&mutex);
   } else if (strcmp(cmd, "short") == 0) {
     cal_status |= CALSTAT_SHORT;
+    cal_status &= ~(CALSTAT_ER|CALSTAT_APPLY);
+    chMtxLock(&mutex);
     memcpy(cal_data[CAL_SHORT], measured[0], sizeof measured[0]);
+    chMtxUnlock(&mutex);
   } else if (strcmp(cmd, "thru") == 0) {
     cal_status |= CALSTAT_THRU;
+    chMtxLock(&mutex);
     memcpy(cal_data[CAL_THRU], measured[1], sizeof measured[0]);
+    chMtxUnlock(&mutex);
   } else if (strcmp(cmd, "isoln") == 0) {
     cal_status |= CALSTAT_ISOLN;
+    chMtxLock(&mutex);
     memcpy(cal_data[CAL_ISOLN], measured[1], sizeof measured[0]);
+    chMtxUnlock(&mutex);
   } else if (strcmp(cmd, "done") == 0) {
     if (!(cal_status & CALSTAT_LOAD))
       eterm_set(ETERM_ED, 0.0, 0.0);
+    //adjust_ed();
     if ((cal_status & CALSTAT_SHORT) && (cal_status & CALSTAT_OPEN)) {
       eterm_calc_es();
       eterm_calc_er(-1);
@@ -703,7 +767,7 @@ static void cmd_recall(BaseSequentialStream *chp, int argc, char *argv[])
 const char *trc_type_name[] = {
   "LogMAG", "Phase", "Smith", "Admit", "Polar", "Linear", "SWR"
 };
-const char *trc_source_name[] = {
+const char *trc_channel_name[] = {
   "S11", "S21"
 };
 
@@ -715,8 +779,8 @@ static void cmd_trace(BaseSequentialStream *chp, int argc, char *argv[])
     for (t = 0; t < 4; t++) {
       if (trace[t].enabled) {
         const char *type = trc_type_name[trace[t].type];
-        const char *source = trc_source_name[trace[t].source];
-        chprintf(chp, "%d %s %s\r\n", t, type, source);
+        const char *channel = trc_channel_name[trace[t].channel];
+        chprintf(chp, "%d %s %s\r\n", t, type, channel);
       }
     }
     return;
@@ -726,8 +790,8 @@ static void cmd_trace(BaseSequentialStream *chp, int argc, char *argv[])
     goto usage;
   if (argc == 1) {
     const char *type = trc_type_name[trace[t].type];
-    const char *source = trc_source_name[trace[t].source];
-    chprintf(chp, "%d %s %s\r\n", t, type, source);
+    const char *channel = trc_channel_name[trace[t].channel];
+    chprintf(chp, "%d %s %s\r\n", t, type, channel);
     return;
   }
   if (argc > 1) {
@@ -761,15 +825,18 @@ static void cmd_trace(BaseSequentialStream *chp, int argc, char *argv[])
       trace[t].enabled = TRUE;
     } else if (strcmp(argv[1], "off") == 0) {
       trace[t].enabled = FALSE;
+    } else if (strcmp(argv[1], "scale") == 0 && argc >= 3) {
+      trace[t].scale = atoi(argv[2]);
+      goto exit;
     } 
   }
   if (argc > 2) {
     int src = atoi(argv[2]);
     if (src != 0 && src != 1)
       goto usage;
-    trace[t].source = src;
+    trace[t].channel = src;
   }  
-
+ exit:
   return;
  usage:
   chprintf(chp, "trace [n] [logmag|phase|smith|swr] [src]\r\n");
@@ -877,7 +944,7 @@ static void cmd_stat(BaseSequentialStream *chp, int argc, char *argv[])
 
 
 
-#define SHELL_WA_SIZE THD_WORKING_AREA_SIZE(460)
+#define SHELL_WA_SIZE THD_WORKING_AREA_SIZE(454)
 
 static const ShellCommand commands[] =
 {
@@ -887,6 +954,7 @@ static const ShellCommand commands[] =
     { "time", cmd_time },
     { "dac", cmd_dac },
     { "data", cmd_data },
+    { "dump", cmd_dump },
     { "port", cmd_port },
     { "stat", cmd_stat },
     { "gain", cmd_gain },

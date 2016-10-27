@@ -567,33 +567,23 @@ uint32_t trace_index[TRACES_MAX][101];
 
 float logmag(float *v)
 {
-  float x = 1 - log10f(v[0]*v[0] + v[1]*v[1]);
-  if (x < 0) x = 0;
-  if (x > 8) x = 8;
-  return x;
+  return log10f(v[0]*v[0] + v[1]*v[1]);
 }
 
 float phase(float *v)
 {
-  return 4 + 2 * atan2f(v[1], v[0]) / M_PI;
+  return 2 * atan2f(v[1], v[0]) / M_PI;
 }
 
 float linear(float *v)
 {
-  float x = 8 - sqrt(v[0]*v[0] + v[1]*v[1]) * 8;
-  if (x < 0) x = 0;
-  if (x > 8) x = 8;
-  return x;
+  return - sqrt(v[0]*v[0] + v[1]*v[1]) * 8;
 }
 
 float swr(float *v)
 {
   float x = sqrt(v[0]*v[0] + v[1]*v[1]);
-  float vswr = (1 + x)/(1 - x);
-  x = 9 - vswr;
-  if (x < 0) x = 0;
-  if (x > 8) x = 8;
-  return x;
+  return (1 + x)/(1 - x);
 }
 
 
@@ -710,34 +700,59 @@ force_set_markmap(void)
 uint32_t
 trace_into_index(int x, int t, int i, float coeff[2])
 {
-  int x1, y1;
-  uint32_t idx = 0;
-
+  int y = 0;
+  float v;
   switch (trace[t].type) {
   case TRC_LOGMAG:
-    y1 = logmag(coeff) * 29;
-    idx = INDEX(x, y1, i);
+    v = 1 - logmag(coeff);
     break;
   case TRC_PHASE:
-    y1 = phase(coeff) * 29;
-    idx = INDEX(x, y1, i);
+    v = 4 + phase(coeff);
     break;
   case TRC_LINEAR:
-    y1 = linear(coeff) * 29;
-    idx = INDEX(x, y1, i);
+    v = 8 + linear(coeff);
     break;
   case TRC_SWR:
-    y1 = swr(coeff) * 29;
-    idx = INDEX(x, y1, i);
+    v = 9 - swr(coeff);
     break;
   case TRC_SMITH:
   case TRC_ADMIT:
   case TRC_POLAR:
-    cartesian_scale(coeff[0], coeff[1], &x1, &y1, trace[t].scale);
-    idx = INDEX(x1, y1, i);
+    cartesian_scale(coeff[0], coeff[1], &x, &y, trace[t].scale);
+    return INDEX(x, y, i);
     break;
   }
-  return idx;
+  if (v < 0) v = 0;
+  if (v > 8) v = 8;
+  y = v * 29;
+  return INDEX(x, y, i);
+}
+
+void
+trace_get_value_string(int t, char *buf, int len, float coeff[2])
+{
+  float v;
+  switch (trace[t].type) {
+  case TRC_LOGMAG:
+    v = logmag(coeff);
+    chsnprintf(buf, len, "%.2f dB", v * 10);
+    break;
+  case TRC_PHASE:
+    v = phase(coeff);
+    chsnprintf(buf, len, "%.2f deg", v * 90);
+    break;
+  case TRC_LINEAR:
+    v = linear(coeff);
+    chsnprintf(buf, len, "%.2f", v);
+    break;
+  case TRC_SWR:
+    v = swr(coeff);
+    chsnprintf(buf, len, "%.2f", v);
+    break;
+  case TRC_SMITH:
+    chsnprintf(buf, len, "%.2f %.2fj", coeff[0], coeff[1]);
+    break;
+  }
 }
 
 void plot_into_index(float measured[2][101][2])
@@ -1146,8 +1161,8 @@ cell_draw_marker_info(int m, int n, int w, int h)
     }
 #endif
   }
-#if 0
-  if (m == 6 || m == 7) {
+#if 1
+  if (m == 6 || m == 7 || m == 8) {
     int xpos = 216;
     int ypos = 1;
     xpos -= m * w;

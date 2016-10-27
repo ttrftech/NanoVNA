@@ -15,6 +15,7 @@
 #define RGB565(b,r,g)     ( (((b)<<8)&0xfc00) | (((r)<<2)&0x03e0) | (((g)>>3)&0x001f) )
 
 static inline void force_set_markmap(void);
+void cell_draw_marker_info(int m, int n, int w, int h);
 
 uint16_t spi_buffer[1024];
 
@@ -827,13 +828,13 @@ line_in_cell(int w, int h, int x0, int y0, int x1, int y1, int c)
       if (dy > 0) {
         while (dy-- > 0) {
           if (y0 >= 0 && y0 < h && x0 >= 0 && x0 < w)
-            spi_buffer[y0*w+x0] = c;
+            spi_buffer[y0*w+x0] |= c;
           y0++;
         }
       } else {
         while (dy++ < 0) {
           if (y0 >= 0 && y0 < h && x0 >= 0 && x0 < w)
-            spi_buffer[y0*w+x0] = c;
+            spi_buffer[y0*w+x0] |= c;
           y0--;
         }
       }
@@ -841,7 +842,7 @@ line_in_cell(int w, int h, int x0, int y0, int x1, int y1, int c)
     } else {
       while (dx-- > 0) {
         if (y0 >= 0 && y0 < h && x0 >= 0 && x0 < w)
-          spi_buffer[y0*w+x0] = c;
+          spi_buffer[y0*w+x0] |= c;
         x0++;
       }
       y0 += dy;
@@ -1044,6 +1045,8 @@ draw_cell(int m, int n)
       draw_marker(w, h, x, y, trace[t].color, '1');
   }
 
+  cell_draw_marker_info(m, n, w, h);
+
   ili9341_bulk(OFFSETX + x0, OFFSETY + y0, w, h);
 }
 
@@ -1085,6 +1088,81 @@ ili9341_drawstring_5x7(char *str, int x, int y, uint16_t fg, uint16_t bg)
   }
 }
 
+void
+cell_drawchar_5x7(int w, int h, uint8_t ch, int x, int y, uint16_t fg)
+{
+  uint16_t bits;
+  int c, r;
+  for(c = 0; c < 7; c++) {
+    if ((y + c) < 0 || (y + c) >= h)
+      continue;
+    bits = x5x7_bits[(ch * 7) + c];
+    for (r = 0; r < 5; r++) {
+      if ((x+r) >= 0 && (x+r) < w && (0x8000 & bits)) 
+        spi_buffer[(y+c)*w + (x+r)] = fg;
+      bits <<= 1;
+    }
+  }
+}
+
+void
+cell_drawstring_5x7(int w, int h, char *str, int x, int y, uint16_t fg)
+{
+  while (*str) {
+    cell_drawchar_5x7(w, h, *str, x, y, fg);
+    x += 5;
+    str++;
+  }
+}
+
+void
+cell_draw_marker_info(int m, int n, int w, int h)
+{
+  char buf[24];
+  int t;
+  if (n != 0)
+    return;
+  if (m == 4 || m == 5 || m == 6) {
+    int xpos = 128;
+    int ypos = 1;
+    xpos -= m * w;
+    ypos -= n * h;
+#if 0
+    chsnprintf(buf, 24, "Ch0 LOGMAG 10dB/");
+    cell_drawstring_5x7(w, h, buf, xpos, ypos, trace[0].color);
+    chsnprintf(buf, 24, "Ch1 LogMag 10dB/");
+    cell_drawstring_5x7(w, h, buf, xpos, ypos+7, trace[1].color);
+    chsnprintf(buf, 24, "Ch0 SMITH   1.0/");
+    cell_drawstring_5x7(w, h, buf, xpos, ypos+14, trace[2].color);
+    chsnprintf(buf, 24, "Ch1 PHASE 90deg/");
+    cell_drawstring_5x7(w, h, buf, xpos, ypos+21, trace[3].color);
+#else
+    for (t = 0; t < TRACES_MAX; t++) {
+      if (!trace[t].enabled)
+        continue;
+      trace_get_info(t, buf, sizeof buf);
+      cell_drawstring_5x7(w, h, buf, xpos, ypos, trace[t].color);
+      ypos += 7;
+    }
+#endif
+  }
+#if 0
+  if (m == 6 || m == 7) {
+    int xpos = 216;
+    int ypos = 1;
+    xpos -= m * w;
+    ypos -= n * h;
+    for (t = 0; t < TRACES_MAX; t++) {
+      int idx = 30;
+      trace_get_value_string(t, buf, sizeof buf, measured[trace[t].channel][idx]);
+      if (!trace[t].enabled)
+        continue;
+      cell_drawstring_5x7(w, h, buf, xpos, ypos, trace[t].color);
+      ypos += 7;
+    }
+  }
+#endif
+}
 
 void
 draw_frequencies(void)

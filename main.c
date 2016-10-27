@@ -765,11 +765,19 @@ static void cmd_recall(BaseSequentialStream *chp, int argc, char *argv[])
 
 
 const char *trc_type_name[] = {
-  "LogMAG", "Phase", "Smith", "Admit", "Polar", "Linear", "SWR"
+  "LOGMAG", "PHASE", "SMITH", "ADMIT", "POLAR", "LINEAR", "SWR"
 };
 const char *trc_channel_name[] = {
   "S11", "S21"
 };
+
+void
+trace_get_info(int t, char *buf, int len)
+{
+  chsnprintf(buf, len, "%s %s %.2f/",
+             trc_channel_name[trace[t].channel],
+             trc_type_name[trace[t].type], trace[t].scale);
+}
 
 static void cmd_trace(BaseSequentialStream *chp, int argc, char *argv[])
 {

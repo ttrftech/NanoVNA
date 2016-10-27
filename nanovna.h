@@ -65,6 +65,9 @@ typedef struct {
 } trace_t;
 
 extern trace_t trace[TRACES_MAX];
+extern float measured[2][101][2];
+
+void trace_get_info(int t, char *buf, int len);
 
 
 #define CAL_LOAD 0

@@ -1031,6 +1031,11 @@ int main(void)
    */
   ili9341_init();
 
+  /*
+   * Initialize graph plotting
+   */
+  plot_init();
+
   /* restore config and calibration data from flash memory */
   caldata_recall();
 

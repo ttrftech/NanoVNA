@@ -43,8 +43,19 @@ void calclate_gamma(float *gamma);
 
 int si5351_set_frequency_with_offset(int freq, int offset, uint8_t drive_strength);
 
+#define RGB565(b,r,g)     ( (((b)<<8)&0xfc00) | (((r)<<2)&0x03e0) | (((g)>>3)&0x001f) )
+
+extern uint16_t spi_buffer[1024];
+
 void ili9341_init(void);
 void ili9341_test(int mode);
+void ili9341_bulk(int x, int y, int w, int h);
+void ili9341_fill(int x, int y, int w, int h, int color);
+void ili9341_drawchar_5x7(uint8_t ch, int x, int y, uint16_t fg, uint16_t bg);
+void ili9341_drawstring_5x7(char *str, int x, int y, uint16_t fg, uint16_t bg);
+
+void plot_init(void);
+
 
 void set_sweep(int32_t start, int stop);
 void redraw(void);

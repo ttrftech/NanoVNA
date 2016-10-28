@@ -595,12 +595,6 @@ draw_marker(int w, int h, int x, int y, int c, int ch)
   }
 }
 
-typedef struct {
-  int enabled;
-  //uint32_t frequency;
-  int index;
-} marker_t;
-
 marker_t markers[4] = {
   { 1, 30 }, { 0, 40 }, { 0, 60 }, { 0, 80 }
 };
@@ -623,7 +617,7 @@ cell_draw_markers(int m, int n, int w, int h)
       int x = CELL_X(index) - x0;
       int y = CELL_Y(index) - y0;
       if (x > -6 && x < w+6 && y >= 0 && y < h+12)
-        draw_marker(w, h, x, y, trace[t].color, '1');
+        draw_marker(w, h, x, y, trace[t].color, '1' + i);
     }
   }
 }
@@ -768,6 +762,8 @@ cell_draw_marker_info(int m, int n, int w, int h)
 {
   char buf[24];
   int t;
+  if (active_marker < 0)
+    return;
   if (n != 0 || m > 8)
     return;
   int idx = markers[active_marker].index;
@@ -787,10 +783,13 @@ cell_draw_marker_info(int m, int n, int w, int h)
     cell_drawstring_5x7(w, h, buf, xpos, ypos, trace[t].color);
     j++;
   }    
-  int xpos = 208;
+  int xpos = 192;
   int ypos = 1 + (j/2)*7;
   xpos -= m * w;
   ypos -= n * h;
+  chsnprintf(buf, sizeof buf, "%d:", active_marker + 1);
+  cell_drawstring_5x7(w, h, buf, xpos, ypos, 0xffff);
+  xpos += 16;
   frequency_string(buf, sizeof buf, frequencies[idx]);
   cell_drawstring_5x7(w, h, buf, xpos, ypos, 0xffff);
 #else

@@ -774,7 +774,6 @@ const char *trc_channel_name[] = {
 static void cmd_trace(BaseSequentialStream *chp, int argc, char *argv[])
 {
   int t;
-  (void)chp;
   if (argc == 0) {
     for (t = 0; t < 4; t++) {
       if (trace[t].enabled) {
@@ -841,6 +840,45 @@ static void cmd_trace(BaseSequentialStream *chp, int argc, char *argv[])
  usage:
   chprintf(chp, "trace [n] [logmag|phase|smith|swr] [src]\r\n");
 }
+
+static void cmd_marker(BaseSequentialStream *chp, int argc, char *argv[])
+{
+  int t;
+  if (argc == 0) {
+    for (t = 0; t < 4; t++) {
+      if (markers[t].enabled) {
+        chprintf(chp, "%d %d\r\n", t+1, markers[t].index);
+      }
+    }
+    return;
+  } 
+  t = atoi(argv[0])-1;
+  if (t < 0 || t >= 4)
+    goto usage;
+  if (argc == 1) {
+    chprintf(chp, "%d %d\r\n", t+1, markers[t].index);
+    return;
+  }
+  if (argc > 1) {
+    if (strcmp(argv[1], "off") == 0) {
+      markers[t].enabled = FALSE;
+      if (active_marker == t)
+        active_marker = -1;
+    } else if (strcmp(argv[1], "on") == 0) {
+      markers[t].enabled = TRUE;
+      active_marker = t;
+    } else {
+      markers[t].enabled = TRUE;
+      int index = atoi(argv[1]);
+      markers[t].index = index;
+      active_marker = t;
+    }
+  }
+  return;
+ usage:
+  chprintf(chp, "marker [n] [off|{index}]\r\n");
+}
+
 
 static void cmd_test(BaseSequentialStream *chp, int argc, char *argv[])
 {
@@ -970,6 +1008,7 @@ static const ShellCommand commands[] =
     { "save", cmd_save },
     { "recall", cmd_recall },
     { "trace", cmd_trace },
+    { "marker", cmd_marker },
     { NULL, NULL }
 };
 

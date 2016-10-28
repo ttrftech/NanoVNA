@@ -82,6 +82,14 @@ extern float measured[2][101][2];
 
 void trace_get_info(int t, char *buf, int len);
 
+typedef struct {
+  int enabled;
+  //uint32_t frequency;
+  int index;
+} marker_t;
+
+extern marker_t markers[4];
+extern int active_marker;
 
 #define CAL_LOAD 0
 #define CAL_OPEN 1

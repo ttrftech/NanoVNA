@@ -66,6 +66,8 @@ enum {
   TRC_LOGMAG, TRC_PHASE, TRC_SMITH, TRC_ADMIT, TRC_POLAR, TRC_LINEAR, TRC_SWR
 };
 
+extern const char *trc_type_name[];
+
 typedef struct {
   int enabled;
   int type;

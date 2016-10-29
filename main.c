@@ -852,11 +852,20 @@ static void cmd_marker(BaseSequentialStream *chp, int argc, char *argv[])
     }
     return;
   } 
+  if (strcmp(argv[0], "off") == 0) {
+    active_marker = -1;
+    for (t = 0; t < 4; t++)
+      markers[t].enabled = FALSE;
+    return;
+  }
+
   t = atoi(argv[0])-1;
   if (t < 0 || t >= 4)
     goto usage;
   if (argc == 1) {
     chprintf(chp, "%d %d\r\n", t+1, markers[t].index);
+    active_marker = t;
+    markers[t].enabled = TRUE;
     return;
   }
   if (argc > 1) {

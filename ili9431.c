@@ -175,6 +175,12 @@ const uint8_t ili9341_init_seq[] = {
 		0xB7, 1, 0x06,
 		// display function control
 		0xB6, 4, 0x0A, 0x82, 0x27, 0x00,
+
+		// control display
+		//0x53, 1, 0x0c,
+		// diaplay brightness
+		//0x51, 1, 0xff,
+
 		// sleep out
 		0x11, 0,
 		0 // sentinel

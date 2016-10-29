@@ -122,7 +122,9 @@ void draw_cell_all(void);
 extern const uint16_t x5x7_bits [];
 extern const uint32_t numfont20x24[][24];
 
-#define CHAR_OHM  '\0x1e'
+#define CHAR_PI    '\0x1c'
+#define CHAR_MICRO '\0x1d'
+#define CHAR_OHM   '\0x1e'
 
 int caldata_save(void);
 int caldata_recall(void);

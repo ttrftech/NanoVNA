@@ -12,9 +12,6 @@ void draw_frequencies(void);
 static inline void force_set_markmap(void);
 void frequency_string(char *buf, size_t len, uint32_t freq);
 
-uint16_t markmap[2][8];
-uint16_t current_mappage = 0;
-
 #define OFFSETX 15
 #define OFFSETY 0
 #define WIDTH 291
@@ -30,6 +27,9 @@ trace_t trace[TRACES_MAX] = {
   { 1, TRC_PHASE, 1, 1.0, RGB565(50,255,0), 1 }
 };
 
+
+#define CELLWIDTH 32
+#define CELLHEIGHT 32
 
 /*
  * CELL_X0[27:31] cell position
@@ -53,8 +53,17 @@ uint32_t trace_index[TRACES_MAX][101];
 
 #define CELL_P(i, x, y) (((((x)&0x03e0UL)<<22) | (((y)&0x03e0UL)<<17)) == ((i)&0xffc00000UL))
 
-#define CELLWIDTH 32
-#define CELLHEIGHT 32
+/* indicate dirty cells */
+uint16_t markmap[2][8];
+uint16_t current_mappage = 0;
+
+
+marker_t markers[4] = {
+  { 1, 30 }, { 0, 40 }, { 0, 60 }, { 0, 80 }
+};
+
+int active_marker = 0;
+
 
 
 int32_t fstart = 0;
@@ -63,7 +72,6 @@ int32_t fspan = 300000000;
 int32_t fgrid = 50000000;
 int grid_offset;
 int grid_width;
-
 
 void set_sweep(int32_t start, int stop)
 {
@@ -104,6 +112,11 @@ circle_inout(int x, int y, int r)
     return -1;
   return 0;
 }
+
+
+#define POLAR_CENTER_X 146
+#define POLAR_CENTER_Y 116
+#define POLAR_RADIUS 116
 
 int
 smith_grid(int x, int y)
@@ -194,22 +207,33 @@ draw_on_strut(int v0, int d, int color)
 }
 
 
-
+/*
+ * calculate log10(abs(gamma))
+ */ 
 float logmag(float *v)
 {
   return log10f(v[0]*v[0] + v[1]*v[1]);
 }
 
+/*
+ * calculate phase[-2:2] of coefficient
+ */ 
 float phase(float *v)
 {
   return 2 * atan2f(v[1], v[0]) / M_PI;
 }
 
+/*
+ * calculate abs(gamma) * 8
+ */ 
 float linear(float *v)
 {
   return - sqrtf(v[0]*v[0] + v[1]*v[1]) * 8;
 }
 
+/*
+ * calculate vswr; (1+gamma)/(1-gamma)
+ */ 
 float swr(float *v)
 {
   float x = sqrtf(v[0]*v[0] + v[1]*v[1]);
@@ -394,6 +418,8 @@ mark_cells_from_index(void)
   int t;
   /* mark cells between each neighber points */
   for (t = 0; t < TRACES_MAX; t++) {
+    if (!trace[t].enabled)
+      continue;
     int x0 = CELL_X(trace_index[t][0]);
     int y0 = CELL_Y(trace_index[t][0]);
     int m0 = x0 >> 5;
@@ -594,12 +620,6 @@ draw_marker(int w, int h, int x, int y, int c, int ch)
     }
   }
 }
-
-marker_t markers[4] = {
-  { 1, 30 }, { 0, 40 }, { 0, 60 }, { 0, 80 }
-};
-
-int active_marker = 0;
 
 void
 cell_draw_markers(int m, int n, int w, int h)

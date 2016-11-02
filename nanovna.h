@@ -1,4 +1,7 @@
 
+/*
+ * tlv320aic3204.c
+ */
 extern void I2CWrite(int addr, uint8_t d0, uint8_t d1);
 
 typedef struct {
@@ -19,9 +22,16 @@ extern void tlv320aic3204_select_in1(void);
 extern void tlv320aic3204_select_in3(void);
 extern void tlv320aic3204_adc_filter_enable(int enable);
 
+
+/*
+ * ui.c
+ */
 extern void ui_init(void);
 extern void ui_process(void);
 
+/*
+ * dsp.c
+ */
 // 5ms @ 48kHz
 #define AUDIO_BUFFER_LEN 96
 
@@ -45,6 +55,9 @@ int si5351_set_frequency_with_offset(int freq, int offset, uint8_t drive_strengt
 
 #define RGB565(b,r,g)     ( (((b)<<8)&0xfc00) | (((r)<<2)&0x03e0) | (((g)>>3)&0x001f) )
 
+/*
+ * ili9341.c
+ */
 extern uint16_t spi_buffer[1024];
 
 void ili9341_init(void);
@@ -54,11 +67,14 @@ void ili9341_fill(int x, int y, int w, int h, int color);
 void ili9341_drawchar_5x7(uint8_t ch, int x, int y, uint16_t fg, uint16_t bg);
 void ili9341_drawstring_5x7(char *str, int x, int y, uint16_t fg, uint16_t bg);
 
+/*
+ * plot.c
+ */
 void plot_init(void);
-
-
 void set_sweep(int32_t start, int stop);
 void redraw(void);
+
+
 
 #define TRACES_MAX 4
 
@@ -141,6 +157,9 @@ typedef struct {
   int32_t checksum;
 } config_t;
 
+/*
+ * flash.c
+ */
 #define CONFIG_MAGIC 0x436f4e45 /* 'CoNF' */
 
 extern config_t *active;

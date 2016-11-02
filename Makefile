@@ -120,7 +120,7 @@ CSRC = $(STARTUPSRC) \
        $(SHELLSRC) \
        $(DSPLIBSRC) \
        usbcfg.c \
-       main.c si5351.c si5351_low.c tlv320aic3204.c dsp.c plot.c ili9431.c numfont20x24.c Font5x7.c flash.c
+       main.c si5351.c si5351_low.c tlv320aic3204.c dsp.c plot.c ui.c ili9431.c numfont20x24.c Font5x7.c flash.c
 
 #       $(TESTSRC) \
 

@@ -67,6 +67,7 @@ static THD_FUNCTION(Thread1, arg)
       chMtxLock(&mutex);
       scan_lcd();
       chMtxUnlock(&mutex);
+      ui_process();
 #endif
     }
 }
@@ -1104,16 +1105,16 @@ int main(void)
 
     //set_frequency(10000000);
 
-    while (1)
-    {
-    if (SDU1.config->usbp->state == USB_ACTIVE) {
-      //palSetPad(GPIOC, GPIOC_LED);
-      thread_t *shelltp = chThdCreateFromHeap(NULL, SHELL_WA_SIZE,
-                                              "shell", NORMALPRIO + 1,
-                                              shellThread, (void *)&shell_cfg1);
-      chThdWait(shelltp);               /* Waiting termination.             */
-      //palClearPad(GPIOC, GPIOC_LED);
-    }
-	chThdSleepMilliseconds(1000);
+    while (1) {
+      if (SDU1.config->usbp->state == USB_ACTIVE) {
+        //palSetPad(GPIOC, GPIOC_LED);
+        thread_t *shelltp = chThdCreateFromHeap(NULL, SHELL_WA_SIZE,
+                                                "shell", NORMALPRIO + 1,
+                                                shellThread, (void *)&shell_cfg1);
+        chThdWait(shelltp);               /* Waiting termination.             */
+        //palClearPad(GPIOC, GPIOC_LED);
+      }
+
+      chThdSleepMilliseconds(1000);
     }
 }

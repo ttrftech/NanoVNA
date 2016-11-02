@@ -70,8 +70,8 @@ int32_t fstart = 0;
 int32_t fstop = 300000000;
 int32_t fspan = 300000000;
 int32_t fgrid = 50000000;
-int grid_offset;
-int grid_width;
+int16_t grid_offset;
+int16_t grid_width;
 
 void set_sweep(int32_t start, int stop)
 {
@@ -153,25 +153,48 @@ smith_grid(int x, int y)
   return 0;
 }
 
+#if 0
 int
 rectangular_grid(int x, int y)
 {
-#define FREQ(x) (((x) * (fspan / 1000) / (WIDTH-1)) * 1000 + fstart)
   int c = grid_color;
+  //#define FREQ(x) (((x) * (fspan / 1000) / (WIDTH-1)) * 1000 + fstart)
   //int32_t n = FREQ(x-1) / fgrid;
   //int32_t m = FREQ(x) / fgrid;
   //if ((m - n) > 0)
   //if (((x * 6) % (WIDTH-1)) < 6)
   //if (((x - grid_offset) % grid_width) == 0)
-  if ((((x + grid_offset) * 10) % grid_width) < 10)
-    return c;
   if (x == 0 || x == (WIDTH-1))
     return c;
+  if ((y % 29) == 0)
+    return c;
+  if ((((x + grid_offset) * 10) % grid_width) < 10)
+    return c;
+  return 0;
+}
+#endif
+
+int
+rectangular_grid_x(int x)
+{
+  int c = grid_color;
+  if (x == 0 || x == (WIDTH-1))
+    return c;
+  if ((((x + grid_offset) * 10) % grid_width) < 10)
+    return c;
+  return 0;
+}
+
+int
+rectangular_grid_y(int y)
+{
+  int c = grid_color;
   if ((y % 29) == 0)
     return c;
   return 0;
 }
 
+#if 0
 int
 set_strut_grid(int x)
 {
@@ -205,7 +228,7 @@ draw_on_strut(int v0, int d, int color)
   while (d-- > 0)
     spi_buffer[v++] |= color;
 }
-
+#endif
 
 /*
  * calculate log10(abs(gamma))
@@ -658,14 +681,26 @@ draw_cell(int m, int n)
   if (y0 + h > HEIGHT)
     h = HEIGHT - y0;
 
+  PULSE;
   /* draw grid */
+  for (x = 0; x < w; x++) {
+    uint16_t c = rectangular_grid_x(x+x0);
+    for (y = 0; y < h; y++)
+      spi_buffer[y * w + x] = c;
+  }
+  for (y = 0; y < h; y++) {
+    uint16_t c = rectangular_grid_y(y+y0);
+    for (x = 0; x < w; x++)
+      spi_buffer[y * w + x] |= c;
+  }
   for (y = 0; y < h; y++) {
     for (x = 0; x < w; x++) {
-      uint16_t c = rectangular_grid(x+x0, y+y0);
-      c |= smith_grid(x+x0, y+y0);
-      spi_buffer[y * w + x] = c;
+      //uint16_t c = rectangular_grid(x+x0, y+y0);
+      uint16_t c = smith_grid(x+x0, y+y0);
+      spi_buffer[y * w + x] |= c;
     }
   }
+  PULSE;
 
 #if 1
   /* draw rectanglar plot */
@@ -730,8 +765,10 @@ draw_cell(int m, int n)
   }
 #endif
 
+  PULSE;
   cell_draw_markers(m, n, w, h);
   cell_draw_marker_info(m, n, w, h);
+  PULSE;
 
   ili9341_bulk(OFFSETX + x0, OFFSETY + y0, w, h);
 }

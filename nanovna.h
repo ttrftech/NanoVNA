@@ -171,3 +171,6 @@ extern config_t current_config;
 #define cal_status active->_cal_status
 #define frequencies active->_frequencies
 #define cal_data active->_cal_data
+
+
+#define PULSE do { palClearPad(GPIOC, GPIOC_LED); palSetPad(GPIOC, GPIOC_LED);} while(0)

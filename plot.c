@@ -11,11 +11,7 @@ void cell_draw_marker_info(int m, int n, int w, int h);
 void draw_frequencies(void);
 static inline void force_set_markmap(void);
 void frequency_string(char *buf, size_t len, uint32_t freq);
-
-#define OFFSETX 15
-#define OFFSETY 0
-#define WIDTH 291
-#define HEIGHT 233
+void markmap_all_markers(void);
 
 //#define GRID_COLOR 0x0863
 uint16_t grid_color = 0x1084;
@@ -500,8 +496,8 @@ void plot_into_index(float measured[2][101][2])
 #endif
 
   mark_cells_from_index();
+  markmap_all_markers();
 }
-
 
 void
 cell_drawline(int w, int h, int x0, int y0, int x1, int y1, int c)
@@ -666,6 +662,50 @@ cell_draw_markers(int m, int n, int w, int h)
 }
 
 void
+markmap_marker(int marker)
+{
+  int t;
+  if (!markers[marker].enabled)
+    return;
+  for (t = 0; t < TRACES_MAX; t++) {
+    if (!trace[t].enabled)
+      continue;
+    uint32_t index = trace_index[t][markers[marker].index];
+    int x = CELL_X(index);
+    int y = CELL_Y(index);
+    int m = x>>5;
+    int n = y>>5;
+    mark_map(m, n);
+    if ((x&31) < 6)
+      mark_map(m-1, n);
+    if ((x&31) > 32-6)
+      mark_map(m+1, n);
+    if ((y&31) < 12) {
+      mark_map(m, n-1);
+      if ((x&31) < 6)
+        mark_map(m-1, n-1);
+      if ((x&31) > 32-6)
+        mark_map(m+1, n-1);
+    }
+  }
+}
+
+void
+markmap_all_markers(void)
+{
+  int i;
+  for (i = 0; i < 4; i++) {
+    if (!markers[i].enabled)
+      continue;
+    markmap_marker(i);
+  }
+}
+
+
+int area_width = WIDTH;
+int area_height = HEIGHT;
+
+void
 draw_cell(int m, int n)
 {
   int x0 = m * CELLWIDTH;
@@ -676,10 +716,10 @@ draw_cell(int m, int n)
   int i0, i1;
   int i;
   int t;
-  if (x0 + w > WIDTH)
-    w = WIDTH - x0;
-  if (y0 + h > HEIGHT)
-    h = HEIGHT - y0;
+  if (x0 + w > area_width)
+    w = area_width - x0;
+  if (y0 + h > area_height)
+    h = area_height - y0;
 
   PULSE;
   /* draw grid */
@@ -777,13 +817,40 @@ void
 draw_cell_all(void)
 {
   int m, n;
-  for (m = 0; m < (WIDTH+CELLWIDTH-1) / CELLWIDTH; m++)
-    for (n = 0; n < (HEIGHT+CELLHEIGHT-1) / CELLHEIGHT; n++)
+  for (m = 0; m < (area_width+CELLWIDTH-1) / CELLWIDTH; m++)
+    for (n = 0; n < (area_height+CELLHEIGHT-1) / CELLHEIGHT; n++) {
       if (is_mapmarked(m, n))
         draw_cell(m, n);
+      //ui_process();
+    }
+
+  // keep current map for update
   swap_markmap();
+  // clear map for next plotting
   clear_markmap();
 }
+
+void
+redraw_marker(int marker)
+{
+  // mark map on new position of marker
+  markmap_marker(marker);
+
+  // mark cells on marker info
+  markmap[current_mappage][0] = 0xffff;
+
+  draw_cell_all();
+}
+
+void
+force_draw_cells(void)
+{
+  int n, m;
+  for (m = 7; m <= 9; m++)
+    for (n = 0; n < (area_height+CELLHEIGHT-1) / CELLHEIGHT; n++)
+      draw_cell(m, n);
+}
+
 
 void
 cell_drawchar_5x7(int w, int h, uint8_t ch, int x, int y, uint16_t fg)

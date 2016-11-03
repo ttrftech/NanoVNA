@@ -70,10 +70,21 @@ void ili9341_drawstring_5x7(char *str, int x, int y, uint16_t fg, uint16_t bg);
 /*
  * plot.c
  */
+
+#define OFFSETX 15
+#define OFFSETY 0
+#define WIDTH 291
+#define HEIGHT 233
+
+extern int area_width;
+extern int area_height;
+
 void plot_init(void);
 void set_sweep(int32_t start, int stop);
 void redraw(void);
+void force_draw_cells(void);
 
+void redraw_marker(int marker);
 
 
 #define TRACES_MAX 4
@@ -174,3 +185,7 @@ extern config_t current_config;
 
 
 #define PULSE do { palClearPad(GPIOC, GPIOC_LED); palSetPad(GPIOC, GPIOC_LED);} while(0)
+
+void ui_init(void);
+void ui_show(void);
+void ui_hide(void);

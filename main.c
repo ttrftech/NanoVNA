@@ -45,8 +45,7 @@ void scan_lcd(void);
 static MUTEX_DECL(mutex);
 
 
-
-static THD_WORKING_AREA(waThread1, 384);
+static THD_WORKING_AREA(waThread1, 400);
 static THD_FUNCTION(Thread1, arg)
 {
     (void)arg;
@@ -67,7 +66,7 @@ static THD_FUNCTION(Thread1, arg)
       chMtxLock(&mutex);
       scan_lcd();
       chMtxUnlock(&mutex);
-      ui_process();
+      //ui_process();
 #endif
     }
 }
@@ -401,6 +400,7 @@ void scan_lcd(void)
       ;
     palClearPad(GPIOC, GPIOC_LED);
     __disable_irq();
+    /* calculate reflection coeficient */
     calclate_gamma(measured[0][i]);
     __enable_irq();
 
@@ -409,29 +409,20 @@ void scan_lcd(void)
     while (wait_count)
       ;
     __disable_irq();
+    /* calculate transmission coeficient */
     calclate_gamma(measured[1][i]);
     __enable_irq();
 
     delay = set_frequency(frequencies[(i+1)%sweep_points]);
-#if 0
-    sweep_plot(frequencies[i], first, measured[0][i], measured[1][i]);
-    first = FALSE;
-#endif
     palSetPad(GPIOC, GPIOC_LED);
+    ui_process();
   }
-#if 0
-  for (i = 0; i < sweep_points; i++) {
-    sweep_plot(frequencies[i], first, measured[0][i], measured[1][i]);
-    first = FALSE;
-  }  
-#endif
-#if 0
-  sweep_tail();
-  polar_plot(measured);
-#endif
+
   if (cal_status & CALSTAT_APPLY)
     apply_error_term();
+
   plot_into_index(measured);
+
   draw_cell_all();
 }
 
@@ -1095,6 +1086,8 @@ int main(void)
   i2sObjectInit(&I2SD2);
   i2sStart(&I2SD2, &i2sconfig);
   i2sStartExchange(&I2SD2);
+
+  ui_init();
 
   /*
    * Shell manager initialization.

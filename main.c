@@ -352,6 +352,15 @@ config_t current_config = {
 };
 config_t *active = &current_config;
 
+void
+ensure_edit_config(void)
+{
+  if (active == &current_config)
+    return;
+
+  memcpy(&current_config, active, sizeof(config_t));
+  active = &current_config;
+}
 
 
 static void cmd_scan(BaseSequentialStream *chp, int argc, char *argv[])
@@ -455,6 +464,7 @@ static void cmd_sweep(BaseSequentialStream *chp, int argc, char *argv[])
     return;
   }
   if (argc >= 1) {
+    ensure_edit_config();
     int32_t x = atoi(argv[0]);
     if (x < 300000) {
       chprintf(chp, "bad parameter\r\n");
@@ -661,33 +671,39 @@ static void cmd_cal(BaseSequentialStream *chp, int argc, char *argv[])
 
   char *cmd = argv[0];
   if (strcmp(cmd, "load") == 0) {
+    ensure_edit_config();
     cal_status |= CALSTAT_LOAD;
     chMtxLock(&mutex);
     memcpy(cal_data[CAL_LOAD], measured[0], sizeof measured[0]);
     chMtxUnlock(&mutex);
   } else if (strcmp(cmd, "open") == 0) {
+    ensure_edit_config();
     cal_status |= CALSTAT_OPEN;
     cal_status &= ~(CALSTAT_ES|CALSTAT_APPLY);
     chMtxLock(&mutex);
     memcpy(cal_data[CAL_OPEN], measured[0], sizeof measured[0]);
     chMtxUnlock(&mutex);
   } else if (strcmp(cmd, "short") == 0) {
+    ensure_edit_config();
     cal_status |= CALSTAT_SHORT;
     cal_status &= ~(CALSTAT_ER|CALSTAT_APPLY);
     chMtxLock(&mutex);
     memcpy(cal_data[CAL_SHORT], measured[0], sizeof measured[0]);
     chMtxUnlock(&mutex);
   } else if (strcmp(cmd, "thru") == 0) {
+    ensure_edit_config();
     cal_status |= CALSTAT_THRU;
     chMtxLock(&mutex);
     memcpy(cal_data[CAL_THRU], measured[1], sizeof measured[0]);
     chMtxUnlock(&mutex);
   } else if (strcmp(cmd, "isoln") == 0) {
+    ensure_edit_config();
     cal_status |= CALSTAT_ISOLN;
     chMtxLock(&mutex);
     memcpy(cal_data[CAL_ISOLN], measured[1], sizeof measured[0]);
     chMtxUnlock(&mutex);
   } else if (strcmp(cmd, "done") == 0) {
+    ensure_edit_config();
     if (!(cal_status & CALSTAT_LOAD))
       eterm_set(ETERM_ED, 0.0, 0.0);
     //adjust_ed();
@@ -742,17 +758,41 @@ static void cmd_cal(BaseSequentialStream *chp, int argc, char *argv[])
 static void cmd_save(BaseSequentialStream *chp, int argc, char *argv[])
 {
   (void)chp;
-  (void)argc;
-  (void)argv;
-  caldata_save();
+
+  if (argc != 1)
+    goto usage;
+
+  int id = atoi(argv[0]);
+  if (id < 0 || id >= SAVEAREA_MAX)
+    goto usage;
+  caldata_save(id);
+  return;
+
+ usage:
+  chprintf(chp, "save {id}\r\n");
 }
 
 static void cmd_recall(BaseSequentialStream *chp, int argc, char *argv[])
 {
   (void)chp;
-  (void)argc;
-  (void)argv;
-  caldata_recall();
+  if (argc != 1)
+    goto usage;
+
+  int id = atoi(argv[0]);
+  if (id < 0 || id >= SAVEAREA_MAX)
+    goto usage;
+
+  pause_sweep();
+  if (caldata_recall(id) == 0) {
+    // success
+    set_sweep(freq_start, freq_stop);
+  }
+
+  resume_sweep();
+  return;
+
+ usage:
+  chprintf(chp, "save {id}\r\n");
 }
 
 
@@ -1068,15 +1108,14 @@ int main(void)
    */
   plot_init();
 
+  /* initial frequencies */
+  set_frequencies();
+
   /* restore config and calibration data from flash memory */
-  caldata_recall();
+  caldata_recall(0);
 
   set_sweep(freq_start, freq_stop);
   redraw();
-
-  /*
-   */
-  set_frequencies();
 
   /*
    * I2S Initialize

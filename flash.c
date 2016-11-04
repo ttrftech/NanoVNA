@@ -38,14 +38,13 @@ void flash_program_half_word(uint32_t address, uint16_t data)
 	FLASH->CR &= ~FLASH_CR_PG;
 }
 
-void flash_unlock(void) {
+void flash_unlock(void)
+{
   // unlock sequence
   FLASH->KEYR = 0x45670123;
   FLASH->KEYR = 0xCDEF89AB;
 }
 
-
-config_t cal_saved1 __attribute__ ((section(".calsave")));
 
 static uint32_t
 checksum(void *start, size_t len)
@@ -58,40 +57,64 @@ checksum(void *start, size_t len)
   return value;
 }
 
+#define SAVEAREA_MAX 5
+
+const uint32_t saveareas[] =
+  { 0x08018800, 0x0801a000, 0x0801b800, 0x0801d000, 0x0801e8000 };
+
+#define FLASH_PAGESIZE 0x800
+
+
 int
-caldata_save(void)
+caldata_save(int id)
 {
   uint16_t *src = (uint16_t*)&current_config;
-  uint16_t *dst = (uint16_t*)&cal_saved1;
-  int count = sizeof current_config / sizeof(uint16_t);
+  uint16_t *dst;
+  int count = sizeof(config_t) / sizeof(uint16_t);
+
+  if (id < 0 || id >= SAVEAREA_MAX)
+    return -1;
+  dst = (uint16_t*)saveareas[id];
 
   current_config.magic = CONFIG_MAGIC;
   current_config.checksum = 0;
   current_config.checksum = checksum(&current_config, sizeof current_config);
 
   flash_unlock();
-  flash_erase_page(0x801e800);
-  flash_erase_page(0x801f000);
-  flash_erase_page(0x801f800);
-  flash_erase_page((uint32_t)dst);
+  void *p = dst;
+  void *tail = p + sizeof(config_t);
+  while (p < tail) {
+    flash_erase_page((uint32_t)p);
+    p += FLASH_PAGESIZE;
+  }
   while(count-- > 0) {
     flash_program_half_word((uint32_t)dst, *src++);
     dst++;
   }
+
+  active = (config_t*)saveareas[id];
   return 0;
 }
 
 int
-caldata_recall(void)
+caldata_recall(int id)
 {
-  void *src = &cal_saved1;
+  config_t *src;
   void *dst = &current_config;
 
-  if (cal_saved1.magic != CONFIG_MAGIC)
+  if (id < 0 || id >= SAVEAREA_MAX)
     return -1;
-  if (checksum(&cal_saved1, sizeof cal_saved1) != 0)
+  src = (config_t*)saveareas[id];
+
+  if (src->magic != CONFIG_MAGIC)
+    return -1;
+  if (checksum(src, sizeof(config_t)) != 0)
     return -1;
 
-  memcpy(dst, src, sizeof current_config);
+#if 0
+  memcpy(dst, src, sizeof(config_t));
+#else
+  active = src;
+#endif
   return 0;
 }

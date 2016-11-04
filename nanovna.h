@@ -153,8 +153,11 @@ extern const uint32_t numfont20x24[][24];
 #define CHAR_MICRO '\0x1d'
 #define CHAR_OHM   '\0x1e'
 
-int caldata_save(void);
-int caldata_recall(void);
+/*
+ * flash.c
+ */
+
+#define SAVEAREA_MAX 5
 
 typedef struct {
   int32_t magic;
@@ -168,9 +171,6 @@ typedef struct {
   int32_t checksum;
 } config_t;
 
-/*
- * flash.c
- */
 #define CONFIG_MAGIC 0x436f4e45 /* 'CoNF' */
 
 extern config_t *active;
@@ -182,6 +182,12 @@ extern config_t current_config;
 #define cal_status active->_cal_status
 #define frequencies active->_frequencies
 #define cal_data active->_cal_data
+
+int caldata_save(int id);
+int caldata_recall(int id);
+
+
+
 
 
 #define PULSE do { palClearPad(GPIOC, GPIOC_LED); palSetPad(GPIOC, GPIOC_LED);} while(0)

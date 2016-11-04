@@ -84,7 +84,7 @@ void set_sweep(int32_t start, int stop);
 void redraw(void);
 void force_draw_cells(void);
 
-void redraw_marker(int marker);
+void redraw_marker(int marker, int update_info);
 
 
 #define TRACES_MAX 4

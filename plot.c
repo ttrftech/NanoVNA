@@ -716,10 +716,13 @@ draw_cell(int m, int n)
   int i0, i1;
   int i;
   int t;
+
   if (x0 + w > area_width)
     w = area_width - x0;
   if (y0 + h > area_height)
     h = area_height - y0;
+  if (w <= 0 || h <= 0)
+    return;
 
   PULSE;
   /* draw grid */
@@ -780,33 +783,11 @@ draw_cell(int m, int n)
     }
   }
 #endif
-#if 0
-  /* draw polar plot */
-  for (t = 0; t < TRACES_MAX; t++) {
-    int prev = -100;
-    int c = trace[t].color;
-    if (!trace[t].enabled || !trace[t].polar)
-      continue;
-    if (search_index(x0, y0, trace_index[t], &i0, &i1)) {
-      for (i = i0; i < i1; i++) {
-        uint32_t index = trace_index[t][i];
-        uint32_t pindex;
-        int n = i;
-        if (!CELL_P(index, x0, y0))
-          continue;
-        n = CELL_N(index);
-        if (n - prev == 1) {
-          pindex = trace_index[t][prev];
-          cell_drawline(w, h, CELL_X(pindex) - x0, CELL_Y(pindex) - y0, CELL_X(index) - x0, CELL_Y(index) - y0, c);
-          }
-          prev = n;
-      }
-    }
-  }
-#endif
 
   PULSE;
+  //draw marker symbols on each trace
   cell_draw_markers(m, n, w, h);
+  // draw trace and marker info on the top
   cell_draw_marker_info(m, n, w, h);
   PULSE;
 
@@ -831,13 +812,14 @@ draw_cell_all(void)
 }
 
 void
-redraw_marker(int marker)
+redraw_marker(int marker, int update_info)
 {
   // mark map on new position of marker
   markmap_marker(marker);
 
   // mark cells on marker info
-  markmap[current_mappage][0] = 0xffff;
+  if (update_info)
+    markmap[current_mappage][0] = 0xffff;
 
   draw_cell_all();
 }
@@ -886,20 +868,19 @@ cell_draw_marker_info(int m, int n, int w, int h)
 {
   char buf[24];
   int t;
+  if (n != 0)
+    return;
   if (active_marker < 0)
     return;
-  if (n != 0 || m > 8)
-    return;
   int idx = markers[active_marker].index;
-#if 1
   int j = 0;
   for (t = 0; t < TRACES_MAX; t++) {
     if (!trace[t].enabled)
       continue;
     int xpos = 1 + (j%2)*152;
     int ypos = 1 + (j/2)*7;
-    xpos -= m * w;
-    ypos -= n * h;
+    xpos -= m * CELLWIDTH;
+    ypos -= n * CELLHEIGHT;
     trace_get_info(t, buf, sizeof buf);
     cell_drawstring_5x7(w, h, buf, xpos, ypos, trace[t].color);
     xpos += 84;
@@ -907,54 +888,16 @@ cell_draw_marker_info(int m, int n, int w, int h)
     cell_drawstring_5x7(w, h, buf, xpos, ypos, trace[t].color);
     j++;
   }    
+
   int xpos = 192;
   int ypos = 1 + (j/2)*7;
-  xpos -= m * w;
-  ypos -= n * h;
+  xpos -= m * CELLWIDTH;
+  ypos -= n * CELLHEIGHT;
   chsnprintf(buf, sizeof buf, "%d:", active_marker + 1);
   cell_drawstring_5x7(w, h, buf, xpos, ypos, 0xffff);
   xpos += 16;
   frequency_string(buf, sizeof buf, frequencies[idx]);
   cell_drawstring_5x7(w, h, buf, xpos, ypos, 0xffff);
-#else
-  if (m == 0 || m == 1 || m == 2) {
-    int xpos = 1;
-    int ypos = 1;
-    xpos -= m * w;
-    ypos -= n * h;
-    for (t = 0; t < TRACES_MAX; t++) {
-      if (!trace[t].enabled)
-        continue;
-      trace_get_info(t, buf, sizeof buf);
-      cell_drawstring_5x7(w, h, buf, xpos, ypos, trace[t].color);
-      ypos += 7;
-    }
-  }
-#if 1
-  if (m == 2 || m == 3 || m == 4) {
-    int xpos = 87;
-    int ypos = 1;
-    xpos -= m * w;
-    ypos -= n * h;
-    for (t = 0; t < TRACES_MAX; t++) {
-      trace_get_value_string(t, buf, sizeof buf, measured[trace[t].channel][idx]);
-      if (!trace[t].enabled)
-        continue;
-      cell_drawstring_5x7(w, h, buf, xpos, ypos, trace[t].color);
-      ypos += 7;
-    }
-  }
-  if (m == 7 || m == 8) {
-    int idx = markers[active_marker].index;
-    int xpos = 224;
-    int ypos = 1;
-    xpos -= m * w;
-    ypos -= n * h;
-    frequency_string(buf, sizeof buf, frequencies[idx]);
-    cell_drawstring_5x7(w, h, buf, xpos, ypos, 0xffff);
-  }
-#endif
-#endif
 }
 
 void

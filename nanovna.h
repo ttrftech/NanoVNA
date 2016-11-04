@@ -104,7 +104,8 @@ typedef struct {
   uint8_t polar;
 } trace_t;
 
-extern trace_t trace[TRACES_MAX];
+//extern trace_t trace[TRACES_MAX];
+
 extern float measured[2][101][2];
 
 void trace_get_info(int t, char *buf, int len);
@@ -115,8 +116,8 @@ typedef struct {
   int index;
 } marker_t;
 
-extern marker_t markers[4];
-extern int active_marker;
+//extern marker_t markers[4];
+//extern int active_marker;
 
 #define CAL_LOAD 0
 #define CAL_OPEN 1
@@ -168,6 +169,11 @@ typedef struct {
 
   uint32_t _frequencies[101];
   float _cal_data[5][101][2];
+
+  trace_t _trace[TRACES_MAX];
+  marker_t _markers[4];
+  int _active_marker;
+
   int32_t checksum;
 } config_t;
 
@@ -182,6 +188,11 @@ extern config_t current_config;
 #define cal_status active->_cal_status
 #define frequencies active->_frequencies
 #define cal_data active->_cal_data
+
+#define trace current_config._trace
+#define markers current_config._markers
+#define active_marker current_config._active_marker
+
 
 int caldata_save(int id);
 int caldata_recall(int id);

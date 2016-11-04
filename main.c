@@ -348,6 +348,16 @@ config_t current_config = {
   /* cal_status */         0,
   /* frequencies */       {},
   /* cal_data */          {},
+  /* trace[4] */ {
+    { 1, TRC_LOGMAG, 0, 1.0, RGB565(0,255,255), 0 },
+    { 1, TRC_LOGMAG, 1, 1.0, RGB565(255,0,40), 0 },
+    { 1, TRC_SMITH, 0, 1.0, RGB565(0,0,255), 1 },
+    { 1, TRC_PHASE, 1, 1.0, RGB565(50,255,0), 1 }
+  },
+  /* markers[4] */ {
+  { 1, 30 }, { 0, 40 }, { 0, 60 }, { 0, 80 }
+  },
+  /* active_marker */      0,
   /* checksum */           0
 };
 config_t *active = &current_config;

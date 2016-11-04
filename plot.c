@@ -16,13 +16,14 @@ void markmap_all_markers(void);
 //#define GRID_COLOR 0x0863
 uint16_t grid_color = 0x1084;
 
+#if 0
 trace_t trace[TRACES_MAX] = {
   { 1, TRC_LOGMAG, 0, 1.0, RGB565(0,255,255), 0 },
   { 1, TRC_LOGMAG, 1, 1.0, RGB565(255,0,40), 0 },
   { 1, TRC_SMITH, 0, 1.0, RGB565(0,0,255), 1 },
   { 1, TRC_PHASE, 1, 1.0, RGB565(50,255,0), 1 }
 };
-
+#endif
 
 #define CELLWIDTH 32
 #define CELLHEIGHT 32
@@ -54,12 +55,13 @@ uint16_t markmap[2][8];
 uint16_t current_mappage = 0;
 
 
+#if 0
 marker_t markers[4] = {
   { 1, 30 }, { 0, 40 }, { 0, 60 }, { 0, 80 }
 };
 
 int active_marker = 0;
-
+#endif
 
 
 int32_t fstart = 0;

@@ -111,10 +111,8 @@ caldata_recall(int id)
   if (checksum(src, sizeof(config_t)) != 0)
     return -1;
 
-#if 0
   memcpy(dst, src, sizeof(config_t));
-#else
   active = src;
-#endif
+
   return 0;
 }

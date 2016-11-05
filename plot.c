@@ -164,7 +164,7 @@ rectangular_grid(int x, int y)
   //if (((x - grid_offset) % grid_width) == 0)
   if (x == 0 || x == (WIDTH-1))
     return c;
-  if ((y % 29) == 0)
+  if ((y % GRIDY) == 0)
     return c;
   if ((((x + grid_offset) * 10) % grid_width) < 10)
     return c;
@@ -187,7 +187,7 @@ int
 rectangular_grid_y(int y)
 {
   int c = grid_color;
-  if ((y % 29) == 0)
+  if ((y % GRIDY) == 0)
     return c;
   return 0;
 }
@@ -304,22 +304,96 @@ trace_into_index(int x, int t, int i, float coeff[2])
   }
   if (v < 0) v = 0;
   if (v > 8) v = 8;
-  y = v * 29;
+  y = v * GRIDY;
   return INDEX(x, y, i);
 }
 
+int
+string_value_with_prefix(char *buf, int len, float val, char unit)
+{
+  char prefix;
+  int n;
+  if (val < 1e-12) {
+    prefix = 'f';
+    val *= 1e15;
+  } else if (val < 1e-9) {
+    prefix = 'p';
+    val *= 1e12;
+  } else if (val < 1e-6) {
+    prefix = 'n';
+    val *= 1e9;
+  } else if (val < 1e-3) {
+    prefix = S_MICRO[0];
+    val *= 1e6;
+  } else if (val < 1) {
+    prefix = 'm';
+    val *= 1e3;
+  } else if (val < 1e3) {
+    prefix = 0;
+  } else if (val < 1e6) {
+    prefix = 'k';
+    val /= 1e3;
+  } else if (val < 1e9) {
+    prefix = 'M';
+    val /= 1e6;
+  } else {
+    prefix = 'G';
+    val /= 1e9;
+  }
+
+  if (val < 10) {
+    n = chsnprintf(buf, len, "%.2f", val);
+  } else if (val < 100) {
+    n = chsnprintf(buf, len, "%.1f", val);
+  } else {
+    n = chsnprintf(buf, len, "%d", (int)val);
+  }
+
+  if (prefix)
+    buf[n++] = prefix;
+  if (unit)
+    buf[n++] = unit;
+  buf[n] = '\0';
+  return n;
+}
+
+
+#define PI2 6.283184
+
 void
-trace_get_value_string(int t, char *buf, int len, float coeff[2])
+gamma2imp(char *buf, int len, const float coeff[2], uint32_t frequency)
+{
+  // z = (gamma+1)/(gamma-1) * z0
+  float z0 = 50;
+  float d = z0 / ((1-coeff[0])*(1-coeff[0])+coeff[1]*coeff[1]);
+  float zr = ((1+coeff[0])*(1-coeff[0]) + coeff[1]*coeff[1]) * d;
+  float zi = 2*coeff[1] * d;
+  int n;
+
+  n = string_value_with_prefix(buf, len, zr, S_OHM[0]);
+  buf[n++] = ' ';
+
+  if (zi < 0) {
+    float c = -1 / (PI2 * frequency * zi);
+    string_value_with_prefix(buf+n, len-n, c, 'F');
+  } else {
+    float l = zi / (PI2 * frequency);
+    string_value_with_prefix(buf+n, len-n, l, 'H');
+  }
+}
+
+void
+trace_get_value_string(int t, char *buf, int len, float coeff[2], uint32_t frequency)
 {
   float v;
   switch (trace[t].type) {
   case TRC_LOGMAG:
     v = logmag(coeff);
-    chsnprintf(buf, len, "%.2f dB", v * 10);
+    chsnprintf(buf, len, "%.2fdB", v * 10);
     break;
   case TRC_PHASE:
     v = phase(coeff);
-    chsnprintf(buf, len, "%.2f deg", v * 90);
+    chsnprintf(buf, len, "%.2f" S_DEGREE, v * 90);
     break;
   case TRC_LINEAR:
     v = linear(coeff);
@@ -330,6 +404,10 @@ trace_get_value_string(int t, char *buf, int len, float coeff[2])
     chsnprintf(buf, len, "%.2f", v);
     break;
   case TRC_SMITH:
+    gamma2imp(buf, len, coeff, frequency);
+    break;
+  case TRC_ADMIT:
+  case TRC_POLAR:
     chsnprintf(buf, len, "%.2f %.2fj", coeff[0], coeff[1]);
     break;
   }
@@ -341,21 +419,21 @@ trace_get_info(int t, char *buf, int len)
   const char *type = trc_type_name[trace[t].type];
   switch (trace[t].type) {
   case TRC_LOGMAG:
-    chsnprintf(buf, len, "Ch%d %s %ddB/",
+    chsnprintf(buf, len, "CH%d %s %ddB/",
                trace[t].channel, type, (int)(trace[t].scale*10));
     break;
   case TRC_PHASE:
-    chsnprintf(buf, len, "Ch%d %s %ddeg/",
+    chsnprintf(buf, len, "CH%d %s %d" S_DEGREE "/",
                trace[t].channel, type, (int)(trace[t].scale*90));
     break;
   case TRC_SMITH:
   case TRC_ADMIT:
   case TRC_POLAR:
-    chsnprintf(buf, len, "Ch%d %s %.1fFS",
+    chsnprintf(buf, len, "CH%d %s %.1fFS",
                trace[t].channel, type, trace[t].scale);
     break;
   default:
-    chsnprintf(buf, len, "Ch%d %s %.1f/",
+    chsnprintf(buf, len, "CH%d %s %.1f/",
                trace[t].channel, type, trace[t].scale);
     break;
   }
@@ -879,14 +957,14 @@ cell_draw_marker_info(int m, int n, int w, int h)
   for (t = 0; t < TRACES_MAX; t++) {
     if (!trace[t].enabled)
       continue;
-    int xpos = 1 + (j%2)*152;
+    int xpos = 1 + (j%2)*146;
     int ypos = 1 + (j/2)*7;
     xpos -= m * CELLWIDTH;
     ypos -= n * CELLHEIGHT;
     trace_get_info(t, buf, sizeof buf);
     cell_drawstring_5x7(w, h, buf, xpos, ypos, trace[t].color);
     xpos += 84;
-    trace_get_value_string(t, buf, sizeof buf, measured[trace[t].channel][idx]);
+    trace_get_value_string(t, buf, sizeof buf, measured[trace[t].channel][idx], frequencies[idx]);
     cell_drawstring_5x7(w, h, buf, xpos, ypos, trace[t].color);
     j++;
   }    

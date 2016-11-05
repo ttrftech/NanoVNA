@@ -81,17 +81,22 @@ caldata_save(int id)
   current_config.checksum = checksum(&current_config, sizeof current_config);
 
   flash_unlock();
+
+  /* erase flash pages */
   void *p = dst;
   void *tail = p + sizeof(config_t);
   while (p < tail) {
     flash_erase_page((uint32_t)p);
     p += FLASH_PAGESIZE;
   }
+
+  /* write to flahs */
   while(count-- > 0) {
     flash_program_half_word((uint32_t)dst, *src++);
     dst++;
   }
 
+  /* after saving data, make active configuration points to flash */
   active = (config_t*)saveareas[id];
   return 0;
 }
@@ -111,8 +116,11 @@ caldata_recall(int id)
   if (checksum(src, sizeof(config_t)) != 0)
     return -1;
 
-  memcpy(dst, src, sizeof(config_t));
+  /* active configuration points to save data on flash memory */
   active = src;
+
+  /* duplicated saved data onto sram to be able to modify marker/trace */
+  memcpy(dst, src, sizeof(config_t));
 
   return 0;
 }

@@ -70,22 +70,23 @@ void ili9341_drawstring_5x7(char *str, int x, int y, uint16_t fg, uint16_t bg);
 /*
  * plot.c
  */
-
 #define OFFSETX 15
 #define OFFSETY 0
 #define WIDTH 291
 #define HEIGHT 233
 
+#define GRIDY 29
+
 extern int area_width;
 extern int area_height;
 
-void plot_init(void);
-void set_sweep(int32_t start, int stop);
-void redraw(void);
-void force_draw_cells(void);
+extern const uint16_t x5x7_bits [];
+extern const uint32_t numfont20x24[][24];
 
-void redraw_marker(int marker, int update_info);
-
+#define S_PI    "\034"
+#define S_MICRO "\035"
+#define S_OHM   "\036"
+#define S_DEGREE "\037"
 
 #define TRACES_MAX 4
 
@@ -95,20 +96,27 @@ enum {
 
 extern const char *trc_type_name[];
 
+// LOGMAG: SCALE, REFPOS, REFVAL
+// PHASE: SCALE, REFPOS, REFVAL
+// DELAY: SCALE, REFPOS, REFVAL
+// SMITH: SCALE, <REFPOS>, <REFVAL>
+// LINMAG: SCALE, REFPOS, REFVAL
+// SWR: SCALE, REFPOS, REFVAL
+
+// Electrical Delay
+// Phase
+
 typedef struct {
   int enabled;
   int type;
   int channel;
   float scale;
+  //float ref;
   uint16_t color;
   uint8_t polar;
 } trace_t;
 
 //extern trace_t trace[TRACES_MAX];
-
-extern float measured[2][101][2];
-
-void trace_get_info(int t, char *buf, int len);
 
 typedef struct {
   int enabled;
@@ -118,6 +126,21 @@ typedef struct {
 
 //extern marker_t markers[4];
 //extern int active_marker;
+
+void plot_init(void);
+void set_sweep(int32_t start, int stop);
+void redraw(void);
+void force_draw_cells(void);
+void redraw_marker(int marker, int update_info);
+void trace_get_info(int t, char *buf, int len);
+void plot_into_index(float measured[2][101][2]);
+void draw_cell_all(void);
+
+
+/*
+ * main.c
+ */
+extern float measured[2][101][2];
 
 #define CAL_LOAD 0
 #define CAL_OPEN 1
@@ -144,20 +167,9 @@ typedef struct {
 #define ETERM_EX 4 /* error term isolation */
 
 
-void plot_into_index(float measured[2][101][2]);
-void draw_cell_all(void);
-
-extern const uint16_t x5x7_bits [];
-extern const uint32_t numfont20x24[][24];
-
-#define CHAR_PI    '\0x1c'
-#define CHAR_MICRO '\0x1d'
-#define CHAR_OHM   '\0x1e'
-
 /*
  * flash.c
  */
-
 #define SAVEAREA_MAX 5
 
 typedef struct {
@@ -193,16 +205,20 @@ extern config_t current_config;
 #define markers current_config._markers
 #define active_marker current_config._active_marker
 
-
 int caldata_save(int id);
 int caldata_recall(int id);
 
-
-
-
-
-#define PULSE do { palClearPad(GPIOC, GPIOC_LED); palSetPad(GPIOC, GPIOC_LED);} while(0)
-
+/*
+ * ui.c
+ */
 void ui_init(void);
 void ui_show(void);
 void ui_hide(void);
+
+
+/*
+ * misclinous
+ */
+#define PULSE do { palClearPad(GPIOC, GPIOC_LED); palSetPad(GPIOC, GPIOC_LED);} while(0)
+
+/*EOF*/

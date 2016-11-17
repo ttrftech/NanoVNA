@@ -368,7 +368,7 @@ ensure_edit_config(void)
   if (active == &current_config)
     return;
 
-  memcpy(&current_config, active, sizeof(config_t));
+  //memcpy(&current_config, active, sizeof(config_t));
   active = &current_config;
 }
 
@@ -742,15 +742,19 @@ static void cmd_cal(BaseSequentialStream *chp, int argc, char *argv[])
     }
 
     cal_status |= CALSTAT_APPLY;
+    draw_cal_status();
     return;
   } else if (strcmp(cmd, "on") == 0) {
     cal_status |= CALSTAT_APPLY;
+    draw_cal_status();
     return;
   } else if (strcmp(cmd, "off") == 0) {
     cal_status &= ~CALSTAT_APPLY;
+    draw_cal_status();
     return;
   } else if (strcmp(cmd, "reset") == 0) {
     cal_status = 0;
+    draw_cal_status();
     return;
   } else if (strcmp(cmd, "data") == 0) {
     chprintf(chp, "%f %f\r\n", cal_data[CAL_LOAD][0][0], cal_data[CAL_LOAD][0][1]);
@@ -776,6 +780,7 @@ static void cmd_save(BaseSequentialStream *chp, int argc, char *argv[])
   if (id < 0 || id >= SAVEAREA_MAX)
     goto usage;
   caldata_save(id);
+  draw_cal_status();
   return;
 
  usage:
@@ -796,13 +801,14 @@ static void cmd_recall(BaseSequentialStream *chp, int argc, char *argv[])
   if (caldata_recall(id) == 0) {
     // success
     set_sweep(freq_start, freq_stop);
+    draw_cal_status();
   }
 
   resume_sweep();
   return;
 
  usage:
-  chprintf(chp, "save {id}\r\n");
+  chprintf(chp, "recall {id}\r\n");
 }
 
 

@@ -136,6 +136,8 @@ void trace_get_info(int t, char *buf, int len);
 void plot_into_index(float measured[2][101][2]);
 void draw_cell_all(void);
 
+void draw_cal_status(void);
+
 
 /*
  * main.c
@@ -191,13 +193,14 @@ typedef struct {
 
 #define CONFIG_MAGIC 0x436f4e45 /* 'CoNF' */
 
+extern int16_t lastsaveid;
 extern config_t *active;
 extern config_t current_config;
 
 #define freq_start active->_freq_start
 #define freq_stop active->_freq_stop
 #define sweep_points active->_sweep_points
-#define cal_status active->_cal_status
+#define cal_status current_config._cal_status
 #define frequencies active->_frequencies
 #define cal_data active->_cal_data
 

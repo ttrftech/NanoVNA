@@ -64,6 +64,8 @@ const uint32_t saveareas[] =
 
 #define FLASH_PAGESIZE 0x800
 
+int16_t lastsaveid = 0;
+
 
 int
 caldata_save(int id)
@@ -98,6 +100,8 @@ caldata_save(int id)
 
   /* after saving data, make active configuration points to flash */
   active = (config_t*)saveareas[id];
+  lastsaveid = id;
+
   return 0;
 }
 
@@ -118,6 +122,7 @@ caldata_recall(int id)
 
   /* active configuration points to save data on flash memory */
   active = src;
+  lastsaveid = id;
 
   /* duplicated saved data onto sram to be able to modify marker/trace */
   memcpy(dst, src, sizeof(config_t));

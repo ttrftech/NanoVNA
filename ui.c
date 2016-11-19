@@ -162,6 +162,177 @@ ui_digit(void)
     }
 }
 
+
+// type of menu item 
+enum {
+  MT_NONE,
+  MT_BLANK,
+  MT_SUBMENU,
+  MT_CALLBACK,
+  MT_CANCEL
+};
+
+typedef void (*menuaction_cb_t)(int item);
+
+
+static void menu_move_back(void);
+
+
+
+static void
+menu_cal_cb(int item)
+{
+  switch (item) {
+  case 0: // OPEN
+    cal_collect(CAL_OPEN);
+    break;
+  case 1: // SHORT
+    cal_collect(CAL_SHORT);
+    break;
+  case 2: // LOAD
+    cal_collect(CAL_LOAD);
+    break;
+  case 3: // ISOLN
+    cal_collect(CAL_ISOLN);
+    break;
+  case 4: // THRU
+    cal_collect(CAL_THRU);
+    break;
+  }
+  selection++;
+  draw_cal_status();
+}
+
+static void
+menu_caldone_cb(int item)
+{
+  cal_done();
+  draw_cal_status();
+  menu_move_back();
+}
+
+static void
+menu_recall_cb(int item)
+{
+  if (item < 0 || item > 5)
+    return;
+  if (caldata_recall(item) == 0) {
+    ui_status = FALSE;
+    ui_hide();
+    set_sweep(freq_start, freq_stop);
+    draw_cal_status();
+  }
+}
+
+typedef struct {
+  uint8_t type;
+  char *label;
+  const void *reference;
+} menuitem_t;
+
+const menuitem_t menu_cal[] = {
+  { MT_CALLBACK, "OPEN", menu_cal_cb },
+  { MT_CALLBACK, "SHORT", menu_cal_cb },
+  { MT_CALLBACK, "LOAD", menu_cal_cb },
+  { MT_CALLBACK, "ISOLN", menu_cal_cb },
+  { MT_CALLBACK, "THRU", menu_cal_cb },
+  { MT_CALLBACK, "DONE", menu_caldone_cb },
+  { MT_CANCEL, "BACK", NULL },
+  { MT_NONE, NULL, NULL } // sentinel
+};
+
+const menuitem_t menu_recall[] = {
+  { MT_CALLBACK, "0", menu_recall_cb },
+  { MT_CALLBACK, "1", menu_recall_cb },
+  { MT_CALLBACK, "2", menu_recall_cb },
+  { MT_CALLBACK, "3", menu_recall_cb },
+  { MT_CALLBACK, "4", menu_recall_cb },
+  { MT_CANCEL, "BACK", NULL },
+  { MT_NONE, NULL, NULL } // sentinel
+};
+
+const menuitem_t menu_top[] = {
+  { MT_SUBMENU, "CAL", menu_cal },
+  { MT_SUBMENU, "RECALL", menu_recall },
+  { MT_CANCEL, "BACK", NULL },
+  { MT_NONE, NULL, NULL } // sentinel
+};
+
+#define MENU_STACK_DEPTH_MAX 4
+uint8_t menu_current_level = 0;
+const menuitem_t *menu_stack[4] = {
+  menu_top, NULL, NULL, NULL
+};
+
+static void menu_move_back(void)
+{
+  if (menu_current_level == 0)
+    return;
+  menu_current_level--;
+  erase_buttons();
+}
+
+static void menu_move_top(void)
+{
+  if (menu_current_level == 0)
+    return;
+  menu_current_level = 0;
+  erase_buttons();
+}
+
+void menu_invoke(int selection)
+{
+  const menuitem_t *menu = menu_stack[menu_current_level];
+  menu = &menu[selection];
+
+  switch (menu->type) {
+  case MT_NONE:
+  case MT_BLANK:
+    ui_status = FALSE;
+    ui_hide();
+    break;
+
+  case MT_CANCEL:
+    menu_move_back();
+    break;
+
+  case MT_CALLBACK: {
+    menuaction_cb_t cb = (menuaction_cb_t)menu->reference;
+    if (cb == NULL)
+      return;
+    (*cb)(selection);
+    break;
+  }
+
+  case MT_SUBMENU:
+    if (menu_current_level >= 3)
+      break;
+    menu_current_level++;
+    menu_stack[menu_current_level] = (const menuitem_t*)menu->reference;
+    selection = 0;
+    break;
+  }
+}
+
+
+void
+draw_menu_buttons(const menuitem_t *menu)
+{
+  int i = 0;
+  for (i = 0; i < 7; i++) {
+    if (menu[i].type == MT_NONE)
+      break;
+    if (menu[i].type == MT_BLANK) 
+      continue;
+    int y = 32*i;
+    uint16_t bg = 0xffff;
+    if (i == selection)
+      bg = 0x7777;
+    ili9341_fill(320-60, y, 60, 30, bg);
+    ili9341_drawstring_5x7(menu[i].label, 320-54, y+12, 0x0000, bg);
+  }
+}
+
 const char *menu_items[] = {
   "OPEN", "SHORT", "LOAD", "ISOLN", "THRU", NULL, "DONE"
 };
@@ -169,6 +340,9 @@ const char *menu_items[] = {
 void
 draw_buttons(void)
 {
+#if 1
+  draw_menu_buttons(menu_stack[menu_current_level]);
+#else
   int i = 0;
   for (i = 0; i < 7; i++) {
     int y = 32*i;
@@ -180,6 +354,7 @@ draw_buttons(void)
       ili9341_drawstring_5x7(menu_items[i], 320-54, y+12, 0x0000, bg);
     }
   }
+#endif
 }
 
 void
@@ -216,12 +391,13 @@ ui_process(void)
   int n;
   if (status != 0) {
     if (status & EVT_BUTTON_SINGLE_CLICK) {
-      //markers[active_marker].index = 30;
-      ui_status = !ui_status;
-      if (ui_status) 
+      if (ui_status) {
+        menu_invoke(selection);
+      } else {
+        ui_status = TRUE;
+      }
+      if (ui_status)
         ui_show();
-      else
-        ui_hide();
     } else {
       if (ui_status) {
         if (status & EVT_UP) {

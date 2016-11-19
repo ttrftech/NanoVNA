@@ -168,6 +168,9 @@ extern float measured[2][101][2];
 #define ETERM_ET 3 /* error term transmission tracking */
 #define ETERM_EX 4 /* error term isolation */
 
+void cal_collect(int type);
+void cal_done(void);
+
 
 /*
  * flash.c

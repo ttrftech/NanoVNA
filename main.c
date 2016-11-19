@@ -370,6 +370,7 @@ ensure_edit_config(void)
 
   //memcpy(&current_config, active, sizeof(config_t));
   active = &current_config;
+  cal_status = 0;
 }
 
 
@@ -665,6 +666,77 @@ void apply_error_term(void)
   }
 }
 
+void
+cal_collect(int type)
+{
+  ensure_edit_config();
+  chMtxLock(&mutex);
+
+  switch (type) {
+  case CAL_LOAD:
+    cal_status |= CALSTAT_LOAD;
+    memcpy(cal_data[CAL_LOAD], measured[0], sizeof measured[0]);
+    break;
+
+  case CAL_OPEN:
+    cal_status |= CALSTAT_OPEN;
+    cal_status &= ~(CALSTAT_ES|CALSTAT_APPLY);
+    memcpy(cal_data[CAL_OPEN], measured[0], sizeof measured[0]);
+    break;
+
+  case CAL_SHORT:
+    cal_status |= CALSTAT_SHORT;
+    cal_status &= ~(CALSTAT_ER|CALSTAT_APPLY);
+    memcpy(cal_data[CAL_SHORT], measured[0], sizeof measured[0]);
+    break;
+
+  case CAL_THRU:
+    cal_status |= CALSTAT_THRU;
+    memcpy(cal_data[CAL_THRU], measured[1], sizeof measured[0]);
+    break;
+
+  case CAL_ISOLN:
+    cal_status |= CALSTAT_ISOLN;
+    memcpy(cal_data[CAL_ISOLN], measured[1], sizeof measured[0]);
+    break;
+  }
+  chMtxUnlock(&mutex);
+}
+
+void
+cal_done(void)
+{
+  ensure_edit_config();
+  if (!(cal_status & CALSTAT_LOAD))
+    eterm_set(ETERM_ED, 0.0, 0.0);
+  //adjust_ed();
+  if ((cal_status & CALSTAT_SHORT) && (cal_status & CALSTAT_OPEN)) {
+    eterm_calc_es();
+    eterm_calc_er(-1);
+  } else if (cal_status & CALSTAT_OPEN) {
+    eterm_copy(CAL_SHORT, CAL_OPEN);
+    eterm_set(ETERM_ES, 0.0, 0.0);
+    eterm_calc_er(1);
+  } else if (cal_status & CALSTAT_SHORT) {
+    eterm_set(ETERM_ES, 0.0, 0.0);
+    cal_status &= ~CALSTAT_SHORT;
+    eterm_calc_er(-1);
+  } else {
+    eterm_set(ETERM_ER, 1.0, 0.0);
+    eterm_set(ETERM_ES, 0.0, 0.0);
+  }
+    
+  if (!(cal_status & CALSTAT_ISOLN))
+    eterm_set(ETERM_EX, 0.0, 0.0);
+  if (cal_status & CALSTAT_THRU) {
+    eterm_calc_et();
+  } else {
+    eterm_set(ETERM_ET, 1.0, 0.0);
+  }
+
+  cal_status |= CALSTAT_APPLY;
+}
+
 static void cmd_cal(BaseSequentialStream *chp, int argc, char *argv[])
 {
   const char *items[] = { "load", "open", "short", "thru", "isoln", "Es", "Er", "Et", "cal'ed" };
@@ -681,67 +753,17 @@ static void cmd_cal(BaseSequentialStream *chp, int argc, char *argv[])
 
   char *cmd = argv[0];
   if (strcmp(cmd, "load") == 0) {
-    ensure_edit_config();
-    cal_status |= CALSTAT_LOAD;
-    chMtxLock(&mutex);
-    memcpy(cal_data[CAL_LOAD], measured[0], sizeof measured[0]);
-    chMtxUnlock(&mutex);
+    cal_collect(CAL_LOAD);
   } else if (strcmp(cmd, "open") == 0) {
-    ensure_edit_config();
-    cal_status |= CALSTAT_OPEN;
-    cal_status &= ~(CALSTAT_ES|CALSTAT_APPLY);
-    chMtxLock(&mutex);
-    memcpy(cal_data[CAL_OPEN], measured[0], sizeof measured[0]);
-    chMtxUnlock(&mutex);
+    cal_collect(CAL_OPEN);
   } else if (strcmp(cmd, "short") == 0) {
-    ensure_edit_config();
-    cal_status |= CALSTAT_SHORT;
-    cal_status &= ~(CALSTAT_ER|CALSTAT_APPLY);
-    chMtxLock(&mutex);
-    memcpy(cal_data[CAL_SHORT], measured[0], sizeof measured[0]);
-    chMtxUnlock(&mutex);
+    cal_collect(CAL_SHORT);
   } else if (strcmp(cmd, "thru") == 0) {
-    ensure_edit_config();
-    cal_status |= CALSTAT_THRU;
-    chMtxLock(&mutex);
-    memcpy(cal_data[CAL_THRU], measured[1], sizeof measured[0]);
-    chMtxUnlock(&mutex);
+    cal_collect(CAL_THRU);
   } else if (strcmp(cmd, "isoln") == 0) {
-    ensure_edit_config();
-    cal_status |= CALSTAT_ISOLN;
-    chMtxLock(&mutex);
-    memcpy(cal_data[CAL_ISOLN], measured[1], sizeof measured[0]);
-    chMtxUnlock(&mutex);
+    cal_collect(CAL_ISOLN);
   } else if (strcmp(cmd, "done") == 0) {
-    ensure_edit_config();
-    if (!(cal_status & CALSTAT_LOAD))
-      eterm_set(ETERM_ED, 0.0, 0.0);
-    //adjust_ed();
-    if ((cal_status & CALSTAT_SHORT) && (cal_status & CALSTAT_OPEN)) {
-      eterm_calc_es();
-      eterm_calc_er(-1);
-    } else if (cal_status & CALSTAT_OPEN) {
-      eterm_copy(CAL_SHORT, CAL_OPEN);
-      eterm_set(ETERM_ES, 0.0, 0.0);
-      eterm_calc_er(1);
-    } else if (cal_status & CALSTAT_SHORT) {
-      eterm_set(ETERM_ES, 0.0, 0.0);
-      cal_status &= ~CALSTAT_SHORT;
-      eterm_calc_er(-1);
-    } else {
-      eterm_set(ETERM_ER, 1.0, 0.0);
-      eterm_set(ETERM_ES, 0.0, 0.0);
-    }
-    
-    if (!(cal_status & CALSTAT_ISOLN))
-      eterm_set(ETERM_EX, 0.0, 0.0);
-    if (cal_status & CALSTAT_THRU) {
-      eterm_calc_et();
-    } else {
-      eterm_set(ETERM_ET, 1.0, 0.0);
-    }
-
-    cal_status |= CALSTAT_APPLY;
+    cal_done();
     draw_cal_status();
     return;
   } else if (strcmp(cmd, "on") == 0) {

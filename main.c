@@ -1061,7 +1061,8 @@ static void cmd_stat(BaseSequentialStream *chp, int argc, char *argv[])
 
 
 
-#define SHELL_WA_SIZE THD_WORKING_AREA_SIZE(454)
+#define SHELL_WA_SIZE THD_WORKING_AREA_SIZE(400)
+static THD_WORKING_AREA(waThread2, SHELL_WA_SIZE);
 
 static const ShellCommand commands[] =
 {
@@ -1178,9 +1179,9 @@ int main(void)
     while (1) {
       if (SDU1.config->usbp->state == USB_ACTIVE) {
         //palSetPad(GPIOC, GPIOC_LED);
-        thread_t *shelltp = chThdCreateFromHeap(NULL, SHELL_WA_SIZE,
-                                                "shell", NORMALPRIO + 1,
-                                                shellThread, (void *)&shell_cfg1);
+        thread_t *shelltp = chThdCreateStatic(waThread2, sizeof(waThread2), 
+                                              NORMALPRIO + 1,
+                                              shellThread, (void *)&shell_cfg1);
         chThdWait(shelltp);               /* Waiting termination.             */
         //palClearPad(GPIOC, GPIOC_LED);
       }

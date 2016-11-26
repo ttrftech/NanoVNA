@@ -112,42 +112,188 @@ circle_inout(int x, int y, int r)
 }
 
 
-#define POLAR_CENTER_X 146
-#define POLAR_CENTER_Y 116
-#define POLAR_RADIUS 116
+#define P_CENTER_X 146
+#define P_CENTER_Y 116
+#define P_RADIUS 116
 
+int
+polar_grid(int x, int y)
+{
+  int c = grid_color;
+  int d;
+
+  // offset to center
+  x -= P_CENTER_X;
+  y -= P_CENTER_Y;
+
+  // outer circle
+  d = circle_inout(x, y, P_RADIUS);
+  if (d < 0) return 0;
+  if (d == 0) return c;
+
+  // vertical and horizontal axis
+  if (x == 0 || y == 0)
+    return c;
+
+  d = circle_inout(x, y, P_RADIUS / 5);
+  if (d == 0) return c;
+  if (d > 0) return 0;
+
+  d = circle_inout(x, y, P_RADIUS * 2 / 5);
+  if (d == 0) return c;
+  if (d > 0) return 0;
+
+  // cross sloping lines
+  if (x == y || x == -y)
+    return c;
+
+  d = circle_inout(x, y, P_RADIUS * 3 / 5);
+  if (d == 0) return c;
+  if (d > 0) return 0;
+
+  d = circle_inout(x, y, P_RADIUS * 4 / 5);
+  if (d == 0) return c;
+  return 0;
+}
+
+/*
+ * Constant Resistance circle: (u - r/(r+1))^2 + v^2 = 1/(r+1)^2
+ * Constant Reactance circle:  (u - 1)^2 + (v-1/x)^2 = 1/x^2
+ */
 int
 smith_grid(int x, int y)
 {
-  int d = circle_inout(x-146, y-116, 116);
   int c = grid_color;
+  int d;
+
+  // offset to center
+  x -= P_CENTER_X;
+  y -= P_CENTER_Y;
+  
+  // outer circle
+  d = circle_inout(x, y, P_RADIUS);
   if (d < 0)
     return 0;
-  else if (d == 0)
+  if (d == 0)
     return c;
-  x -= 146+116;
-  y -= 116;
-  
+
+  // shift circle center to right origin
+  x -= P_RADIUS;
+
+  // Constant Reactance Circle: 2j : R/2 = 58
   if (circle_inout(x, y+58, 58) == 0)
     return c;
   if (circle_inout(x, y-58, 58) == 0)
     return c;
+
+  // Constant Resistance Circle: 3 : R/4 = 29
   d = circle_inout(x+29, y, 29);
   if (d > 0) return 0;
   if (d == 0) return c;
+
+  // Constant Reactance Circle: 1j : R = 116
   if (circle_inout(x, y+116, 116) == 0)
     return c;
   if (circle_inout(x, y-116, 116) == 0)
     return c;
+
+  // Constant Resistance Circle: 1 : R/2 = 58
   d = circle_inout(x+58, y, 58);
   if (d > 0) return 0;
   if (d == 0) return c;
+
+  // Constant Reactance Circle: 1/2j : R*2 = 232
   if (circle_inout(x, y+232, 232) == 0)
     return c;
   if (circle_inout(x, y-232, 232) == 0)
     return c;
+
+  // Constant Resistance Circle: 1/3 : R*3/4 = 87
   if (circle_inout(x+87, y, 87) == 0)
     return c;
+  return 0;
+}
+
+int
+smith_grid2(int x, int y, float scale)
+{
+  int c = grid_color;
+  int d;
+
+  // offset to center
+  x -= P_CENTER_X;
+  y -= P_CENTER_Y;
+  
+  // outer circle
+  d = circle_inout(x, y, P_RADIUS);
+  if (d < 0)
+    return 0;
+  if (d == 0)
+    return c;
+
+  // shift circle center to right origin
+  x -= P_RADIUS * scale;
+
+  // Constant Reactance Circle: 2j : R/2 = 58
+  if (circle_inout(x, y+58*scale, 58*scale) == 0)
+    return c;
+  if (circle_inout(x, y-58*scale, 58*scale) == 0)
+    return c;
+#if 0
+  // Constant Resistance Circle: 3 : R/4 = 29
+  d = circle_inout(x+29*scale, y, 29*scale);
+  if (d > 0) return 0;
+  if (d == 0) return c;
+  d = circle_inout(x-29*scale, y, 29*scale);
+  if (d > 0) return 0;
+  if (d == 0) return c;
+#endif
+
+  // Constant Reactance Circle: 1j : R = 116
+  if (circle_inout(x, y+116*scale, 116*scale) == 0)
+    return c;
+  if (circle_inout(x, y-116*scale, 116*scale) == 0)
+    return c;
+
+  // Constant Resistance Circle: 1 : R/2 = 58
+  d = circle_inout(x+58*scale, y, 58*scale);
+  if (d > 0) return 0;
+  if (d == 0) return c;
+  d = circle_inout(x-58*scale, y, 58*scale);
+  if (d > 0) return 0;
+  if (d == 0) return c;
+
+  // Constant Reactance Circle: 1/2j : R*2 = 232
+  if (circle_inout(x, y+232*scale, 232*scale) == 0)
+    return c;
+  if (circle_inout(x, y-232*scale, 232*scale) == 0)
+    return c;
+
+#if 0
+  // Constant Resistance Circle: 1/3 : R*3/4 = 87
+  d = circle_inout(x+87*scale, y, 87*scale);
+  if (d > 0) return 0;
+  if (d == 0) return c;
+  d = circle_inout(x+87*scale, y, 87*scale);
+  if (d > 0) return 0;
+  if (d == 0) return c;
+#endif
+
+  // Constant Resistance Circle: 0 : R
+  d = circle_inout(x+P_RADIUS*scale, y, P_RADIUS*scale);
+  if (d > 0) return 0;
+  if (d == 0) return c;
+  d = circle_inout(x-P_RADIUS*scale, y, P_RADIUS*scale);
+  if (d > 0) return 0;
+  if (d == 0) return c;
+
+  // Constant Resistance Circle: -1/3 : R*3/2 = 174
+  d = circle_inout(x+174*scale, y, 174*scale);
+  if (d > 0) return 0;
+  if (d == 0) return c;
+  d = circle_inout(x-174*scale, y, 174*scale);
+  //if (d > 0) return 0;
+  if (d == 0) return c;
   return 0;
 }
 
@@ -493,6 +639,12 @@ is_mapmarked(int x, int y)
   return (markmap[0][y] & bit) || (markmap[1][y] & bit);
 }
 
+static inline void
+markmap_upperarea(void)
+{
+  markmap[current_mappage][0] |= 0xffff;
+}
+
 static void
 swap_markmap(void)
 {
@@ -779,8 +931,8 @@ markmap_all_markers(void)
       continue;
     markmap_marker(i);
   }
+  markmap_upperarea();
 }
-
 
 int area_width = WIDTH;
 int area_height = HEIGHT;
@@ -820,6 +972,8 @@ draw_cell(int m, int n)
     for (x = 0; x < w; x++) {
       //uint16_t c = rectangular_grid(x+x0, y+y0);
       uint16_t c = smith_grid(x+x0, y+y0);
+      //uint16_t c = smith_grid2(x+x0, y+y0, 0.5);
+      //uint16_t c = polar_grid(x+x0, y+y0);
       spi_buffer[y * w + x] |= c;
     }
   }

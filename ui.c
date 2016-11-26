@@ -24,9 +24,10 @@
 #include <stdlib.h>
 
 struct {
-    enum { CHANNEL, FREQ, VOLUME, MOD, AGC, RFGAIN, DGAIN, MODE_MAX } mode;
-	int digit; /* 0~5 */
+  int digit; /* 0~5 */
+  int current_trace; /* 0..3 */
 } uistat;
+
 
 #define NO_EVENT					0
 #define EVT_BUTTON_SINGLE_CLICK		0x01
@@ -169,14 +170,14 @@ enum {
   MT_BLANK,
   MT_SUBMENU,
   MT_CALLBACK,
-  MT_CANCEL
+  MT_CANCEL,
+  MT_CLOSE
 };
 
 typedef void (*menuaction_cb_t)(int item);
 
 
 static void menu_move_back(void);
-
 
 
 static void
@@ -214,7 +215,7 @@ menu_caldone_cb(int item)
 static void
 menu_recall_cb(int item)
 {
-  if (item < 0 || item > 5)
+  if (item < 0 || item >= 5)
     return;
   if (caldata_recall(item) == 0) {
     ui_status = FALSE;
@@ -222,6 +223,51 @@ menu_recall_cb(int item)
     set_sweep(freq_start, freq_stop);
     draw_cal_status();
   }
+}
+
+static void
+menu_trace_cb(int item)
+{
+  if (item < 0 || item >= 4)
+    return;
+  uistat.current_trace = item;
+}
+
+static void
+menu_format_cb(int item)
+{
+  trace[uistat.current_trace].type = item;
+}
+
+static void 
+elect_active_marker(void)
+{
+  int i;
+  for (i = 0; i < 4; i++)
+    if (markers[i].enabled) {
+      active_marker = i;
+      return;
+    }
+  active_marker = -1;
+}
+
+static void
+menu_marker_cb(int item)
+{
+  if (item < 0 || item >= 4)
+    return;
+
+  if (active_marker == item) {
+    markers[active_marker].enabled = FALSE;
+    elect_active_marker();
+  } else {
+    active_marker = item;
+    markers[active_marker].enabled = TRUE;
+  }
+  if (active_marker >= 0)
+    redraw_marker(active_marker, TRUE);
+  ui_status = FALSE;
+  ui_hide();
 }
 
 typedef struct {
@@ -241,6 +287,43 @@ const menuitem_t menu_cal[] = {
   { MT_NONE, NULL, NULL } // sentinel
 };
 
+const menuitem_t menu_trace[] = {
+  { MT_CALLBACK, "0", menu_trace_cb },
+  { MT_CALLBACK, "1", menu_trace_cb },
+  { MT_CALLBACK, "2", menu_trace_cb },
+  { MT_CALLBACK, "3", menu_trace_cb },
+  { MT_CANCEL, "BACK", NULL },
+  { MT_NONE, NULL, NULL } // sentinel
+};
+
+const menuitem_t menu_format[] = {
+  { MT_CALLBACK, "LOGMAG", menu_format_cb },
+  { MT_CALLBACK, "PHASE", menu_format_cb },
+  { MT_CALLBACK, "SMITH", menu_format_cb },
+  { MT_CALLBACK, "ADMIT", menu_format_cb },
+  { MT_CALLBACK, "DELAY", menu_format_cb },
+  { MT_CALLBACK, "SWR", menu_format_cb },
+  { MT_CANCEL, "BACK", NULL },
+  { MT_NONE, NULL, NULL } // sentinel
+};
+
+const menuitem_t menu_display[] = {
+  { MT_SUBMENU, "TRACE", menu_trace },
+  { MT_SUBMENU, "FORMAT", menu_format },
+  { MT_SUBMENU, "SCALE", menu_format },
+  { MT_CANCEL, "BACK", NULL },
+  { MT_NONE, NULL, NULL } // sentinel
+};
+
+const menuitem_t menu_marker[] = {
+  { MT_CALLBACK, "1", menu_marker_cb },
+  { MT_CALLBACK, "2", menu_marker_cb },
+  { MT_CALLBACK, "3", menu_marker_cb },
+  { MT_CALLBACK, "4", menu_marker_cb },
+  { MT_CANCEL, "BACK", NULL },
+  { MT_NONE, NULL, NULL } // sentinel
+};
+
 const menuitem_t menu_recall[] = {
   { MT_CALLBACK, "0", menu_recall_cb },
   { MT_CALLBACK, "1", menu_recall_cb },
@@ -253,8 +336,10 @@ const menuitem_t menu_recall[] = {
 
 const menuitem_t menu_top[] = {
   { MT_SUBMENU, "CAL", menu_cal },
+  { MT_SUBMENU, "DISPLAY", menu_display },
+  { MT_SUBMENU, "MARKER", menu_marker },
   { MT_SUBMENU, "RECALL", menu_recall },
-  { MT_CANCEL, "BACK", NULL },
+  { MT_CLOSE, "CLOSE", NULL },
   { MT_NONE, NULL, NULL } // sentinel
 };
 
@@ -288,6 +373,7 @@ void menu_invoke(int selection)
   switch (menu->type) {
   case MT_NONE:
   case MT_BLANK:
+  case MT_CLOSE:
     ui_status = FALSE;
     ui_hide();
     break;
@@ -422,7 +508,8 @@ ui_process(void)
           }
           status = btn_wait_release();
         } while (status != 0);
-        redraw_marker(active_marker, TRUE);
+        if (active_marker >= 0)
+          redraw_marker(active_marker, TRUE);
       }
     }
   }

@@ -116,7 +116,7 @@ typedef struct {
   uint8_t polar;
 } trace_t;
 
-//extern trace_t trace[TRACES_MAX];
+extern trace_t trace[TRACES_MAX];
 
 typedef struct {
   int enabled;
@@ -137,6 +137,8 @@ void plot_into_index(float measured[2][101][2]);
 void draw_cell_all(void);
 
 void draw_cal_status(void);
+
+void markmap_all_markers(void);
 
 
 /*

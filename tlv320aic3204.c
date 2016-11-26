@@ -168,7 +168,7 @@ const uint8_t adc_filter_config[] = {
   0x81, 0x1e, 0xf9, 0x00,
   0 /* sentinel */
 };
-#elsif 0
+#elif 0
 /* bb, aa = signal.ellip(2, 0.1, 100, (4500.0/24000, 5500.0/24000), 'bandpass') */
 const uint8_t adc_filter_config[] = {
   /* len, page, reg, data.... */

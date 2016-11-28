@@ -211,13 +211,18 @@ static struct {
 int16_t rx_buffer[AUDIO_BUFFER_LEN * 2];
 
 int16_t dump_buffer[AUDIO_BUFFER_LEN];
-volatile int16_t wait_count = 0;
 int16_t dump_selection = 0;
+volatile int16_t wait_count = 0;
 
-int16_t dsp_disabled = FALSE;
 float measured[2][101][2];
 
-
+static void
+wait_dsp(int count)
+{
+  wait_count = count;
+  while (wait_count)
+    ;
+}
 
 void i2s_end_callback(I2SDriver *i2sp, size_t offset, size_t n)
 {
@@ -230,8 +235,7 @@ void i2s_end_callback(I2SDriver *i2sp, size_t offset, size_t n)
   (void)n;
   //palClearPad(GPIOC, GPIOC_LED);
 
-  if (!dsp_disabled)
-    dsp_process(p, n);
+  dsp_process(p, n);
 
   if (wait_count > 0) {
     if (dump_selection == 1)
@@ -297,10 +301,9 @@ static void cmd_dump(BaseSequentialStream *chp, int argc, char *argv[])
   if (argc == 1)
     dump_selection = atoi(argv[0]);
 
-  wait_count = 3;
   //palClearPad(GPIOC, GPIOC_LED);
-  while (wait_count)
-    ;
+  wait_dsp(3);
+
   len = AUDIO_BUFFER_LEN;
   if (dump_selection == 1 || dump_selection == 2)
     len /= 2;
@@ -320,12 +323,8 @@ static void cmd_gamma(BaseSequentialStream *chp, int argc, char *argv[])
   (void)argv;
   
   pause_sweep();
-  wait_count = 4;
-  while (wait_count)
-    ;
-  dsp_disabled = TRUE;
-  calclate_gamma(gamma);
-  dsp_disabled = FALSE;
+  wait_dsp(4);  
+  calculate_gamma(gamma);
 
   chprintf(chp, "%d %d\r\n", gamma[0], gamma[1]);
 }
@@ -390,17 +389,11 @@ static void cmd_scan(BaseSequentialStream *chp, int argc, char *argv[])
   delay += 2;
   for (i = 0; i < sweep_points; i++) {
     freq = freq + step;
-    wait_count = delay + 1;
-    while (wait_count)
-      ;
-    //dsp_disabled = TRUE;
-    __disable_irq();
+    wait_dsp(delay+1);    
     delay = set_frequency(freq);
     palClearPad(GPIOC, GPIOC_LED);
-    calclate_gamma(gamma);
+    calculate_gamma(gamma);
     palSetPad(GPIOC, GPIOC_LED);
-    //dsp_disabled = FALSE;
-    __enable_irq();
     chprintf(chp, "%d %d\r\n", gamma[0], gamma[1]);
   }
 }
@@ -414,24 +407,18 @@ void scan_lcd(void)
   delay = set_frequency(frequencies[0]);
   delay += 2;
   for (i = 0; i < sweep_points; i++) {
-    wait_count = delay + 2;
     tlv320aic3204_select_in3();
-    while (wait_count)
-      ;
+    wait_dsp(delay+2);
     palClearPad(GPIOC, GPIOC_LED);
-    __disable_irq();
+
     /* calculate reflection coeficient */
-    calclate_gamma(measured[0][i]);
-    __enable_irq();
+    calculate_gamma(measured[0][i]);
 
     tlv320aic3204_select_in1();
-    wait_count = 2 + 2;
-    while (wait_count)
-      ;
-    __disable_irq();
+    wait_dsp(2+2);
+
     /* calculate transmission coeficient */
-    calclate_gamma(measured[1][i]);
-    __enable_irq();
+    calculate_gamma(measured[1][i]);
 
     delay = set_frequency(frequencies[(i+1)%sweep_points]);
     palSetPad(GPIOC, GPIOC_LED);
@@ -879,6 +866,16 @@ static void cmd_trace(BaseSequentialStream *chp, int argc, char *argv[])
     }
     return;
   } 
+
+  if (strcmp(argv[0], "all") == 0 &&
+      argc > 1 && strcmp(argv[1], "off") == 0) {
+    set_trace_type(0, TRC_OFF);
+    set_trace_type(1, TRC_OFF);
+    set_trace_type(2, TRC_OFF);
+    set_trace_type(3, TRC_OFF);
+    goto exit;
+  }
+
   t = atoi(argv[0]);
   if (t < 0 || t >= 4)
     goto usage;
@@ -919,7 +916,7 @@ static void cmd_trace(BaseSequentialStream *chp, int argc, char *argv[])
  exit:
   return;
  usage:
-  chprintf(chp, "trace [n] [logmag|phase|smith|swr] [src]\r\n");
+  chprintf(chp, "trace {0|1|2|3|all} [logmag|phase|smith|linear|delay|swr|off] [src]\r\n");
 }
 
 static void cmd_marker(BaseSequentialStream *chp, int argc, char *argv[])

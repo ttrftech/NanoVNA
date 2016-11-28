@@ -49,7 +49,7 @@ extern int16_t samp_buf[];
 extern int16_t refiq_buf[];
 
 void dsp_process(int16_t *src, size_t len);
-void calclate_gamma(float *gamma);
+void calculate_gamma(float *gamma);
 
 int si5351_set_frequency_with_offset(int freq, int offset, uint8_t drive_strength);
 

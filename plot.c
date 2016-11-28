@@ -1066,10 +1066,10 @@ draw_cell(int m, int n)
 
 #if 1
   /* draw rectanglar plot */
-  if (search_index_x(x0, trace_index[0], &i0, &i1)) {
-    for (t = 0; t < TRACES_MAX; t++) {
-      if (!trace[t].enabled || trace[t].polar)
-        continue;
+  for (t = 0; t < TRACES_MAX; t++) {
+    if (!trace[t].enabled || trace[t].polar)
+      continue;
+    if (search_index_x(x0, trace_index[t], &i0, &i1)) {
       if (i0 > 0)
         i0--;
       for (i = i0; i < i1; i++) {

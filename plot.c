@@ -9,7 +9,6 @@
 
 void cell_draw_marker_info(int m, int n, int w, int h);
 void draw_frequencies(void);
-static inline void force_set_markmap(void);
 void frequency_string(char *buf, size_t len, uint32_t freq);
 void markmap_all_markers(void);
 
@@ -176,9 +175,14 @@ smith_grid(int x, int y)
     return 0;
   if (d == 0)
     return c;
+  
+  // horizontal axis
+  if (y == 0)
+    return c;
 
   // shift circle center to right origin
   x -= P_RADIUS;
+
 
   // Constant Reactance Circle: 2j : R/2 = 58
   if (circle_inout(x, y+58, 58) == 0)
@@ -294,6 +298,56 @@ smith_grid2(int x, int y, float scale)
   d = circle_inout(x-174*scale, y, 174*scale);
   //if (d > 0) return 0;
   if (d == 0) return c;
+  return 0;
+}
+
+
+const int cirs[][4] = {
+  { 0, 58/2, 58/2, 0 },    // Constant Reactance Circle: 2j : R/2 = 58
+  { 29/2, 0, 29/2, 1 },    // Constant Resistance Circle: 3 : R/4 = 29
+  { 0, 116/2, 116/2, 0 },  // Constant Reactance Circle: 1j : R = 116
+  { 58/2, 0, 58/2, 1 },    // Constant Resistance Circle: 1 : R/2 = 58
+  { 0, 232/2, 232/2, 0 },  // Constant Reactance Circle: 1/2j : R*2 = 232
+  { 87/2, 0, 87/2, 1 },    // Constant Resistance Circle: 1/3 : R*3/4 = 87
+  { 0, 464/2, 464/2, 0 },  // Constant Reactance Circle: 1/4j : R*4 = 464
+  { 116/2, 0, 116/2, 1 },  // Constant Resistance Circle: 0 : R
+  { 174/2, 0, 174/2, 1 },  // Constant Resistance Circle: -1/3 : R*3/2 = 174
+  { 0, 0, 0, 0 } // sentinel
+};  
+
+int
+smith_grid3(int x, int y)
+{
+  int c = grid_color;
+  int d;
+
+  // offset to center
+  x -= P_CENTER_X;
+  y -= P_CENTER_Y;
+  
+  // outer circle
+  d = circle_inout(x, y, P_RADIUS);
+  if (d < 0)
+    return 0;
+  if (d == 0)
+    return c;
+
+  // shift circle center to right origin
+  x -= P_RADIUS /2;
+
+  int i;
+  for (i = 0; cirs[i][2]; i++) {
+    d = circle_inout(x+cirs[i][0], y+cirs[i][1], cirs[i][2]);
+    if (d == 0)
+      return c;
+    if (d > 0 && cirs[i][3])
+      return 0;
+    d = circle_inout(x-cirs[i][0], y-cirs[i][1], cirs[i][2]);
+    if (d == 0)
+      return c;
+    if (d > 0 && cirs[i][3])
+      return 0;
+  }
   return 0;
 }
 
@@ -657,7 +711,7 @@ clear_markmap(void)
   memset(markmap[current_mappage], 0, sizeof markmap[current_mappage]);
 }
 
-static inline void
+void
 force_set_markmap(void)
 {
   memset(markmap[current_mappage], 0xff, sizeof markmap[current_mappage]);
@@ -937,6 +991,11 @@ markmap_all_markers(void)
 int area_width = WIDTH;
 int area_height = HEIGHT;
 
+#define GRID_RECTANGULAR (1<<0)
+#define GRID_SMITH       (1<<1)
+#define GRID_ADMIT       (1<<2)
+#define GRID_POLAR       (1<<3)
+
 void
 draw_cell(int m, int n)
 {
@@ -956,25 +1015,51 @@ draw_cell(int m, int n)
   if (w <= 0 || h <= 0)
     return;
 
+  uint16_t grid_mode = 0;
+  for (t = 0; t < TRACES_MAX; t++) {
+    if (!trace[t].enabled)
+      continue;
+    if (!trace[t].polar)
+      grid_mode |= GRID_RECTANGULAR;
+    else {
+      if (trace[t].type == TRC_SMITH)
+        grid_mode |= GRID_SMITH;
+      else if (trace[t].type == TRC_ADMIT)
+        grid_mode |= GRID_ADMIT;
+      else
+        grid_mode |= GRID_POLAR;
+    }
+  }
+
   PULSE;
   /* draw grid */
-  for (x = 0; x < w; x++) {
-    uint16_t c = rectangular_grid_x(x+x0);
-    for (y = 0; y < h; y++)
-      spi_buffer[y * w + x] = c;
-  }
-  for (y = 0; y < h; y++) {
-    uint16_t c = rectangular_grid_y(y+y0);
-    for (x = 0; x < w; x++)
-      spi_buffer[y * w + x] |= c;
-  }
-  for (y = 0; y < h; y++) {
+  if (grid_mode & GRID_RECTANGULAR) {
     for (x = 0; x < w; x++) {
-      //uint16_t c = rectangular_grid(x+x0, y+y0);
-      uint16_t c = smith_grid(x+x0, y+y0);
-      //uint16_t c = smith_grid2(x+x0, y+y0, 0.5);
-      //uint16_t c = polar_grid(x+x0, y+y0);
-      spi_buffer[y * w + x] |= c;
+      uint16_t c = rectangular_grid_x(x+x0);
+      for (y = 0; y < h; y++)
+        spi_buffer[y * w + x] = c;
+    }
+    for (y = 0; y < h; y++) {
+      uint16_t c = rectangular_grid_y(y+y0);
+      for (x = 0; x < w; x++)
+        spi_buffer[y * w + x] |= c;
+    }
+  } else {
+    memset(spi_buffer, 0, sizeof spi_buffer);
+  }
+  if (grid_mode & (GRID_SMITH|GRID_ADMIT|GRID_POLAR)) {
+    for (y = 0; y < h; y++) {
+      for (x = 0; x < w; x++) {
+        uint16_t c = 0;
+        if (grid_mode & GRID_SMITH)
+          c = smith_grid(x+x0, y+y0);
+        else if (grid_mode & GRID_ADMIT)
+          c = smith_grid3(x+x0, y+y0);
+        //c = smith_grid2(x+x0, y+y0, 0.5);
+        else if (grid_mode & GRID_POLAR)
+          c = polar_grid(x+x0, y+y0);
+        spi_buffer[y * w + x] |= c;
+      }
     }
   }
   PULSE;

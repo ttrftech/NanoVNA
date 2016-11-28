@@ -37,9 +37,9 @@ struct {
 #define EVT_DOWN				0x20
 #define EVT_REPEAT				0x40
 
-#define BUTTON_DOWN_LONG_TICKS		10000
-#define BUTTON_DOUBLE_TICKS			5000
-#define BUTTON_DEBOUNCE_TICKS		10
+#define BUTTON_DOWN_LONG_TICKS		1000
+#define BUTTON_DOUBLE_TICKS			500
+#define BUTTON_DEBOUNCE_TICKS		2
 
 /* lever switch assignment */
 #define BIT_UP1 	3
@@ -231,16 +231,19 @@ menu_trace_cb(int item)
   if (item < 0 || item >= 4)
     return;
   uistat.current_trace = item;
+  menu_move_back();
 }
 
 static void
 menu_format_cb(int item)
 {
-  trace[uistat.current_trace].type = item;
+  set_trace_type(uistat.current_trace, item);
+  ui_status = FALSE;
+  ui_hide();
 }
 
 static void 
-elect_active_marker(void)
+choose_active_marker(void)
 {
   int i;
   for (i = 0; i < 4; i++)
@@ -259,7 +262,7 @@ menu_marker_cb(int item)
 
   if (active_marker == item) {
     markers[active_marker].enabled = FALSE;
-    elect_active_marker();
+    choose_active_marker();
   } else {
     active_marker = item;
     markers[active_marker].enabled = TRUE;

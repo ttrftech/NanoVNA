@@ -75,10 +75,12 @@ void ili9341_drawstring_5x7(char *str, int x, int y, uint16_t fg, uint16_t bg);
 #define WIDTH 291
 #define HEIGHT 233
 
-#define GRIDY 29
-
 extern int area_width;
 extern int area_height;
+
+#define GRIDY 29
+
+// font
 
 extern const uint16_t x5x7_bits [];
 extern const uint32_t numfont20x24[][24];
@@ -88,10 +90,12 @@ extern const uint32_t numfont20x24[][24];
 #define S_OHM   "\036"
 #define S_DEGREE "\037"
 
+// trace 
+
 #define TRACES_MAX 4
 
 enum {
-  TRC_LOGMAG, TRC_PHASE, TRC_SMITH, TRC_ADMIT, TRC_POLAR, TRC_LINEAR, TRC_SWR
+  TRC_LOGMAG, TRC_PHASE, TRC_SMITH, TRC_ADMIT, TRC_POLAR, TRC_LINEAR, TRC_SWR, TRC_OFF
 };
 
 extern const char *trc_type_name[];
@@ -116,7 +120,11 @@ typedef struct {
   uint8_t polar;
 } trace_t;
 
-extern trace_t trace[TRACES_MAX];
+//extern trace_t trace[TRACES_MAX];
+
+void set_trace_type(int t, int type);
+
+// marker
 
 typedef struct {
   int enabled;
@@ -135,6 +143,7 @@ void redraw_marker(int marker, int update_info);
 void trace_get_info(int t, char *buf, int len);
 void plot_into_index(float measured[2][101][2]);
 void draw_cell_all(void);
+void force_set_markmap(void);
 
 void draw_cal_status(void);
 

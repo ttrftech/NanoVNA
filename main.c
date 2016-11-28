@@ -446,6 +446,7 @@ void scan_lcd(void)
   draw_cell_all();
 }
 
+#if 0
 static void cmd_scan_lcd(BaseSequentialStream *chp, int argc, char *argv[])
 {
   (void)chp;
@@ -454,7 +455,7 @@ static void cmd_scan_lcd(BaseSequentialStream *chp, int argc, char *argv[])
   pause_sweep();
   scan_lcd();
 }
-
+#endif
 
 void
 set_frequencies(void)
@@ -841,6 +842,30 @@ const char *trc_channel_name[] = {
   "S11", "S21"
 };
 
+void set_trace_type(int t, int type)
+{
+  int polar = type == TRC_SMITH || type == TRC_ADMIT || type == TRC_POLAR;
+  int enabled = type != TRC_OFF;
+  int force = FALSE;
+
+  if (trace[t].polar != polar) {
+    trace[t].polar = polar;
+    force = TRUE;
+  }
+  if (trace[t].enabled != enabled) {
+    trace[t].enabled = enabled;
+    force = TRUE;
+  }
+  if (trace[t].type != type) {
+    trace[t].type = type;
+    if (polar)
+      force = TRUE;
+  }    
+  if (force)
+    //force_draw_cells();
+    force_set_markmap();
+}
+
 static void cmd_trace(BaseSequentialStream *chp, int argc, char *argv[])
 {
   int t;
@@ -865,35 +890,21 @@ static void cmd_trace(BaseSequentialStream *chp, int argc, char *argv[])
   }
   if (argc > 1) {
     if (strcmp(argv[1], "logmag") == 0) {
-      trace[t].type = TRC_LOGMAG;
-      trace[t].polar = FALSE;
-      trace[t].enabled = TRUE;
+      set_trace_type(t, TRC_LOGMAG);
     } else if (strcmp(argv[1], "phase") == 0) {
-      trace[t].type = TRC_PHASE;
-      trace[t].polar = FALSE;
-      trace[t].enabled = TRUE;
+      set_trace_type(t, TRC_PHASE);
     } else if (strcmp(argv[1], "polar") == 0) {
-      trace[t].type = TRC_POLAR;
-      trace[t].polar = TRUE;
-      trace[t].enabled = TRUE;
+      set_trace_type(t, TRC_POLAR);
     } else if (strcmp(argv[1], "smith") == 0) {
-      trace[t].type = TRC_SMITH;
-      trace[t].polar = TRUE;
-      trace[t].enabled = TRUE;
+      set_trace_type(t, TRC_SMITH);
     } else if (strcmp(argv[1], "admit") == 0) {
-      trace[t].type = TRC_ADMIT;
-      trace[t].polar = TRUE;
-      trace[t].enabled = TRUE;
+      set_trace_type(t, TRC_ADMIT);
     } else if (strcmp(argv[1], "linear") == 0) {
-      trace[t].type = TRC_LINEAR;
-      trace[t].polar = FALSE;
-      trace[t].enabled = TRUE;
+      set_trace_type(t, TRC_LINEAR);
     } else if (strcmp(argv[1], "swr") == 0) {
-      trace[t].type = TRC_SWR;
-      trace[t].polar = FALSE;
-      trace[t].enabled = TRUE;
+      set_trace_type(t, TRC_SWR);
     } else if (strcmp(argv[1], "off") == 0) {
-      trace[t].enabled = FALSE;
+      set_trace_type(t, TRC_OFF);
     } else if (strcmp(argv[1], "scale") == 0 && argc >= 3) {
       trace[t].scale = atoi(argv[2]);
       goto exit;
@@ -1081,7 +1092,7 @@ static const ShellCommand commands[] =
     { "scan", cmd_scan },
     { "sweep", cmd_sweep },
     { "test", cmd_test },
-    { "plot", cmd_scan_lcd },
+    //{ "plot", cmd_scan_lcd },
     { "pause", cmd_pause },
     { "resume", cmd_resume },
     { "cal", cmd_cal },

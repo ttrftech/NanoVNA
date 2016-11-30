@@ -46,7 +46,7 @@ void scan_lcd(void);
 static MUTEX_DECL(mutex);
 
 
-static THD_WORKING_AREA(waThread1, 400);
+static THD_WORKING_AREA(waThread1, 440);
 static THD_FUNCTION(Thread1, arg)
 {
     (void)arg;
@@ -513,7 +513,7 @@ eterm_copy(int dst, int src)
 }
 
 
-struct open_model {
+const struct open_model {
   float c0;
   float c1;
   float c2;
@@ -829,7 +829,7 @@ const char *trc_type_name[] = {
   "LOGMAG", "PHASE", "SMITH", "ADMIT", "POLAR", "LINEAR", "SWR"
 };
 const char *trc_channel_name[] = {
-  "S11", "S21"
+  "CH0", "CH1"
 };
 
 void set_trace_type(int t, int type)
@@ -854,6 +854,14 @@ void set_trace_type(int t, int type)
   if (force)
     //force_draw_cells();
     force_set_markmap();
+}
+
+void set_trace_channel(int t, int channel)
+{
+  if (trace[t].channel != channel) {
+    trace[t].channel = channel;
+    force_set_markmap();
+  }
 }
 
 static float
@@ -1109,7 +1117,7 @@ static void cmd_stat(BaseSequentialStream *chp, int argc, char *argv[])
 
 
 
-#define SHELL_WA_SIZE THD_WORKING_AREA_SIZE(400)
+#define SHELL_WA_SIZE THD_WORKING_AREA_SIZE(440)
 static THD_WORKING_AREA(waThread2, SHELL_WA_SIZE);
 
 static const ShellCommand commands[] =

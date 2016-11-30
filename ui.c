@@ -245,6 +245,18 @@ static void
 menu_format2_cb(int item)
 {
   menu_format_cb(item + 5);
+  ui_status = FALSE;
+  ui_hide();
+}
+
+static void
+menu_channel_cb(int item)
+{
+  if (item < 0 || item >= 2)
+    return;
+  set_trace_channel(uistat.current_trace, item);
+  ui_status = FALSE;
+  ui_hide();
 }
 
 static void 
@@ -324,10 +336,18 @@ const menuitem_t menu_format[] = {
   { MT_NONE, NULL, NULL } // sentinel
 };
 
+const menuitem_t menu_channel[] = {
+  { MT_CALLBACK, "0", menu_channel_cb },
+  { MT_CALLBACK, "1", menu_channel_cb },
+  { MT_CANCEL, "BACK", NULL },
+  { MT_NONE, NULL, NULL } // sentinel
+};
+
 const menuitem_t menu_display[] = {
   { MT_SUBMENU, "TRACE", menu_trace },
   { MT_SUBMENU, "FORMAT", menu_format },
   { MT_SUBMENU, "SCALE", menu_format },
+  { MT_SUBMENU, "CHANNEL", menu_channel },
   { MT_CANCEL, "BACK", NULL },
   { MT_NONE, NULL, NULL } // sentinel
 };
@@ -366,11 +386,23 @@ const menuitem_t *menu_stack[4] = {
   menu_top, NULL, NULL, NULL
 };
 
+static void
+ensure_selection(void)
+{
+  const menuitem_t *menu = menu_stack[menu_current_level];
+  int i;
+  for (i = 0; menu[i].type != MT_NONE; i++)
+    ;
+  if (selection >= i)
+    selection = i-1;
+}
+
 static void menu_move_back(void)
 {
   if (menu_current_level == 0)
     return;
   menu_current_level--;
+  ensure_selection();
   erase_buttons();
 }
 
@@ -379,6 +411,7 @@ static void menu_move_top(void)
   if (menu_current_level == 0)
     return;
   menu_current_level = 0;
+  ensure_selection();
   erase_buttons();
 }
 
@@ -412,6 +445,7 @@ void menu_invoke(int selection)
       break;
     menu_current_level++;
     menu_stack[menu_current_level] = (const menuitem_t*)menu->reference;
+    erase_buttons();
     selection = 0;
     break;
   }
@@ -503,22 +537,24 @@ ui_process(void)
         ui_show();
     } else {
       if (ui_status) {
-        if (status & EVT_UP) {
+        if (status & EVT_UP
+            && menu_stack[menu_current_level][selection+1].type != MT_NONE) {
           selection++;
           draw_buttons();
         }
-        if (status & EVT_DOWN) {
+        if (status & EVT_DOWN
+            && selection > 0) {
           selection--;
           draw_buttons();
         }
       } else {
         do {
           if (active_marker >= 0 && markers[active_marker].enabled) {
-            if ((status & EVT_UP) && markers[active_marker].index > 0) {
+            if ((status & EVT_DOWN) && markers[active_marker].index > 0) {
               markers[active_marker].index--;
               redraw_marker(active_marker, FALSE);
             }
-            if ((status & EVT_DOWN) && markers[active_marker].index < 100) {
+            if ((status & EVT_UP) && markers[active_marker].index < 100) {
               markers[active_marker].index++;
               redraw_marker(active_marker, FALSE);
             }

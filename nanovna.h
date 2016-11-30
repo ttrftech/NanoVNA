@@ -123,6 +123,7 @@ typedef struct {
 //extern trace_t trace[TRACES_MAX];
 
 void set_trace_type(int t, int type);
+void set_trace_channel(int t, int channel);
 
 // marker
 

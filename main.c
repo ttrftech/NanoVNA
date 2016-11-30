@@ -8,6 +8,7 @@
 #include <shell.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 #include <math.h>
 
 RTCDateTime timespec;
@@ -52,7 +53,7 @@ static THD_FUNCTION(Thread1, arg)
 
     chRegSetThreadName("blink");
 
-    palSetPadMode(GPIOC, 13, PAL_MODE_OUTPUT_PUSHPULL);
+    //palSetPadMode(GPIOC, 13, PAL_MODE_OUTPUT_PUSHPULL);
     while (1)
     {
 #if 0
@@ -224,6 +225,18 @@ wait_dsp(int count)
     ;
 }
 
+static void
+duplicate_buffer_to_dump(int16_t *p)
+{
+  if (dump_selection == 1)
+    p = samp_buf;
+  else if (dump_selection == 2)
+    p = ref_buf;
+  else if (dump_selection == 3)
+    p = refiq_buf;
+  memcpy(dump_buffer, p, sizeof dump_buffer);
+}
+
 void i2s_end_callback(I2SDriver *i2sp, size_t offset, size_t n)
 {
 #if PORT_SUPPORTS_RT
@@ -233,19 +246,12 @@ void i2s_end_callback(I2SDriver *i2sp, size_t offset, size_t n)
   int16_t *p = &rx_buffer[offset];
   (void)i2sp;
   (void)n;
-  //palClearPad(GPIOC, GPIOC_LED);
 
   dsp_process(p, n);
 
   if (wait_count > 0) {
-    if (dump_selection == 1)
-      p = samp_buf;
-    else if (dump_selection == 2)
-      p = ref_buf;
-    else if (dump_selection == 3)
-      p = refiq_buf;
     if (wait_count == 1)
-      memcpy(dump_buffer, p, sizeof dump_buffer);
+      duplicate_buffer_to_dump(p);
     --wait_count;
   }
 
@@ -256,7 +262,6 @@ void i2s_end_callback(I2SDriver *i2sp, size_t offset, size_t n)
   stat.last_counter_value = cnt_s;
 #endif
   stat.callback_count++;
-  //palSetPad(GPIOC, GPIOC_LED);
 }
 
 static const I2SConfig i2sconfig = {
@@ -301,7 +306,6 @@ static void cmd_dump(BaseSequentialStream *chp, int argc, char *argv[])
   if (argc == 1)
     dump_selection = atoi(argv[0]);
 
-  //palClearPad(GPIOC, GPIOC_LED);
   wait_dsp(3);
 
   len = AUDIO_BUFFER_LEN;
@@ -313,7 +317,6 @@ static void cmd_dump(BaseSequentialStream *chp, int argc, char *argv[])
     }
     chprintf(chp, "\r\n");
   }
-  //palSetPad(GPIOC, GPIOC_LED);
 }
 
 static void cmd_gamma(BaseSequentialStream *chp, int argc, char *argv[])
@@ -445,7 +448,7 @@ static void cmd_scan_lcd(BaseSequentialStream *chp, int argc, char *argv[])
 #endif
 
 void
-set_frequencies(void)
+update_frequencies(void)
 {
   int i;
   int32_t span = (freq_stop - freq_start)/100;
@@ -488,7 +491,7 @@ static void cmd_sweep(BaseSequentialStream *chp, int argc, char *argv[])
     sweep_points = x;
   }
 
-  set_frequencies();
+  update_frequencies();
   set_sweep(freq_start, freq_stop);
 }
 
@@ -853,6 +856,43 @@ void set_trace_type(int t, int type)
     force_set_markmap();
 }
 
+static float
+my_atof(const char *p)
+{
+  int neg = FALSE;
+  if (*p == '-')
+    neg = TRUE;
+  if (*p == '-' || *p == '+')
+    p++;
+  float x = atoi(p);
+  while (isdigit(*p))
+    p++;
+  if (*p == '.') {
+    float d = 1.0f;
+    p++;
+    while (isdigit(*p)) {
+      d /= 10;
+      x += d * (*p - '0');
+      p++;
+    }
+  }
+  if (*p == 'e' || *p == 'E') {
+    p++;
+    int exp = atoi(p);
+    while (exp > 0) {
+      x *= 10;
+      exp--;
+    }
+    while (exp < 0) {
+      x /= 10;
+      exp++;
+    }
+  }
+  if (neg)
+    x = -x;
+  return x;
+}
+
 static void cmd_trace(BaseSequentialStream *chp, int argc, char *argv[])
 {
   int t;
@@ -903,7 +943,7 @@ static void cmd_trace(BaseSequentialStream *chp, int argc, char *argv[])
     } else if (strcmp(argv[1], "off") == 0) {
       set_trace_type(t, TRC_OFF);
     } else if (strcmp(argv[1], "scale") == 0 && argc >= 3) {
-      trace[t].scale = atoi(argv[2]);
+      trace[t].scale = my_atof(argv[2]);
       goto exit;
     } 
   }
@@ -1156,7 +1196,7 @@ int main(void)
   plot_init();
 
   /* initial frequencies */
-  set_frequencies();
+  update_frequencies();
 
   /* restore config and calibration data from flash memory */
   caldata_recall(0);

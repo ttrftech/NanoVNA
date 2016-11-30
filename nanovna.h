@@ -232,6 +232,8 @@ void ui_init(void);
 void ui_show(void);
 void ui_hide(void);
 
+extern uint8_t operation_requested;
+
 
 /*
  * misclinous

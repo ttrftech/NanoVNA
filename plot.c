@@ -487,7 +487,7 @@ trace_into_index(int x, int t, int i, float coeff[2])
     v = 1 - logmag(coeff);
     break;
   case TRC_PHASE:
-    v = 4 + phase(coeff);
+    v = 4 - phase(coeff);
     break;
   case TRC_LINEAR:
     v = 8 + linear(coeff);
@@ -1122,6 +1122,8 @@ draw_cell_all(void)
       if (is_mapmarked(m, n))
         draw_cell(m, n);
       //ui_process();
+      //if (operation_requested)
+      //  return;
     }
 
   // keep current map for update

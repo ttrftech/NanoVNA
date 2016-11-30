@@ -37,9 +37,9 @@ struct {
 #define EVT_DOWN				0x20
 #define EVT_REPEAT				0x40
 
-#define BUTTON_DOWN_LONG_TICKS		1000
-#define BUTTON_DOUBLE_TICKS			500
-#define BUTTON_DEBOUNCE_TICKS		2
+#define BUTTON_DOWN_LONG_TICKS		10000  /* 1sec */
+#define BUTTON_DOUBLE_TICKS			5000   /* 500ms */
+#define BUTTON_DEBOUNCE_TICKS		10
 
 /* lever switch assignment */
 #define BIT_UP1 	3
@@ -57,7 +57,6 @@ uint8_t operation_requested = FALSE;
 
 int ui_status = FALSE;
 int selection = 1;
-
 
 
 static int btn_check(void)
@@ -242,6 +241,12 @@ menu_format_cb(int item)
   ui_hide();
 }
 
+static void
+menu_format2_cb(int item)
+{
+  menu_format_cb(item + 5);
+}
+
 static void 
 choose_active_marker(void)
 {
@@ -299,13 +304,22 @@ const menuitem_t menu_trace[] = {
   { MT_NONE, NULL, NULL } // sentinel
 };
 
+const menuitem_t menu_format2[] = {
+  { MT_CALLBACK, "LINEAR", menu_format2_cb },
+  { MT_CALLBACK, "SWR", menu_format2_cb },
+  { MT_CANCEL, "BACK", NULL },
+  { MT_NONE, NULL, NULL } // sentinel
+};
+
 const menuitem_t menu_format[] = {
   { MT_CALLBACK, "LOGMAG", menu_format_cb },
   { MT_CALLBACK, "PHASE", menu_format_cb },
   { MT_CALLBACK, "SMITH", menu_format_cb },
   { MT_CALLBACK, "ADMIT", menu_format_cb },
-  { MT_CALLBACK, "DELAY", menu_format_cb },
-  { MT_CALLBACK, "SWR", menu_format_cb },
+  { MT_CALLBACK, "POLAR", menu_format_cb },
+  { MT_SUBMENU, "NEXT", menu_format2 },  
+  //{ MT_CALLBACK, "LINEAR", menu_format_cb },
+  //{ MT_CALLBACK, "SWR", menu_format_cb },
   { MT_CANCEL, "BACK", NULL },
   { MT_NONE, NULL, NULL } // sentinel
 };
@@ -524,19 +538,7 @@ static void extcb1(EXTDriver *extp, expchannel_t channel) {
   (void)extp;
   (void)channel;
   operation_requested = TRUE;
-
-#if 0
-  if (channel == 1)
-    ui_status = TRUE;
-  else if (channel == 2)
-    ui_status = !ui_status;
-  else if (channel == 3)
-    ui_status = FALSE;
-  if (ui_status)
-    ui_show();
-  else
-    ui_hide();
-#endif
+  //cur_button = READ_PORT() & BUTTON_MASK;
 }
 
 static const EXTConfig extcfg = {

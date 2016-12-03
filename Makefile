@@ -103,10 +103,6 @@ include $(CHIBIOS)/os/various/shell/shell.mk
 #LDSCRIPT= $(STARTUPLD)/STM32F072xB.ld
 LDSCRIPT= STM32F072xB.ld
 
-CMSIS = CMSIS
-DSPLIBINC = ${CMSIS}/Include
-DSPLIBSRC = ${CMSIS}/DSP_Lib/Source/FilteringFunctions/arm_biquad_cascade_df1_q15.c
-
 # C sources that can be compiled in ARM or THUMB mode depending on the global
 # setting.
 CSRC = $(STARTUPSRC) \
@@ -118,7 +114,6 @@ CSRC = $(STARTUPSRC) \
        $(BOARDSRC) \
        $(STREAMSSRC) \
        $(SHELLSRC) \
-       $(DSPLIBSRC) \
        usbcfg.c \
        main.c si5351.c si5351_low.c tlv320aic3204.c dsp.c plot.c ui.c ili9341.c numfont20x24.c Font5x7.c flash.c
 
@@ -153,7 +148,6 @@ ASMSRC = $(STARTUPASM) $(PORTASM) $(OSALASM)
 
 INCDIR = $(STARTUPINC) $(KERNINC) $(PORTINC) $(OSALINC) \
          $(HALINC) $(PLATFORMINC) $(BOARDINC)  \
-		 $(DSPLIBINC) \
          $(STREAMSINC) $(SHELLINC)
 # $(TESTINC)
 

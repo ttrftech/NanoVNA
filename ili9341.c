@@ -287,7 +287,7 @@ ili9341_drawchar_5x7(uint8_t ch, int x, int y, uint16_t fg, uint16_t bg)
 }
 
 void
-ili9341_drawstring_5x7(char *str, int x, int y, uint16_t fg, uint16_t bg)
+ili9341_drawstring_5x7(const char *str, int x, int y, uint16_t fg, uint16_t bg)
 {
   while (*str) {
     ili9341_drawchar_5x7(*str, x, y, fg, bg);
@@ -334,14 +334,6 @@ ili9341_line(int x0, int y0, int x1, int y1, uint16_t fg)
 }
 
 
-typedef struct {
-	uint16_t width;
-	uint16_t height;
-	uint16_t scaley;
-	uint16_t slide;
-	const uint32_t *bitmap;
-} font_t;
-
 const font_t NF20x24 = { 20, 24, 1, 24, (const uint32_t *)numfont20x24 };
 //const font_t NF32x24 = { 32, 24, 1, 24, (const uint32_t *)numfont32x24 };
 //const font_t NF32x48 = { 32, 48, 2, 24, (const uint32_t *)numfont32x24 };
@@ -349,14 +341,9 @@ const font_t NF20x24 = { 20, 24, 1, 24, (const uint32_t *)numfont20x24 };
 void
 ili9341_drawfont(uint8_t ch, const font_t *font, int x, int y, uint16_t fg, uint16_t bg)
 {
-	int ex = x + font->width-1;
-	int ey = y + font->height-1;
-	uint8_t xx[4] = { x >> 8, x, ex >> 8, ex };
-	uint8_t yy[4] = { y >> 8, y, ey >> 8, ey };
 	uint16_t *buf = spi_buffer;
 	uint32_t bits;
 	const uint32_t *bitmap = &font->bitmap[font->slide * ch];
-    int len;
 	int c, r, j;
 
 	for (c = 0; c < font->slide; c++) {
@@ -368,13 +355,7 @@ ili9341_drawfont(uint8_t ch, const font_t *font, int x, int y, uint16_t fg, uint
 			}
 		}
 	}
-	send_command(0x2A, 4, xx);
-	send_command(0x2B, 4, yy);
-	send_command(0x2C, 0, NULL);
-    len = buf - spi_buffer;
-    buf = spi_buffer;
-    while (len-- > 0) 
-      ssp_senddata16(*buf++);
+    ili9341_bulk(x, y, font->width, font->height);
 }
 
 

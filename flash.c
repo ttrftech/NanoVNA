@@ -113,6 +113,8 @@ caldata_recall(int id)
 
   if (id < 0 || id >= SAVEAREA_MAX)
     return -1;
+
+  // point to saved area on the flash memory
   src = (config_t*)saveareas[id];
 
   if (src->magic != CONFIG_MAGIC)

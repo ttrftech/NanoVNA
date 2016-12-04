@@ -58,6 +58,16 @@ int si5351_set_frequency_with_offset(int freq, int offset, uint8_t drive_strengt
 /*
  * ili9341.c
  */
+typedef struct {
+	uint16_t width;
+	uint16_t height;
+	uint16_t scaley;
+	uint16_t slide;
+	const uint32_t *bitmap;
+} font_t;
+
+extern const font_t NF20x24;
+
 extern uint16_t spi_buffer[1024];
 
 void ili9341_init(void);
@@ -65,7 +75,9 @@ void ili9341_test(int mode);
 void ili9341_bulk(int x, int y, int w, int h);
 void ili9341_fill(int x, int y, int w, int h, int color);
 void ili9341_drawchar_5x7(uint8_t ch, int x, int y, uint16_t fg, uint16_t bg);
-void ili9341_drawstring_5x7(char *str, int x, int y, uint16_t fg, uint16_t bg);
+void ili9341_drawstring_5x7(const char *str, int x, int y, uint16_t fg, uint16_t bg);
+void ili9341_drawfont(uint8_t ch, const font_t *font, int x, int y, uint16_t fg, uint16_t bg);
+
 
 /*
  * plot.c
@@ -124,6 +136,7 @@ typedef struct {
 
 void set_trace_type(int t, int type);
 void set_trace_channel(int t, int channel);
+void set_trace_scale(int t, float scale);
 
 // marker
 
@@ -183,6 +196,13 @@ extern float measured[2][101][2];
 void cal_collect(int type);
 void cal_done(void);
 
+enum {
+  ST_START, ST_STOP, ST_CENTER, ST_SPAN
+};
+
+void set_sweep_frequency(int type, int frequency);
+
+float my_atof(const char *p);
 
 /*
  * flash.c
@@ -212,11 +232,11 @@ extern int16_t lastsaveid;
 extern config_t *active;
 extern config_t current_config;
 
-#define freq_start active->_freq_start
-#define freq_stop active->_freq_stop
-#define sweep_points active->_sweep_points
+#define freq_start current_config._freq_start
+#define freq_stop current_config._freq_stop
+#define sweep_points current_config._sweep_points
 #define cal_status current_config._cal_status
-#define frequencies active->_frequencies
+#define frequencies current_config._frequencies
 #define cal_data active->_cal_data
 
 #define trace current_config._trace

@@ -39,7 +39,7 @@ struct {
 
 #define BUTTON_DOWN_LONG_TICKS		10000  /* 1sec */
 #define BUTTON_DOUBLE_TICKS			5000   /* 500ms */
-#define BUTTON_DEBOUNCE_TICKS		10
+#define BUTTON_DEBOUNCE_TICKS		200
 
 /* lever switch assignment */
 #define BIT_UP1 	3
@@ -51,12 +51,25 @@ struct {
 
 static uint16_t last_button = 0b0000;
 static uint32_t last_button_down_ticks;
-static uint8_t inhibit_until_release = FALSE;
-static uint8_t last_button_event;
 uint8_t operation_requested = FALSE;
 
-int ui_status = FALSE;
-int selection = 1;
+enum {
+  UI_NORMAL, UI_MENU, UI_KEYPAD
+};
+
+enum {
+  KM_START, KM_STOP, KM_CENTER, KM_SPAN, KM_SCALE
+};
+
+uint8_t ui_mode = UI_NORMAL;
+uint8_t keypad_mode;
+uint8_t selection = 0;
+
+void ui_mode_normal(void);
+void ui_mode_menu(void);
+void ui_mode_keypad(int _keypad_mode);
+void draw_menu(void);
+void erase_menu_buttons(void);
 
 
 static int btn_check(void)
@@ -66,26 +79,11 @@ static int btn_check(void)
 	int status = 0;
     uint32_t ticks = chVTGetSystemTime();
 	if (changed & (1<<BIT_PUSH)) {
-		if (ticks >= last_button_down_ticks + BUTTON_DEBOUNCE_TICKS) {
-            if (cur_button & (1<<BIT_PUSH)) {
-				// button pushed
-              status |= EVT_BUTTON_SINGLE_CLICK;
-              last_button_down_ticks = ticks;
-			} else {
-              // button released
-              if (inhibit_until_release) {
-                status = 0;
-                inhibit_until_release = FALSE;
-              }
-			}
+		if (cur_button & (1<<BIT_PUSH) && ticks >= last_button_down_ticks + BUTTON_DEBOUNCE_TICKS) {
+          // button pushed
+          status |= EVT_BUTTON_SINGLE_CLICK;
 		}
-	} else {
-		// button unchanged
-		if (cur_button & (1<<BIT_PUSH)
-			&& ticks >= last_button_down_ticks + BUTTON_DOWN_LONG_TICKS) {
-			status |= EVT_BUTTON_DOWN_LONG;
-            inhibit_until_release = TRUE;
-		}
+        last_button_down_ticks = ticks;
 	}
 
 	if (cur_button & (1<<BIT_UP1)) {
@@ -140,28 +138,6 @@ static int btn_wait_release(void)
   }
 }
 
-void
-ui_digit(void)
-{
-    int count = 0;
-    while (TRUE) {
-        int status = btn_check();
-        if (status & EVT_BUTTON_SINGLE_CLICK)
-            break;
-        if (status & EVT_UP && uistat.digit < 7)
-            uistat.digit++;
-        if (status & EVT_DOWN && uistat.digit > 0)
-            uistat.digit--;
-        if (count++ % 4 < 2) {
-          //i2clcd_cmd(0x0e); // enable show-cursor flag
-          //i2clcd_pos(7 - uistat.digit, 1);
-        } else {
-          //i2clcd_cmd(0x0c); // disable show-cursor flag
-        }
-        chThdSleepMilliseconds(100);
-    }
-}
-
 
 // type of menu item 
 enum {
@@ -206,6 +182,7 @@ menu_cal_cb(int item)
 static void
 menu_caldone_cb(int item)
 {
+  (void)item;
   cal_done();
   draw_cal_status();
   menu_move_back();
@@ -217,10 +194,19 @@ menu_recall_cb(int item)
   if (item < 0 || item >= 5)
     return;
   if (caldata_recall(item) == 0) {
-    ui_status = FALSE;
-    ui_hide();
+    ui_mode_normal();
     set_sweep(freq_start, freq_stop);
     draw_cal_status();
+  }
+}
+
+static void
+menu_save_cb(int item)
+{
+  if (item < 0 || item >= 5)
+    return;
+  if (caldata_save(item) == 0) {
+    ui_mode_normal();
   }
 }
 
@@ -237,16 +223,14 @@ static void
 menu_format_cb(int item)
 {
   set_trace_type(uistat.current_trace, item);
-  ui_status = FALSE;
-  ui_hide();
+  ui_mode_normal();
 }
 
 static void
 menu_format2_cb(int item)
 {
   menu_format_cb(item + 5);
-  ui_status = FALSE;
-  ui_hide();
+  ui_mode_normal();
 }
 
 static void
@@ -255,8 +239,7 @@ menu_channel_cb(int item)
   if (item < 0 || item >= 2)
     return;
   set_trace_channel(uistat.current_trace, item);
-  ui_status = FALSE;
-  ui_hide();
+  ui_mode_normal();
 }
 
 static void 
@@ -269,6 +252,30 @@ choose_active_marker(void)
       return;
     }
   active_marker = -1;
+}
+
+void ui_process_keypad(void);
+
+static void
+menu_scale_cb(int item)
+{
+  (void)item;
+  ui_mode_keypad(KM_SCALE);
+  ui_process_keypad();
+}
+
+static void
+menu_stimulus_cb(int item)
+{
+  switch (item) {
+  case 0:
+  case 1:
+  case 2:
+  case 3:
+    ui_mode_keypad(item);
+    ui_process_keypad();
+    break;
+  }
 }
 
 static void
@@ -286,8 +293,7 @@ menu_marker_cb(int item)
   }
   if (active_marker >= 0)
     redraw_marker(active_marker, TRUE);
-  ui_status = FALSE;
-  ui_hide();
+  ui_mode_normal();
 }
 
 typedef struct {
@@ -337,8 +343,8 @@ const menuitem_t menu_format[] = {
 };
 
 const menuitem_t menu_channel[] = {
-  { MT_CALLBACK, "0", menu_channel_cb },
-  { MT_CALLBACK, "1", menu_channel_cb },
+  { MT_CALLBACK, "CH0", menu_channel_cb },
+  { MT_CALLBACK, "CH1", menu_channel_cb },
   { MT_CANCEL, "BACK", NULL },
   { MT_NONE, NULL, NULL } // sentinel
 };
@@ -346,8 +352,17 @@ const menuitem_t menu_channel[] = {
 const menuitem_t menu_display[] = {
   { MT_SUBMENU, "TRACE", menu_trace },
   { MT_SUBMENU, "FORMAT", menu_format },
-  { MT_SUBMENU, "SCALE", menu_format },
+  { MT_CALLBACK, "SCALE", menu_scale_cb },
   { MT_SUBMENU, "CHANNEL", menu_channel },
+  { MT_CANCEL, "BACK", NULL },
+  { MT_NONE, NULL, NULL } // sentinel
+};
+
+const menuitem_t menu_stimulus[] = {
+  { MT_CALLBACK, "START", menu_stimulus_cb },
+  { MT_CALLBACK, "STOP", menu_stimulus_cb },
+  { MT_CALLBACK, "CENTER", menu_stimulus_cb },
+  { MT_CALLBACK, "SPAN", menu_stimulus_cb },
   { MT_CANCEL, "BACK", NULL },
   { MT_NONE, NULL, NULL } // sentinel
 };
@@ -371,11 +386,23 @@ const menuitem_t menu_recall[] = {
   { MT_NONE, NULL, NULL } // sentinel
 };
 
+const menuitem_t menu_save[] = {
+  { MT_CALLBACK, "0", menu_save_cb },
+  { MT_CALLBACK, "1", menu_save_cb },
+  { MT_CALLBACK, "2", menu_save_cb },
+  { MT_CALLBACK, "3", menu_save_cb },
+  { MT_CALLBACK, "4", menu_save_cb },
+  { MT_CANCEL, "BACK", NULL },
+  { MT_NONE, NULL, NULL } // sentinel
+};
+
 const menuitem_t menu_top[] = {
-  { MT_SUBMENU, "CAL", menu_cal },
   { MT_SUBMENU, "DISPLAY", menu_display },
   { MT_SUBMENU, "MARKER", menu_marker },
+  { MT_SUBMENU, "STIMULUS", menu_stimulus },
+  { MT_SUBMENU, "CAL", menu_cal },
   { MT_SUBMENU, "RECALL", menu_recall },
+  { MT_SUBMENU, "SAVE", menu_save },
   { MT_CLOSE, "CLOSE", NULL },
   { MT_NONE, NULL, NULL } // sentinel
 };
@@ -403,7 +430,18 @@ static void menu_move_back(void)
     return;
   menu_current_level--;
   ensure_selection();
-  erase_buttons();
+  erase_menu_buttons();
+  draw_menu();
+}
+
+static void menu_push_submenu(const menuitem_t *submenu)
+{
+  if (menu_current_level < MENU_STACK_DEPTH_MAX-1)
+    menu_current_level++;
+  menu_stack[menu_current_level] = submenu;
+  ensure_selection();
+  erase_menu_buttons();
+  draw_menu();
 }
 
 static void menu_move_top(void)
@@ -412,20 +450,20 @@ static void menu_move_top(void)
     return;
   menu_current_level = 0;
   ensure_selection();
-  erase_buttons();
+  erase_menu_buttons();
+  draw_menu();
 }
 
-void menu_invoke(int selection)
+void menu_invoke(int item)
 {
   const menuitem_t *menu = menu_stack[menu_current_level];
-  menu = &menu[selection];
+  menu = &menu[item];
 
   switch (menu->type) {
   case MT_NONE:
   case MT_BLANK:
   case MT_CLOSE:
-    ui_status = FALSE;
-    ui_hide();
+    ui_mode_normal();
     break;
 
   case MT_CANCEL:
@@ -436,18 +474,90 @@ void menu_invoke(int selection)
     menuaction_cb_t cb = (menuaction_cb_t)menu->reference;
     if (cb == NULL)
       return;
-    (*cb)(selection);
+    (*cb)(item);
     break;
   }
 
   case MT_SUBMENU:
-    if (menu_current_level >= 3)
-      break;
-    menu_current_level++;
-    menu_stack[menu_current_level] = (const menuitem_t*)menu->reference;
-    erase_buttons();
-    selection = 0;
+    menu_push_submenu((const menuitem_t*)menu->reference);
     break;
+  }
+}
+
+#define KP_X(x) (48*(x) + 2 + (320-64-192))
+#define KP_Y(y) (48*(y) + 2)
+
+#define KP_PERIOD 10
+#define KP_MINUS 11
+#define KP_X1 12
+#define KP_K 13
+#define KP_M 14
+#define KP_G 15
+#define KP_BS 16
+#define KP_INF 17
+#define KP_DB 18
+
+const struct {
+  uint16_t x, y;
+  uint8_t c;
+} keypads[] = {
+  { KP_X(1), KP_Y(3), KP_PERIOD },
+  { KP_X(0), KP_Y(3), 0 },
+  { KP_X(0), KP_Y(2), 1 },
+  { KP_X(1), KP_Y(2), 2 },
+  { KP_X(2), KP_Y(2), 3 },
+  { KP_X(0), KP_Y(1), 4 },
+  { KP_X(1), KP_Y(1), 5 },
+  { KP_X(2), KP_Y(1), 6 },
+  { KP_X(0), KP_Y(0), 7 },
+  { KP_X(1), KP_Y(0), 8 },
+  { KP_X(2), KP_Y(0), 9 },
+  //{ KP_X(3), KP_Y(0), KP_G },
+  { KP_X(3), KP_Y(1), KP_M },
+  //{ KP_X(3), KP_Y(2), KP_K },
+  { KP_X(3), KP_Y(3), KP_X1 },
+  { KP_X(2), KP_Y(3), KP_BS },
+  { 0, 0, 0 }
+};
+
+void
+draw_keypad(void)
+{
+  int i = 0;
+  while (keypads[i].x) {
+    uint16_t bg = 0xffff;
+    if (i == selection)
+      bg = 0x7777;
+    ili9341_fill(keypads[i].x, keypads[i].y, 44, 44, bg);
+    ili9341_drawfont(keypads[i].c, &NF20x24, keypads[i].x+12, keypads[i].y+10, 0x0000, bg);
+    i++;
+  }
+}
+
+const char *keypad_mode_label[] = {
+  "START", "STOP", "CENTER", "SPAN", "SCALE"
+};
+
+void
+draw_numeric_input(const char *buf)
+{
+  int i = 0;
+  ili9341_fill(0, 208, 320, 32, 0xffff);
+  ili9341_drawstring_5x7(keypad_mode_label[keypad_mode], 10, 220, 0x0000, 0xffff);
+  while (buf[i] && i < 10) {
+    int c;
+    if (buf[i] == '.')
+      c = KP_PERIOD;
+    else if (buf[i] == '-')
+      c = KP_MINUS;
+    else if (buf[i] >= '0' && buf[i] <= '9')
+      c = buf[i] - '0';
+    else {
+      i++;
+      continue;
+    }
+    ili9341_drawfont(c, &NF20x24, i * 20 + 64, 208+4, 0x0000, 0xffff);
+    i++;
   }
 }
 
@@ -463,59 +573,183 @@ draw_menu_buttons(const menuitem_t *menu)
       continue;
     int y = 32*i;
     uint16_t bg = 0xffff;
-    if (i == selection)
+    // focus only in MENU mode but not in KEYPAD mode
+    if (ui_mode == UI_MENU && i == selection)
       bg = 0x7777;
     ili9341_fill(320-60, y, 60, 30, bg);
     ili9341_drawstring_5x7(menu[i].label, 320-54, y+12, 0x0000, bg);
   }
 }
 
-const char *menu_items[] = {
-  "OPEN", "SHORT", "LOAD", "ISOLN", "THRU", NULL, "DONE"
-};
-
 void
-draw_buttons(void)
+draw_menu(void)
 {
-#if 1
   draw_menu_buttons(menu_stack[menu_current_level]);
-#else
-  int i = 0;
-  for (i = 0; i < 7; i++) {
-    int y = 32*i;
-    uint16_t bg = 0xffff;
-    if (i == selection)
-      bg = 0x7777;
-    if (menu_items[i] != NULL) {
-      ili9341_fill(320-60, y, 60, 30, bg);
-      ili9341_drawstring_5x7(menu_items[i], 320-54, y+12, 0x0000, bg);
-    }
-  }
-#endif
 }
 
 void
-erase_buttons(void)
+erase_menu_buttons(void)
 {
   uint16_t bg = 0;
   ili9341_fill(320-60, 0, 60, 32*7, bg);
 }
 
 void
-ui_show(void)
+ui_mode_menu(void)
 {
+  if (ui_mode == UI_MENU) 
+    return;
+
+  ui_mode = UI_MENU;
   area_width = WIDTH - (64-14-4);
   area_height = HEIGHT;
-  draw_buttons();
+  ensure_selection();
+  draw_menu();
 }
 
 void
-ui_hide(void)
+ui_mode_keypad(int _keypad_mode)
 {
+  if (ui_mode == UI_KEYPAD) 
+    return;
+
+  ui_mode = UI_KEYPAD;
+  area_width = WIDTH - (64-14-4);
+  area_height = HEIGHT;
+  draw_menu();
+  draw_keypad();
+  keypad_mode = _keypad_mode;
+  draw_numeric_input("");
+}
+
+void
+ui_mode_normal(void)
+{
+  if (ui_mode == UI_NORMAL) 
+    return;
+
+  ui_mode = UI_NORMAL;
   area_width = WIDTH;
   area_height = HEIGHT;
-  erase_buttons();
+  erase_menu_buttons();
   force_draw_cells();
+}
+
+void
+ui_process_normal(void)
+{
+  int status = btn_check();
+  if (status != 0) {
+    if (status & EVT_BUTTON_SINGLE_CLICK) {
+      ui_mode_menu();
+    } else {
+      do {
+        if (active_marker >= 0 && markers[active_marker].enabled) {
+          if ((status & EVT_DOWN) && markers[active_marker].index > 0) {
+            markers[active_marker].index--;
+            redraw_marker(active_marker, FALSE);
+          }
+          if ((status & EVT_UP) && markers[active_marker].index < 100) {
+            markers[active_marker].index++;
+            redraw_marker(active_marker, FALSE);
+          }
+        }
+        status = btn_wait_release();
+      } while (status != 0);
+      if (active_marker >= 0)
+        redraw_marker(active_marker, TRUE);
+    }
+  }
+}
+
+void
+ui_process_menu(void)
+{
+  int status = btn_check();
+  if (status != 0) {
+    if (status & EVT_BUTTON_SINGLE_CLICK) {
+      menu_invoke(selection);
+    } else {
+      if (status & EVT_UP
+          && menu_stack[menu_current_level][selection+1].type != MT_NONE) {
+        selection++;
+        draw_menu();
+      }
+      if (status & EVT_DOWN
+          && selection > 0) {
+        selection--;
+        draw_menu();
+      }
+    }
+  }
+}
+
+void
+ui_process_keypad(void)
+{
+  int status = btn_check();
+  char buf[15];
+  char *p = buf;
+  float scale;
+  while (TRUE) {
+    if (status & EVT_UP) {
+      selection--;
+      selection %= 16;
+      draw_keypad();
+    }
+    if (status & EVT_DOWN) {
+      selection++;
+      selection %= 16;
+      draw_keypad();
+    }
+    if (status == EVT_BUTTON_SINGLE_CLICK) {
+      int c = keypads[selection].c;
+      if (c >= KP_X1 && c <= KP_G) {
+        int n = c - KP_X1;
+        scale = 1;
+        while (n-- > 0)
+          scale *= 1000;
+        break;
+      } else if (c <= 9)
+        *p++ = '0' + c;
+      else if (c == KP_PERIOD)
+        *p++ = '.';
+      else if (c == KP_BS) {
+        if (p == buf) {
+          goto cancel;
+        }
+        --p;
+      }
+      *p = '\0';
+      draw_numeric_input(buf);
+    }
+    status = btn_check();
+  }
+
+  float value = my_atof(buf) * scale;
+  switch (keypad_mode) {
+  case KM_START:
+    set_sweep_frequency(ST_START, value);
+    break;
+  case KM_STOP:
+    set_sweep_frequency(ST_STOP, value);
+    break;
+  case KM_CENTER:
+    set_sweep_frequency(ST_CENTER, value);
+    break;
+  case KM_SPAN:
+    set_sweep_frequency(ST_SPAN, value);
+    break;
+  case KM_SCALE:
+    set_trace_scale(uistat.current_trace, value);
+    break;
+  }
+
+ cancel:
+  ui_mode_normal();
+  redraw();
+  force_set_markmap();
+  draw_cell_all();
 }
 
 void
@@ -523,48 +757,17 @@ ui_process(void)
 {
   if (!operation_requested)
     return;
-  
-  int status = btn_check();
-  int n;
-  if (status != 0) {
-    if (status & EVT_BUTTON_SINGLE_CLICK) {
-      if (ui_status) {
-        menu_invoke(selection);
-      } else {
-        ui_status = TRUE;
-      }
-      if (ui_status)
-        ui_show();
-    } else {
-      if (ui_status) {
-        if (status & EVT_UP
-            && menu_stack[menu_current_level][selection+1].type != MT_NONE) {
-          selection++;
-          draw_buttons();
-        }
-        if (status & EVT_DOWN
-            && selection > 0) {
-          selection--;
-          draw_buttons();
-        }
-      } else {
-        do {
-          if (active_marker >= 0 && markers[active_marker].enabled) {
-            if ((status & EVT_DOWN) && markers[active_marker].index > 0) {
-              markers[active_marker].index--;
-              redraw_marker(active_marker, FALSE);
-            }
-            if ((status & EVT_UP) && markers[active_marker].index < 100) {
-              markers[active_marker].index++;
-              redraw_marker(active_marker, FALSE);
-            }
-          }
-          status = btn_wait_release();
-        } while (status != 0);
-        if (active_marker >= 0)
-          redraw_marker(active_marker, TRUE);
-      }
-    }
+
+  switch (ui_mode) {
+  case UI_NORMAL:
+    ui_process_normal();
+    break;    
+  case UI_MENU:
+    ui_process_menu();
+    break;    
+  case UI_KEYPAD:
+    ui_process_keypad();
+    break;    
   }
   operation_requested = FALSE;
 }

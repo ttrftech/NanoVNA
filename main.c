@@ -454,6 +454,34 @@ update_frequencies(void)
   int32_t span = (freq_stop - freq_start)/100;
   for (i = 0; i < sweep_points; i++)
     frequencies[i] = freq_start + span * i / (sweep_points - 1) * 100;
+
+  // set grid layout
+  set_sweep(freq_start, freq_stop);
+}
+
+void
+set_sweep_frequency(int type, int frequency)
+{
+  switch (type) {
+  case ST_START:
+    if (freq_start != frequency) {
+      ensure_edit_config();
+      freq_start = frequency;
+      update_frequencies();
+    }
+    break;
+  case ST_STOP:
+    if (freq_start != frequency) {
+      ensure_edit_config();
+      freq_stop = frequency;
+      update_frequencies();
+    }
+    break;
+  case ST_CENTER:
+    break;
+  case ST_SPAN:
+    break;
+  }
 }
 
 static void cmd_sweep(BaseSequentialStream *chp, int argc, char *argv[])
@@ -482,6 +510,7 @@ static void cmd_sweep(BaseSequentialStream *chp, int argc, char *argv[])
     }
     freq_stop = x;
   }
+#if 0
   if (argc >= 3) {
     int32_t x = atoi(argv[2]);
     if (x < 1 || x > 1601) {
@@ -490,9 +519,9 @@ static void cmd_sweep(BaseSequentialStream *chp, int argc, char *argv[])
     }
     sweep_points = x;
   }
+#endif
 
   update_frequencies();
-  set_sweep(freq_start, freq_stop);
 }
 
 
@@ -813,7 +842,7 @@ static void cmd_recall(BaseSequentialStream *chp, int argc, char *argv[])
   pause_sweep();
   if (caldata_recall(id) == 0) {
     // success
-    set_sweep(freq_start, freq_stop);
+    update_frequencies();
     draw_cal_status();
   }
 
@@ -864,7 +893,15 @@ void set_trace_channel(int t, int channel)
   }
 }
 
-static float
+void set_trace_scale(int t, float scale)
+{
+  if (trace[t].scale != scale) {
+    trace[t].scale = scale;
+    force_set_markmap();
+  }
+}
+
+float
 my_atof(const char *p)
 {
   int neg = FALSE;
@@ -1203,13 +1240,12 @@ int main(void)
    */
   plot_init();
 
-  /* initial frequencies */
-  update_frequencies();
-
   /* restore config and calibration data from flash memory */
   caldata_recall(0);
 
-  set_sweep(freq_start, freq_stop);
+  /* initial frequencies */
+  update_frequencies();
+
   redraw();
 
   /*

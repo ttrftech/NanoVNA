@@ -1059,7 +1059,7 @@ static void cmd_test(BaseSequentialStream *chp, int argc, char *argv[])
   (void)argc;
   (void)argv;
 
-  pause_sweep();
+  //pause_sweep();
 #if 0
   for (i = 0; i < 100; i++) {
     palClearPad(GPIOC, GPIOC_LED);
@@ -1074,7 +1074,7 @@ static void cmd_test(BaseSequentialStream *chp, int argc, char *argv[])
   }
 #endif
 
-#if 1
+#if 0
   int mode = 0;
   if (argc >= 1)
     mode = atoi(argv[0]);
@@ -1086,6 +1086,12 @@ static void cmd_test(BaseSequentialStream *chp, int argc, char *argv[])
     chThdSleepMilliseconds(50);
   }
 #endif
+
+  //extern adcsample_t adc_samples[2];
+  //chprintf(chp, "adc: %d %d\r\n", adc_samples[0], adc_samples[1]);
+  int x, y;
+  test_touch(&x, &y);
+  chprintf(chp, "adc: %d %d\r\n", x, y);
 }
 
 static void cmd_gain(BaseSequentialStream *chp, int argc, char *argv[])
@@ -1145,9 +1151,11 @@ static void cmd_stat(BaseSequentialStream *chp, int argc, char *argv[])
   chprintf(chp, "average: %d %d\r\n", stat.ave[0], stat.ave[1]);
   chprintf(chp, "rms: %d %d\r\n", stat.rms[0], stat.rms[1]);
   chprintf(chp, "callback count: %d\r\n", stat.callback_count);
-  chprintf(chp, "interval cycle: %d\r\n", stat.interval_cycles);
-  chprintf(chp, "busy cycle: %d\r\n", stat.busy_cycles);
-  chprintf(chp, "load: %d\r\n", stat.busy_cycles * 100 / stat.interval_cycles);
+  //chprintf(chp, "interval cycle: %d\r\n", stat.interval_cycles);
+  //chprintf(chp, "busy cycle: %d\r\n", stat.busy_cycles);
+  //chprintf(chp, "load: %d\r\n", stat.busy_cycles * 100 / stat.interval_cycles);
+  extern int awd_count;
+  chprintf(chp, "awd: %d\r\n", awd_count);
 }
 
 

@@ -71,6 +71,14 @@ void ui_mode_keypad(int _keypad_mode);
 void draw_menu(void);
 void erase_menu_buttons(void);
 
+typedef struct {
+  uint8_t type;
+  char *label;
+  const void *reference;
+} menuitem_t;
+
+static void menu_push_submenu(const menuitem_t *submenu);
+
 
 static int btn_check(void)
 {
@@ -156,7 +164,7 @@ static void menu_move_back(void);
 
 
 static void
-menu_cal_cb(int item)
+menu_calop_cb(int item)
 {
   switch (item) {
   case 0: // OPEN
@@ -177,6 +185,7 @@ menu_cal_cb(int item)
   }
   selection++;
   draw_cal_status();
+  draw_menu();
 }
 
 static void
@@ -184,6 +193,24 @@ menu_caldone_cb(int item)
 {
   (void)item;
   cal_done();
+  draw_cal_status();
+  menu_move_back();
+}
+
+static void
+menu_cal2_cb(int item)
+{
+  switch (item) {
+  case 0: // RESET
+    cal_status = 0;
+    break;
+  case 1: // OFF
+    cal_status &= ~CALSTAT_APPLY;
+    break;
+  case 2: // ON
+    cal_status |= CALSTAT_APPLY;
+    break;
+  }
   draw_cal_status();
   menu_move_back();
 }
@@ -207,6 +234,7 @@ menu_save_cb(int item)
     return;
   if (caldata_save(item) == 0) {
     ui_mode_normal();
+    draw_cal_status();
   }
 }
 
@@ -296,22 +324,36 @@ menu_marker_cb(int item)
   ui_mode_normal();
 }
 
-typedef struct {
-  uint8_t type;
-  char *label;
-  const void *reference;
-} menuitem_t;
-
-const menuitem_t menu_cal[] = {
-  { MT_CALLBACK, "OPEN", menu_cal_cb },
-  { MT_CALLBACK, "SHORT", menu_cal_cb },
-  { MT_CALLBACK, "LOAD", menu_cal_cb },
-  { MT_CALLBACK, "ISOLN", menu_cal_cb },
-  { MT_CALLBACK, "THRU", menu_cal_cb },
+const menuitem_t menu_calop[] = {
+  { MT_CALLBACK, "OPEN", menu_calop_cb },
+  { MT_CALLBACK, "SHORT", menu_calop_cb },
+  { MT_CALLBACK, "LOAD", menu_calop_cb },
+  { MT_CALLBACK, "ISOLN", menu_calop_cb },
+  { MT_CALLBACK, "THRU", menu_calop_cb },
   { MT_CALLBACK, "DONE", menu_caldone_cb },
   { MT_CANCEL, "BACK", NULL },
   { MT_NONE, NULL, NULL } // sentinel
 };
+
+const menuitem_t menu_cal[] = {
+  { MT_CALLBACK, "RESET", menu_cal2_cb },
+  { MT_CALLBACK, "OFF", menu_cal2_cb },
+  { MT_CALLBACK, "ON", menu_cal2_cb },
+  { MT_CANCEL, "BACK", NULL },
+  { MT_NONE, NULL, NULL } // sentinel
+};
+
+static void
+menu_cal_cb(int item)
+{
+  (void)item;
+  if (cal_status != 0) {
+    menu_push_submenu(&menu_cal);
+  } else {
+    menu_push_submenu(&menu_calop);
+  }
+}
+
 
 const menuitem_t menu_trace[] = {
   { MT_CALLBACK, "0", menu_trace_cb },
@@ -400,7 +442,7 @@ const menuitem_t menu_top[] = {
   { MT_SUBMENU, "DISPLAY", menu_display },
   { MT_SUBMENU, "MARKER", menu_marker },
   { MT_SUBMENU, "STIMULUS", menu_stimulus },
-  { MT_SUBMENU, "CAL", menu_cal },
+  { MT_CALLBACK, "CAL", menu_cal_cb },
   { MT_SUBMENU, "RECALL", menu_recall },
   { MT_SUBMENU, "SAVE", menu_save },
   { MT_CLOSE, "CLOSE", NULL },
@@ -808,6 +850,117 @@ static const EXTConfig extcfg = {
   }
 };
 
+static void adccallback(ADCDriver *adcp, adcsample_t *buffer, size_t n)
+{
+  (void)adcp;
+  (void)buffer;
+  (void)n;
+}
+
+int awd_count;
+
+static void adcerrorcallback(ADCDriver *adcp, adcerror_t err)
+{
+  (void)adcp;
+  if (err == ADC_ERR_AWD) {
+    awd_count++;
+  }
+}
+
+static const GPTConfig gpt3cfg = {
+  1000,    /* 1kHz timer clock.*/
+  NULL,   /* Timer callback.*/
+  0x0040,
+  0
+};
+
+#define ADC_GRP1_NUM_CHANNELS   1
+#define ADC_GRP1_BUF_DEPTH      8
+
+static const ADCConversionGroup adcgrpcfg1 = {
+  TRUE,
+  ADC_GRP1_NUM_CHANNELS,
+  adccallback,
+  adcerrorcallback,
+  ADC_CFGR1_CONT | ADC_CFGR1_RES_12BIT | ADC_CFGR1_AWDEN |
+  ADC_CFGR1_EXTEN_0 | // rising edge of external trigger
+  ADC_CFGR1_EXTSEL_0 | ADC_CFGR1_EXTSEL_1, // TRG3 /* CFGR1 */
+  ADC_TR(1000, 0),                                     /* TR */
+  ADC_SMPR_SMP_28P5,                                 /* SMPR */
+  ADC_CHSELR_CHSEL7                                /* CHSELR */
+};
+
+static const ADCConversionGroup adcgrpcfg_x = {
+  FALSE,
+  ADC_GRP1_NUM_CHANNELS,
+  NULL,
+  NULL,
+  ADC_CFGR1_CONT | ADC_CFGR1_RES_12BIT,             /* CFGR1 */
+  ADC_TR(0, 0),                                     /* TR */
+  ADC_SMPR_SMP_28P5,                                 /* SMPR */
+  ADC_CHSELR_CHSEL6                                /* CHSELR */
+};
+
+static const ADCConversionGroup adcgrpcfg_y = {
+  FALSE,
+  ADC_GRP1_NUM_CHANNELS,
+  NULL,
+  NULL,
+  ADC_CFGR1_CONT | ADC_CFGR1_RES_12BIT,             /* CFGR1 */
+  ADC_TR(0, 0),                                     /* TR */
+  ADC_SMPR_SMP_28P5,                                 /* SMPR */
+  ADC_CHSELR_CHSEL7                                /* CHSELR */
+};
+
+adcsample_t adc_samples[ADC_GRP1_NUM_CHANNELS * ADC_GRP1_BUF_DEPTH];
+
+void
+touch_wait_sense(void)
+{
+  palSetPadMode(GPIOB, 1, PAL_MODE_INPUT_PULLDOWN );
+  palSetPadMode(GPIOA, 7, PAL_MODE_INPUT_PULLDOWN );
+  palSetPadMode(GPIOB, 0, PAL_MODE_OUTPUT_PUSHPULL );
+  palSetPad(GPIOB, 0);
+  palSetPadMode(GPIOA, 6, PAL_MODE_OUTPUT_PUSHPULL );
+  palSetPad(GPIOA, 6);
+}
+
+int
+touch_measure_y(void)
+{
+  palSetPadMode(GPIOB, 1, PAL_MODE_INPUT_PULLDOWN );
+  palSetPadMode(GPIOA, 7, PAL_MODE_INPUT_PULLDOWN );
+  palSetPadMode(GPIOB, 0, PAL_MODE_OUTPUT_PUSHPULL );
+  palClearPad(GPIOB, 0);
+  palSetPadMode(GPIOA, 6, PAL_MODE_OUTPUT_PUSHPULL );
+  palSetPad(GPIOA, 6);
+  adcConvert(&ADCD1, &adcgrpcfg_y, adc_samples, 1);
+  return adc_samples[0];
+}
+
+int
+touch_measure_x(void)
+{
+  palSetPadMode(GPIOB, 0, PAL_MODE_INPUT_PULLDOWN );
+  palSetPadMode(GPIOA, 6, PAL_MODE_INPUT_PULLDOWN );
+  palSetPadMode(GPIOB, 1, PAL_MODE_OUTPUT_PUSHPULL );
+  palSetPad(GPIOB, 1);
+  palSetPadMode(GPIOA, 7, PAL_MODE_OUTPUT_PUSHPULL );
+  palClearPad(GPIOA, 7);
+  adcConvert(&ADCD1, &adcgrpcfg_x, adc_samples, 1);
+  return adc_samples[0];
+}
+
+void
+test_touch(int *x, int *y)
+{
+  adcStopConversion(&ADCD1);
+  *x = touch_measure_x();
+  *y = touch_measure_y();
+  touch_wait_sense();
+  adcStartConversion(&ADCD1, &adcgrpcfg1, adc_samples, 8);
+}
+
 void
 ui_init()
 {
@@ -815,4 +968,18 @@ ui_init()
    * Activates the EXT driver 1.
    */
   extStart(&EXTD1, &extcfg);
+
+  gptStart(&GPTD3, &gpt3cfg);
+  gptPolledDelay(&GPTD3, 10); /* Small delay.*/
+
+  gptStartContinuous(&GPTD3, 5000);
+
+  touch_wait_sense();
+  /*
+   * Activates the ADC1 driver
+   */
+  adcStart(&ADCD1, NULL);
+  adcSTM32SetCCR(ADC_CCR_VREFEN);
+
+  adcStartConversion(&ADCD1, &adcgrpcfg1, adc_samples, 8);
 }

@@ -204,9 +204,11 @@ static struct {
   int16_t ave[2];
   int callback_count;
 
+#if 0
   int32_t last_counter_value;
   int32_t interval_cycles;
   int32_t busy_cycles;
+#endif
 } stat;
 
 int16_t rx_buffer[AUDIO_BUFFER_LEN * 2];
@@ -1090,8 +1092,13 @@ static void cmd_test(BaseSequentialStream *chp, int argc, char *argv[])
   //extern adcsample_t adc_samples[2];
   //chprintf(chp, "adc: %d %d\r\n", adc_samples[0], adc_samples[1]);
   int x, y;
-  test_touch(&x, &y);
-  chprintf(chp, "adc: %d %d\r\n", x, y);
+  for (i = 0; i < 50; i++) {
+    test_touch(&x, &y);
+    chprintf(chp, "adc: %d %d\r\n", x, y);
+    chThdSleepMilliseconds(200);
+  }
+  //extern int touch_x, touch_y;
+  //chprintf(chp, "adc: %d %d\r\n", touch_x, touch_y);
 }
 
 static void cmd_gain(BaseSequentialStream *chp, int argc, char *argv[])

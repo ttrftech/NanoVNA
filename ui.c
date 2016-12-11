@@ -37,9 +37,10 @@ struct {
 #define EVT_DOWN				0x20
 #define EVT_REPEAT				0x40
 
-#define BUTTON_DOWN_LONG_TICKS		10000  /* 1sec */
+#define BUTTON_DOWN_LONG_TICKS		5000  /* 1sec */
 #define BUTTON_DOUBLE_TICKS			5000   /* 500ms */
-#define BUTTON_DEBOUNCE_TICKS		200
+#define BUTTON_REPEAT_TICKS			1000   /* 100ms */
+#define BUTTON_DEBOUNCE_TICKS		100
 
 /* lever switch assignment */
 #define BIT_UP1 	3
@@ -51,6 +52,7 @@ struct {
 
 static uint16_t last_button = 0b0000;
 static uint32_t last_button_down_ticks;
+static uint32_t last_button_repeat_ticks;
 uint8_t operation_requested = FALSE;
 
 enum {
@@ -87,7 +89,8 @@ static int btn_check(void)
 	int status = 0;
     uint32_t ticks = chVTGetSystemTime();
 	if (changed & (1<<BIT_PUSH)) {
-		if (cur_button & (1<<BIT_PUSH) && ticks >= last_button_down_ticks + BUTTON_DEBOUNCE_TICKS) {
+		if (cur_button & (1<<BIT_PUSH)
+            && ticks - last_button_down_ticks >= BUTTON_DEBOUNCE_TICKS) {
           // button pushed
           status |= EVT_BUTTON_SINGLE_CLICK;
 		}
@@ -134,13 +137,15 @@ static int btn_wait_release(void)
       return 0;
     }
 
-    if (ticks - last_button_down_ticks >= BUTTON_DOWN_LONG_TICKS) {
+    if (ticks - last_button_down_ticks >= BUTTON_DOWN_LONG_TICKS
+        && ticks - last_button_repeat_ticks >= BUTTON_REPEAT_TICKS) {
       if (cur_button & (1<<BIT_DOWN1)) {
         status |= EVT_DOWN | EVT_REPEAT;
       }
       if (cur_button & (1<<BIT_UP1)) {
         status |= EVT_UP | EVT_REPEAT;
       }
+      last_button_repeat_ticks = ticks;
       return status;
     }
   }
@@ -258,7 +263,6 @@ static void
 menu_format2_cb(int item)
 {
   menu_format_cb(item + 5);
-  ui_mode_normal();
 }
 
 static void
@@ -267,6 +271,7 @@ menu_channel_cb(int item)
   if (item < 0 || item >= 2)
     return;
   set_trace_channel(uistat.current_trace, item);
+  menu_move_back();
   ui_mode_normal();
 }
 
@@ -554,9 +559,9 @@ const struct {
   { KP_X(0), KP_Y(0), 7 },
   { KP_X(1), KP_Y(0), 8 },
   { KP_X(2), KP_Y(0), 9 },
-  //{ KP_X(3), KP_Y(0), KP_G },
+  { KP_X(3), KP_Y(0), KP_G },
   { KP_X(3), KP_Y(1), KP_M },
-  //{ KP_X(3), KP_Y(2), KP_K },
+  { KP_X(3), KP_Y(2), KP_K },
   { KP_X(3), KP_Y(3), KP_X1 },
   { KP_X(2), KP_Y(3), KP_BS },
   { 0, 0, 0 }
@@ -712,38 +717,49 @@ ui_process_menu(void)
     if (status & EVT_BUTTON_SINGLE_CLICK) {
       menu_invoke(selection);
     } else {
-      if (status & EVT_UP
-          && menu_stack[menu_current_level][selection+1].type != MT_NONE) {
-        selection++;
-        draw_menu();
-      }
-      if (status & EVT_DOWN
-          && selection > 0) {
-        selection--;
-        draw_menu();
-      }
+      do {
+        if (status & EVT_UP
+            && menu_stack[menu_current_level][selection+1].type != MT_NONE) {
+          selection++;
+          draw_menu();
+        }
+        if (status & EVT_DOWN
+            && selection > 0) {
+          selection--;
+          draw_menu();
+        }
+        status = btn_wait_release();
+      } while (status != 0);
     }
   }
 }
+#define NUMINPUT_LEN 10
 
 void
 ui_process_keypad(void)
 {
   int status = btn_check();
-  char buf[15];
-  char *p = buf;
+  char buf[11];
+  int i = 0;
   float scale;
   while (TRUE) {
-    if (status & EVT_UP) {
-      selection--;
-      selection %= 16;
-      draw_keypad();
+    if (status & (EVT_UP|EVT_DOWN)) {
+      int s = status;
+      do {
+        if (s & EVT_UP) {
+          selection--;
+          selection %= 16;
+          draw_keypad();
+        }
+        if (s & EVT_DOWN) {
+          selection++;
+          selection %= 16;
+          draw_keypad();
+        }
+        s = btn_wait_release();
+      } while (s != 0);
     }
-    if (status & EVT_DOWN) {
-      selection++;
-      selection %= 16;
-      draw_keypad();
-    }
+
     if (status == EVT_BUTTON_SINGLE_CLICK) {
       int c = keypads[selection].c;
       if (c >= KP_X1 && c <= KP_G) {
@@ -751,18 +767,23 @@ ui_process_keypad(void)
         scale = 1;
         while (n-- > 0)
           scale *= 1000;
+        /* numeric input done */
         break;
-      } else if (c <= 9)
-        *p++ = '0' + c;
-      else if (c == KP_PERIOD)
-        *p++ = '.';
-      else if (c == KP_BS) {
-        if (p == buf) {
+      } else if (c <= 9 && i < NUMINPUT_LEN)
+        buf[i++] = '0' + c;
+      else if (c == KP_PERIOD && i < NUMINPUT_LEN) {
+        int j;
+        for (j = 0; j < i && buf[j] != '.'; j++)
+          ;
+        if (buf[j] != '.')
+          buf[i++] = '.';
+      } else if (c == KP_BS) {
+        if (i == 0) {
           goto cancel;
         }
-        --p;
+        --i;
       }
-      *p = '\0';
+      buf[i] = '\0';
       draw_numeric_input(buf);
     }
     status = btn_check();
@@ -857,35 +878,40 @@ static void adccallback(ADCDriver *adcp, adcsample_t *buffer, size_t n)
   (void)n;
 }
 
+void test_touch(int *x, int *y);
+
 int awd_count;
+int touch_x, touch_y;
 
 static void adcerrorcallback(ADCDriver *adcp, adcerror_t err)
 {
   (void)adcp;
   if (err == ADC_ERR_AWD) {
     awd_count++;
+    // does not work in callback
+    //test_touch(&touch_x, &touch_y);
   }
 }
 
 static const GPTConfig gpt3cfg = {
   1000,    /* 1kHz timer clock.*/
   NULL,   /* Timer callback.*/
-  0x0040,
+  0x0020,
   0
 };
 
 #define ADC_GRP1_NUM_CHANNELS   1
-#define ADC_GRP1_BUF_DEPTH      8
+#define ADC_GRP1_BUF_DEPTH      1
 
 static const ADCConversionGroup adcgrpcfg1 = {
   TRUE,
   ADC_GRP1_NUM_CHANNELS,
   adccallback,
   adcerrorcallback,
-  ADC_CFGR1_CONT | ADC_CFGR1_RES_12BIT | ADC_CFGR1_AWDEN |
-  ADC_CFGR1_EXTEN_0 | // rising edge of external trigger
-  ADC_CFGR1_EXTSEL_0 | ADC_CFGR1_EXTSEL_1, // TRG3 /* CFGR1 */
-  ADC_TR(1000, 0),                                     /* TR */
+  ADC_CFGR1_RES_12BIT | ADC_CFGR1_AWDEN
+  | ADC_CFGR1_EXTEN_0 | // rising edge of external trigger
+    ADC_CFGR1_EXTSEL_0 | ADC_CFGR1_EXTSEL_1, // TRG3  , /* CFGR1 */
+  ADC_TR(2048, 0),                                     /* TR */
   ADC_SMPR_SMP_28P5,                                 /* SMPR */
   ADC_CHSELR_CHSEL7                                /* CHSELR */
 };
@@ -958,7 +984,7 @@ test_touch(int *x, int *y)
   *x = touch_measure_x();
   *y = touch_measure_y();
   touch_wait_sense();
-  adcStartConversion(&ADCD1, &adcgrpcfg1, adc_samples, 8);
+  adcStartConversion(&ADCD1, &adcgrpcfg1, adc_samples, 1);
 }
 
 void
@@ -969,10 +995,12 @@ ui_init()
    */
   extStart(&EXTD1, &extcfg);
 
+#if 1
   gptStart(&GPTD3, &gpt3cfg);
   gptPolledDelay(&GPTD3, 10); /* Small delay.*/
 
-  gptStartContinuous(&GPTD3, 5000);
+  gptStartContinuous(&GPTD3, 10);
+#endif
 
   touch_wait_sense();
   /*
@@ -981,5 +1009,5 @@ ui_init()
   adcStart(&ADCD1, NULL);
   adcSTM32SetCCR(ADC_CCR_VREFEN);
 
-  adcStartConversion(&ADCD1, &adcgrpcfg1, adc_samples, 8);
+  adcStartConversion(&ADCD1, &adcgrpcfg1, adc_samples, 1);
 }

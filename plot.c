@@ -74,10 +74,16 @@ void set_sweep(int32_t start, int stop)
 {
   int32_t gdigit = 100000000;
   int32_t grid;
-  fstart = start;
-  fstop = stop;
-  fspan = stop - start;
-
+  if (stop > 0) {
+    fstart = start;
+    fstop = stop;
+    fspan = stop - start;
+  } else {
+    fspan = -stop;
+    fstart = start;
+    fstop = stop;
+  }
+  
   while (gdigit > 100) {
     grid = 5 * gdigit;
     if (fspan / grid >= 4)
@@ -1234,16 +1240,31 @@ void
 draw_frequencies(void)
 {
   char buf[24];
-  chsnprintf(buf, 24, "START %d.%03d %03d MHz  ",
-             (int)(fstart / 1000000),
-             (int)((fstart / 1000) % 1000),
-             (int)(fstart % 1000));
-  ili9341_drawstring_5x7(buf, OFFSETX, 233, 0xffff, 0x0000);
-  chsnprintf(buf, 24, "STOP %d.%03d %03d MHz",
-             (int)(fstop / 1000000),
-             (int)((fstop / 1000) % 1000),
-             (int)(fstop % 1000));
-  ili9341_drawstring_5x7(buf, 205, 233, 0xffff, 0x0000);
+  if (fstop > 0) {
+    chsnprintf(buf, 24, "START %d.%03d %03d MHz  ",
+               (int)(fstart / 1000000),
+               (int)((fstart / 1000) % 1000),
+               (int)(fstart % 1000));
+    ili9341_drawstring_5x7(buf, OFFSETX, 233, 0xffff, 0x0000);
+    chsnprintf(buf, 24, "STOP %d.%03d %03d MHz",
+               (int)(fstop / 1000000),
+               (int)((fstop / 1000) % 1000),
+               (int)(fstop % 1000));
+    ili9341_drawstring_5x7(buf, 205, 233, 0xffff, 0x0000);
+  } else {
+    int fcenter = fstart;
+    int fspan = -fstop;
+    chsnprintf(buf, 24, "CENTER %d.%03d %03d MHz  ",
+               (int)(fcenter / 1000000),
+               (int)((fcenter / 1000) % 1000),
+               (int)(fcenter % 1000));
+    ili9341_drawstring_5x7(buf, OFFSETX, 233, 0xffff, 0x0000);
+    chsnprintf(buf, 24, "SPAN %d.%03d %03d MHz",
+               (int)(fspan / 1000000),
+               (int)((fspan / 1000) % 1000),
+               (int)(fspan % 1000));
+    ili9341_drawstring_5x7(buf, 205, 233, 0xffff, 0x0000);
+  }
 }
 
 void

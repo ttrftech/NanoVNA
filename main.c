@@ -453,35 +453,82 @@ void
 update_frequencies(void)
 {
   int i;
-  int32_t span = (freq_stop - freq_start)/100;
+  int32_t span;
+  int32_t start;
+  if (freq_stop > 0) {
+    start = freq_start;
+    span = (freq_stop - freq_start)/100;
+  } else {
+    span = -freq_stop / 100;
+    start = freq_start - span/2;
+  }
+
   for (i = 0; i < sweep_points; i++)
-    frequencies[i] = freq_start + span * i / (sweep_points - 1) * 100;
+    frequencies[i] = start + span * i / (sweep_points - 1) * 100;
 
   // set grid layout
   set_sweep(freq_start, freq_stop);
 }
+
+
+void
+freq_mode_startstop(void)
+{
+  if (freq_stop <= 0) {
+    int center = freq_start;
+    int span = -freq_stop;
+    freq_start = center - span/2;
+    freq_stop = center + span/2;
+  }
+}
+
+void
+freq_mode_centerspan(void)
+{
+  if (freq_stop > 0) {
+    int start = freq_start;
+    int stop = freq_stop;
+    freq_start = (start + stop)/2; // center
+    freq_stop = -(stop - start); // span
+  }
+}
+
 
 void
 set_sweep_frequency(int type, int frequency)
 {
   switch (type) {
   case ST_START:
+    ensure_edit_config();
+    freq_mode_startstop();
     if (freq_start != frequency) {
-      ensure_edit_config();
       freq_start = frequency;
       update_frequencies();
     }
     break;
   case ST_STOP:
-    if (freq_start != frequency) {
-      ensure_edit_config();
+    ensure_edit_config();
+    freq_mode_startstop();
+    if (freq_stop != frequency) {
       freq_stop = frequency;
       update_frequencies();
     }
     break;
   case ST_CENTER:
+    ensure_edit_config();
+    freq_mode_centerspan();
+    if (freq_start != frequency) {
+      freq_start = frequency;
+      update_frequencies();
+    }
     break;
   case ST_SPAN:
+    ensure_edit_config();
+    freq_mode_centerspan();
+    if (freq_stop != -frequency) {
+      freq_stop = -frequency;
+      update_frequencies();
+    }
     break;
   }
 }
@@ -495,35 +542,34 @@ static void cmd_sweep(BaseSequentialStream *chp, int argc, char *argv[])
     chprintf(chp, "usage: sweep {start(Hz)} [stop] [points]\r\n");
     return;
   }
-  if (argc >= 1) {
-    ensure_edit_config();
-    int32_t x = atoi(argv[0]);
-    if (x < 300000) {
-      chprintf(chp, "bad parameter\r\n");
+  if (argc >= 2) {
+    if (strcmp(argv[0], "start") == 0) {
+      int32_t value = atoi(argv[1]);
+      set_sweep_frequency(ST_START, value);
+      return;
+    } else if (strcmp(argv[0], "stop") == 0) {
+      int32_t value = atoi(argv[1]);
+      set_sweep_frequency(ST_STOP, value);
+      return;
+    } else if (strcmp(argv[0], "center") == 0) {
+      int32_t value = atoi(argv[1]);
+      set_sweep_frequency(ST_CENTER, value);
+      return;
+    } else if (strcmp(argv[0], "span") == 0) {
+      int32_t value = atoi(argv[1]);
+      set_sweep_frequency(ST_SPAN, value);
       return;
     }
-    freq_start = x;
+  }
+
+  if (argc >= 1) {
+    int32_t value = atoi(argv[0]);
+    set_sweep_frequency(ST_START, value);
   }
   if (argc >= 2) {
-    int32_t x = atoi(argv[1]);
-    if (x < 300000 || x <= freq_start) {
-      chprintf(chp, "bad parameter\r\n");
-      return;
-    }
-    freq_stop = x;
+    int32_t value = atoi(argv[1]);
+    set_sweep_frequency(ST_STOP, value);
   }
-#if 0
-  if (argc >= 3) {
-    int32_t x = atoi(argv[2]);
-    if (x < 1 || x > 1601) {
-      chprintf(chp, "bad parameter\r\n");
-      return;
-    }
-    sweep_points = x;
-  }
-#endif
-
-  update_frequencies();
 }
 
 

@@ -772,10 +772,12 @@ ui_process_keypad(void)
       } else if (c <= 9 && i < NUMINPUT_LEN)
         buf[i++] = '0' + c;
       else if (c == KP_PERIOD && i < NUMINPUT_LEN) {
+        // check period in former input
         int j;
         for (j = 0; j < i && buf[j] != '.'; j++)
           ;
-        if (buf[j] != '.')
+        // append period if there are no period
+        if (i == j)
           buf[i++] = '.';
       } else if (c == KP_BS) {
         if (i == 0) {

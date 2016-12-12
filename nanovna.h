@@ -211,8 +211,8 @@ float my_atof(const char *p);
 
 typedef struct {
   int32_t magic;
-  int32_t _freq_start;
-  int32_t _freq_stop;
+  int32_t _frequency0; // start or center
+  int32_t _frequency1; // stop or span
   int16_t _sweep_points;
   uint16_t _cal_status;
 
@@ -232,8 +232,8 @@ extern int16_t lastsaveid;
 extern config_t *active;
 extern config_t current_config;
 
-#define freq_start current_config._freq_start
-#define freq_stop current_config._freq_stop
+#define frequency0 current_config._frequency0
+#define frequency1 current_config._frequency1
 #define sweep_points current_config._sweep_points
 #define cal_status current_config._cal_status
 #define frequencies current_config._frequencies

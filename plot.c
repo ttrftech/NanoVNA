@@ -72,12 +72,12 @@ void update_grid(void)
   int32_t gdigit = 100000000;
   int32_t fstart, fspan;
   int32_t grid;
-  if (freq_stop > 0) {
-    fstart = freq_start;
-    fspan = freq_stop - freq_start;
+  if (frequency1 > 0) {
+    fstart = frequency0;
+    fspan = frequency1 - frequency0;
   } else {
-    fspan = -freq_stop;
-    fstart = freq_start - fspan/2;
+    fspan = -frequency1;
+    fstart = frequency0 - fspan/2;
   }
   
   while (gdigit > 100) {
@@ -1236,20 +1236,20 @@ void
 draw_frequencies(void)
 {
   char buf[24];
-  if (freq_stop > 0) {
+  if (frequency1 > 0) {
     chsnprintf(buf, 24, "START %d.%03d %03d MHz  ",
-               (int)(freq_start / 1000000),
-               (int)((freq_start / 1000) % 1000),
-               (int)(freq_start % 1000));
+               (int)(frequency0 / 1000000),
+               (int)((frequency0 / 1000) % 1000),
+               (int)(frequency0 % 1000));
     ili9341_drawstring_5x7(buf, OFFSETX, 233, 0xffff, 0x0000);
     chsnprintf(buf, 24, "STOP %d.%03d %03d MHz",
-               (int)(freq_stop / 1000000),
-               (int)((freq_stop / 1000) % 1000),
-               (int)(freq_stop % 1000));
+               (int)(frequency1 / 1000000),
+               (int)((frequency1 / 1000) % 1000),
+               (int)(frequency1 % 1000));
     ili9341_drawstring_5x7(buf, 205, 233, 0xffff, 0x0000);
-  } else if (freq_stop < 0) {
-    int fcenter = freq_start;
-    int fspan = -freq_stop;
+  } else if (frequency1 < 0) {
+    int fcenter = frequency0;
+    int fspan = -frequency1;
     chsnprintf(buf, 24, "CENTER %d.%03d %03d MHz  ",
                (int)(fcenter / 1000000),
                (int)((fcenter / 1000) % 1000),
@@ -1261,7 +1261,7 @@ draw_frequencies(void)
                (int)(fspan % 1000));
     ili9341_drawstring_5x7(buf, 205, 233, 0xffff, 0x0000);
   } else {
-    int fcenter = freq_start;
+    int fcenter = frequency0;
     chsnprintf(buf, 24, "CW %d.%03d %03d MHz    ",
                (int)(fcenter / 1000000),
                (int)((fcenter / 1000) % 1000),

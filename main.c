@@ -335,8 +335,8 @@ static void cmd_gamma(BaseSequentialStream *chp, int argc, char *argv[])
 }
 
 #if 0
-int32_t freq_start = 1000000;
-int32_t freq_stop = 300000000;
+int32_t frequency0 = 1000000;
+int32_t frequency1 = 300000000;
 int16_t sweep_points = 101;
 
 uint32_t frequencies[101];
@@ -346,8 +346,8 @@ float cal_data[5][101][2];
 
 config_t current_config = {
   /* magic */   CONFIG_MAGIC,
-  /* freq_start */   1000000,
-  /* freq_stop */  300000000,
+  /* frequency0 */   1000000,
+  /* frequency1 */  300000000,
   /* sweep_points */     101,
   /* cal_status */         0,
   /* frequencies */       {},
@@ -389,8 +389,8 @@ static void cmd_scan(BaseSequentialStream *chp, int argc, char *argv[])
   (void)argv;
 
   pause_sweep();
-  freq = freq_start;
-  step = (freq_stop - freq_start) / (sweep_points-1);
+  freq = frequency0;
+  step = (frequency1 - frequency0) / (sweep_points-1);
   delay = set_frequency(freq);
   delay += 2;
   for (i = 0; i < sweep_points; i++) {
@@ -456,12 +456,13 @@ update_frequencies(void)
   int i;
   int32_t span;
   int32_t start;
-  if (freq_stop > 0) {
-    start = freq_start;
-    span = (freq_stop - freq_start)/100;
+  if (frequency1 > 0) {
+    start = frequency0;
+    span = (frequency1 - frequency0)/100;
   } else {
-    span = -freq_stop;
-    start = freq_start - span/2;
+    int center = frequency0;
+    span = -frequency1;
+    start = center - span/2;
     span /= 100;
   }
 
@@ -476,22 +477,22 @@ update_frequencies(void)
 void
 freq_mode_startstop(void)
 {
-  if (freq_stop <= 0) {
-    int center = freq_start;
-    int span = -freq_stop;
-    freq_start = center - span/2;
-    freq_stop = center + span/2;
+  if (frequency1 <= 0) {
+    int center = frequency0;
+    int span = -frequency1;
+    frequency0 = center - span/2;
+    frequency1 = center + span/2;
   }
 }
 
 void
 freq_mode_centerspan(void)
 {
-  if (freq_stop > 0) {
-    int start = freq_start;
-    int stop = freq_stop;
-    freq_start = (start + stop)/2; // center
-    freq_stop = -(stop - start); // span
+  if (frequency1 > 0) {
+    int start = frequency0;
+    int stop = frequency1;
+    frequency0 = (start + stop)/2; // center
+    frequency1 = -(stop - start); // span
   }
 }
 
@@ -508,8 +509,8 @@ set_sweep_frequency(int type, int frequency)
     freq_mode_startstop();
     if (frequency < START_MIN)
       frequency = START_MIN;
-    if (freq_start != frequency) {
-      freq_start = frequency;
+    if (frequency0 != frequency) {
+      frequency0 = frequency;
       update_frequencies();
     }
     break;
@@ -518,25 +519,25 @@ set_sweep_frequency(int type, int frequency)
     freq_mode_startstop();
     if (frequency > STOP_MAX)
       frequency = STOP_MAX;
-    if (freq_stop != frequency) {
-      freq_stop = frequency;
+    if (frequency1 != frequency) {
+      frequency1 = frequency;
       update_frequencies();
     }
     break;
   case ST_CENTER:
     ensure_edit_config();
     freq_mode_centerspan();
-    if (freq_start != frequency) {
-      freq_start = frequency;
-      int center = freq_start;
-      int span = -freq_stop;
+    if (frequency0 != frequency) {
+      frequency0 = frequency;
+      int center = frequency0;
+      int span = -frequency1;
       if (center-span/2 < START_MIN) {
         span = (center - START_MIN) * 2;
-        freq_stop = -span;
+        frequency1 = -span;
       }
       if (center+span/2 > STOP_MAX) {
         span = (STOP_MAX - center) * 2;
-        freq_stop = -span;
+        frequency1 = -span;
       }
       update_frequencies();
     }
@@ -544,17 +545,17 @@ set_sweep_frequency(int type, int frequency)
   case ST_SPAN:
     ensure_edit_config();
     freq_mode_centerspan();
-    if (freq_stop != -frequency) {
-      freq_stop = -frequency;
-      int center = freq_start;
-      int span = -freq_stop;
+    if (frequency1 != -frequency) {
+      frequency1 = -frequency;
+      int center = frequency0;
+      int span = -frequency1;
       if (center-span/2 < START_MIN) {
         center = START_MIN + span/2;
-        freq_start = center;
+        frequency0 = center;
       }
       if (center+span/2 > STOP_MAX) {
         center = STOP_MAX - span/2;
-        freq_start = center;
+        frequency0 = center;
       }
       update_frequencies();
     }
@@ -562,9 +563,9 @@ set_sweep_frequency(int type, int frequency)
   case ST_CW:
     ensure_edit_config();
     freq_mode_centerspan();
-    if (freq_start != frequency || freq_stop != 0) {
-      freq_start = frequency;
-      freq_stop = 0;
+    if (frequency0 != frequency || frequency1 != 0) {
+      frequency0 = frequency;
+      frequency1 = 0;
       update_frequencies();
     }
     break;
@@ -574,7 +575,7 @@ set_sweep_frequency(int type, int frequency)
 static void cmd_sweep(BaseSequentialStream *chp, int argc, char *argv[])
 {
   if (argc == 0) {
-    chprintf(chp, "%d %d %d\r\n", freq_start, freq_stop, sweep_points);
+    chprintf(chp, "%d %d %d\r\n", frequency0, frequency1, sweep_points);
     return;
   } else if (argc > 3) {
     chprintf(chp, "usage: sweep {start(Hz)} [stop] [points]\r\n");

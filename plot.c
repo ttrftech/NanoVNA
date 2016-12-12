@@ -63,25 +63,21 @@ int active_marker = 0;
 #endif
 
 
-int32_t fstart = 0;
-int32_t fstop = 300000000;
-int32_t fspan = 300000000;
 int32_t fgrid = 50000000;
 int16_t grid_offset;
 int16_t grid_width;
 
-void set_sweep(int32_t start, int stop)
+void update_grid(void)
 {
   int32_t gdigit = 100000000;
+  int32_t fstart, fspan;
   int32_t grid;
-  if (stop > 0) {
-    fstart = start;
-    fstop = stop;
-    fspan = stop - start;
+  if (freq_stop > 0) {
+    fstart = freq_start;
+    fspan = freq_stop - freq_start;
   } else {
-    fspan = -stop;
-    fstart = start;
-    fstop = stop;
+    fspan = -freq_stop;
+    fstart = freq_start - fspan/2;
   }
   
   while (gdigit > 100) {
@@ -1240,20 +1236,20 @@ void
 draw_frequencies(void)
 {
   char buf[24];
-  if (fstop > 0) {
+  if (freq_stop > 0) {
     chsnprintf(buf, 24, "START %d.%03d %03d MHz  ",
-               (int)(fstart / 1000000),
-               (int)((fstart / 1000) % 1000),
-               (int)(fstart % 1000));
+               (int)(freq_start / 1000000),
+               (int)((freq_start / 1000) % 1000),
+               (int)(freq_start % 1000));
     ili9341_drawstring_5x7(buf, OFFSETX, 233, 0xffff, 0x0000);
     chsnprintf(buf, 24, "STOP %d.%03d %03d MHz",
-               (int)(fstop / 1000000),
-               (int)((fstop / 1000) % 1000),
-               (int)(fstop % 1000));
+               (int)(freq_stop / 1000000),
+               (int)((freq_stop / 1000) % 1000),
+               (int)(freq_stop % 1000));
     ili9341_drawstring_5x7(buf, 205, 233, 0xffff, 0x0000);
-  } else if (fstop < 0) {
-    int fcenter = fstart;
-    int fspan = -fstop;
+  } else if (freq_stop < 0) {
+    int fcenter = freq_start;
+    int fspan = -freq_stop;
     chsnprintf(buf, 24, "CENTER %d.%03d %03d MHz  ",
                (int)(fcenter / 1000000),
                (int)((fcenter / 1000) % 1000),
@@ -1265,7 +1261,7 @@ draw_frequencies(void)
                (int)(fspan % 1000));
     ili9341_drawstring_5x7(buf, 205, 233, 0xffff, 0x0000);
   } else {
-    int fcenter = fstart;
+    int fcenter = freq_start;
     chsnprintf(buf, 24, "CW %d.%03d %03d MHz    ",
                (int)(fcenter / 1000000),
                (int)((fcenter / 1000) % 1000),

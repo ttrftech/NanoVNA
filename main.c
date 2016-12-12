@@ -374,6 +374,7 @@ ensure_edit_config(void)
 
   //memcpy(&current_config, active, sizeof(config_t));
   active = &current_config;
+  // move to uncal state
   cal_status = 0;
 }
 
@@ -459,15 +460,16 @@ update_frequencies(void)
     start = freq_start;
     span = (freq_stop - freq_start)/100;
   } else {
-    span = -freq_stop / 100;
+    span = -freq_stop;
     start = freq_start - span/2;
+    span /= 100;
   }
 
   for (i = 0; i < sweep_points; i++)
     frequencies[i] = start + span * i / (sweep_points - 1) * 100;
 
   // set grid layout
-  set_sweep(freq_start, freq_stop);
+  update_grid();
 }
 
 

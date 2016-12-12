@@ -150,7 +150,7 @@ typedef struct {
 //extern int active_marker;
 
 void plot_init(void);
-void set_sweep(int32_t start, int stop);
+void update_grid(void);
 void redraw(void);
 void force_draw_cells(void);
 void redraw_marker(int marker, int update_info);

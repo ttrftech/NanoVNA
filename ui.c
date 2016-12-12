@@ -227,7 +227,7 @@ menu_recall_cb(int item)
     return;
   if (caldata_recall(item) == 0) {
     ui_mode_normal();
-    set_sweep(freq_start, freq_stop);
+    update_grid();
     draw_cal_status();
   }
 }

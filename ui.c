@@ -60,7 +60,7 @@ enum {
 };
 
 enum {
-  KM_START, KM_STOP, KM_CENTER, KM_SPAN, KM_SCALE
+  KM_START, KM_STOP, KM_CENTER, KM_SPAN, KM_CW, KM_SCALE
 };
 
 uint8_t ui_mode = UI_NORMAL;
@@ -305,6 +305,7 @@ menu_stimulus_cb(int item)
   case 1:
   case 2:
   case 3:
+  case 4:
     ui_mode_keypad(item);
     ui_process_keypad();
     break;
@@ -410,6 +411,7 @@ const menuitem_t menu_stimulus[] = {
   { MT_CALLBACK, "STOP", menu_stimulus_cb },
   { MT_CALLBACK, "CENTER", menu_stimulus_cb },
   { MT_CALLBACK, "SPAN", menu_stimulus_cb },
+  { MT_CALLBACK, "CW", menu_stimulus_cb },
   { MT_CANCEL, "BACK", NULL },
   { MT_NONE, NULL, NULL } // sentinel
 };
@@ -804,6 +806,9 @@ ui_process_keypad(void)
     break;
   case KM_SPAN:
     set_sweep_frequency(ST_SPAN, value);
+    break;
+  case KM_CW:
+    set_sweep_frequency(ST_CW, value);
     break;
   case KM_SCALE:
     set_trace_scale(uistat.current_trace, value);

@@ -494,6 +494,9 @@ freq_mode_centerspan(void)
 }
 
 
+#define START_MIN 500000
+#define STOP_MAX 300000000
+
 void
 set_sweep_frequency(int type, int frequency)
 {
@@ -501,6 +504,8 @@ set_sweep_frequency(int type, int frequency)
   case ST_START:
     ensure_edit_config();
     freq_mode_startstop();
+    if (frequency < START_MIN)
+      frequency = START_MIN;
     if (freq_start != frequency) {
       freq_start = frequency;
       update_frequencies();
@@ -509,6 +514,8 @@ set_sweep_frequency(int type, int frequency)
   case ST_STOP:
     ensure_edit_config();
     freq_mode_startstop();
+    if (frequency > STOP_MAX)
+      frequency = STOP_MAX;
     if (freq_stop != frequency) {
       freq_stop = frequency;
       update_frequencies();
@@ -519,6 +526,16 @@ set_sweep_frequency(int type, int frequency)
     freq_mode_centerspan();
     if (freq_start != frequency) {
       freq_start = frequency;
+      int center = freq_start;
+      int span = -freq_stop;
+      if (center-span/2 < START_MIN) {
+        span = (center - START_MIN) * 2;
+        freq_stop = -span;
+      }
+      if (center+span/2 > STOP_MAX) {
+        span = (STOP_MAX - center) * 2;
+        freq_stop = -span;
+      }
       update_frequencies();
     }
     break;
@@ -527,6 +544,25 @@ set_sweep_frequency(int type, int frequency)
     freq_mode_centerspan();
     if (freq_stop != -frequency) {
       freq_stop = -frequency;
+      int center = freq_start;
+      int span = -freq_stop;
+      if (center-span/2 < START_MIN) {
+        center = START_MIN + span/2;
+        freq_start = center;
+      }
+      if (center+span/2 > STOP_MAX) {
+        center = STOP_MAX - span/2;
+        freq_start = center;
+      }
+      update_frequencies();
+    }
+    break;
+  case ST_CW:
+    ensure_edit_config();
+    freq_mode_centerspan();
+    if (freq_start != frequency || freq_stop != 0) {
+      freq_start = frequency;
+      freq_stop = 0;
       update_frequencies();
     }
     break;
@@ -558,6 +594,10 @@ static void cmd_sweep(BaseSequentialStream *chp, int argc, char *argv[])
     } else if (strcmp(argv[0], "span") == 0) {
       int32_t value = atoi(argv[1]);
       set_sweep_frequency(ST_SPAN, value);
+      return;
+    } else if (strcmp(argv[0], "cw") == 0) {
+      int32_t value = atoi(argv[1]);
+      set_sweep_frequency(ST_CW, value);
       return;
     }
   }

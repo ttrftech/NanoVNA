@@ -197,7 +197,7 @@ void cal_collect(int type);
 void cal_done(void);
 
 enum {
-  ST_START, ST_STOP, ST_CENTER, ST_SPAN
+  ST_START, ST_STOP, ST_CENTER, ST_SPAN, ST_CW
 };
 
 void set_sweep_frequency(int type, int frequency);

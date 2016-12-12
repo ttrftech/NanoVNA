@@ -1251,7 +1251,7 @@ draw_frequencies(void)
                (int)((fstop / 1000) % 1000),
                (int)(fstop % 1000));
     ili9341_drawstring_5x7(buf, 205, 233, 0xffff, 0x0000);
-  } else {
+  } else if (fstop < 0) {
     int fcenter = fstart;
     int fspan = -fstop;
     chsnprintf(buf, 24, "CENTER %d.%03d %03d MHz  ",
@@ -1263,6 +1263,15 @@ draw_frequencies(void)
                (int)(fspan / 1000000),
                (int)((fspan / 1000) % 1000),
                (int)(fspan % 1000));
+    ili9341_drawstring_5x7(buf, 205, 233, 0xffff, 0x0000);
+  } else {
+    int fcenter = fstart;
+    chsnprintf(buf, 24, "CW %d.%03d %03d MHz    ",
+               (int)(fcenter / 1000000),
+               (int)((fcenter / 1000) % 1000),
+               (int)(fcenter % 1000));
+    ili9341_drawstring_5x7(buf, OFFSETX, 233, 0xffff, 0x0000);
+    chsnprintf(buf, 24, "                             ");
     ili9341_drawstring_5x7(buf, 205, 233, 0xffff, 0x0000);
   }
 }

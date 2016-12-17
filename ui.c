@@ -878,18 +878,21 @@ static const EXTConfig extcfg = {
   }
 };
 
+#if 0
 static void adccallback(ADCDriver *adcp, adcsample_t *buffer, size_t n)
 {
   (void)adcp;
   (void)buffer;
   (void)n;
 }
+#endif
 
 void test_touch(int *x, int *y);
 
 int awd_count;
 int touch_x, touch_y;
 
+#if 0
 static void adcerrorcallback(ADCDriver *adcp, adcerror_t err)
 {
   (void)adcp;
@@ -899,13 +902,17 @@ static void adcerrorcallback(ADCDriver *adcp, adcerror_t err)
     //test_touch(&touch_x, &touch_y);
   }
 }
+#endif
 
 static const GPTConfig gpt3cfg = {
   1000,    /* 1kHz timer clock.*/
   NULL,   /* Timer callback.*/
-  0x0020,
+  0x0020, /* CR2:MMS=02 to output TRGO */
   0
 };
+
+
+#if 0
 
 #define ADC_GRP1_NUM_CHANNELS   1
 #define ADC_GRP1_BUF_DEPTH      1
@@ -945,7 +952,42 @@ static const ADCConversionGroup adcgrpcfg_y = {
   ADC_CHSELR_CHSEL7                                /* CHSELR */
 };
 
+
 adcsample_t adc_samples[ADC_GRP1_NUM_CHANNELS * ADC_GRP1_BUF_DEPTH];
+
+#endif
+
+int
+touch_measure_y(void)
+{
+#if 1
+  palSetPadMode(GPIOB, 1, PAL_MODE_INPUT_PULLDOWN );
+  palSetPadMode(GPIOA, 7, PAL_MODE_INPUT_PULLDOWN );
+  palSetPadMode(GPIOB, 0, PAL_MODE_OUTPUT_PUSHPULL );
+  palClearPad(GPIOB, 0);
+  palSetPadMode(GPIOA, 6, PAL_MODE_OUTPUT_PUSHPULL );
+  palSetPad(GPIOA, 6);
+  //adcConvert(&ADCD1, &adcgrpcfg_y, adc_samples, 1);
+  //return adc_samples[0];
+#endif
+  return adc_single_read(ADC1, ADC_CHSELR_CHSEL7);
+}
+
+int
+touch_measure_x(void)
+{
+#if 1
+  palSetPadMode(GPIOB, 0, PAL_MODE_INPUT_PULLDOWN );
+  palSetPadMode(GPIOA, 6, PAL_MODE_INPUT_PULLDOWN );
+  palSetPadMode(GPIOB, 1, PAL_MODE_OUTPUT_PUSHPULL );
+  palSetPad(GPIOB, 1);
+  palSetPadMode(GPIOA, 7, PAL_MODE_OUTPUT_PUSHPULL );
+  palClearPad(GPIOA, 7);
+  //adcConvert(&ADCD1, &adcgrpcfg_x, adc_samples, 1);
+  //return adc_samples[0];
+#endif
+  return adc_single_read(ADC1, ADC_CHSELR_CHSEL6);
+}
 
 void
 touch_wait_sense(void)
@@ -956,47 +998,28 @@ touch_wait_sense(void)
   palSetPad(GPIOB, 0);
   palSetPadMode(GPIOA, 6, PAL_MODE_OUTPUT_PUSHPULL );
   palSetPad(GPIOA, 6);
-}
 
-int
-touch_measure_y(void)
-{
-  palSetPadMode(GPIOB, 1, PAL_MODE_INPUT_PULLDOWN );
-  palSetPadMode(GPIOA, 7, PAL_MODE_INPUT_PULLDOWN );
-  palSetPadMode(GPIOB, 0, PAL_MODE_OUTPUT_PUSHPULL );
-  palClearPad(GPIOB, 0);
-  palSetPadMode(GPIOA, 6, PAL_MODE_OUTPUT_PUSHPULL );
-  palSetPad(GPIOA, 6);
-  adcConvert(&ADCD1, &adcgrpcfg_y, adc_samples, 1);
-  return adc_samples[0];
-}
-
-int
-touch_measure_x(void)
-{
-  palSetPadMode(GPIOB, 0, PAL_MODE_INPUT_PULLDOWN );
-  palSetPadMode(GPIOA, 6, PAL_MODE_INPUT_PULLDOWN );
-  palSetPadMode(GPIOB, 1, PAL_MODE_OUTPUT_PUSHPULL );
-  palSetPad(GPIOB, 1);
-  palSetPadMode(GPIOA, 7, PAL_MODE_OUTPUT_PUSHPULL );
-  palClearPad(GPIOA, 7);
-  adcConvert(&ADCD1, &adcgrpcfg_x, adc_samples, 1);
-  return adc_samples[0];
+  adc_start_analog_watchdogd(ADC1, ADC_CHSELR_CHSEL7);
 }
 
 void
 test_touch(int *x, int *y)
 {
-  adcStopConversion(&ADCD1);
-  *x = touch_measure_x();
+  //adcStopConversion(&ADCD1);
+  adc_stop(ADC1);
+
   *y = touch_measure_y();
+  *x = touch_measure_x();
+
   touch_wait_sense();
-  adcStartConversion(&ADCD1, &adcgrpcfg1, adc_samples, 1);
+  //adcStartConversion(&ADCD1, &adcgrpcfg1, adc_samples, 1);
 }
 
 void
 ui_init()
 {
+  adc_init();
+  
   /*
    * Activates the EXT driver 1.
    */
@@ -1010,6 +1033,8 @@ ui_init()
 #endif
 
   touch_wait_sense();
+
+#if 0
   /*
    * Activates the ADC1 driver
    */
@@ -1017,4 +1042,5 @@ ui_init()
   adcSTM32SetCCR(ADC_CCR_VREFEN);
 
   adcStartConversion(&ADCD1, &adcgrpcfg1, adc_samples, 1);
+#endif
 }

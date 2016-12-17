@@ -1,4 +1,6 @@
 
+#include "ch.h"
+
 /*
  * tlv320aic3204.c
  */
@@ -255,6 +257,16 @@ void ui_hide(void);
 
 extern uint8_t operation_requested;
 
+
+/*
+ * adc.c
+ */
+
+void adc_init(void);
+uint16_t adc_single_read(ADC_TypeDef *adc, uint32_t chsel);
+void adc_start_analog_watchdogd(ADC_TypeDef *adc, uint32_t chsel);
+void adc_stop(ADC_TypeDef *adc);
+void adc_interrupt(ADC_TypeDef *adc);
 
 /*
  * misclinous

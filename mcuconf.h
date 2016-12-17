@@ -65,7 +65,7 @@
 /*
  * ADC driver system settings.
  */
-#define STM32_ADC_USE_ADC1                  TRUE
+#define STM32_ADC_USE_ADC1                  FALSE
 #define STM32_ADC_ADC1_CKMODE               STM32_ADC_CKMODE_ADCCLK
 #define STM32_ADC_ADC1_DMA_PRIORITY         2
 #define STM32_ADC_IRQ_PRIORITY              2
@@ -94,6 +94,8 @@
 #define STM32_EXT_EXTI16_IRQ_PRIORITY       3
 #define STM32_EXT_EXTI17_IRQ_PRIORITY       3
 #define STM32_EXT_EXTI21_22_IRQ_PRIORITY    3
+
+#define STM32_DISABLE_EXTI2122_HANDLER 		TRUE
 
 /*
  * GPT driver system settings.

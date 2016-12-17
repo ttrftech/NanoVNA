@@ -1237,15 +1237,17 @@ draw_frequencies(void)
 {
   char buf[24];
   if (frequency1 > 0) {
+    int start = frequency0;
+    int stop = frequency1;
     chsnprintf(buf, 24, "START %d.%03d %03d MHz  ",
-               (int)(frequency0 / 1000000),
-               (int)((frequency0 / 1000) % 1000),
-               (int)(frequency0 % 1000));
+               (int)(start / 1000000),
+               (int)((start / 1000) % 1000),
+               (int)(start % 1000));
     ili9341_drawstring_5x7(buf, OFFSETX, 233, 0xffff, 0x0000);
     chsnprintf(buf, 24, "STOP %d.%03d %03d MHz",
-               (int)(frequency1 / 1000000),
-               (int)((frequency1 / 1000) % 1000),
-               (int)(frequency1 % 1000));
+               (int)(stop / 1000000),
+               (int)((stop / 1000) % 1000),
+               (int)(stop % 1000));
     ili9341_drawstring_5x7(buf, 205, 233, 0xffff, 0x0000);
   } else if (frequency1 < 0) {
     int fcenter = frequency0;

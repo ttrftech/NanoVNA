@@ -218,7 +218,7 @@ int8_t last_touch_status = FALSE;
 int16_t last_touch_x;
 int16_t last_touch_y;
 //int16_t touch_cal[4] = { 1000, 1000, 10*16, 12*16 };
-int16_t touch_cal[4] = { 653, 600, 130, 180 };
+int16_t touch_cal[4] = { 630, 600, 130, 180 };
 #define EVT_TOUCH_NONE 0
 #define EVT_TOUCH_DOWN 1
 #define EVT_TOUCH_PRESSED 2
@@ -247,7 +247,7 @@ int touch_check(void)
   }
 }
 
-int touch_wait_release(void)
+void touch_wait_release(void)
 {
   int status;
   /* wait touch release */
@@ -494,9 +494,9 @@ menu_cal_cb(int item)
 {
   (void)item;
   if (cal_status != 0) {
-    menu_push_submenu(&menu_cal);
+    menu_push_submenu(menu_cal);
   } else {
-    menu_push_submenu(&menu_calop);
+    menu_push_submenu(menu_calop);
   }
 }
 
@@ -906,16 +906,96 @@ ui_process_menu(void)
     }
   }
 }
+
 #define NUMINPUT_LEN 10
+
+#define KP_CONTINUE 0
+#define KP_DONE 1
+#define KP_CANCEL 2
+
+char kp_buf[11];
+int8_t kp_index = 0;
+
+int
+keypad_click(int selection) 
+{
+  int c = keypads[selection].c;
+  if (c >= KP_X1 && c <= KP_G) {
+    int n = c - KP_X1;
+    float scale = 1;
+    while (n-- > 0)
+      scale *= 1000;
+    /* numeric input done */
+    float value = my_atof(kp_buf) * scale;
+    switch (keypad_mode) {
+    case KM_START:
+      set_sweep_frequency(ST_START, value);
+      break;
+    case KM_STOP:
+      set_sweep_frequency(ST_STOP, value);
+      break;
+    case KM_CENTER:
+      set_sweep_frequency(ST_CENTER, value);
+      break;
+    case KM_SPAN:
+      set_sweep_frequency(ST_SPAN, value);
+      break;
+    case KM_CW:
+      set_sweep_frequency(ST_CW, value);
+      break;
+    case KM_SCALE:
+      set_trace_scale(uistat.current_trace, value);
+      break;
+    }
+
+    return KP_DONE;
+  } else if (c <= 9 && kp_index < NUMINPUT_LEN)
+    kp_buf[kp_index++] = '0' + c;
+  else if (c == KP_PERIOD && kp_index < NUMINPUT_LEN) {
+    // check period in former input
+    int j;
+    for (j = 0; j < kp_index && kp_buf[j] != '.'; j++)
+      ;
+    // append period if there are no period
+    if (kp_index == j)
+      kp_buf[kp_index++] = '.';
+  } else if (c == KP_BS) {
+    if (kp_index == 0) {
+      return KP_CANCEL;
+    }
+    --kp_index;
+  }
+  kp_buf[kp_index] = '\0';
+  draw_numeric_input(kp_buf);
+  return KP_CONTINUE;
+}
+
+int
+keypad_apply_touch(int touch_x, int touch_y)
+{
+  int i = 0;
+  while (keypads[i].x) {
+    if (keypads[i].x < touch_x && touch_x < keypads[i].x+44
+        && keypads[i].y < touch_y && touch_y < keypads[i].y+44) {
+      selection = i;
+      draw_keypad();
+      touch_wait_release();
+      return TRUE;
+    }
+    i++;
+  }
+  return FALSE;
+}
 
 void
 ui_process_keypad(void)
 {
-  int status = btn_check();
-  char buf[11];
-  int i = 0;
-  float scale;
+  int status;
+  adc_stop(ADC1);
+
+  kp_index = 0;
   while (TRUE) {
+    status = btn_check();
     if (status & (EVT_UP|EVT_DOWN)) {
       int s = status;
       do {
@@ -934,59 +1014,22 @@ ui_process_keypad(void)
     }
 
     if (status == EVT_BUTTON_SINGLE_CLICK) {
-      int c = keypads[selection].c;
-      if (c >= KP_X1 && c <= KP_G) {
-        int n = c - KP_X1;
-        scale = 1;
-        while (n-- > 0)
-          scale *= 1000;
-        /* numeric input done */
-        break;
-      } else if (c <= 9 && i < NUMINPUT_LEN)
-        buf[i++] = '0' + c;
-      else if (c == KP_PERIOD && i < NUMINPUT_LEN) {
-        // check period in former input
-        int j;
-        for (j = 0; j < i && buf[j] != '.'; j++)
-          ;
-        // append period if there are no period
-        if (i == j)
-          buf[i++] = '.';
-      } else if (c == KP_BS) {
-        if (i == 0) {
-          goto cancel;
-        }
-        --i;
-      }
-      buf[i] = '\0';
-      draw_numeric_input(buf);
+      if (keypad_click(selection))
+        /* exit loop on done or cancel */
+        break; 
     }
-    status = btn_check();
+
+    status = touch_check();
+    if (status == EVT_TOUCH_PRESSED) {
+      int x, y;
+      touch_position(&x, &y);
+      if (keypad_apply_touch(x, y)
+          && keypad_click(selection))
+        /* exit loop on done or cancel */
+        break; 
+    }
   }
 
-  float value = my_atof(buf) * scale;
-  switch (keypad_mode) {
-  case KM_START:
-    set_sweep_frequency(ST_START, value);
-    break;
-  case KM_STOP:
-    set_sweep_frequency(ST_STOP, value);
-    break;
-  case KM_CENTER:
-    set_sweep_frequency(ST_CENTER, value);
-    break;
-  case KM_SPAN:
-    set_sweep_frequency(ST_SPAN, value);
-    break;
-  case KM_CW:
-    set_sweep_frequency(ST_CW, value);
-    break;
-  case KM_SCALE:
-    set_trace_scale(uistat.current_trace, value);
-    break;
-  }
-
- cancel:
   ui_mode_normal();
   redraw();
   force_set_markmap();
@@ -1016,22 +1059,24 @@ void ui_process_touch(void)
   awd_count++;
   adc_stop(ADC1);
 
-  while (TRUE) {
-    int status = touch_check();
-    if (status == EVT_TOUCH_PRESSED) {
-      switch (ui_mode) {
-      case UI_NORMAL:
-        ui_mode_menu();
-        break;
-      case UI_MENU:
-        touch_position(&x, &y);
-        menu_apply_touch(x, y);
-        break;
-      case UI_KEYPAD:
-        ui_mode_normal();
-        break;
-      }
-    } else if (status == EVT_TOUCH_RELEASED) {
+  int status = touch_check();
+  if (status == EVT_TOUCH_PRESSED) {
+    switch (ui_mode) {
+    case UI_NORMAL:
+      touch_wait_release();
+      ui_mode_menu();
+      break;
+
+    case UI_MENU:
+      touch_position(&x, &y);
+      menu_apply_touch(x, y);
+      break;
+
+    case UI_KEYPAD:
+#if 0
+      touch_position(&x, &y);
+      keypad_apply_touch(x, y);
+#endif
       break;
     }
   }

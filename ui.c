@@ -53,7 +53,9 @@ struct {
 static uint16_t last_button = 0b0000;
 static uint32_t last_button_down_ticks;
 static uint32_t last_button_repeat_ticks;
-uint8_t operation_requested = FALSE;
+
+enum { OP_NONE = 0, OP_LEVER, OP_TOUCH };
+uint8_t operation_requested = OP_NONE;
 
 enum {
   UI_NORMAL, UI_MENU, UI_KEYPAD
@@ -150,6 +152,144 @@ static int btn_wait_release(void)
     }
   }
 }
+
+int
+touch_measure_y(void)
+{
+  // open Y line
+  palSetPadMode(GPIOB, 1, PAL_MODE_INPUT_PULLDOWN );
+  palSetPadMode(GPIOA, 7, PAL_MODE_INPUT_PULLDOWN );
+  // drive low to high on X line
+  palSetPadMode(GPIOB, 0, PAL_MODE_OUTPUT_PUSHPULL );
+  palClearPad(GPIOB, 0);
+  palSetPadMode(GPIOA, 6, PAL_MODE_OUTPUT_PUSHPULL );
+  palSetPad(GPIOA, 6);
+
+  chThdSleepMilliseconds(1);
+
+  return adc_single_read(ADC1, ADC_CHSELR_CHSEL7);
+}
+
+int
+touch_measure_x(void)
+{
+  // open X line
+  palSetPadMode(GPIOB, 0, PAL_MODE_INPUT_PULLDOWN );
+  palSetPadMode(GPIOA, 6, PAL_MODE_INPUT_PULLDOWN );
+  // drive low to high on Y line
+  palSetPadMode(GPIOB, 1, PAL_MODE_OUTPUT_PUSHPULL );
+  palSetPad(GPIOB, 1);
+  palSetPadMode(GPIOA, 7, PAL_MODE_OUTPUT_PUSHPULL );
+  palClearPad(GPIOA, 7);
+
+  chThdSleepMilliseconds(1);
+
+  return adc_single_read(ADC1, ADC_CHSELR_CHSEL6);
+}
+
+void
+touch_prepare_sense(void)
+{
+  // open Y line
+  palSetPadMode(GPIOB, 1, PAL_MODE_INPUT_PULLDOWN );
+  palSetPadMode(GPIOA, 7, PAL_MODE_INPUT_PULLDOWN );
+  // force high X line
+  palSetPadMode(GPIOB, 0, PAL_MODE_OUTPUT_PUSHPULL );
+  palSetPad(GPIOB, 0);
+  palSetPadMode(GPIOA, 6, PAL_MODE_OUTPUT_PUSHPULL );
+  palSetPad(GPIOA, 6);
+}
+
+void
+touch_start_watchdog(void)
+{
+  touch_prepare_sense();
+  adc_start_analog_watchdogd(ADC1, ADC_CHSELR_CHSEL7);
+}
+
+int
+touch_status(void)
+{
+  touch_prepare_sense();
+  return adc_single_read(ADC1, ADC_CHSELR_CHSEL7) > TOUCH_THRESHOLD;
+}
+
+int8_t last_touch_status = FALSE;
+int16_t last_touch_x;
+int16_t last_touch_y;
+//int16_t touch_cal[4] = { 1000, 1000, 10*16, 12*16 };
+int16_t touch_cal[4] = { 653, 600, 130, 180 };
+#define EVT_TOUCH_NONE 0
+#define EVT_TOUCH_DOWN 1
+#define EVT_TOUCH_PRESSED 2
+#define EVT_TOUCH_RELEASED 3
+
+int touch_check(void)
+{
+  int stat = touch_status();
+  if (stat) {
+    last_touch_x = touch_measure_x();
+    last_touch_y = touch_measure_y();
+  }
+
+  if (stat != last_touch_status) {
+    last_touch_status = stat;
+    if (stat) {
+      return EVT_TOUCH_PRESSED;
+    } else {
+      return EVT_TOUCH_RELEASED;
+    }
+  } else {
+    if (stat) 
+      return EVT_TOUCH_DOWN;
+    else
+      return EVT_TOUCH_NONE;
+  }
+}
+
+int touch_wait_release(void)
+{
+  int status;
+  /* wait touch release */
+  do {
+    status = touch_check();
+  } while(status != EVT_TOUCH_RELEASED);
+}
+
+void
+touch_cal_exec(void)
+{
+  int status;
+  int x1, x2, y1, y2;
+  
+  adc_stop(ADC1);
+
+  do {
+    status = touch_check();
+  } while(status != EVT_TOUCH_PRESSED);
+  x1 = last_touch_x;
+  y1 = last_touch_y;
+
+  do {
+    status = touch_check();
+  } while(status != EVT_TOUCH_PRESSED);
+  x2 = last_touch_x;
+  y2 = last_touch_y;
+
+  touch_cal[0] = x1;
+  touch_cal[1] = y1;
+  touch_cal[2] = (x2 - x1) * 16 / 320;
+  touch_cal[3] = (y2 - y1) * 16 / 240;
+}
+
+void
+touch_position(int *x, int *y)
+{
+  *x = (last_touch_x - touch_cal[0]) * 16 / touch_cal[2];
+  *y = (last_touch_y - touch_cal[1]) * 16 / touch_cal[3];
+}
+
+
 
 
 // type of menu item 
@@ -631,6 +771,37 @@ draw_menu_buttons(const menuitem_t *menu)
 }
 
 void
+menu_select_touch(int i)
+{
+  selection = i;
+  draw_menu();
+  touch_wait_release();
+  menu_invoke(selection);
+}
+
+void
+menu_apply_touch(int touch_x, int touch_y)
+{
+  const menuitem_t *menu = menu_stack[menu_current_level];
+  int i = 0;
+  for (i = 0; i < 7; i++) {
+    if (menu[i].type == MT_NONE)
+      break;
+    if (menu[i].type == MT_BLANK) 
+      continue;
+    int y = 32*i;
+    if (y < touch_y && touch_y < y+30
+        && 320-60 < touch_x && touch_x < 320) {
+      menu_select_touch(i);
+      return;
+    }
+  }
+
+  touch_wait_release();
+  ui_mode_normal();
+}
+
+void
 draw_menu(void)
 {
   draw_menu_buttons(menu_stack[menu_current_level]);
@@ -823,11 +994,8 @@ ui_process_keypad(void)
 }
 
 void
-ui_process(void)
+ui_process_lever(void)
 {
-  if (!operation_requested)
-    return;
-
   switch (ui_mode) {
   case UI_NORMAL:
     ui_process_normal();
@@ -839,14 +1007,56 @@ ui_process(void)
     ui_process_keypad();
     break;    
   }
-  operation_requested = FALSE;
+}
+
+void ui_process_touch(void)
+{
+  extern int awd_count;
+  int x, y;
+  awd_count++;
+  adc_stop(ADC1);
+
+  while (TRUE) {
+    int status = touch_check();
+    if (status == EVT_TOUCH_PRESSED) {
+      switch (ui_mode) {
+      case UI_NORMAL:
+        ui_mode_menu();
+        break;
+      case UI_MENU:
+        touch_position(&x, &y);
+        menu_apply_touch(x, y);
+        break;
+      case UI_KEYPAD:
+        ui_mode_normal();
+        break;
+      }
+    } else if (status == EVT_TOUCH_RELEASED) {
+      break;
+    }
+  }
+  touch_start_watchdog();
+}
+
+void
+ui_process(void)
+{
+  switch (operation_requested) {
+  case OP_LEVER:
+    ui_process_lever();
+    break;
+  case OP_TOUCH:
+    ui_process_touch();
+    break;
+  }
+  operation_requested = OP_NONE;
 }
 
 /* Triggered when the button is pressed or released. The LED4 is set to ON.*/
 static void extcb1(EXTDriver *extp, expchannel_t channel) {
   (void)extp;
   (void)channel;
-  operation_requested = TRUE;
+  operation_requested = OP_LEVER;
   //cur_button = READ_PORT() & BUTTON_MASK;
 }
 
@@ -878,31 +1088,9 @@ static const EXTConfig extcfg = {
   }
 };
 
-#if 0
-static void adccallback(ADCDriver *adcp, adcsample_t *buffer, size_t n)
-{
-  (void)adcp;
-  (void)buffer;
-  (void)n;
-}
-#endif
-
-void test_touch(int *x, int *y);
 
 int awd_count;
 int touch_x, touch_y;
-
-#if 0
-static void adcerrorcallback(ADCDriver *adcp, adcerror_t err)
-{
-  (void)adcp;
-  if (err == ADC_ERR_AWD) {
-    awd_count++;
-    // does not work in callback
-    //test_touch(&touch_x, &touch_y);
-  }
-}
-#endif
 
 static const GPTConfig gpt3cfg = {
   1000,    /* 1kHz timer clock.*/
@@ -911,108 +1099,21 @@ static const GPTConfig gpt3cfg = {
   0
 };
 
-
-#if 0
-
-#define ADC_GRP1_NUM_CHANNELS   1
-#define ADC_GRP1_BUF_DEPTH      1
-
-static const ADCConversionGroup adcgrpcfg1 = {
-  TRUE,
-  ADC_GRP1_NUM_CHANNELS,
-  adccallback,
-  adcerrorcallback,
-  ADC_CFGR1_RES_12BIT | ADC_CFGR1_AWDEN
-  | ADC_CFGR1_EXTEN_0 | // rising edge of external trigger
-    ADC_CFGR1_EXTSEL_0 | ADC_CFGR1_EXTSEL_1, // TRG3  , /* CFGR1 */
-  ADC_TR(2048, 0),                                     /* TR */
-  ADC_SMPR_SMP_28P5,                                 /* SMPR */
-  ADC_CHSELR_CHSEL7                                /* CHSELR */
-};
-
-static const ADCConversionGroup adcgrpcfg_x = {
-  FALSE,
-  ADC_GRP1_NUM_CHANNELS,
-  NULL,
-  NULL,
-  ADC_CFGR1_CONT | ADC_CFGR1_RES_12BIT,             /* CFGR1 */
-  ADC_TR(0, 0),                                     /* TR */
-  ADC_SMPR_SMP_28P5,                                 /* SMPR */
-  ADC_CHSELR_CHSEL6                                /* CHSELR */
-};
-
-static const ADCConversionGroup adcgrpcfg_y = {
-  FALSE,
-  ADC_GRP1_NUM_CHANNELS,
-  NULL,
-  NULL,
-  ADC_CFGR1_CONT | ADC_CFGR1_RES_12BIT,             /* CFGR1 */
-  ADC_TR(0, 0),                                     /* TR */
-  ADC_SMPR_SMP_28P5,                                 /* SMPR */
-  ADC_CHSELR_CHSEL7                                /* CHSELR */
-};
-
-
-adcsample_t adc_samples[ADC_GRP1_NUM_CHANNELS * ADC_GRP1_BUF_DEPTH];
-
-#endif
-
-int
-touch_measure_y(void)
-{
-#if 1
-  palSetPadMode(GPIOB, 1, PAL_MODE_INPUT_PULLDOWN );
-  palSetPadMode(GPIOA, 7, PAL_MODE_INPUT_PULLDOWN );
-  palSetPadMode(GPIOB, 0, PAL_MODE_OUTPUT_PUSHPULL );
-  palClearPad(GPIOB, 0);
-  palSetPadMode(GPIOA, 6, PAL_MODE_OUTPUT_PUSHPULL );
-  palSetPad(GPIOA, 6);
-  //adcConvert(&ADCD1, &adcgrpcfg_y, adc_samples, 1);
-  //return adc_samples[0];
-#endif
-  return adc_single_read(ADC1, ADC_CHSELR_CHSEL7);
-}
-
-int
-touch_measure_x(void)
-{
-#if 1
-  palSetPadMode(GPIOB, 0, PAL_MODE_INPUT_PULLDOWN );
-  palSetPadMode(GPIOA, 6, PAL_MODE_INPUT_PULLDOWN );
-  palSetPadMode(GPIOB, 1, PAL_MODE_OUTPUT_PUSHPULL );
-  palSetPad(GPIOB, 1);
-  palSetPadMode(GPIOA, 7, PAL_MODE_OUTPUT_PUSHPULL );
-  palClearPad(GPIOA, 7);
-  //adcConvert(&ADCD1, &adcgrpcfg_x, adc_samples, 1);
-  //return adc_samples[0];
-#endif
-  return adc_single_read(ADC1, ADC_CHSELR_CHSEL6);
-}
-
-void
-touch_wait_sense(void)
-{
-  palSetPadMode(GPIOB, 1, PAL_MODE_INPUT_PULLDOWN );
-  palSetPadMode(GPIOA, 7, PAL_MODE_INPUT_PULLDOWN );
-  palSetPadMode(GPIOB, 0, PAL_MODE_OUTPUT_PUSHPULL );
-  palSetPad(GPIOB, 0);
-  palSetPadMode(GPIOA, 6, PAL_MODE_OUTPUT_PUSHPULL );
-  palSetPad(GPIOA, 6);
-
-  adc_start_analog_watchdogd(ADC1, ADC_CHSELR_CHSEL7);
-}
-
 void
 test_touch(int *x, int *y)
 {
-  //adcStopConversion(&ADCD1);
   adc_stop(ADC1);
 
-  *y = touch_measure_y();
   *x = touch_measure_x();
+  *y = touch_measure_y();
 
-  touch_wait_sense();
-  //adcStartConversion(&ADCD1, &adcgrpcfg1, adc_samples, 1);
+  touch_start_watchdog();
+}
+
+void
+handle_touch_interrupt(void)
+{
+  operation_requested = OP_TOUCH;
 }
 
 void
@@ -1032,15 +1133,5 @@ ui_init()
   gptStartContinuous(&GPTD3, 10);
 #endif
 
-  touch_wait_sense();
-
-#if 0
-  /*
-   * Activates the ADC1 driver
-   */
-  adcStart(&ADCD1, NULL);
-  adcSTM32SetCCR(ADC_CCR_VREFEN);
-
-  adcStartConversion(&ADCD1, &adcgrpcfg1, adc_samples, 1);
-#endif
+  touch_start_watchdog();
 }

@@ -54,7 +54,7 @@ void adc_start_analog_watchdogd(ADC_TypeDef *adc, uint32_t chsel)
      is enabled.*/
   adc->ISR    = adc->ISR;
   adc->IER    = ADC_IER_AWDIE;
-  adc->TR     = ADC_TR(0, 2000);
+  adc->TR     = ADC_TR(0, TOUCH_THRESHOLD);
   adc->SMPR   = ADC_SMPR_SMP_1P5;
   adc->CHSELR = chsel;
 
@@ -92,8 +92,7 @@ void adc_interrupt(ADC_TypeDef *adc)
   }
   if (isr & ADC_ISR_AWD) {
     /* Analog watchdog error.*/
-    extern int awd_count;
-    awd_count++;
+    handle_touch_interrupt();
   }
 }
 

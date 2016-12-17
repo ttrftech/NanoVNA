@@ -257,6 +257,11 @@ void ui_hide(void);
 
 extern uint8_t operation_requested;
 
+void handle_touch_interrupt(void);
+
+#define TOUCH_THRESHOLD 2000
+
+void touch_cal_exec(void);
 
 /*
  * adc.c

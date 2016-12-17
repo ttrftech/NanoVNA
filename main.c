@@ -1142,16 +1142,34 @@ static void cmd_marker(BaseSequentialStream *chp, int argc, char *argv[])
   chprintf(chp, "marker [n] [off|{index}]\r\n");
 }
 
+static void cmd_touchcal(BaseSequentialStream *chp, int argc, char *argv[])
+{
+  (void)argc;
+  (void)argv;
+  extern int16_t touch_cal[4];
+  int i;
+
+  chprintf(chp, "first touch upper left, then lower right...");
+  touch_cal_exec();
+  chprintf(chp, "done\r\n");
+
+  chprintf(chp, "touch cal params: ");
+  for (i = 0; i < 4; i++) {
+    chprintf(chp, "%d ", touch_cal[i]);
+  }
+  chprintf(chp, "\r\n");
+  touch_start_watchdog();
+}
 
 static void cmd_test(BaseSequentialStream *chp, int argc, char *argv[])
 {
-  int i;
   (void)chp;
   (void)argc;
   (void)argv;
 
   //pause_sweep();
 #if 0
+  int i;
   for (i = 0; i < 100; i++) {
     palClearPad(GPIOC, GPIOC_LED);
     set_frequency(10000000);
@@ -1166,6 +1184,7 @@ static void cmd_test(BaseSequentialStream *chp, int argc, char *argv[])
 #endif
 
 #if 0
+  int i;
   int mode = 0;
   if (argc >= 1)
     mode = atoi(argv[0]);
@@ -1178,8 +1197,10 @@ static void cmd_test(BaseSequentialStream *chp, int argc, char *argv[])
   }
 #endif
 
+#if 0
   //extern adcsample_t adc_samples[2];
   //chprintf(chp, "adc: %d %d\r\n", adc_samples[0], adc_samples[1]);
+  int i;
   int x, y;
   for (i = 0; i < 50; i++) {
     test_touch(&x, &y);
@@ -1188,6 +1209,11 @@ static void cmd_test(BaseSequentialStream *chp, int argc, char *argv[])
   }
   //extern int touch_x, touch_y;
   //chprintf(chp, "adc: %d %d\r\n", touch_x, touch_y);
+#endif
+
+  int x, y;
+  touch_position(&x, &y);
+  chprintf(chp, "touch: %d %d\r\n", x, y);
 }
 
 static void cmd_gain(BaseSequentialStream *chp, int argc, char *argv[])
@@ -1278,6 +1304,7 @@ static const ShellCommand commands[] =
     { "scan", cmd_scan },
     { "sweep", cmd_sweep },
     { "test", cmd_test },
+    { "touchcal", cmd_touchcal },
     //{ "plot", cmd_scan_lcd },
     { "pause", cmd_pause },
     { "resume", cmd_resume },

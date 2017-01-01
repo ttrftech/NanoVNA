@@ -218,7 +218,7 @@ int8_t last_touch_status = FALSE;
 int16_t last_touch_x;
 int16_t last_touch_y;
 //int16_t touch_cal[4] = { 1000, 1000, 10*16, 12*16 };
-int16_t touch_cal[4] = { 630, 600, 130, 180 };
+int16_t touch_cal[4] = { 620, 600, 130, 180 };
 #define EVT_TOUCH_NONE 0
 #define EVT_TOUCH_DOWN 1
 #define EVT_TOUCH_PRESSED 2
@@ -780,10 +780,13 @@ menu_select_touch(int i)
 }
 
 void
-menu_apply_touch(int touch_x, int touch_y)
+menu_apply_touch(void)
 {
+  int touch_x, touch_y;
   const menuitem_t *menu = menu_stack[menu_current_level];
-  int i = 0;
+  int i;
+
+  touch_position(&touch_x, &touch_y);
   for (i = 0; i < 7; i++) {
     if (menu[i].type == MT_NONE)
       break;
@@ -971,9 +974,13 @@ keypad_click(int selection)
 }
 
 int
-keypad_apply_touch(int touch_x, int touch_y)
+keypad_apply_touch(void)
 {
+  int touch_x, touch_y;
   int i = 0;
+
+  touch_position(&touch_x, &touch_y);
+
   while (keypads[i].x) {
     if (keypads[i].x < touch_x && touch_x < keypads[i].x+44
         && keypads[i].y < touch_y && touch_y < keypads[i].y+44) {
@@ -1021,9 +1028,7 @@ ui_process_keypad(void)
 
     status = touch_check();
     if (status == EVT_TOUCH_PRESSED) {
-      int x, y;
-      touch_position(&x, &y);
-      if (keypad_apply_touch(x, y)
+      if (keypad_apply_touch()
           && keypad_click(selection))
         /* exit loop on done or cancel */
         break; 
@@ -1055,7 +1060,6 @@ ui_process_lever(void)
 void ui_process_touch(void)
 {
   extern int awd_count;
-  int x, y;
   awd_count++;
   adc_stop(ADC1);
 
@@ -1068,15 +1072,7 @@ void ui_process_touch(void)
       break;
 
     case UI_MENU:
-      touch_position(&x, &y);
-      menu_apply_touch(x, y);
-      break;
-
-    case UI_KEYPAD:
-#if 0
-      touch_position(&x, &y);
-      keypad_apply_touch(x, y);
-#endif
+      menu_apply_touch();
       break;
     }
   }

@@ -935,9 +935,11 @@ void set_trace_type(int t, int type)
     if (polar)
       force = TRUE;
   }    
-  if (force)
+  if (force) {
+    plot_into_index(measured);
     //force_draw_cells();
     force_set_markmap();
+  }
 }
 
 void set_trace_channel(int t, int channel)

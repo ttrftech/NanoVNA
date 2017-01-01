@@ -445,6 +445,21 @@ choose_active_marker(void)
 }
 
 static void
+menu_single_trace_cb(int item)
+{
+  (void)item;
+  int t;
+  for (t = 0; t < 4; t++)
+    if (uistat.current_trace != t) {
+      trace[t].enabled = FALSE;
+    }
+  ui_mode_normal();
+  redraw();
+  force_set_markmap();
+  draw_cell_all();
+}
+
+static void
 menu_scale_cb(int item)
 {
   (void)item;
@@ -538,7 +553,7 @@ const menuitem_t menu_format[] = {
   { MT_CALLBACK, "SMITH", menu_format_cb },
   { MT_CALLBACK, "ADMIT", menu_format_cb },
   { MT_CALLBACK, "POLAR", menu_format_cb },
-  { MT_SUBMENU, "NEXT", menu_format2 },  
+  { MT_SUBMENU, "MORE", menu_format2 },  
   //{ MT_CALLBACK, "LINEAR", menu_format_cb },
   //{ MT_CALLBACK, "SWR", menu_format_cb },
   { MT_CANCEL, "BACK", NULL },
@@ -553,6 +568,7 @@ const menuitem_t menu_channel[] = {
 };
 
 const menuitem_t menu_display[] = {
+  { MT_CALLBACK, "SGL TRC", menu_single_trace_cb },
   { MT_SUBMENU, "TRACE", menu_trace },
   { MT_SUBMENU, "FORMAT", menu_format },
   { MT_CALLBACK, "SCALE", menu_scale_cb },

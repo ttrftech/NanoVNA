@@ -1,6 +1,24 @@
+/*
+ * Copyright (c) 2014-2015, TAKAHASHI Tomohiro (TTRFTECH) edy555@gmail.com
+ * All rights reserved.
+ *
+ * This is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 3, or (at your option)
+ * any later version.
+ *
+ * The software is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with GNU Radio; see the file COPYING.  If not, write to
+ * the Free Software Foundation, Inc., 51 Franklin Street,
+ * Boston, MA 02110-1301, USA.
+ */
 #include "hal.h"
 #include "nanovna.h"
-
 
 #define REFCLK_8000KHZ
 #define AIC3204_ADDR 0x18
@@ -8,6 +26,14 @@
 #define wait_ms(ms)     chThdSleepMilliseconds(ms)
 
 void tlv320aic3204_config_adc_filter(void);
+
+static void I2CWrite(int addr, uint8_t d0, uint8_t d1)
+{
+    uint8_t buf[] = { d0, d1 };
+    i2cAcquireBus(&I2CD1);
+    (void)i2cMasterTransmitTimeout(&I2CD1, addr, buf, 2, NULL, 0, 1000);
+    i2cReleaseBus(&I2CD1);
+}
 
 void tlv320aic3204_init(void)
 {

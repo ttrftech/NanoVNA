@@ -15,14 +15,22 @@ void markmap_all_markers(void);
 //#define GRID_COLOR 0x0863
 uint16_t grid_color = 0x1084;
 
-#if 0
-trace_t trace[TRACES_MAX] = {
-  { 1, TRC_LOGMAG, 0, 1.0, RGB565(0,255,255), 0 },
-  { 1, TRC_LOGMAG, 1, 1.0, RGB565(255,0,40), 0 },
-  { 1, TRC_SMITH, 0, 1.0, RGB565(0,0,255), 1 },
-  { 1, TRC_PHASE, 1, 1.0, RGB565(50,255,0), 1 }
-};
-#endif
+/* indicate dirty cells */
+uint16_t markmap[2][8];
+uint16_t current_mappage = 0;
+
+int32_t fgrid = 50000000;
+int16_t grid_offset;
+int16_t grid_width;
+
+int area_width = WIDTH;
+int area_height = HEIGHT;
+
+#define GRID_RECTANGULAR (1<<0)
+#define GRID_SMITH       (1<<1)
+#define GRID_ADMIT       (1<<2)
+#define GRID_POLAR       (1<<3)
+
 
 #define CELLWIDTH 32
 #define CELLHEIGHT 32
@@ -49,23 +57,6 @@ uint32_t trace_index[TRACES_MAX][101];
 
 #define CELL_P(i, x, y) (((((x)&0x03e0UL)<<22) | (((y)&0x03e0UL)<<17)) == ((i)&0xffc00000UL))
 
-/* indicate dirty cells */
-uint16_t markmap[2][8];
-uint16_t current_mappage = 0;
-
-
-#if 0
-marker_t markers[4] = {
-  { 1, 30 }, { 0, 40 }, { 0, 60 }, { 0, 80 }
-};
-
-int active_marker = 0;
-#endif
-
-
-int32_t fgrid = 50000000;
-int16_t grid_offset;
-int16_t grid_width;
 
 void update_grid(void)
 {
@@ -184,7 +175,6 @@ smith_grid(int x, int y)
 
   // shift circle center to right origin
   x -= P_RADIUS;
-
 
   // Constant Reactance Circle: 2j : R/2 = 58
   if (circle_inout(x, y+58, 58) == 0)
@@ -641,46 +631,6 @@ trace_get_info(int t, char *buf, int len)
   }
 }
 
-#if 0
-void insertionsort(uint32_t *arr, int start, int end)
-{
-  int i;
-  for (i = start + 1; i < end; i++) {
-    uint32_t val = arr[i];
-    int j = i - 1;
-    while (j >= start && val > arr[j]) {
-      arr[j + 1] = arr[j];
-      j--;
-    }
-    arr[j + 1] = val;
-  }
-}
-
-void quicksort(uint32_t *arr, int beg, int end)
-{
-  if (end - beg <= 1) 
-    return;
-  else if (end - beg < 10) {
-    insertionsort(arr, beg, end);
-  } else {
-    int l = beg;
-    int r = end-1;
-    uint32_t piv = arr[(beg + end) / 2];
-    while (l < r) {
-      while (arr[l] < piv)
-        l++;
-      while (arr[r] > piv)
-        r--;
-      if (l < r)
-        SWAP(arr[l], arr[r]);
-    }
-
-    quicksort(arr, beg, l);
-    quicksort(arr, r, end);
-  }
-}
-#endif
-
 static inline void
 mark_map(int x, int y)
 {
@@ -990,13 +940,6 @@ markmap_all_markers(void)
   markmap_upperarea();
 }
 
-int area_width = WIDTH;
-int area_height = HEIGHT;
-
-#define GRID_RECTANGULAR (1<<0)
-#define GRID_SMITH       (1<<1)
-#define GRID_ADMIT       (1<<2)
-#define GRID_POLAR       (1<<3)
 
 void
 draw_cell(int m, int n)

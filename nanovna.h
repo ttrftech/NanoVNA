@@ -1,29 +1,63 @@
-
+/*
+ * Copyright (c) 2014-2015, TAKAHASHI Tomohiro (TTRFTECH) edy555@gmail.com
+ * All rights reserved.
+ *
+ * This is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 3, or (at your option)
+ * any later version.
+ *
+ * The software is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with GNU Radio; see the file COPYING.  If not, write to
+ * the Free Software Foundation, Inc., 51 Franklin Street,
+ * Boston, MA 02110-1301, USA.
+ */
 #include "ch.h"
 
 /*
- * tlv320aic3204.c
+ * main.c
  */
-extern void I2CWrite(int addr, uint8_t d0, uint8_t d1);
+extern float measured[2][101][2];
 
-typedef struct {
-  int target_level;
-  int gain_hysteresis;
-  int attack;
-  int attack_scale;
-  int decay;
-  int decay_scale;
-} tlv320aic3204_agc_config_t;
+#define CAL_LOAD 0
+#define CAL_OPEN 1
+#define CAL_SHORT 2
+#define CAL_THRU 3
+#define CAL_ISOLN 4
 
-extern void tlv320aic3204_init(void);
-extern void tlv320aic3204_set_gain(int lgain, int rgain);
-extern void tlv320aic3204_set_digital_gain(int gain);
-extern void tlv320aic3204_set_volume(int gain);
-extern void tlv320aic3204_agc_config(tlv320aic3204_agc_config_t *conf);
-extern void tlv320aic3204_select_in1(void);
-extern void tlv320aic3204_select_in3(void);
-extern void tlv320aic3204_adc_filter_enable(int enable);
+#define CALSTAT_LOAD (1<<0)
+#define CALSTAT_OPEN (1<<1)
+#define CALSTAT_SHORT (1<<2)
+#define CALSTAT_THRU (1<<3)
+#define CALSTAT_ISOLN (1<<4)
+#define CALSTAT_ES (1<<5)
+#define CALSTAT_ER (1<<6)
+#define CALSTAT_ET (1<<7)
+#define CALSTAT_ED CALSTAT_LOAD
+#define CALSTAT_EX CALSTAT_ISOLN
+#define CALSTAT_APPLY (1<<8)
 
+#define ETERM_ED 0 /* error term directivity */
+#define ETERM_ES 1 /* error term source match */
+#define ETERM_ER 2 /* error term refrection tracking */
+#define ETERM_ET 3 /* error term transmission tracking */
+#define ETERM_EX 4 /* error term isolation */
+
+void cal_collect(int type);
+void cal_done(void);
+
+enum {
+  ST_START, ST_STOP, ST_CENTER, ST_SPAN, ST_CW
+};
+
+void set_sweep_frequency(int type, int frequency);
+
+float my_atof(const char *p);
 
 /*
  * ui.c
@@ -55,30 +89,27 @@ void calculate_gamma(float *gamma);
 
 int si5351_set_frequency_with_offset(int freq, int offset, uint8_t drive_strength);
 
-#define RGB565(b,r,g)     ( (((b)<<8)&0xfc00) | (((r)<<2)&0x03e0) | (((g)>>3)&0x001f) )
 
 /*
- * ili9341.c
+ * tlv320aic3204.c
  */
 typedef struct {
-	uint16_t width;
-	uint16_t height;
-	uint16_t scaley;
-	uint16_t slide;
-	const uint32_t *bitmap;
-} font_t;
+  int target_level;
+  int gain_hysteresis;
+  int attack;
+  int attack_scale;
+  int decay;
+  int decay_scale;
+} tlv320aic3204_agc_config_t;
 
-extern const font_t NF20x24;
-
-extern uint16_t spi_buffer[1024];
-
-void ili9341_init(void);
-void ili9341_test(int mode);
-void ili9341_bulk(int x, int y, int w, int h);
-void ili9341_fill(int x, int y, int w, int h, int color);
-void ili9341_drawchar_5x7(uint8_t ch, int x, int y, uint16_t fg, uint16_t bg);
-void ili9341_drawstring_5x7(const char *str, int x, int y, uint16_t fg, uint16_t bg);
-void ili9341_drawfont(uint8_t ch, const font_t *font, int x, int y, uint16_t fg, uint16_t bg);
+extern void tlv320aic3204_init(void);
+extern void tlv320aic3204_set_gain(int lgain, int rgain);
+extern void tlv320aic3204_set_digital_gain(int gain);
+extern void tlv320aic3204_set_volume(int gain);
+extern void tlv320aic3204_agc_config(tlv320aic3204_agc_config_t *conf);
+extern void tlv320aic3204_select_in1(void);
+extern void tlv320aic3204_select_in3(void);
+extern void tlv320aic3204_adc_filter_enable(int enable);
 
 
 /*
@@ -167,44 +198,30 @@ void markmap_all_markers(void);
 
 
 /*
- * main.c
+ * ili9341.c
  */
-extern float measured[2][101][2];
+#define RGB565(b,r,g)     ( (((b)<<8)&0xfc00) | (((r)<<2)&0x03e0) | (((g)>>3)&0x001f) )
 
-#define CAL_LOAD 0
-#define CAL_OPEN 1
-#define CAL_SHORT 2
-#define CAL_THRU 3
-#define CAL_ISOLN 4
+typedef struct {
+	uint16_t width;
+	uint16_t height;
+	uint16_t scaley;
+	uint16_t slide;
+	const uint32_t *bitmap;
+} font_t;
 
-#define CALSTAT_LOAD (1<<0)
-#define CALSTAT_OPEN (1<<1)
-#define CALSTAT_SHORT (1<<2)
-#define CALSTAT_THRU (1<<3)
-#define CALSTAT_ISOLN (1<<4)
-#define CALSTAT_ES (1<<5)
-#define CALSTAT_ER (1<<6)
-#define CALSTAT_ET (1<<7)
-#define CALSTAT_ED CALSTAT_LOAD
-#define CALSTAT_EX CALSTAT_ISOLN
-#define CALSTAT_APPLY (1<<8)
+extern const font_t NF20x24;
 
-#define ETERM_ED 0 /* error term directivity */
-#define ETERM_ES 1 /* error term source match */
-#define ETERM_ER 2 /* error term refrection tracking */
-#define ETERM_ET 3 /* error term transmission tracking */
-#define ETERM_EX 4 /* error term isolation */
+extern uint16_t spi_buffer[1024];
 
-void cal_collect(int type);
-void cal_done(void);
+void ili9341_init(void);
+void ili9341_test(int mode);
+void ili9341_bulk(int x, int y, int w, int h);
+void ili9341_fill(int x, int y, int w, int h, int color);
+void ili9341_drawchar_5x7(uint8_t ch, int x, int y, uint16_t fg, uint16_t bg);
+void ili9341_drawstring_5x7(const char *str, int x, int y, uint16_t fg, uint16_t bg);
+void ili9341_drawfont(uint8_t ch, const font_t *font, int x, int y, uint16_t fg, uint16_t bg);
 
-enum {
-  ST_START, ST_STOP, ST_CENTER, ST_SPAN, ST_CW
-};
-
-void set_sweep_frequency(int type, int frequency);
-
-float my_atof(const char *p);
 
 /*
  * flash.c

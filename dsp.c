@@ -1,12 +1,41 @@
+/*
+ * Copyright (c) 2014-2015, TAKAHASHI Tomohiro (TTRFTECH) edy555@gmail.com
+ * All rights reserved.
+ *
+ * This is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 3, or (at your option)
+ * any later version.
+ *
+ * The software is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with GNU Radio; see the file COPYING.  If not, write to
+ * the Free Software Foundation, Inc., 51 Franklin Street,
+ * Boston, MA 02110-1301, USA.
+ */
+
 #include <arm_math.h>
 #include "nanovna.h"
 
-int16_t ref_state[STATE_LEN];
-int16_t ref_buf[SAMPLE_LEN];
-//int16_t refq_buf[SAMPLE_LEN];
-int16_t refiq_buf[AUDIO_BUFFER_LEN];
+/*
+ * (I2S DMA)
+ *     |
+ * [capture]
+ *     |              \
+ * [ref_state,ref_buf] [samp_buf]
+ *     | hilbert_transform
+ * [refiq_buf]
+ */
 
 int16_t samp_buf[SAMPLE_LEN];
+int16_t ref_state[STATE_LEN];
+int16_t ref_buf[SAMPLE_LEN];
+int16_t refiq_buf[AUDIO_BUFFER_LEN];
+
 
 #if 0
 // Bi-Quad IIR Filter state
@@ -32,7 +61,6 @@ static void
 hilbert_transform(void)
 { 
   __SIMD32_TYPE *src = __SIMD32_CONST(ref_state);
-  //__SIMD32_TYPE *dst = __SIMD32_CONST(refq_buf);
   __SIMD32_TYPE *dst = __SIMD32_CONST(refiq_buf);
   int j;
 
@@ -76,31 +104,6 @@ hilbert_transform(void)
 }
 
 void calculate_gamma(float *gamma)
-#if 0
-{
-  __SIMD32_TYPE *r = __SIMD32_CONST(refiq_buf);
-  __SIMD32_TYPE *s = __SIMD32_CONST(samp_buf);
-  q31_t acc_r = 0;
-  q31_t acc_i = 0;
-  q31_t acc_ref = 0;
-  int i;
-
-  for (i = 0; i < SAMPLE_LEN/2; i++) {
-    __SIMD32_TYPE s0 = *s++;
-    __SIMD32_TYPE r0 = *r++;
-    __SIMD32_TYPE r1 = *r++;
-    __SIMD32_TYPE rr = __PKHBT(r1, r0, 16);
-    __SIMD32_TYPE ri = __PKHTB(r0, r1, 16);
-    acc_r = __SMLAD(rr, s0, acc_r);
-    acc_i = __SMLAD(ri, s0, acc_i);
-    acc_ref = __SMLAD(r0, r0, acc_ref);
-    acc_ref = __SMLAD(r1, r1, acc_ref);
-  }
-  //acc_ref = sqrt(acc_ref / SAMPLE_LEN) / 65536;
-  gamma_real = acc_r / 65536;
-  gamma_imag = acc_i / 65536;
-}
-#else
 {
   int16_t *r = refiq_buf;
   int16_t *s = samp_buf;
@@ -143,7 +146,6 @@ void calculate_gamma(float *gamma)
   gamma[0] = -acc_r / rn;
   gamma[1] = -acc_i / rn;
 }
-#endif
 
 void
 dsp_process(int16_t *capture, size_t length)

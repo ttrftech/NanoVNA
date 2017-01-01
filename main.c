@@ -1,3 +1,23 @@
+/*
+ * Copyright (c) 2014-2015, TAKAHASHI Tomohiro (TTRFTECH) edy555@gmail.com
+ * All rights reserved.
+ *
+ * This is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 3, or (at your option)
+ * any later version.
+ *
+ * The software is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with GNU Radio; see the file COPYING.  If not, write to
+ * the Free Software Foundation, Inc., 51 Franklin Street,
+ * Boston, MA 02110-1301, USA.
+ */
+
 #include "ch.h"
 #include "hal.h"
 #include "usbcfg.h"
@@ -11,64 +31,26 @@
 #include <ctype.h>
 #include <math.h>
 
-RTCDateTime timespec;
-
 static void apply_error_term(void);
-
-
-static const I2CConfig i2ccfg = {
-  0x00300506, //voodoo magic 400kHz @ HSI 8MHz
-  //0x00902025, //voodoo magic
-  //0x00420F13,  // 100kHz @ 72MHz
-  0,
-  0
-};
-
-void I2CWrite(int addr, uint8_t d0, uint8_t d1)
-{
-    uint8_t buf[] = { d0, d1 };
-    i2cAcquireBus(&I2CD1);
-    (void)i2cMasterTransmitTimeout(&I2CD1, addr, buf, 2, NULL, 0, 1000);
-    i2cReleaseBus(&I2CD1);
-}
-
-int I2CRead(int addr, uint8_t d0)
-{
-    uint8_t buf[] = { d0 };
-    i2cAcquireBus(&I2CD1);
-    i2cMasterTransmitTimeout(&I2CD1, addr, buf, 1, buf, 1, 1000);
-    i2cReleaseBus(&I2CD1);
-    return buf[0];
-}
-
 void scan_lcd(void);
 
 static MUTEX_DECL(mutex);
+
+int32_t frequency_offset = 5000;
+int32_t frequency = 10000000;
+uint8_t drive_strength = SI5351_CLK_DRIVE_STRENGTH_2MA;
 
 
 static THD_WORKING_AREA(waThread1, 440);
 static THD_FUNCTION(Thread1, arg)
 {
     (void)arg;
-
     chRegSetThreadName("blink");
 
-    //palSetPadMode(GPIOC, 13, PAL_MODE_OUTPUT_PUSHPULL);
-    while (1)
-    {
-#if 0
-      systime_t time = 500;
-      if (serusbcfg.usbp->state != USB_ACTIVE)
-        palClearPad(GPIOC, 13);
-      chThdSleepMilliseconds(time);
-      palSetPad(GPIOC, 13);
-      chThdSleepMilliseconds(time);
-#else
+    while (1) {
       chMtxLock(&mutex);
       scan_lcd();
       chMtxUnlock(&mutex);
-      //ui_process();
-#endif
     }
 }
 
@@ -112,27 +94,17 @@ static void cmd_reset(BaseSequentialStream *chp, int argc, char *argv[])
     WWDG->CFR = 0x60;
     WWDG->CR = 0xff;
 
+    /* wait forever */
     while (1)
-	;
+      ;
 }
-
-
-int32_t frequency_offset = 5000;
-int32_t frequency = 10000000;
-uint8_t drive_strength = SI5351_CLK_DRIVE_STRENGTH_2MA;
 
 int set_frequency(int freq)
 {
-#if 0
-    si5351_set_frequency(0, freq + frequency_offset);
-    si5351_set_frequency(1, freq);
-    frequency = freq;
-#else
     int delay;
     delay = si5351_set_frequency_with_offset(freq, frequency_offset, drive_strength);
     frequency = freq;
     return delay;
-#endif
 }
 
 static void cmd_offset(BaseSequentialStream *chp, int argc, char *argv[])
@@ -144,7 +116,6 @@ static void cmd_offset(BaseSequentialStream *chp, int argc, char *argv[])
     frequency_offset = atoi(argv[0]);
     set_frequency(frequency);
 }
-
 
 static void cmd_freq(BaseSequentialStream *chp, int argc, char *argv[])
 {
@@ -168,22 +139,15 @@ static void cmd_power(BaseSequentialStream *chp, int argc, char *argv[])
     set_frequency(frequency);
 }
 
-
-
 static void cmd_time(BaseSequentialStream *chp, int argc, char *argv[])
 {
+    RTCDateTime timespec;
     (void)argc;
     (void)argv;
     rtcGetTime(&RTCD1, &timespec);
     chprintf(chp, "%d/%d/%d %d\r\n", timespec.year+1980, timespec.month, timespec.day, timespec.millisecond);
 }
 
-
-static const DACConfig dac1cfg1 = {
-  //init:         2047U,
-  init:         1922U,
-  datamode:     DAC_DHRM_12BIT_RIGHT
-};
 
 static void cmd_dac(BaseSequentialStream *chp, int argc, char *argv[])
 {
@@ -1322,6 +1286,18 @@ static const ShellConfig shell_cfg1 =
     commands
 };
 
+static const I2CConfig i2ccfg = {
+  0x00300506, //voodoo magic 400kHz @ HSI 8MHz
+  0,
+  0
+};
+
+static const DACConfig dac1cfg1 = {
+  //init:         2047U,
+  init:         1922U,
+  datamode:     DAC_DHRM_12BIT_RIGHT
+};
+
 int main(void)
 {
     halInit();
@@ -1397,16 +1373,12 @@ int main(void)
 
     chThdCreateStatic(waThread1, sizeof(waThread1), NORMALPRIO, Thread1, NULL);
 
-    //set_frequency(10000000);
-
     while (1) {
       if (SDU1.config->usbp->state == USB_ACTIVE) {
-        //palSetPad(GPIOC, GPIOC_LED);
         thread_t *shelltp = chThdCreateStatic(waThread2, sizeof(waThread2), 
                                               NORMALPRIO + 1,
                                               shellThread, (void *)&shell_cfg1);
         chThdWait(shelltp);               /* Waiting termination.             */
-        //palClearPad(GPIOC, GPIOC_LED);
       }
 
       chThdSleepMilliseconds(1000);

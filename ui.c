@@ -23,10 +23,12 @@
 #include "nanovna.h"
 #include <stdlib.h>
 
+
 struct {
   int digit; /* 0~5 */
   int current_trace; /* 0..3 */
 } uistat;
+
 
 
 #define NO_EVENT					0
@@ -69,19 +71,44 @@ uint8_t ui_mode = UI_NORMAL;
 uint8_t keypad_mode;
 uint8_t selection = 0;
 
-void ui_mode_normal(void);
-void ui_mode_menu(void);
-void ui_mode_keypad(int _keypad_mode);
-void draw_menu(void);
-void erase_menu_buttons(void);
-
 typedef struct {
   uint8_t type;
   char *label;
   const void *reference;
 } menuitem_t;
 
+int8_t last_touch_status = FALSE;
+int16_t last_touch_x;
+int16_t last_touch_y;
+//int16_t touch_cal[4] = { 1000, 1000, 10*16, 12*16 };
+int16_t touch_cal[4] = { 620, 600, 130, 180 };
+#define EVT_TOUCH_NONE 0
+#define EVT_TOUCH_DOWN 1
+#define EVT_TOUCH_PRESSED 2
+#define EVT_TOUCH_RELEASED 3
+
+int awd_count;
+int touch_x, touch_y;
+
+#define NUMINPUT_LEN 10
+
+#define KP_CONTINUE 0
+#define KP_DONE 1
+#define KP_CANCEL 2
+
+char kp_buf[11];
+int8_t kp_index = 0;
+
+
+void ui_mode_normal(void);
+void ui_mode_menu(void);
+void ui_mode_keypad(int _keypad_mode);
+void draw_menu(void);
+void erase_menu_buttons(void);
+void ui_process_keypad(void);
+
 static void menu_push_submenu(const menuitem_t *submenu);
+
 
 
 static int btn_check(void)
@@ -213,16 +240,6 @@ touch_status(void)
   touch_prepare_sense();
   return adc_single_read(ADC1, ADC_CHSELR_CHSEL7) > TOUCH_THRESHOLD;
 }
-
-int8_t last_touch_status = FALSE;
-int16_t last_touch_x;
-int16_t last_touch_y;
-//int16_t touch_cal[4] = { 1000, 1000, 10*16, 12*16 };
-int16_t touch_cal[4] = { 620, 600, 130, 180 };
-#define EVT_TOUCH_NONE 0
-#define EVT_TOUCH_DOWN 1
-#define EVT_TOUCH_PRESSED 2
-#define EVT_TOUCH_RELEASED 3
 
 int touch_check(void)
 {
@@ -426,8 +443,6 @@ choose_active_marker(void)
     }
   active_marker = -1;
 }
-
-void ui_process_keypad(void);
 
 static void
 menu_scale_cb(int item)
@@ -910,14 +925,6 @@ ui_process_menu(void)
   }
 }
 
-#define NUMINPUT_LEN 10
-
-#define KP_CONTINUE 0
-#define KP_DONE 1
-#define KP_CANCEL 2
-
-char kp_buf[11];
-int8_t kp_index = 0;
 
 int
 keypad_click(int selection) 
@@ -1059,7 +1066,6 @@ ui_process_lever(void)
 
 void ui_process_touch(void)
 {
-  extern int awd_count;
   awd_count++;
   adc_stop(ADC1);
 
@@ -1128,10 +1134,6 @@ static const EXTConfig extcfg = {
     {EXT_CH_MODE_DISABLED, NULL}
   }
 };
-
-
-int awd_count;
-int touch_x, touch_y;
 
 static const GPTConfig gpt3cfg = {
   1000,    /* 1kHz timer clock.*/

@@ -101,9 +101,11 @@ static void cmd_reset(BaseSequentialStream *chp, int argc, char *argv[])
 
 int set_frequency(int freq)
 {
-    int delay;
-    delay = si5351_set_frequency_with_offset(freq, frequency_offset, drive_strength);
-    frequency = freq;
+    int delay = 0;
+    if (frequency != freq) {
+      delay = si5351_set_frequency_with_offset(freq, frequency_offset, drive_strength);
+      frequency = freq;
+    }
     return delay;
 }
 

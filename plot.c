@@ -450,6 +450,8 @@ float linear(float *v)
 float swr(float *v)
 {
   float x = sqrtf(v[0]*v[0] + v[1]*v[1]);
+  if (x > 1)
+    return INFINITY;
   return (1 + x)/(1 - x);
 }
 
@@ -505,6 +507,11 @@ string_value_with_prefix(char *buf, int len, float val, char unit)
 {
   char prefix;
   int n;
+  if (val < 0) {
+    val = -val;
+    *buf++ = '-';
+    len--;
+  }
   if (val < 1e-12) {
     prefix = 'f';
     val *= 1e15;

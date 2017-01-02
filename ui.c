@@ -22,6 +22,7 @@
 #include "hal.h"
 #include "nanovna.h"
 #include <stdlib.h>
+#include <string.h>
 
 
 struct {
@@ -510,22 +511,29 @@ menu_marker_op_cb(int item)
   ui_mode_normal();
   redraw();
   force_set_markmap();
-  draw_cell_all();
+  //draw_cell_all();
 }
 
 static void
 menu_marker_sel_cb(int item)
 {
-  if (item < 0 || item >= 4)
-    return;
+  if (item >= 0 && item < 4) {
+    if (active_marker == item) {
+      markers[active_marker].enabled = FALSE;
+      choose_active_marker();
+    } else {
+      active_marker = item;
+      markers[active_marker].enabled = TRUE;
+    }
+  } else if (item == 4) {
+    // ALL OFF
+    markers[0].enabled = FALSE;
+    markers[1].enabled = FALSE;
+    markers[2].enabled = FALSE;
+    markers[3].enabled = FALSE;
+    active_marker = -1;
+  } 
 
-  if (active_marker == item) {
-    markers[active_marker].enabled = FALSE;
-    choose_active_marker();
-  } else {
-    active_marker = item;
-    markers[active_marker].enabled = TRUE;
-  }
   if (active_marker >= 0)
     redraw_marker(active_marker, TRUE);
   ui_mode_normal();
@@ -599,7 +607,7 @@ const menuitem_t menu_channel[] = {
 };
 
 const menuitem_t menu_display[] = {
-  { MT_CALLBACK, "SGL TRC", menu_single_trace_cb },
+  { MT_CALLBACK, "\2SINGLE\0TRACE", menu_single_trace_cb },
   { MT_SUBMENU, "TRACE", menu_trace },
   { MT_SUBMENU, "FORMAT", menu_format },
   { MT_CALLBACK, "SCALE", menu_scale_cb },
@@ -624,16 +632,17 @@ const menuitem_t menu_marker_sel[] = {
   { MT_CALLBACK, "2", menu_marker_sel_cb },
   { MT_CALLBACK, "3", menu_marker_sel_cb },
   { MT_CALLBACK, "4", menu_marker_sel_cb },
+  { MT_CALLBACK, "ALL OFF", menu_marker_sel_cb },
   { MT_CANCEL, "BACK", NULL },
   { MT_NONE, NULL, NULL } // sentinel
 };
 
 const menuitem_t menu_marker[] = {
   { MT_SUBMENU, "SELECT", menu_marker_sel },
-  { MT_CALLBACK, "\2MARKER>\0START", menu_marker_op_cb },
-  { MT_CALLBACK, "\2MARKER>\0STOP", menu_marker_op_cb },
-  { MT_CALLBACK, "\2MARKER>\0CENTER", menu_marker_op_cb },
-  { MT_CALLBACK, "\2MARKER>\0SPAN", menu_marker_op_cb },
+  { MT_CALLBACK, "\2MARKER"S_RARROW"\0START", menu_marker_op_cb },
+  { MT_CALLBACK, "\2MARKER"S_RARROW"\0STOP", menu_marker_op_cb },
+  { MT_CALLBACK, "\2MARKER"S_RARROW"\0CENTER", menu_marker_op_cb },
+  { MT_CALLBACK, "\2MARKER"S_RARROW"\0SPAN", menu_marker_op_cb },
   { MT_CANCEL, "BACK", NULL },
   { MT_NONE, NULL, NULL } // sentinel
 };
@@ -824,7 +833,7 @@ draw_numeric_input(const char *buf)
 }
 
 static int
-menu_is_multiline(const char *label, char **l1, char **l2)
+menu_is_multiline(const char *label, const char **l1, const char **l2)
 {
   if (label[0] != '\2')
     return FALSE;
@@ -839,7 +848,7 @@ draw_menu_buttons(const menuitem_t *menu)
 {
   int i = 0;
   for (i = 0; i < 7; i++) {
-    char *l1, *l2;
+    const char *l1, *l2;
     if (menu[i].type == MT_NONE)
       break;
     if (menu[i].type == MT_BLANK) 

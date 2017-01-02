@@ -134,6 +134,7 @@ extern const uint32_t numfont20x24[][24];
 #define S_MICRO "\035"
 #define S_OHM   "\036"
 #define S_DEGREE "\037"
+#define S_RARROW "\033"
 
 // trace 
 

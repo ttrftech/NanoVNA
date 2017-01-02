@@ -275,6 +275,9 @@ extern properties_t current_props;
 int caldata_save(int id);
 int caldata_recall(int id);
 
+int config_save(void);
+int config_recall(void);
+
 /*
  * ui.c
  */

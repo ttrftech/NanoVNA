@@ -156,14 +156,21 @@ static void cmd_dac(BaseSequentialStream *chp, int argc, char *argv[])
     int value;
     if (argc != 1) {
         chprintf(chp, "usage: dac {value(0-4095)}\r\n");
+        chprintf(chp, "current value: %d\r\n", config.dac_value);
         return;
     }
     value = atoi(argv[0]);
+    config.dac_value = value;
     dacPutChannelX(&DACD2, 0, value);
 }
 
-
-
+static void cmd_saveconfig(BaseSequentialStream *chp, int argc, char *argv[])
+{
+  (void)argc;
+  (void)argv;
+  config_save();
+  chprintf(chp, "Config saved.\r\n");
+}
 
 static struct {
   int16_t rms[2];
@@ -1290,6 +1297,7 @@ static const ShellCommand commands[] =
     { "offset", cmd_offset },
     { "time", cmd_time },
     { "dac", cmd_dac },
+    { "saveconfig", cmd_saveconfig },
     { "data", cmd_data },
     { "dump", cmd_dump },
     { "frequencies", cmd_frequencies },
@@ -1325,7 +1333,7 @@ static const I2CConfig i2ccfg = {
   0
 };
 
-static const DACConfig dac1cfg1 = {
+static DACConfig dac1cfg1 = {
   //init:         2047U,
   init:         1922U,
   datamode:     DAC_DHRM_12BIT_RIGHT
@@ -1337,15 +1345,6 @@ int main(void)
     chSysInit();
 
     chMtxObjectInit(&mutex);
-
-    /*
-     * Starting DAC1 driver, setting up the output pin as analog as suggested
-     * by the Reference Manual.
-     */
-    //palSetPadMode(GPIOA, 5, PAL_MODE_INPUT_ANALOG);
-    //palSetPadMode(GPIOA, 5, PAL_MODE_OUTPUT_PUSHPULL);
-    //palSetPadMode(GPIOA, 5, PAL_MODE_INPUT);
-    dacStart(&DACD2, &dac1cfg1);
 
     //palSetPadMode(GPIOB, 8, PAL_MODE_ALTERNATE(1) | PAL_STM32_OTYPE_OPENDRAIN);
     //palSetPadMode(GPIOB, 9, PAL_MODE_ALTERNATE(1) | PAL_STM32_OTYPE_OPENDRAIN);
@@ -1380,7 +1379,17 @@ int main(void)
    */
   plot_init();
 
-  /* restore config and calibration data from flash memory */
+  /* restore config */
+  config_recall();
+
+  dac1cfg1.init = config.dac_value;
+  /*
+   * Starting DAC1 driver, setting up the output pin as analog as suggested
+   * by the Reference Manual.
+   */
+  dacStart(&DACD2, &dac1cfg1);
+
+  /* restore frequencies and calibration properties from flash memory */
   caldata_recall(0);
 
   /* initial frequencies */

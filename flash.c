@@ -76,12 +76,56 @@ checksum(void *start, size_t len)
   return value;
 }
 
+
+#define FLASH_PAGESIZE 0x800
+
+const uint32_t save_config_area = 0x08018000;
+
+int
+config_save(void)
+{
+  uint16_t *src = (uint16_t*)&config;
+  uint16_t *dst = save_config_area;
+  int count = sizeof(config_t) / sizeof(uint16_t);
+
+  config.magic = CONFIG_MAGIC;
+  config.checksum = 0;
+  config.checksum = checksum(&config, sizeof config);
+
+  flash_unlock();
+
+  /* erase flash pages */
+  flash_erase_page((uint32_t)dst);
+
+  /* write to flahs */
+  while(count-- > 0) {
+    flash_program_half_word((uint32_t)dst, *src++);
+    dst++;
+  }
+
+  return 0;
+}
+
+int
+config_recall(void)
+{
+  config_t *src = save_config_area;
+  void *dst = &config;
+
+  if (src->magic != CONFIG_MAGIC)
+    return -1;
+  if (checksum(src, sizeof(config_t)) != 0)
+    return -1;
+
+  /* duplicated saved data onto sram to be able to modify marker/trace */
+  memcpy(dst, src, sizeof(config_t));
+  return 0;
+}
+
 #define SAVEAREA_MAX 5
 
 const uint32_t saveareas[] =
   { 0x08018800, 0x0801a000, 0x0801b800, 0x0801d000, 0x0801e8000 };
-
-#define FLASH_PAGESIZE 0x800
 
 int16_t lastsaveid = 0;
 

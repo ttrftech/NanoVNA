@@ -354,10 +354,14 @@ menu_calop_cb(int item)
 static void
 menu_caldone_cb(int item)
 {
+  extern const menuitem_t menu_save[];
+  extern const menuitem_t menu_cal[];
   (void)item;
   cal_done();
   draw_cal_status();
   menu_move_back();
+  menu_push_submenu(menu_cal);
+  menu_push_submenu(menu_save);
 }
 
 static void
@@ -550,10 +554,21 @@ const menuitem_t menu_calop[] = {
   { MT_NONE, NULL, NULL } // sentinel
 };
 
+const menuitem_t menu_save[] = {
+  { MT_CALLBACK, "0", menu_save_cb },
+  { MT_CALLBACK, "1", menu_save_cb },
+  { MT_CALLBACK, "2", menu_save_cb },
+  { MT_CALLBACK, "3", menu_save_cb },
+  { MT_CALLBACK, "4", menu_save_cb },
+  { MT_CANCEL, "BACK", NULL },
+  { MT_NONE, NULL, NULL } // sentinel
+};
+
 const menuitem_t menu_cal[] = {
   { MT_CALLBACK, "RESET", menu_cal2_cb },
   { MT_CALLBACK, "OFF", menu_cal2_cb },
   { MT_CALLBACK, "ON", menu_cal2_cb },
+  { MT_SUBMENU, "SAVE", menu_save },
   { MT_CANCEL, "BACK", NULL },
   { MT_NONE, NULL, NULL } // sentinel
 };
@@ -621,7 +636,7 @@ const menuitem_t menu_stimulus[] = {
   { MT_CALLBACK, "STOP", menu_stimulus_cb },
   { MT_CALLBACK, "CENTER", menu_stimulus_cb },
   { MT_CALLBACK, "SPAN", menu_stimulus_cb },
-  { MT_CALLBACK, "CW", menu_stimulus_cb },
+  { MT_CALLBACK, "CW FREQ", menu_stimulus_cb },
   { MT_CALLBACK, "PAUSE", menu_stimulus_cb },
   { MT_CANCEL, "BACK", NULL },
   { MT_NONE, NULL, NULL } // sentinel
@@ -657,23 +672,12 @@ const menuitem_t menu_recall[] = {
   { MT_NONE, NULL, NULL } // sentinel
 };
 
-const menuitem_t menu_save[] = {
-  { MT_CALLBACK, "0", menu_save_cb },
-  { MT_CALLBACK, "1", menu_save_cb },
-  { MT_CALLBACK, "2", menu_save_cb },
-  { MT_CALLBACK, "3", menu_save_cb },
-  { MT_CALLBACK, "4", menu_save_cb },
-  { MT_CANCEL, "BACK", NULL },
-  { MT_NONE, NULL, NULL } // sentinel
-};
-
 const menuitem_t menu_top[] = {
   { MT_SUBMENU, "DISPLAY", menu_display },
   { MT_SUBMENU, "MARKER", menu_marker },
   { MT_SUBMENU, "STIMULUS", menu_stimulus },
   { MT_CALLBACK, "CAL", menu_cal_cb },
   { MT_SUBMENU, "RECALL", menu_recall },
-  { MT_SUBMENU, "SAVE", menu_save },
   { MT_CLOSE, "CLOSE", NULL },
   { MT_NONE, NULL, NULL } // sentinel
 };

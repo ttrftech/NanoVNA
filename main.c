@@ -245,7 +245,6 @@ static const I2SConfig i2sconfig = {
 static void cmd_data(BaseSequentialStream *chp, int argc, char *argv[])
 {
   int i;
-  int len;
   int sel = 0;
 
   if (argc == 1)
@@ -615,7 +614,7 @@ const struct open_model {
   float c3;
 } open_model = { 50, 0, -300, 27 };
 
-#if 1
+#if 0
 static void
 adjust_ed(void)
 {
@@ -978,12 +977,12 @@ my_atof(const char *p)
   if (*p == '-' || *p == '+')
     p++;
   float x = atoi(p);
-  while (isdigit(*p))
+  while (isdigit((int)*p))
     p++;
   if (*p == '.') {
     float d = 1.0f;
     p++;
-    while (isdigit(*p)) {
+    while (isdigit((int)*p)) {
       d /= 10;
       x += d * (*p - '0');
       p++;
@@ -1138,6 +1137,18 @@ static void cmd_touchcal(BaseSequentialStream *chp, int argc, char *argv[])
   touch_start_watchdog();
 }
 
+static void cmd_frequencies(BaseSequentialStream *chp, int argc, char *argv[])
+{
+  int i;
+  (void)chp;
+  (void)argc;
+  (void)argv;
+  for (i = 0; i < sweep_points; i++) {
+    chprintf(chp, "%d\r\n", frequencies[i]);
+  }
+}
+
+
 static void cmd_test(BaseSequentialStream *chp, int argc, char *argv[])
 {
   (void)chp;
@@ -1273,6 +1284,7 @@ static const ShellCommand commands[] =
     { "dac", cmd_dac },
     { "data", cmd_data },
     { "dump", cmd_dump },
+    { "frequencies", cmd_frequencies },
     { "port", cmd_port },
     { "stat", cmd_stat },
     { "gain", cmd_gain },

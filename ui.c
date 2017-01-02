@@ -485,7 +485,36 @@ menu_stimulus_cb(int item)
 }
 
 static void
-menu_marker_cb(int item)
+menu_marker_op_cb(int item)
+{
+  if (active_marker < 0)
+    return;
+  int idx = markers[active_marker].index;
+  int32_t marker_freq = frequencies[idx];
+
+  switch (item) {
+  case 1: /* MARKER->START */
+    set_sweep_frequency(ST_START, marker_freq);
+    break;
+  case 2: /* MARKER->STOP */
+    set_sweep_frequency(ST_STOP, marker_freq);
+    break;
+  case 3: /* MARKER->CENTER */
+    set_sweep_frequency(ST_CENTER, marker_freq);
+    break;
+  case 4: /* MARKER->SPAN */
+    //set_sweep_frequency(ST_START, 0);
+    //int span = (frequency0 - marker_freq) * 2;
+    break;
+  }
+  ui_mode_normal();
+  redraw();
+  force_set_markmap();
+  draw_cell_all();
+}
+
+static void
+menu_marker_sel_cb(int item)
 {
   if (item < 0 || item >= 4)
     return;
@@ -590,11 +619,21 @@ const menuitem_t menu_stimulus[] = {
   { MT_NONE, NULL, NULL } // sentinel
 };
 
+const menuitem_t menu_marker_sel[] = {
+  { MT_CALLBACK, "1", menu_marker_sel_cb },
+  { MT_CALLBACK, "2", menu_marker_sel_cb },
+  { MT_CALLBACK, "3", menu_marker_sel_cb },
+  { MT_CALLBACK, "4", menu_marker_sel_cb },
+  { MT_CANCEL, "BACK", NULL },
+  { MT_NONE, NULL, NULL } // sentinel
+};
+
 const menuitem_t menu_marker[] = {
-  { MT_CALLBACK, "1", menu_marker_cb },
-  { MT_CALLBACK, "2", menu_marker_cb },
-  { MT_CALLBACK, "3", menu_marker_cb },
-  { MT_CALLBACK, "4", menu_marker_cb },
+  { MT_SUBMENU, "SELECT", menu_marker_sel },
+  { MT_CALLBACK, "\2MARKER>\0START", menu_marker_op_cb },
+  { MT_CALLBACK, "\2MARKER>\0STOP", menu_marker_op_cb },
+  { MT_CALLBACK, "\2MARKER>\0CENTER", menu_marker_op_cb },
+  { MT_CALLBACK, "\2MARKER>\0SPAN", menu_marker_op_cb },
   { MT_CANCEL, "BACK", NULL },
   { MT_NONE, NULL, NULL } // sentinel
 };
@@ -784,12 +823,23 @@ draw_numeric_input(const char *buf)
   }
 }
 
+static int
+menu_is_multiline(const char *label, char **l1, char **l2)
+{
+  if (label[0] != '\2')
+    return FALSE;
+
+  *l1 = &label[1];
+  *l2 = &label[1] + strlen(&label[1]) + 1;
+  return TRUE;
+}
 
 void
 draw_menu_buttons(const menuitem_t *menu)
 {
   int i = 0;
   for (i = 0; i < 7; i++) {
+    char *l1, *l2;
     if (menu[i].type == MT_NONE)
       break;
     if (menu[i].type == MT_BLANK) 
@@ -800,7 +850,12 @@ draw_menu_buttons(const menuitem_t *menu)
     if (ui_mode == UI_MENU && i == selection)
       bg = 0x7777;
     ili9341_fill(320-60, y, 60, 30, bg);
-    ili9341_drawstring_5x7(menu[i].label, 320-54, y+12, 0x0000, bg);
+    if (menu_is_multiline(menu[i].label, &l1, &l2)) {
+      ili9341_drawstring_5x7(l1, 320-54, y+8, 0x0000, bg);
+      ili9341_drawstring_5x7(l2, 320-54, y+15, 0x0000, bg);
+    } else {
+      ili9341_drawstring_5x7(menu[i].label, 320-54, y+12, 0x0000, bg);
+    }
   }
 }
 

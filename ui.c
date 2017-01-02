@@ -69,7 +69,7 @@ enum {
 
 uint8_t ui_mode = UI_NORMAL;
 uint8_t keypad_mode;
-uint8_t selection = 0;
+int8_t selection = 0;
 
 typedef struct {
   uint8_t type;
@@ -471,13 +471,15 @@ static void
 menu_stimulus_cb(int item)
 {
   switch (item) {
-  case 0:
-  case 1:
-  case 2:
-  case 3:
-  case 4:
+  case 0: /* START */
+  case 1: /* STOP */
+  case 2: /* CENTER */
+  case 3: /* SPAN */
+  case 4: /* CW */
     ui_mode_keypad(item);
     ui_process_keypad();
+    break;
+  case 5: /* pause && resume */
     break;
   }
 }
@@ -583,6 +585,7 @@ const menuitem_t menu_stimulus[] = {
   { MT_CALLBACK, "CENTER", menu_stimulus_cb },
   { MT_CALLBACK, "SPAN", menu_stimulus_cb },
   { MT_CALLBACK, "CW", menu_stimulus_cb },
+  { MT_CALLBACK, "PAUSE", menu_stimulus_cb },
   { MT_CANCEL, "BACK", NULL },
   { MT_NONE, NULL, NULL } // sentinel
 };
@@ -855,6 +858,7 @@ ui_mode_menu(void)
     return;
 
   ui_mode = UI_MENU;
+  /* narrowen plotting area */
   area_width = WIDTH - (64-14-4);
   area_height = HEIGHT;
   ensure_selection();
@@ -1090,6 +1094,7 @@ void ui_process_touch(void)
     switch (ui_mode) {
     case UI_NORMAL:
       touch_wait_release();
+      selection = -1;
       ui_mode_menu();
       break;
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014-2015, TAKAHASHI Tomohiro (TTRFTECH) edy555@gmail.com
+ * Copyright (c) 2016-2017, TAKAHASHI Tomohiro (TTRFTECH) edy555@gmail.com
  * All rights reserved.
  *
  * This is free software; you can redistribute it and/or modify
@@ -39,7 +39,7 @@ static MUTEX_DECL(mutex);
 int32_t frequency_offset = 5000;
 int32_t frequency = 10000000;
 uint8_t drive_strength = SI5351_CLK_DRIVE_STRENGTH_2MA;
-
+int8_t frequency_updated = FALSE;
 
 static THD_WORKING_AREA(waThread1, 440);
 static THD_FUNCTION(Thread1, arg)
@@ -376,11 +376,15 @@ void scan_lcd(void)
   int delay;
   //int first = TRUE;
 
+ rewind:
+  frequency_updated = FALSE;
+
   delay = set_frequency(frequencies[0]);
   delay += 2;
   for (i = 0; i < sweep_points; i++) {
     tlv320aic3204_select_in3();
     wait_dsp(delay+2);
+    // blink LED while scanning
     palClearPad(GPIOC, GPIOC_LED);
 
     /* calculate reflection coeficient */
@@ -393,8 +397,12 @@ void scan_lcd(void)
     calculate_gamma(measured[1][i]);
 
     delay = set_frequency(frequencies[(i+1)%sweep_points]);
+    // blink LED while scanning
     palSetPad(GPIOC, GPIOC_LED);
     ui_process();
+
+    if (frequency_updated)
+      goto rewind;
   }
 
   if (cal_status & CALSTAT_APPLY)
@@ -435,6 +443,7 @@ update_frequencies(void)
   for (i = 0; i < sweep_points; i++)
     frequencies[i] = start + span * i / (sweep_points - 1) * 100;
 
+  frequency_updated = TRUE;
   // set grid layout
   update_grid();
 }

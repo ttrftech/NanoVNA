@@ -89,23 +89,23 @@ int16_t lastsaveid = 0;
 int
 caldata_save(int id)
 {
-  uint16_t *src = (uint16_t*)&current_config;
+  uint16_t *src = (uint16_t*)&current_props;
   uint16_t *dst;
-  int count = sizeof(config_t) / sizeof(uint16_t);
+  int count = sizeof(properties_t) / sizeof(uint16_t);
 
   if (id < 0 || id >= SAVEAREA_MAX)
     return -1;
   dst = (uint16_t*)saveareas[id];
 
-  current_config.magic = CONFIG_MAGIC;
-  current_config.checksum = 0;
-  current_config.checksum = checksum(&current_config, sizeof current_config);
+  current_props.magic = CONFIG_MAGIC;
+  current_props.checksum = 0;
+  current_props.checksum = checksum(&current_props, sizeof current_props);
 
   flash_unlock();
 
   /* erase flash pages */
   void *p = dst;
-  void *tail = p + sizeof(config_t);
+  void *tail = p + sizeof(properties_t);
   while (p < tail) {
     flash_erase_page((uint32_t)p);
     p += FLASH_PAGESIZE;
@@ -118,7 +118,7 @@ caldata_save(int id)
   }
 
   /* after saving data, make active configuration points to flash */
-  active = (config_t*)saveareas[id];
+  active = (properties_t*)saveareas[id];
   lastsaveid = id;
 
   return 0;
@@ -127,18 +127,18 @@ caldata_save(int id)
 int
 caldata_recall(int id)
 {
-  config_t *src;
-  void *dst = &current_config;
+  properties_t *src;
+  void *dst = &current_props;
 
   if (id < 0 || id >= SAVEAREA_MAX)
     return -1;
 
   // point to saved area on the flash memory
-  src = (config_t*)saveareas[id];
+  src = (properties_t*)saveareas[id];
 
   if (src->magic != CONFIG_MAGIC)
     return -1;
-  if (checksum(src, sizeof(config_t)) != 0)
+  if (checksum(src, sizeof(properties_t)) != 0)
     return -1;
 
   /* active configuration points to save data on flash memory */
@@ -146,7 +146,7 @@ caldata_recall(int id)
   lastsaveid = id;
 
   /* duplicated saved data onto sram to be able to modify marker/trace */
-  memcpy(dst, src, sizeof(config_t));
+  memcpy(dst, src, sizeof(properties_t));
 
   return 0;
 }

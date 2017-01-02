@@ -309,7 +309,15 @@ uint16_t cal_status;
 float cal_data[5][101][2];
 #endif
 
-config_t current_config = {
+config_t config = {
+  /* magic */   CONFIG_MAGIC,
+  /* dac_value */ 1922,
+  /* grid_color */ 0x1084,
+  /* trace_colors */ { RGB565(0,255,255), RGB565(255,0,40), RGB565(0,0,255), RGB565(50,255,0) },
+  /* checksum */           0
+};
+
+properties_t current_props = {
   /* magic */   CONFIG_MAGIC,
   /* frequency0 */   1000000,
   /* frequency1 */  300000000,
@@ -318,10 +326,10 @@ config_t current_config = {
   /* frequencies */       {},
   /* cal_data */          {},
   /* trace[4] */ {
-    { 1, TRC_LOGMAG, 0, 1.0, RGB565(0,255,255), 0 },
-    { 1, TRC_LOGMAG, 1, 1.0, RGB565(255,0,40), 0 },
-    { 1, TRC_SMITH, 0, 1.0, RGB565(0,0,255), 1 },
-    { 1, TRC_PHASE, 1, 1.0, RGB565(50,255,0), 1 }
+    { 1, TRC_LOGMAG, 0, 0, 1.0 },
+    { 1, TRC_LOGMAG, 1, 0, 1.0 },
+    { 1, TRC_SMITH, 0, 1, 1.0 },
+    { 1, TRC_PHASE, 1, 1, 1.0 }
   },
   /* markers[4] */ {
   { 1, 30 }, { 0, 40 }, { 0, 60 }, { 0, 80 }
@@ -329,16 +337,16 @@ config_t current_config = {
   /* active_marker */      0,
   /* checksum */           0
 };
-config_t *active = &current_config;
+properties_t *active = &current_props;
 
 void
 ensure_edit_config(void)
 {
-  if (active == &current_config)
+  if (active == &current_props)
     return;
 
-  //memcpy(&current_config, active, sizeof(config_t));
-  active = &current_config;
+  //memcpy(&current_props, active, sizeof(config_t));
+  active = &current_props;
   // move to uncal state
   cal_status = 0;
 }
@@ -622,7 +630,7 @@ adjust_ed(void)
   for (i = 0; i < 101; i++) {
     // z=1/(jwc*z0) = 1/(2*pi*f*c*z0)  Note: normalized with Z0
     // s11ao = (z-1)/(z+1) = (1-1/z)/(1+1/z) = (1-jwcz0)/(1+jwcz0)
-    // prepare 1/s11ao for effeiciency
+    // prepare 1/s11ao to avoid dividing complex
     float c = 1000e-15;
     float z0 = 50;
     //float z = 6.2832 * frequencies[i] * c * z0;

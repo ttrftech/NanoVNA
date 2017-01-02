@@ -13,7 +13,7 @@ void frequency_string(char *buf, size_t len, uint32_t freq);
 void markmap_all_markers(void);
 
 //#define GRID_COLOR 0x0863
-uint16_t grid_color = 0x1084;
+//uint16_t grid_color = 0x1084;
 
 /* indicate dirty cells */
 uint16_t markmap[2][8];
@@ -111,7 +111,7 @@ circle_inout(int x, int y, int r)
 int
 polar_grid(int x, int y)
 {
-  int c = grid_color;
+  int c = config.grid_color;
   int d;
 
   // offset to center
@@ -155,7 +155,7 @@ polar_grid(int x, int y)
 int
 smith_grid(int x, int y)
 {
-  int c = grid_color;
+  int c = config.grid_color;
   int d;
 
   // offset to center
@@ -213,7 +213,7 @@ smith_grid(int x, int y)
 int
 smith_grid2(int x, int y, float scale)
 {
-  int c = grid_color;
+  int c = config.grid_color;
   int d;
 
   // offset to center
@@ -310,7 +310,7 @@ const int cirs[][4] = {
 int
 smith_grid3(int x, int y)
 {
-  int c = grid_color;
+  int c = config.grid_color;
   int d;
 
   // offset to center
@@ -347,7 +347,7 @@ smith_grid3(int x, int y)
 int
 rectangular_grid(int x, int y)
 {
-  int c = grid_color;
+  int c = config.grid_color;
   //#define FREQ(x) (((x) * (fspan / 1000) / (WIDTH-1)) * 1000 + fstart)
   //int32_t n = FREQ(x-1) / fgrid;
   //int32_t m = FREQ(x) / fgrid;
@@ -367,7 +367,7 @@ rectangular_grid(int x, int y)
 int
 rectangular_grid_x(int x)
 {
-  int c = grid_color;
+  int c = config.grid_color;
   if (x == 0 || x == (WIDTH-1))
     return c;
   if ((((x + grid_offset) * 10) % grid_width) < 10)
@@ -378,7 +378,7 @@ rectangular_grid_x(int x)
 int
 rectangular_grid_y(int y)
 {
-  int c = grid_color;
+  int c = config.grid_color;
   if ((y % GRIDY) == 0)
     return c;
   return 0;
@@ -901,7 +901,7 @@ cell_draw_markers(int m, int n, int w, int h)
       int x = CELL_X(index) - x0;
       int y = CELL_Y(index) - y0;
       if (x > -6 && x < w+6 && y >= 0 && y < h+12)
-        draw_marker(w, h, x, y, trace[t].color, '1' + i);
+        draw_marker(w, h, x, y, config.trace_color[t], '1' + i);
     }
   }
 }
@@ -1029,7 +1029,7 @@ draw_cell(int m, int n)
         int x2 = CELL_X(trace_index[t][i+1]);
         int y1 = CELL_Y(trace_index[t][i]);
         int y2 = CELL_Y(trace_index[t][i+1]);
-        int c = trace[t].color;
+        int c = config.trace_color[t];
         cell_drawline(w, h, x1 - x0, y1 - y0, x2 - x0, y2 - y0, c);
       }
     }
@@ -1038,7 +1038,7 @@ draw_cell(int m, int n)
 #if 1
   /* draw polar plot */
   for (t = 0; t < TRACES_MAX; t++) {
-    int c = trace[t].color;
+    int c = config.trace_color[t];
     if (!trace[t].enabled || !trace[t].polar)
       continue;
     for (i = 1; i < 101; i++) {
@@ -1155,10 +1155,10 @@ cell_draw_marker_info(int m, int n, int w, int h)
     xpos -= m * CELLWIDTH;
     ypos -= n * CELLHEIGHT;
     trace_get_info(t, buf, sizeof buf);
-    cell_drawstring_5x7(w, h, buf, xpos, ypos, trace[t].color);
+    cell_drawstring_5x7(w, h, buf, xpos, ypos, config.trace_color[t]);
     xpos += 84;
     trace_get_value_string(t, buf, sizeof buf, measured[trace[t].channel][idx], frequencies[idx]);
-    cell_drawstring_5x7(w, h, buf, xpos, ypos, trace[t].color);
+    cell_drawstring_5x7(w, h, buf, xpos, ypos, config.trace_color[t]);
     j++;
   }    
 
@@ -1233,7 +1233,7 @@ draw_cal_status(void)
   ili9341_fill(0, y, 10, 6*YSTEP, 0x0000);
   if (cal_status & CALSTAT_APPLY) {
     char c[3] = "C0";
-    if (active == &current_config)
+    if (active == &current_props)
       c[1] = '*';
     else
       c[1] += lastsaveid;

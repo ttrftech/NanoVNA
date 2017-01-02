@@ -157,14 +157,23 @@ extern const char *trc_type_name[];
 // Phase
 
 typedef struct {
-  int enabled;
-  int type;
-  int channel;
+  uint8_t enabled;
+  uint8_t type;
+  uint8_t channel;
+  uint8_t polar;
   float scale;
   //float ref;
-  uint16_t color;
-  uint8_t polar;
 } trace_t;
+
+typedef struct {
+  int32_t magic;
+  uint16_t dac_value;
+  uint16_t grid_color;
+  uint16_t trace_color[TRACES_MAX];
+  int32_t checksum;
+} config_t;
+
+extern config_t config;
 
 //extern trace_t trace[TRACES_MAX];
 
@@ -244,24 +253,24 @@ typedef struct {
   int _active_marker;
 
   int32_t checksum;
-} config_t;
+} properties_t;
 
 #define CONFIG_MAGIC 0x436f4e45 /* 'CoNF' */
 
 extern int16_t lastsaveid;
-extern config_t *active;
-extern config_t current_config;
+extern properties_t *active;
+extern properties_t current_props;
 
-#define frequency0 current_config._frequency0
-#define frequency1 current_config._frequency1
-#define sweep_points current_config._sweep_points
-#define cal_status current_config._cal_status
-#define frequencies current_config._frequencies
+#define frequency0 current_props._frequency0
+#define frequency1 current_props._frequency1
+#define sweep_points current_props._sweep_points
+#define cal_status current_props._cal_status
+#define frequencies current_props._frequencies
 #define cal_data active->_cal_data
 
-#define trace current_config._trace
-#define markers current_config._markers
-#define active_marker current_config._active_marker
+#define trace current_props._trace
+#define markers current_props._markers
+#define active_marker current_props._active_marker
 
 int caldata_save(int id);
 int caldata_recall(int id);

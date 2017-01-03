@@ -1152,6 +1152,64 @@ ui_process_lever(void)
   }
 }
 
+
+void drag_marker(int t, int m)
+{
+  int status;
+  /* wait touch release */
+  do {
+    int touch_x, touch_y;
+    int index;
+    touch_position(&touch_x, &touch_y);
+    index = search_nearest_index(touch_x, touch_y, t);
+    if (index >= 0) {
+      markers[m].index = index;
+      redraw_marker(m, TRUE);
+    }
+
+    status = touch_check();
+  } while(status != EVT_TOUCH_RELEASED);
+}
+
+static int 
+sq_distance(int x0, int y0)
+{
+  return x0*x0 + y0*y0;
+}
+
+int
+touch_pickup_marker(void)
+{
+  int touch_x, touch_y;
+  int m, t;
+  touch_position(&touch_x, &touch_y);
+
+  for (m = 0; m < 4; m++) {
+    if (!markers[m].enabled)
+      continue;
+
+    for (t = 0; t < 4; t++) {
+      int x, y;
+      if (!trace[t].enabled)
+        continue;
+
+      marker_position(m, t, &x, &y);
+
+      if (sq_distance(x - touch_x, y - touch_y) < 400) {
+        active_marker = m;
+        redraw_marker(active_marker, TRUE);
+
+        drag_marker(t, m);
+        return TRUE;
+      }
+    }
+  }
+
+  return FALSE;
+}
+
+
+
 void ui_process_touch(void)
 {
   awd_count++;
@@ -1161,7 +1219,14 @@ void ui_process_touch(void)
   if (status == EVT_TOUCH_PRESSED) {
     switch (ui_mode) {
     case UI_NORMAL:
+
+      if (touch_pickup_marker()) {
+        break;
+      }
+      
       touch_wait_release();
+
+      // switch menu mode
       selection = -1;
       ui_mode_menu();
       break;

@@ -206,6 +206,8 @@ void draw_cal_status(void);
 
 void markmap_all_markers(void);
 
+void marker_position(int m, int t, int *x, int *y);
+int search_nearest_index(int x, int y, int t);
 
 /*
  * ili9341.c

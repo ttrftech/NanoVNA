@@ -886,6 +886,37 @@ draw_marker(int w, int h, int x, int y, int c, int ch)
 }
 
 void
+marker_position(int m, int t, int *x, int *y)
+{
+  uint32_t index = trace_index[t][markers[m].index];
+  *x = CELL_X(index);
+  *y = CELL_Y(index);
+}
+
+int
+search_nearest_index(int x, int y, int t)
+{
+  uint32_t *index = trace_index[t];
+  int min_i = -1;
+  int min_d = 1000;
+  int i;
+  for (i = 0; i < 101; i++) {
+    int dx = x - CELL_X(index[i]) - OFFSETX;
+    int dy = y - CELL_Y(index[i]) - OFFSETY;
+    if (dx < 0) dx = -dx;
+    if (dy < 0) dy = -dy;
+    if (dx > 20 && dy > 20)
+      continue;
+    int d = dx*dx + dy*dy;
+    if (d < min_d) {
+      min_i = i;
+    }
+  }
+
+  return min_i;
+}
+
+void
 cell_draw_markers(int m, int n, int w, int h)
 {
   int x0 = m * CELLWIDTH;

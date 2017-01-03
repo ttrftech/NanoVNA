@@ -66,7 +66,7 @@ void flash_unlock(void)
 
 
 static uint32_t
-checksum(void *start, size_t len)
+checksum(const void *start, size_t len)
 {
   uint32_t *p = (uint32_t*)start;
   uint32_t *tail = (uint32_t*)(start + len);
@@ -85,7 +85,7 @@ int
 config_save(void)
 {
   uint16_t *src = (uint16_t*)&config;
-  uint16_t *dst = save_config_area;
+  uint16_t *dst = (uint16_t*)save_config_area;
   int count = sizeof(config_t) / sizeof(uint16_t);
 
   config.magic = CONFIG_MAGIC;
@@ -109,7 +109,7 @@ config_save(void)
 int
 config_recall(void)
 {
-  config_t *src = save_config_area;
+  const config_t *src = (const config_t*)save_config_area;
   void *dst = &config;
 
   if (src->magic != CONFIG_MAGIC)

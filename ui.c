@@ -82,7 +82,7 @@ int8_t last_touch_status = FALSE;
 int16_t last_touch_x;
 int16_t last_touch_y;
 //int16_t touch_cal[4] = { 1000, 1000, 10*16, 12*16 };
-int16_t touch_cal[4] = { 620, 600, 130, 180 };
+//int16_t touch_cal[4] = { 620, 600, 130, 180 };
 #define EVT_TOUCH_NONE 0
 #define EVT_TOUCH_DOWN 1
 #define EVT_TOUCH_PRESSED 2
@@ -294,17 +294,17 @@ touch_cal_exec(void)
   x2 = last_touch_x;
   y2 = last_touch_y;
 
-  touch_cal[0] = x1;
-  touch_cal[1] = y1;
-  touch_cal[2] = (x2 - x1) * 16 / 320;
-  touch_cal[3] = (y2 - y1) * 16 / 240;
+  config.touch_cal[0] = x1;
+  config.touch_cal[1] = y1;
+  config.touch_cal[2] = (x2 - x1) * 16 / 320;
+  config.touch_cal[3] = (y2 - y1) * 16 / 240;
 }
 
 void
 touch_position(int *x, int *y)
 {
-  *x = (last_touch_x - touch_cal[0]) * 16 / touch_cal[2];
-  *y = (last_touch_y - touch_cal[1]) * 16 / touch_cal[3];
+  *x = (last_touch_x - config.touch_cal[0]) * 16 / config.touch_cal[2];
+  *y = (last_touch_y - config.touch_cal[1]) * 16 / config.touch_cal[3];
 }
 
 
@@ -800,9 +800,9 @@ draw_keypad(void)
 {
   int i = 0;
   while (keypads[i].x) {
-    uint16_t bg = 0xffff;
+    uint16_t bg = config.menu_normal_color;
     if (i == selection)
-      bg = 0x7777;
+      bg = config.menu_active_color;
     ili9341_fill(keypads[i].x, keypads[i].y, 44, 44, bg);
     ili9341_drawfont(keypads[i].c, &NF20x24, keypads[i].x+12, keypads[i].y+10, 0x0000, bg);
     i++;
@@ -858,10 +858,10 @@ draw_menu_buttons(const menuitem_t *menu)
     if (menu[i].type == MT_BLANK) 
       continue;
     int y = 32*i;
-    uint16_t bg = 0xffff;
+    uint16_t bg = config.menu_normal_color;
     // focus only in MENU mode but not in KEYPAD mode
     if (ui_mode == UI_MENU && i == selection)
-      bg = 0x7777;
+      bg = config.menu_active_color;
     ili9341_fill(320-60, y, 60, 30, bg);
     if (menu_is_multiline(menu[i].label, &l1, &l2)) {
       ili9341_drawstring_5x7(l1, 320-54, y+8, 0x0000, bg);

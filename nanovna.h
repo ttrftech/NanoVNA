@@ -169,7 +169,10 @@ typedef struct {
   int32_t magic;
   uint16_t dac_value;
   uint16_t grid_color;
+  uint16_t menu_normal_color;
+  uint16_t menu_active_color;
   uint16_t trace_color[TRACES_MAX];
+  int16_t touch_cal[4];
   int32_t checksum;
 } config_t;
 

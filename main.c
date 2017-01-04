@@ -320,7 +320,10 @@ config_t config = {
   /* magic */   CONFIG_MAGIC,
   /* dac_value */ 1922,
   /* grid_color */ 0x1084,
-  /* trace_colors */ { RGB565(0,255,255), RGB565(255,0,40), RGB565(0,0,255), RGB565(50,255,0) },
+  /* menu_normal_color */ 0xffff,
+  /* menu_active_color */ 0x7777,
+  /* trace_colors[4] */ { RGB565(0,255,255), RGB565(255,0,40), RGB565(0,0,255), RGB565(50,255,0) },
+  /* touch_cal[4] */ { 620, 600, 130, 180 },
   /* checksum */           0
 };
 
@@ -1137,7 +1140,7 @@ static void cmd_touchcal(BaseSequentialStream *chp, int argc, char *argv[])
 {
   (void)argc;
   (void)argv;
-  extern int16_t touch_cal[4];
+  //extern int16_t touch_cal[4];
   int i;
 
   chprintf(chp, "first touch upper left, then lower right...");
@@ -1146,7 +1149,7 @@ static void cmd_touchcal(BaseSequentialStream *chp, int argc, char *argv[])
 
   chprintf(chp, "touch cal params: ");
   for (i = 0; i < 4; i++) {
-    chprintf(chp, "%d ", touch_cal[i]);
+    chprintf(chp, "%d ", config.touch_cal[i]);
   }
   chprintf(chp, "\r\n");
   touch_start_watchdog();

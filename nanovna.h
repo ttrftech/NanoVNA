@@ -55,7 +55,7 @@ enum {
   ST_START, ST_STOP, ST_CENTER, ST_SPAN, ST_CW
 };
 
-void set_sweep_frequency(int type, int frequency);
+void set_sweep_frequency(int type, float frequency);
 
 float my_atof(const char *p);
 
@@ -141,7 +141,7 @@ extern const uint32_t numfont20x24[][24];
 #define TRACES_MAX 4
 
 enum {
-  TRC_LOGMAG, TRC_PHASE, TRC_SMITH, TRC_ADMIT, TRC_POLAR, TRC_LINEAR, TRC_SWR, TRC_OFF
+  TRC_LOGMAG, TRC_PHASE, TRC_DELAY, TRC_SMITH, TRC_POLAR, TRC_LINEAR, TRC_SWR, TRC_OFF
 };
 
 extern const char *trc_type_name[];

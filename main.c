@@ -323,6 +323,7 @@ config_t config = {
   /* menu_normal_color */ 0xffff,
   /* menu_active_color */ 0x7777,
   /* trace_colors[4] */ { RGB565(0,255,255), RGB565(255,0,40), RGB565(0,0,255), RGB565(50,255,0) },
+  ///* touch_cal[4] */ { 620, 600, 160, 190 },
   /* touch_cal[4] */ { 620, 600, 130, 180 },
   /* checksum */           0
 };
@@ -336,6 +337,7 @@ properties_t current_props = {
   /* frequencies */       {},
   /* cal_data */          {},
   /* trace[4] */ {
+    /* enable, type, channel, polar, scale */
     { 1, TRC_LOGMAG, 0, 0, 1.0 },
     { 1, TRC_LOGMAG, 1, 0, 1.0 },
     { 1, TRC_SMITH, 0, 1, 1.0 },
@@ -472,6 +474,7 @@ freq_mode_startstop(void)
   if (frequency1 <= 0) {
     int center = frequency0;
     int span = -frequency1;
+    ensure_edit_config();
     frequency0 = center - span/2;
     frequency1 = center + span/2;
   }
@@ -483,6 +486,7 @@ freq_mode_centerspan(void)
   if (frequency1 > 0) {
     int start = frequency0;
     int stop = frequency1;
+    ensure_edit_config();
     frequency0 = (start + stop)/2; // center
     frequency1 = -(stop - start); // span
   }
@@ -493,34 +497,36 @@ freq_mode_centerspan(void)
 #define STOP_MAX 300000000
 
 void
-set_sweep_frequency(int type, int frequency)
+set_sweep_frequency(int type, float frequency)
 {
+  int32_t freq = frequency;
   switch (type) {
   case ST_START:
-    ensure_edit_config();
     freq_mode_startstop();
     if (frequency < START_MIN)
-      frequency = START_MIN;
-    if (frequency0 != frequency) {
-      frequency0 = frequency;
+      freq = START_MIN;
+    if (frequency0 != freq) {
+      ensure_edit_config();
+      frequency0 = freq;
       update_frequencies();
     }
     break;
   case ST_STOP:
-    ensure_edit_config();
     freq_mode_startstop();
     if (frequency > STOP_MAX)
-      frequency = STOP_MAX;
-    if (frequency1 != frequency) {
-      frequency1 = frequency;
+      freq = STOP_MAX;
+    if (frequency1 != freq) {
+      ensure_edit_config();
+      frequency1 = freq;
       update_frequencies();
     }
     break;
   case ST_CENTER:
     ensure_edit_config();
     freq_mode_centerspan();
-    if (frequency0 != frequency) {
-      frequency0 = frequency;
+    if (frequency0 != freq) {
+      ensure_edit_config();
+      frequency0 = freq;
       int center = frequency0;
       int span = -frequency1;
       if (center-span/2 < START_MIN) {
@@ -535,10 +541,10 @@ set_sweep_frequency(int type, int frequency)
     }
     break;
   case ST_SPAN:
-    ensure_edit_config();
     freq_mode_centerspan();
-    if (frequency1 != -frequency) {
-      frequency1 = -frequency;
+    if (frequency1 != -freq) {
+      ensure_edit_config();
+      frequency1 = -freq;
       int center = frequency0;
       int span = -frequency1;
       if (center-span/2 < START_MIN) {
@@ -553,9 +559,9 @@ set_sweep_frequency(int type, int frequency)
     }
     break;
   case ST_CW:
-    ensure_edit_config();
     freq_mode_centerspan();
-    if (frequency0 != frequency || frequency1 != 0) {
+    if (frequency0 != freq || frequency1 != 0) {
+      ensure_edit_config();
       frequency0 = frequency;
       frequency1 = 0;
       update_frequencies();
@@ -938,7 +944,7 @@ static void cmd_recall(BaseSequentialStream *chp, int argc, char *argv[])
 
 
 const char *trc_type_name[] = {
-  "LOGMAG", "PHASE", "SMITH", "ADMIT", "POLAR", "LINEAR", "SWR"
+  "LOGMAG", "PHASE", "DELAY", "SMITH", "POLAR", "LINEAR", "SWR"
 };
 const char *trc_channel_name[] = {
   "CH0", "CH1"
@@ -946,7 +952,7 @@ const char *trc_channel_name[] = {
 
 void set_trace_type(int t, int type)
 {
-  int polar = type == TRC_SMITH || type == TRC_ADMIT || type == TRC_POLAR;
+  int polar = type == TRC_SMITH || type == TRC_POLAR;
   int enabled = type != TRC_OFF;
   int force = FALSE;
 
@@ -1064,8 +1070,8 @@ static void cmd_trace(BaseSequentialStream *chp, int argc, char *argv[])
       set_trace_type(t, TRC_POLAR);
     } else if (strcmp(argv[1], "smith") == 0) {
       set_trace_type(t, TRC_SMITH);
-    } else if (strcmp(argv[1], "admit") == 0) {
-      set_trace_type(t, TRC_ADMIT);
+    } else if (strcmp(argv[1], "delay") == 0) {
+      set_trace_type(t, TRC_DELAY);
     } else if (strcmp(argv[1], "linear") == 0) {
       set_trace_type(t, TRC_LINEAR);
     } else if (strcmp(argv[1], "swr") == 0) {

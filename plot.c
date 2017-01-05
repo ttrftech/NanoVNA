@@ -490,7 +490,7 @@ trace_into_index(int x, int t, int i, float coeff[2])
     v = 9 - swr(coeff);
     break;
   case TRC_SMITH:
-  case TRC_ADMIT:
+  //case TRC_ADMIT:
   case TRC_POLAR:
     cartesian_scale(coeff[0], coeff[1], &x, &y, trace[t].scale);
     return INDEX(x, y, i);
@@ -605,7 +605,7 @@ trace_get_value_string(int t, char *buf, int len, float coeff[2], uint32_t frequ
   case TRC_SMITH:
     gamma2imp(buf, len, coeff, frequency);
     break;
-  case TRC_ADMIT:
+  //case TRC_ADMIT:
   case TRC_POLAR:
     chsnprintf(buf, len, "%.2f %.2fj", coeff[0], coeff[1]);
     break;
@@ -626,7 +626,7 @@ trace_get_info(int t, char *buf, int len)
                trace[t].channel, type, (int)(trace[t].scale*90));
     break;
   case TRC_SMITH:
-  case TRC_ADMIT:
+  //case TRC_ADMIT:
   case TRC_POLAR:
     chsnprintf(buf, len, "CH%d %s %.1fFS",
                trace[t].channel, type, trace[t].scale);
@@ -901,11 +901,11 @@ search_nearest_index(int x, int y, int t)
   int min_d = 1000;
   int i;
   for (i = 0; i < 101; i++) {
-    int dx = x - CELL_X(index[i]) - OFFSETX;
-    int dy = y - CELL_Y(index[i]) - OFFSETY;
+    int16_t dx = x - CELL_X(index[i]) - OFFSETX;
+    int16_t dy = y - CELL_Y(index[i]) - OFFSETY;
     if (dx < 0) dx = -dx;
     if (dy < 0) dy = -dy;
-    if (dx > 20 && dy > 20)
+    if (dx > 20 || dy > 20)
       continue;
     int d = dx*dx + dy*dy;
     if (d < min_d) {
@@ -1007,8 +1007,8 @@ draw_cell(int m, int n)
     else {
       if (trace[t].type == TRC_SMITH)
         grid_mode |= GRID_SMITH;
-      else if (trace[t].type == TRC_ADMIT)
-        grid_mode |= GRID_ADMIT;
+      //else if (trace[t].type == TRC_ADMIT)
+      //  grid_mode |= GRID_ADMIT;
       else
         grid_mode |= GRID_POLAR;
     }

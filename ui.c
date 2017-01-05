@@ -248,6 +248,7 @@ int touch_check(void)
   if (stat) {
     last_touch_x = touch_measure_x();
     last_touch_y = touch_measure_y();
+    touch_prepare_sense();
   }
 
   if (stat != last_touch_status) {
@@ -400,6 +401,7 @@ menu_save_cb(int item)
   if (item < 0 || item >= 5)
     return;
   if (caldata_save(item) == 0) {
+    menu_move_back();
     ui_mode_normal();
     draw_cal_status();
   }
@@ -417,14 +419,40 @@ menu_trace_cb(int item)
 static void
 menu_format_cb(int item)
 {
-  set_trace_type(uistat.current_trace, item);
+  switch (item) {
+  case 0:
+    set_trace_type(uistat.current_trace, TRC_LOGMAG);
+    break;
+  case 1:
+    set_trace_type(uistat.current_trace, TRC_PHASE);
+    break;
+  case 2:
+    set_trace_type(uistat.current_trace, TRC_DELAY);
+    break;
+  case 3:
+    set_trace_type(uistat.current_trace, TRC_SMITH);
+    break;
+  case 4:
+    set_trace_type(uistat.current_trace, TRC_SWR);
+    break;
+  }
+
   ui_mode_normal();
 }
 
 static void
 menu_format2_cb(int item)
 {
-  menu_format_cb(item + 5);
+  switch (item) {
+  case 0:
+    set_trace_type(uistat.current_trace, TRC_POLAR);
+    break;
+  case 1:
+    set_trace_type(uistat.current_trace, TRC_LINEAR);
+    break;
+  }
+
+  ui_mode_normal();
 }
 
 static void
@@ -590,13 +618,14 @@ const menuitem_t menu_trace[] = {
   { MT_CALLBACK, "1", menu_trace_cb },
   { MT_CALLBACK, "2", menu_trace_cb },
   { MT_CALLBACK, "3", menu_trace_cb },
+  { MT_CALLBACK, "\2SINGLE\0TRACE", menu_single_trace_cb },
   { MT_CANCEL, "BACK", NULL },
   { MT_NONE, NULL, NULL } // sentinel
 };
 
 const menuitem_t menu_format2[] = {
+  { MT_CALLBACK, "POLAR", menu_format2_cb },
   { MT_CALLBACK, "LINEAR", menu_format2_cb },
-  { MT_CALLBACK, "SWR", menu_format2_cb },
   { MT_CANCEL, "BACK", NULL },
   { MT_NONE, NULL, NULL } // sentinel
 };
@@ -604,9 +633,9 @@ const menuitem_t menu_format2[] = {
 const menuitem_t menu_format[] = {
   { MT_CALLBACK, "LOGMAG", menu_format_cb },
   { MT_CALLBACK, "PHASE", menu_format_cb },
+  { MT_CALLBACK, "DELAY", menu_format_cb },
   { MT_CALLBACK, "SMITH", menu_format_cb },
-  { MT_CALLBACK, "ADMIT", menu_format_cb },
-  { MT_CALLBACK, "POLAR", menu_format_cb },
+  { MT_CALLBACK, "SWR", menu_format_cb },
   { MT_SUBMENU, "MORE", menu_format2 },  
   //{ MT_CALLBACK, "LINEAR", menu_format_cb },
   //{ MT_CALLBACK, "SWR", menu_format_cb },
@@ -615,14 +644,13 @@ const menuitem_t menu_format[] = {
 };
 
 const menuitem_t menu_channel[] = {
-  { MT_CALLBACK, "CH0", menu_channel_cb },
-  { MT_CALLBACK, "CH1", menu_channel_cb },
+  { MT_CALLBACK, "\2CH0\0REFLECT", menu_channel_cb },
+  { MT_CALLBACK, "\2CH1\0THROUGH", menu_channel_cb },
   { MT_CANCEL, "BACK", NULL },
   { MT_NONE, NULL, NULL } // sentinel
 };
 
 const menuitem_t menu_display[] = {
-  { MT_CALLBACK, "\2SINGLE\0TRACE", menu_single_trace_cb },
   { MT_SUBMENU, "TRACE", menu_trace },
   { MT_SUBMENU, "FORMAT", menu_format },
   { MT_CALLBACK, "SCALE", menu_scale_cb },
@@ -1196,9 +1224,11 @@ touch_pickup_marker(void)
       marker_position(m, t, &x, &y);
 
       if (sq_distance(x - touch_x, y - touch_y) < 400) {
-        active_marker = m;
-        redraw_marker(active_marker, TRUE);
-
+        if (active_marker != m) {
+          active_marker = m;
+          redraw_marker(active_marker, TRUE);
+        }
+        // drag marker until release
         drag_marker(t, m);
         return TRUE;
       }

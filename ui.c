@@ -412,6 +412,7 @@ menu_trace_cb(int item)
 {
   if (item < 0 || item >= 4)
     return;
+  trace[item].enabled = TRUE;
   uistat.current_trace = item;
   menu_move_back();
 }
@@ -614,10 +615,10 @@ menu_cal_cb(int item)
 
 
 const menuitem_t menu_trace[] = {
-  { MT_CALLBACK, "0", menu_trace_cb },
-  { MT_CALLBACK, "1", menu_trace_cb },
-  { MT_CALLBACK, "2", menu_trace_cb },
-  { MT_CALLBACK, "3", menu_trace_cb },
+  { MT_CALLBACK, "TRACE 0", menu_trace_cb },
+  { MT_CALLBACK, "TRACE 1", menu_trace_cb },
+  { MT_CALLBACK, "TRACE 2", menu_trace_cb },
+  { MT_CALLBACK, "TRACE 3", menu_trace_cb },
   { MT_CALLBACK, "\2SINGLE\0TRACE", menu_single_trace_cb },
   { MT_CANCEL, "BACK", NULL },
   { MT_NONE, NULL, NULL } // sentinel
@@ -643,6 +644,15 @@ const menuitem_t menu_format[] = {
   { MT_NONE, NULL, NULL } // sentinel
 };
 
+const menuitem_t menu_scale[] = {
+  { MT_CALLBACK, "SCALE/DIV", menu_scale_cb },
+  { MT_CALLBACK, "\2REFERENCE\0POSITION", menu_scale_cb },
+  { MT_CALLBACK, "\2ELECTRICAL\0DELAY", menu_scale_cb },
+  { MT_CANCEL, "BACK", NULL },
+  { MT_NONE, NULL, NULL } // sentinel
+};
+
+
 const menuitem_t menu_channel[] = {
   { MT_CALLBACK, "\2CH0\0REFLECT", menu_channel_cb },
   { MT_CALLBACK, "\2CH1\0THROUGH", menu_channel_cb },
@@ -653,7 +663,7 @@ const menuitem_t menu_channel[] = {
 const menuitem_t menu_display[] = {
   { MT_SUBMENU, "TRACE", menu_trace },
   { MT_SUBMENU, "FORMAT", menu_format },
-  { MT_CALLBACK, "SCALE", menu_scale_cb },
+  { MT_SUBMENU, "SCALE", menu_scale },
   { MT_SUBMENU, "CHANNEL", menu_channel },
   { MT_CANCEL, "BACK", NULL },
   { MT_NONE, NULL, NULL } // sentinel
@@ -838,7 +848,7 @@ draw_keypad(void)
 }
 
 const char *keypad_mode_label[] = {
-  "START", "STOP", "CENTER", "SPAN", "SCALE"
+  "START", "STOP", "CENTER", "SPAN", "CW FREQ", "SCALE"
 };
 
 void
@@ -875,6 +885,24 @@ menu_is_multiline(const char *label, const char **l1, const char **l2)
   return TRUE;
 }
 
+static void
+menu_item_modify_attribute(const menuitem_t *menu, int item,
+                           uint16_t *fg, uint16_t *bg)
+{
+  if (menu == menu_trace && item < 4) {
+    *bg = config.trace_color[item];
+  } else if (menu == menu_calop) {
+    if (item == 0 && (cal_status & CALSTAT_OPEN)
+        || item == 1 && (cal_status & CALSTAT_SHORT)
+        || item == 2 && (cal_status & CALSTAT_LOAD)
+        || item == 3 && (cal_status & CALSTAT_ISOLN)
+        || item == 4 && (cal_status & CALSTAT_THRU)) {
+      *bg = 0x0000;
+      *fg = 0xffff;
+    }
+  }
+}
+
 void
 draw_menu_buttons(const menuitem_t *menu)
 {
@@ -887,15 +915,18 @@ draw_menu_buttons(const menuitem_t *menu)
       continue;
     int y = 32*i;
     uint16_t bg = config.menu_normal_color;
+    uint16_t fg = 0x0000;
     // focus only in MENU mode but not in KEYPAD mode
     if (ui_mode == UI_MENU && i == selection)
       bg = config.menu_active_color;
     ili9341_fill(320-60, y, 60, 30, bg);
+    
+    menu_item_modify_attribute(menu, i, &fg, &bg);
     if (menu_is_multiline(menu[i].label, &l1, &l2)) {
-      ili9341_drawstring_5x7(l1, 320-54, y+8, 0x0000, bg);
-      ili9341_drawstring_5x7(l2, 320-54, y+15, 0x0000, bg);
+      ili9341_drawstring_5x7(l1, 320-54, y+8, fg, bg);
+      ili9341_drawstring_5x7(l2, 320-54, y+15, fg, bg);
     } else {
-      ili9341_drawstring_5x7(menu[i].label, 320-54, y+12, 0x0000, bg);
+      ili9341_drawstring_5x7(menu[i].label, 320-54, y+12, fg, bg);
     }
   }
 }

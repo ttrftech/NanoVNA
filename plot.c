@@ -588,7 +588,10 @@ trace_get_value_string(int t, char *buf, int len, float coeff[2], uint32_t frequ
   switch (trace[t].type) {
   case TRC_LOGMAG:
     v = logmag(coeff);
-    chsnprintf(buf, len, "%.2fdB", v * 10);
+    if (v == -INFINITY)
+      chsnprintf(buf, len, "-INF dB");
+    else
+      chsnprintf(buf, len, "%.2fdB", v * 10);
     break;
   case TRC_PHASE:
     v = phase(coeff);
@@ -1002,16 +1005,15 @@ draw_cell(int m, int n)
   for (t = 0; t < TRACES_MAX; t++) {
     if (!trace[t].enabled)
       continue;
-    if (!trace[t].polar)
+
+    if (trace[t].type == TRC_SMITH)
+      grid_mode |= GRID_SMITH;
+    //else if (trace[t].type == TRC_ADMIT)
+    //  grid_mode |= GRID_ADMIT;
+    else if (trace[t].type == TRC_POLAR)
+      grid_mode |= GRID_POLAR;
+    else
       grid_mode |= GRID_RECTANGULAR;
-    else {
-      if (trace[t].type == TRC_SMITH)
-        grid_mode |= GRID_SMITH;
-      //else if (trace[t].type == TRC_ADMIT)
-      //  grid_mode |= GRID_ADMIT;
-      else
-        grid_mode |= GRID_POLAR;
-    }
   }
 
   PULSE;
@@ -1050,8 +1052,11 @@ draw_cell(int m, int n)
 #if 1
   /* draw rectanglar plot */
   for (t = 0; t < TRACES_MAX; t++) {
-    if (!trace[t].enabled || trace[t].polar)
+    if (!trace[t].enabled)
       continue;
+    if (trace[t].type == TRC_SMITH || trace[t].type == TRC_POLAR)
+      continue;
+      
     if (search_index_x(x0, trace_index[t], &i0, &i1)) {
       if (i0 > 0)
         i0--;
@@ -1070,8 +1075,11 @@ draw_cell(int m, int n)
   /* draw polar plot */
   for (t = 0; t < TRACES_MAX; t++) {
     int c = config.trace_color[t];
-    if (!trace[t].enabled || !trace[t].polar)
+    if (!trace[t].enabled)
       continue;
+    if (trace[t].type != TRC_SMITH && trace[t].type != TRC_POLAR)
+      continue;
+
     for (i = 1; i < 101; i++) {
       //uint32_t index = trace_index[t][i];
       //uint32_t pindex = trace_index[t][i-1];

@@ -1,0 +1,3 @@
+[submodule "ChibiOS"]
+	path = ChibiOS
+	url = git@github.com:edy555/ChibiOS.git

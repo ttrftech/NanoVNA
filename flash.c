@@ -125,7 +125,7 @@ config_recall(void)
 #define SAVEAREA_MAX 5
 
 const uint32_t saveareas[] =
-  { 0x08018800, 0x0801a000, 0x0801b800, 0x0801d000, 0x0801e8000 };
+  { 0x08018800, 0x0801a000, 0x0801b800, 0x0801d000, 0x0801e800 };
 
 int16_t lastsaveid = 0;
 

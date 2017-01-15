@@ -30,14 +30,6 @@
 
 uint16_t spi_buffer[1024];
 
-static const SPIConfig spicfg = {
-  NULL,
-  GPIOB,
-  6,
-  0,
-  SPI_CR2_DS_2 | SPI_CR2_DS_1 | SPI_CR2_DS_0
-};
-
 void
 ssp_wait(void)
 {
@@ -111,7 +103,6 @@ spi_init(void)
                     NULL);
   dmaStreamSetPeripheral(dmatx, &SPI1->DR);
 
-  //spiStart(&SPID1, &spicfg);       /* Setup transfer parameters.       */
   SPI1->CR1 = 0;
   SPI1->CR1 = SPI_CR1_MSTR | SPI_CR1_BIDIOE | SPI_CR1_SSM | SPI_CR1_SSI;// | SPI_CR1_BR_1;
   SPI1->CR2 = 0x0700 | SPI_CR2_TXDMAEN;
@@ -208,7 +199,6 @@ const uint8_t ili9341_init_seq[] = {
 void
 ili9341_init(void)
 {
-  //spiAcquireBus(&SPID1);              /* Acquire ownership of the bus.    */
   spi_init();
 
   DC_DATA;
@@ -229,7 +219,6 @@ ili9341_init(void)
 
   chThdSleepMilliseconds(100);
   send_command(0x29, 0, NULL); // display on
-  //spiReleaseBus(&SPID1);              /* Ownership release.               */
 }
 
 void ili9341_pixel(int x, int y, int color)
@@ -377,7 +366,7 @@ ili9341_drawfont(uint8_t ch, const font_t *font, int x, int y, uint16_t fg, uint
     ili9341_bulk(x, y, font->width, font->height);
 }
 
-
+#if 0
 const uint16_t colormap[] = {
   RGB565(255,0,0), RGB565(0,255,0), RGB565(0,0,255),
   RGB565(255,255,0), RGB565(0,255,255), RGB565(255,0,255)
@@ -428,3 +417,4 @@ ili9341_test(int mode)
     break;
   }
 }
+#endif

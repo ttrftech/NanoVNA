@@ -120,6 +120,9 @@ extern void tlv320aic3204_adc_filter_enable(int enable);
 #define WIDTH 291
 #define HEIGHT 233
 
+#define CELLOFFSETX 5
+#define AREA_WIDTH_NORMAL (WIDTH + CELLOFFSETX*2)
+
 extern int area_width;
 extern int area_height;
 
@@ -162,7 +165,7 @@ typedef struct {
   uint8_t channel;
   uint8_t polar;
   float scale;
-  //float ref;
+  float refpos;
 } trace_t;
 
 typedef struct {

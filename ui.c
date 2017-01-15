@@ -415,6 +415,10 @@ menu_trace_cb(int item)
   trace[item].enabled = TRUE;
   uistat.current_trace = item;
   menu_move_back();
+  ui_mode_normal();
+  redraw();
+  force_set_markmap();
+  draw_cell_all();
 }
 
 static void
@@ -439,6 +443,9 @@ menu_format_cb(int item)
   }
 
   ui_mode_normal();
+  redraw();
+  force_set_markmap();
+  draw_cell_all();
 }
 
 static void
@@ -986,7 +993,7 @@ ui_mode_menu(void)
 
   ui_mode = UI_MENU;
   /* narrowen plotting area */
-  area_width = WIDTH - (64-14-4);
+  area_width = AREA_WIDTH_NORMAL - (64-8);
   area_height = HEIGHT;
   ensure_selection();
   draw_menu();
@@ -999,7 +1006,7 @@ ui_mode_keypad(int _keypad_mode)
     return;
 
   ui_mode = UI_KEYPAD;
-  area_width = WIDTH - (64-14-4);
+  area_width = AREA_WIDTH_NORMAL - (64-8);
   area_height = HEIGHT;
   draw_menu();
   draw_keypad();
@@ -1014,7 +1021,7 @@ ui_mode_normal(void)
     return;
 
   ui_mode = UI_NORMAL;
-  area_width = WIDTH;
+  area_width = AREA_WIDTH_NORMAL;
   area_height = HEIGHT;
   erase_menu_buttons();
   force_draw_cells();

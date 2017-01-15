@@ -338,10 +338,10 @@ properties_t current_props = {
   /* cal_data */          {},
   /* trace[4] */
   {/*enable, type, channel, polar, scale*/
-    { 1, TRC_LOGMAG, 0, 0, 1.0 },
-    { 1, TRC_LOGMAG, 1, 0, 1.0 },
-    { 1, TRC_SMITH, 0, 1, 1.0 },
-    { 1, TRC_PHASE, 1, 0, 1.0 }
+    { 1, TRC_LOGMAG, 0, 0, 1.0, 7.0 },
+    { 1, TRC_LOGMAG, 1, 0, 1.0, 7.0 },
+    { 1, TRC_SMITH, 0, 1, 1.0, 0.0 },
+    { 1, TRC_PHASE, 1, 0, 1.0, 4.0 }
   },
   /* markers[4] */ {
   { 1, 30 }, { 0, 40 }, { 0, 60 }, { 0, 80 }
@@ -946,6 +946,10 @@ static void cmd_recall(BaseSequentialStream *chp, int argc, char *argv[])
 const char *trc_type_name[] = {
   "LOGMAG", "PHASE", "DELAY", "SMITH", "POLAR", "LINEAR", "SWR"
 };
+const uint8_t default_refpos[] = {
+  7, 4, 4, 0, 0, 0, 0
+};
+
 const char *trc_channel_name[] = {
   "CH0", "CH1"
 };
@@ -966,6 +970,7 @@ void set_trace_type(int t, int type)
   }
   if (trace[t].type != type) {
     trace[t].type = type;
+    trace[t].refpos = default_refpos[type];
     if (polar)
       force = TRUE;
   }    
@@ -988,6 +993,14 @@ void set_trace_scale(int t, float scale)
 {
   if (trace[t].scale != scale) {
     trace[t].scale = scale;
+    force_set_markmap();
+  }
+}
+
+void set_trace_refpos(int t, float refpos)
+{
+  if (trace[t].refpos != refpos) {
+    trace[t].refpos = refpos;
     force_set_markmap();
   }
 }
@@ -1079,7 +1092,12 @@ static void cmd_trace(BaseSequentialStream *chp, int argc, char *argv[])
     } else if (strcmp(argv[1], "off") == 0) {
       set_trace_type(t, TRC_OFF);
     } else if (strcmp(argv[1], "scale") == 0 && argc >= 3) {
-      trace[t].scale = my_atof(argv[2]);
+      //trace[t].scale = my_atof(argv[2]);
+      set_trace_scale(t, my_atof(argv[2]));
+      goto exit;
+    } else if (strcmp(argv[1], "refpos") == 0 && argc >= 3) {
+      //trace[t].refpos = my_atof(argv[2]);
+      set_trace_refpos(t, my_atof(argv[2]));
       goto exit;
     } 
   }

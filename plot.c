@@ -23,7 +23,7 @@ int32_t fgrid = 50000000;
 int16_t grid_offset;
 int16_t grid_width;
 
-int area_width = WIDTH;
+int area_width = AREA_WIDTH_NORMAL;
 int area_height = HEIGHT;
 
 #define GRID_RECTANGULAR (1<<0)
@@ -354,7 +354,7 @@ rectangular_grid(int x, int y)
   //if ((m - n) > 0)
   //if (((x * 6) % (WIDTH-1)) < 6)
   //if (((x - grid_offset) % grid_width) == 0)
-  if (x == 0 || x == (WIDTH-1))
+  if (x == 0 || x == WIDTH-1)
     return c;
   if ((y % GRIDY) == 0)
     return c;
@@ -368,7 +368,9 @@ int
 rectangular_grid_x(int x)
 {
   int c = config.grid_color;
-  if (x == 0 || x == (WIDTH-1))
+  if (x < 0)
+    return 0;
+  if (x == 0 || x == WIDTH)
     return c;
   if ((((x + grid_offset) * 10) % grid_width) < 10)
     return c;
@@ -379,6 +381,8 @@ int
 rectangular_grid_y(int y)
 {
   int c = config.grid_color;
+  if (y < 0)
+    return 0;
   if ((y % GRIDY) == 0)
     return c;
   return 0;
@@ -476,30 +480,31 @@ trace_into_index(int x, int t, int i, float coeff[2])
 {
   int y = 0;
   float v = 0;
+  float refpos = 8 - trace[t].refpos;
   switch (trace[t].type) {
   case TRC_LOGMAG:
-    v = 1 - logmag(coeff);
+    v = refpos - logmag(coeff);
     break;
   case TRC_PHASE:
-    v = 4 - phase(coeff);
+    v = refpos - phase(coeff);
     break;
   case TRC_LINEAR:
-    v = 8 + linear(coeff);
+    v = refpos + linear(coeff);
     break;
   case TRC_SWR:
-    v = 9 - swr(coeff);
+    v = refpos+1 - swr(coeff);
     break;
   case TRC_SMITH:
   //case TRC_ADMIT:
   case TRC_POLAR:
     cartesian_scale(coeff[0], coeff[1], &x, &y, trace[t].scale);
-    return INDEX(x, y, i);
+    return INDEX(x +CELLOFFSETX, y, i);
     break;
   }
   if (v < 0) v = 0;
   if (v > 8) v = 8;
   y = v * GRIDY;
-  return INDEX(x, y, i);
+  return INDEX(x +CELLOFFSETX, y, i);
 }
 
 int
@@ -868,6 +873,46 @@ search_index_x(int x, uint32_t index[101], int *i0, int *i1)
 }
 
 void
+draw_refpos(int w, int h, int x, int y, int c)
+{
+  // draw triangle
+  int i, j;
+  if (y < -3 || y > 32 + 3)
+    return;
+  for (j = 0; j < 3; j++) {
+    int j0 = 6 - j*2;
+    for (i = 0; i < j0; i++) {
+      int x0 = x + i-5;
+      int y0 = y - j;
+      int y1 = y + j;
+      if (y0 >= 0 && y0 < h && x0 >= 0 && x0 < w)
+        spi_buffer[y0*w+x0] = c;
+      if (j != 0 && y1 >= 0 && y1 < h && x0 >= 0 && x0 < w)
+        spi_buffer[y1*w+x0] = c;
+    }
+  }
+}
+
+
+void
+cell_draw_refpos(int m, int n, int w, int h)
+{
+  int x0 = m * CELLWIDTH;
+  int y0 = n * CELLHEIGHT;
+  int t, i;
+  for (t = 0; t < TRACES_MAX; t++) {
+    if (!trace[t].enabled)
+      continue;
+    if (trace[t].type == TRC_SMITH || trace[t].type == TRC_POLAR)
+      continue;
+    int x = 0 - x0 +CELLOFFSETX;
+    int y = 8*GRIDY - (int)(trace[t].refpos * GRIDY) - y0;
+    if (x > -5 && x < w && y >= -3 && y < h+3)
+      draw_refpos(w, h, x, y, config.trace_color[t]);
+  }
+}
+
+void
 draw_marker(int w, int h, int x, int y, int c, int ch)
 {
   int i, j;
@@ -987,6 +1032,7 @@ draw_cell(int m, int n)
 {
   int x0 = m * CELLWIDTH;
   int y0 = n * CELLHEIGHT;
+  int x0off = x0 - CELLOFFSETX;
   int w = CELLWIDTH;
   int h = CELLHEIGHT;
   int x, y;
@@ -994,8 +1040,8 @@ draw_cell(int m, int n)
   int i;
   int t;
 
-  if (x0 + w > area_width)
-    w = area_width - x0;
+  if (x0off + w > area_width)
+    w = area_width - x0off;
   if (y0 + h > area_height)
     h = area_height - y0;
   if (w <= 0 || h <= 0)
@@ -1020,14 +1066,15 @@ draw_cell(int m, int n)
   /* draw grid */
   if (grid_mode & GRID_RECTANGULAR) {
     for (x = 0; x < w; x++) {
-      uint16_t c = rectangular_grid_x(x+x0);
+      uint16_t c = rectangular_grid_x(x+x0off);
       for (y = 0; y < h; y++)
         spi_buffer[y * w + x] = c;
     }
     for (y = 0; y < h; y++) {
       uint16_t c = rectangular_grid_y(y+y0);
       for (x = 0; x < w; x++)
-        spi_buffer[y * w + x] |= c;
+        if (x+x0off >= 0 && x+x0off <= WIDTH)
+          spi_buffer[y * w + x] |= c;
     }
   } else {
     memset(spi_buffer, 0, sizeof spi_buffer);
@@ -1037,12 +1084,12 @@ draw_cell(int m, int n)
       for (x = 0; x < w; x++) {
         uint16_t c = 0;
         if (grid_mode & GRID_SMITH)
-          c = smith_grid(x+x0, y+y0);
+          c = smith_grid(x+x0off, y+y0);
         else if (grid_mode & GRID_ADMIT)
-          c = smith_grid3(x+x0, y+y0);
+          c = smith_grid3(x+x0off, y+y0);
         //c = smith_grid2(x+x0, y+y0, 0.5);
         else if (grid_mode & GRID_POLAR)
-          c = polar_grid(x+x0, y+y0);
+          c = polar_grid(x+x0off, y+y0);
         spi_buffer[y * w + x] |= c;
       }
     }
@@ -1056,7 +1103,7 @@ draw_cell(int m, int n)
       continue;
     if (trace[t].type == TRC_SMITH || trace[t].type == TRC_POLAR)
       continue;
-      
+    
     if (search_index_x(x0, trace_index[t], &i0, &i1)) {
       if (i0 > 0)
         i0--;
@@ -1101,7 +1148,10 @@ draw_cell(int m, int n)
   cell_draw_marker_info(m, n, w, h);
   PULSE;
 
-  ili9341_bulk(OFFSETX + x0, OFFSETY + y0, w, h);
+  if (m == 0)
+    cell_draw_refpos(m, n, w, h);
+
+  ili9341_bulk(OFFSETX + x0off, OFFSETY + y0, w, h);
 }
 
 void
@@ -1191,7 +1241,7 @@ cell_draw_marker_info(int m, int n, int w, int h)
       continue;
     int xpos = 1 + (j%2)*146;
     int ypos = 1 + (j/2)*7;
-    xpos -= m * CELLWIDTH;
+    xpos -= m * CELLWIDTH -CELLOFFSETX;
     ypos -= n * CELLHEIGHT;
     trace_get_info(t, buf, sizeof buf);
     cell_drawstring_5x7(w, h, buf, xpos, ypos, config.trace_color[t]);
@@ -1203,7 +1253,7 @@ cell_draw_marker_info(int m, int n, int w, int h)
 
   int xpos = 192;
   int ypos = 1 + (j/2)*7;
-  xpos -= m * CELLWIDTH;
+  xpos -= m * CELLWIDTH -CELLOFFSETX;
   ypos -= n * CELLHEIGHT;
   chsnprintf(buf, sizeof buf, "%d:", active_marker + 1);
   cell_drawstring_5x7(w, h, buf, xpos, ypos, 0xffff);

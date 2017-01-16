@@ -1322,7 +1322,7 @@ draw_cal_status(void)
   ili9341_fill(0, y, 10, 6*YSTEP, 0x0000);
   if (cal_status & CALSTAT_APPLY) {
     char c[3] = "C0";
-    if (active == &current_props)
+    if (active_props == &current_props)
       c[1] = '*';
     else
       c[1] += lastsaveid;

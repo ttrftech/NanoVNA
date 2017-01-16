@@ -266,7 +266,7 @@ typedef struct {
 #define CONFIG_MAGIC 0x436f4e45 /* 'CoNF' */
 
 extern int16_t lastsaveid;
-extern properties_t *active;
+extern properties_t *active_props;
 extern properties_t current_props;
 
 #define frequency0 current_props._frequency0
@@ -274,7 +274,7 @@ extern properties_t current_props;
 #define sweep_points current_props._sweep_points
 #define cal_status current_props._cal_status
 #define frequencies current_props._frequencies
-#define cal_data active->_cal_data
+#define cal_data active_props->_cal_data
 
 #define trace current_props._trace
 #define markers current_props._markers

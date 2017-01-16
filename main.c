@@ -331,7 +331,7 @@ config_t config = {
 properties_t current_props = {
   /* magic */   CONFIG_MAGIC,
   /* frequency0 */   1000000,
-  /* frequency1 */  300000000,
+  /* frequency1 */ 300000000,
   /* sweep_points */     101,
   /* cal_status */         0,
   /* frequencies */       {},
@@ -340,8 +340,8 @@ properties_t current_props = {
   {/*enable, type, channel, polar, scale*/
     { 1, TRC_LOGMAG, 0, 0, 1.0, 7.0 },
     { 1, TRC_LOGMAG, 1, 0, 1.0, 7.0 },
-    { 1, TRC_SMITH, 0, 1, 1.0, 0.0 },
-    { 1, TRC_PHASE, 1, 0, 1.0, 4.0 }
+    { 1, TRC_SMITH,  0, 1, 1.0, 0.0 },
+    { 1, TRC_PHASE,  1, 0, 1.0, 4.0 }
   },
   /* markers[4] */ {
   { 1, 30 }, { 0, 40 }, { 0, 60 }, { 0, 80 }
@@ -349,16 +349,16 @@ properties_t current_props = {
   /* active_marker */      0,
   /* checksum */           0
 };
-properties_t *active = &current_props;
+properties_t *active_props = &current_props;
 
 void
 ensure_edit_config(void)
 {
-  if (active == &current_props)
+  if (active_props == &current_props)
     return;
 
-  //memcpy(&current_props, active, sizeof(config_t));
-  active = &current_props;
+  //memcpy(&current_props, active_props, sizeof(config_t));
+  active_props = &current_props;
   // move to uncal state
   cal_status = 0;
 }

@@ -811,6 +811,7 @@ search_index(int x, int y, uint32_t index[101], int *i0, int *i1)
   int i, j;
   int head = 0;
   int tail = sweep_points;
+  i = 0;
   x &= 0x03e0;
   y &= 0x03e0;
   while (head < tail) {
@@ -848,6 +849,7 @@ search_index_x(int x, uint32_t index[101], int *i0, int *i1)
   int head = 0;
   int tail = sweep_points;
   x &= 0x03e0;
+  i = 0;
   while (head < tail) {
     i = (head + tail) / 2;
     if (x < CELL_X0(index[i]))
@@ -899,7 +901,7 @@ cell_draw_refpos(int m, int n, int w, int h)
 {
   int x0 = m * CELLWIDTH;
   int y0 = n * CELLHEIGHT;
-  int t, i;
+  int t;
   for (t = 0; t < TRACES_MAX; t++) {
     if (!trace[t].enabled)
       continue;
@@ -1155,7 +1157,7 @@ draw_cell(int m, int n)
 }
 
 void
-draw_cell_all(void)
+draw_all_cells(void)
 {
   int m, n;
   for (m = 0; m < (area_width+CELLWIDTH-1) / CELLWIDTH; m++)
@@ -1183,7 +1185,7 @@ redraw_marker(int marker, int update_info)
   if (update_info)
     markmap[current_mappage][0] = 0xffff;
 
-  draw_cell_all();
+  draw_all_cells();
 }
 
 void
@@ -1359,6 +1361,14 @@ redraw(void)
   ili9341_fill(0, 0, 320, 240, 0);
   draw_frequencies();
   draw_cal_status();
+}
+
+void
+redraw_all(void)
+{
+  redraw();
+  force_set_markmap();
+  draw_all_cells();
 }
 
 void

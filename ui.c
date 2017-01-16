@@ -416,9 +416,7 @@ menu_trace_cb(int item)
   uistat.current_trace = item;
   menu_move_back();
   ui_mode_normal();
-  redraw();
-  force_set_markmap();
-  draw_cell_all();
+  redraw_all();
 }
 
 static void
@@ -443,9 +441,7 @@ menu_format_cb(int item)
   }
 
   ui_mode_normal();
-  redraw();
-  force_set_markmap();
-  draw_cell_all();
+  redraw_all();
 }
 
 static void
@@ -495,9 +491,7 @@ menu_single_trace_cb(int item)
       trace[t].enabled = FALSE;
     }
   ui_mode_normal();
-  redraw();
-  force_set_markmap();
-  draw_cell_all();
+  redraw_all();
 }
 
 static void
@@ -520,7 +514,10 @@ menu_stimulus_cb(int item)
     ui_mode_keypad(item);
     ui_process_keypad();
     break;
-  case 5: /* pause && resume */
+  case 5:
+    toggle_sweep();
+    menu_move_back();
+    ui_mode_normal();
     break;
   }
 }
@@ -549,9 +546,7 @@ menu_marker_op_cb(int item)
     break;
   }
   ui_mode_normal();
-  redraw();
-  force_set_markmap();
-  //draw_cell_all();
+  redraw_all();
 }
 
 static void
@@ -682,7 +677,7 @@ const menuitem_t menu_stimulus[] = {
   { MT_CALLBACK, "CENTER", menu_stimulus_cb },
   { MT_CALLBACK, "SPAN", menu_stimulus_cb },
   { MT_CALLBACK, "CW FREQ", menu_stimulus_cb },
-  { MT_CALLBACK, "PAUSE", menu_stimulus_cb },
+  { MT_CALLBACK, "\2TOGGLE\0SWEEP", menu_stimulus_cb },
   { MT_CANCEL, "BACK", NULL },
   { MT_NONE, NULL, NULL } // sentinel
 };
@@ -764,6 +759,7 @@ static void menu_push_submenu(const menuitem_t *submenu)
   draw_menu();
 }
 
+/*
 static void menu_move_top(void)
 {
   if (menu_current_level == 0)
@@ -773,6 +769,7 @@ static void menu_move_top(void)
   erase_menu_buttons();
   draw_menu();
 }
+*/
 
 void menu_invoke(int item)
 {
@@ -899,11 +896,11 @@ menu_item_modify_attribute(const menuitem_t *menu, int item,
   if (menu == menu_trace && item < 4) {
     *bg = config.trace_color[item];
   } else if (menu == menu_calop) {
-    if (item == 0 && (cal_status & CALSTAT_OPEN)
-        || item == 1 && (cal_status & CALSTAT_SHORT)
-        || item == 2 && (cal_status & CALSTAT_LOAD)
-        || item == 3 && (cal_status & CALSTAT_ISOLN)
-        || item == 4 && (cal_status & CALSTAT_THRU)) {
+    if ((item == 0 && (cal_status & CALSTAT_OPEN))
+        || (item == 1 && (cal_status & CALSTAT_SHORT))
+        || (item == 2 && (cal_status & CALSTAT_LOAD))
+        || (item == 3 && (cal_status & CALSTAT_ISOLN))
+        || (item == 4 && (cal_status & CALSTAT_THRU))) {
       *bg = 0x0000;
       *fg = 0xffff;
     }
@@ -1197,9 +1194,7 @@ ui_process_keypad(void)
   }
 
   ui_mode_normal();
-  redraw();
-  force_set_markmap();
-  draw_cell_all();
+  redraw_all();
 }
 
 void

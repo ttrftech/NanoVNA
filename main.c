@@ -40,6 +40,7 @@ int32_t frequency_offset = 5000;
 int32_t frequency = 10000000;
 uint8_t drive_strength = SI5351_CLK_DRIVE_STRENGTH_2MA;
 int8_t frequency_updated = FALSE;
+int8_t sweep_enabled = TRUE;
 
 static THD_WORKING_AREA(waThread1, 440);
 static THD_FUNCTION(Thread1, arg)
@@ -48,22 +49,38 @@ static THD_FUNCTION(Thread1, arg)
     chRegSetThreadName("blink");
 
     while (1) {
-      chMtxLock(&mutex);
-      sweep();
-      chMtxUnlock(&mutex);
+      if (sweep_enabled) {
+        chMtxLock(&mutex);
+        sweep();
+        chMtxUnlock(&mutex);
+      } else {
+        __WFI();
+        ui_process();
+      }
+
+      /* calculate trace coordinates */
+      plot_into_index(measured);
+      /* plot trace as raster */
+      draw_all_cells();
     }
 }
 
 void
 pause_sweep(void)
 {
-  chMtxLock(&mutex);
+  sweep_enabled = FALSE;
 }
 
 void
 resume_sweep(void)
 {
-  chMtxUnlockAll();
+  sweep_enabled = TRUE;
+}
+
+void
+toggle_sweep(void)
+{
+  sweep_enabled = !sweep_enabled;
 }
 
 static void cmd_pause(BaseSequentialStream *chp, int argc, char *argv[])
@@ -122,13 +139,15 @@ static void cmd_offset(BaseSequentialStream *chp, int argc, char *argv[])
 static void cmd_freq(BaseSequentialStream *chp, int argc, char *argv[])
 {
     int freq;
-    pause_sweep();
     if (argc != 1) {
         chprintf(chp, "usage: freq {frequency(Hz)}\r\n");
         return;
     }
+    pause_sweep();
+    chMtxLock(&mutex);
     freq = atoi(argv[0]);
     set_frequency(freq);
+    chMtxUnlock(&mutex);
 }
 
 static void cmd_power(BaseSequentialStream *chp, int argc, char *argv[])
@@ -257,15 +276,17 @@ static void cmd_data(BaseSequentialStream *chp, int argc, char *argv[])
   if (argc == 1)
     sel = atoi(argv[0]);
   if (sel == 0 || sel == 1) {
-    pause_sweep();
+    chMtxLock(&mutex);
     for (i = 0; i < sweep_points; i++) {
       chprintf(chp, "%f %f\r\n", measured[sel][i][0], measured[sel][i][1]);
     }
+    chMtxUnlock(&mutex);
   } else if (sel >= 2 && sel < 7) {
-    pause_sweep();
+    chMtxLock(&mutex);
     for (i = 0; i < sweep_points; i++) {
       chprintf(chp, "%f %f\r\n", cal_data[sel-2][i][0], cal_data[sel-2][i][1]);
     }
+    chMtxUnlock(&mutex);
   } else {
     chprintf(chp, "usage: data [array]\r\n");
   }
@@ -276,7 +297,6 @@ static void cmd_dump(BaseSequentialStream *chp, int argc, char *argv[])
   int i, j;
   int len;
 
-  pause_sweep();
   if (argc == 1)
     dump_selection = atoi(argv[0]);
 
@@ -300,8 +320,10 @@ static void cmd_gamma(BaseSequentialStream *chp, int argc, char *argv[])
   (void)argv;
   
   pause_sweep();
+  chMtxLock(&mutex);
   wait_dsp(4);  
   calculate_gamma(gamma);
+  chMtxUnlock(&mutex);
 
   chprintf(chp, "%d %d\r\n", gamma[0], gamma[1]);
 }
@@ -374,19 +396,21 @@ static void cmd_scan(BaseSequentialStream *chp, int argc, char *argv[])
   (void)argv;
 
   pause_sweep();
+  chMtxLock(&mutex);
   freq = frequency0;
   step = (frequency1 - frequency0) / (sweep_points-1);
-  delay = set_frequency(freq);
-  delay += 2;
+  set_frequency(freq);
+  delay = 4;
   for (i = 0; i < sweep_points; i++) {
     freq = freq + step;
-    wait_dsp(delay+1);    
+    wait_dsp(delay);
     delay = set_frequency(freq);
     palClearPad(GPIOC, GPIOC_LED);
     calculate_gamma(gamma);
     palSetPad(GPIOC, GPIOC_LED);
     chprintf(chp, "%d %d\r\n", gamma[0], gamma[1]);
   }
+  chMtxUnlock(&mutex);
 }
 
 // main loop for measurement
@@ -426,12 +450,6 @@ void sweep(void)
 
   if (cal_status & CALSTAT_APPLY)
     apply_error_term();
-
-  /* calculate trace coordinates */
-  plot_into_index(measured);
-
-  /* plot trace as raster */
-  draw_cell_all();
 }
 
 void
@@ -920,12 +938,13 @@ static void cmd_recall(BaseSequentialStream *chp, int argc, char *argv[])
     goto usage;
 
   pause_sweep();
+  chMtxLock(&mutex);
   if (caldata_recall(id) == 0) {
     // success
     update_frequencies();
     draw_cal_status();
   }
-
+  chMtxUnlock(&mutex);
   resume_sweep();
   return;
 
@@ -967,7 +986,6 @@ void set_trace_type(int t, int type)
   }    
   if (force) {
     plot_into_index(measured);
-    //force_draw_cells();
     force_set_markmap();
   }
 }
@@ -1188,7 +1206,6 @@ static void cmd_test(BaseSequentialStream *chp, int argc, char *argv[])
   (void)argc;
   (void)argv;
 
-  //pause_sweep();
 #if 0
   int i;
   for (i = 0; i < 100; i++) {

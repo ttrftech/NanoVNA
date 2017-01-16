@@ -59,6 +59,8 @@ void set_sweep_frequency(int type, float frequency);
 
 float my_atof(const char *p);
 
+void toggle_sweep(void);
+
 /*
  * ui.c
  */
@@ -201,11 +203,11 @@ typedef struct {
 void plot_init(void);
 void update_grid(void);
 void redraw(void);
+void redraw_all(void);
 void force_draw_cells(void);
 void redraw_marker(int marker, int update_info);
 void trace_get_info(int t, char *buf, int len);
 void plot_into_index(float measured[2][101][2]);
-void draw_cell_all(void);
 void force_set_markmap(void);
 
 void draw_cal_status(void);

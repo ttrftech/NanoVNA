@@ -698,7 +698,7 @@ mark_cells_from_index(void)
     int n0 = y0 >> 5;
     int i;
     mark_map(m0, n0);
-    for (i = 1; i < 101; i++) {
+    for (i = 1; i < sweep_points; i++) {
       int x1 = CELL_X(trace_index[t][i]);
       int y1 = CELL_Y(trace_index[t][i]);
       int m1 = x1 >> 5;
@@ -733,8 +733,8 @@ mark_cells_from_index(void)
 void plot_into_index(float measured[2][101][2])
 {
   int i, t;
-  for (i = 0; i < 101; i++) {
-    int x = i * (WIDTH-1) / (101-1);
+  for (i = 0; i < sweep_points; i++) {
+    int x = i * (WIDTH-1) / (sweep_points-1);
     for (t = 0; t < TRACES_MAX; t++) {
       if (!trace[t].enabled)
         continue;
@@ -745,7 +745,7 @@ void plot_into_index(float measured[2][101][2])
 #if 0
   for (t = 0; t < TRACES_MAX; t++)
     if (trace[t].enabled && trace[t].polar)
-      quicksort(trace_index[t], 0, 101);
+      quicksort(trace_index[t], 0, sweep_points);
 #endif
 
   mark_cells_from_index();
@@ -810,7 +810,7 @@ search_index(int x, int y, uint32_t index[101], int *i0, int *i1)
 {
   int i, j;
   int head = 0;
-  int tail = 101;
+  int tail = sweep_points;
   x &= 0x03e0;
   y &= 0x03e0;
   while (head < tail) {
@@ -846,7 +846,7 @@ search_index_x(int x, uint32_t index[101], int *i0, int *i1)
 {
   int i, j;
   int head = 0;
-  int tail = 101;
+  int tail = sweep_points;
   x &= 0x03e0;
   while (head < tail) {
     i = (head + tail) / 2;
@@ -948,7 +948,7 @@ search_nearest_index(int x, int y, int t)
   int min_i = -1;
   int min_d = 1000;
   int i;
-  for (i = 0; i < 101; i++) {
+  for (i = 0; i < sweep_points; i++) {
     int16_t dx = x - CELL_X(index[i]) - OFFSETX;
     int16_t dy = y - CELL_Y(index[i]) - OFFSETY;
     if (dx < 0) dx = -dx;
@@ -1127,7 +1127,7 @@ draw_cell(int m, int n)
     if (trace[t].type != TRC_SMITH && trace[t].type != TRC_POLAR)
       continue;
 
-    for (i = 1; i < 101; i++) {
+    for (i = 1; i < sweep_points; i++) {
       //uint32_t index = trace_index[t][i];
       //uint32_t pindex = trace_index[t][i-1];
       //if (!CELL_P(index, x0, y0) && !CELL_P(pindex, x0, y0))

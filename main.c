@@ -32,7 +32,7 @@
 #include <math.h>
 
 static void apply_error_term(void);
-void scan_lcd(void);
+void sweep(void);
 
 static MUTEX_DECL(mutex);
 
@@ -49,7 +49,7 @@ static THD_FUNCTION(Thread1, arg)
 
     while (1) {
       chMtxLock(&mutex);
-      scan_lcd();
+      sweep();
       chMtxUnlock(&mutex);
     }
 }
@@ -258,12 +258,12 @@ static void cmd_data(BaseSequentialStream *chp, int argc, char *argv[])
     sel = atoi(argv[0]);
   if (sel == 0 || sel == 1) {
     pause_sweep();
-    for (i = 0; i < 101; i++) {
+    for (i = 0; i < sweep_points; i++) {
       chprintf(chp, "%f %f\r\n", measured[sel][i][0], measured[sel][i][1]);
     }
   } else if (sel >= 2 && sel < 7) {
     pause_sweep();
-    for (i = 0; i < 101; i++) {
+    for (i = 0; i < sweep_points; i++) {
       chprintf(chp, "%f %f\r\n", cal_data[sel-2][i][0], cal_data[sel-2][i][1]);
     }
   } else {
@@ -389,11 +389,11 @@ static void cmd_scan(BaseSequentialStream *chp, int argc, char *argv[])
   }
 }
 
-void scan_lcd(void)
+// main loop for measurement
+void sweep(void)
 {
   int i;
   int delay;
-  //int first = TRUE;
 
  rewind:
   frequency_updated = FALSE;
@@ -401,7 +401,7 @@ void scan_lcd(void)
 
   for (i = 0; i < sweep_points; i++) {
     set_frequency(frequencies[i]);
-    tlv320aic3204_select_in3();
+    tlv320aic3204_select_in3(); // CH0:REFLECT
     wait_dsp(delay);
 
     // blink LED while scanning
@@ -410,7 +410,7 @@ void scan_lcd(void)
     /* calculate reflection coeficient */
     calculate_gamma(measured[0][i]);
 
-    tlv320aic3204_select_in1();
+    tlv320aic3204_select_in1(); // CH1:TRANSMISSION
     wait_dsp(delay);
 
     /* calculate transmission coeficient */
@@ -433,17 +433,6 @@ void scan_lcd(void)
   /* plot trace as raster */
   draw_cell_all();
 }
-
-#if 0
-static void cmd_scan_lcd(BaseSequentialStream *chp, int argc, char *argv[])
-{
-  (void)chp;
-  (void)argc;
-  (void)argv;
-  pause_sweep();
-  scan_lcd();
-}
-#endif
 
 void
 update_frequencies(void)
@@ -620,7 +609,7 @@ static void
 eterm_set(int term, float re, float im)
 {
   int i;
-  for (i = 0; i < 101; i++) {
+  for (i = 0; i < sweep_points; i++) {
     cal_data[term][i][0] = re;
     cal_data[term][i][1] = im;
   }
@@ -645,7 +634,7 @@ static void
 adjust_ed(void)
 {
   int i;
-  for (i = 0; i < 101; i++) {
+  for (i = 0; i < sweep_points; i++) {
     // z=1/(jwc*z0) = 1/(2*pi*f*c*z0)  Note: normalized with Z0
     // s11ao = (z-1)/(z+1) = (1-1/z)/(1+1/z) = (1-jwcz0)/(1+jwcz0)
     // prepare 1/s11ao to avoid dividing complex
@@ -662,7 +651,7 @@ static void
 eterm_calc_es(void)
 {
   int i;
-  for (i = 0; i < 101; i++) {
+  for (i = 0; i < sweep_points; i++) {
     // z=1/(jwc*z0) = 1/(2*pi*f*c*z0)  Note: normalized with Z0
     // s11ao = (z-1)/(z+1) = (1-1/z)/(1+1/z) = (1-jwcz0)/(1+jwcz0)
     // prepare 1/s11ao for effeiciency
@@ -697,7 +686,7 @@ static void
 eterm_calc_er(int sign)
 {
   int i;
-  for (i = 0; i < 101; i++) {
+  for (i = 0; i < sweep_points; i++) {
     // Er = sign*(1-sign*Es)S11ms'
     float s11sr = cal_data[CAL_SHORT][i][0] - cal_data[ETERM_ED][i][0];
     float s11si = cal_data[CAL_SHORT][i][1] - cal_data[ETERM_ED][i][1];
@@ -727,7 +716,7 @@ static void
 eterm_calc_et(void)
 {
   int i;
-  for (i = 0; i < 101; i++) {
+  for (i = 0; i < sweep_points; i++) {
     // Et = 1/(S21mt - Ex)(1 - Es)
     float esr = 1 - cal_data[ETERM_ES][i][0];
     float esi = -cal_data[ETERM_ES][i][1];
@@ -748,7 +737,7 @@ eterm_calc_et(void)
 void apply_error_term(void)
 {
   int i;
-  for (i = 0; i < 101; i++) {
+  for (i = 0; i < sweep_points; i++) {
     // S11m' = S11m - Ed
     // S11a = S11m' / (Er + Es S11m')
     float s11mr = measured[0][i][0] - cal_data[ETERM_ED][i][0];
@@ -1339,7 +1328,6 @@ static const ShellCommand commands[] =
     { "sweep", cmd_sweep },
     { "test", cmd_test },
     { "touchcal", cmd_touchcal },
-    //{ "plot", cmd_scan_lcd },
     { "pause", cmd_pause },
     { "resume", cmd_resume },
     { "cal", cmd_cal },

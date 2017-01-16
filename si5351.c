@@ -304,7 +304,7 @@ int
 si5351_set_frequency_with_offset(int freq, int offset, uint8_t drive_strength)
 {
   int band;
-  int delay = 3;
+  int delay = 5;
   if (freq <= 100000000) {
     band = 0;
   } else if (freq < 150000000) {

@@ -397,12 +397,13 @@ void scan_lcd(void)
 
  rewind:
   frequency_updated = FALSE;
+  delay = 4;
 
-  delay = set_frequency(frequencies[0]);
-  delay += 2;
   for (i = 0; i < sweep_points; i++) {
+    set_frequency(frequencies[i]);
     tlv320aic3204_select_in3();
-    wait_dsp(delay+2);
+    wait_dsp(delay);
+
     // blink LED while scanning
     palClearPad(GPIOC, GPIOC_LED);
 
@@ -410,12 +411,11 @@ void scan_lcd(void)
     calculate_gamma(measured[0][i]);
 
     tlv320aic3204_select_in1();
-    wait_dsp(2+2);
+    wait_dsp(delay);
 
     /* calculate transmission coeficient */
     calculate_gamma(measured[1][i]);
 
-    delay = set_frequency(frequencies[(i+1)%sweep_points]);
     // blink LED while scanning
     palSetPad(GPIOC, GPIOC_LED);
     ui_process();
@@ -427,8 +427,10 @@ void scan_lcd(void)
   if (cal_status & CALSTAT_APPLY)
     apply_error_term();
 
+  /* calculate trace coordinates */
   plot_into_index(measured);
 
+  /* plot trace as raster */
   draw_cell_all();
 }
 

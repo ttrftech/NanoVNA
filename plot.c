@@ -806,7 +806,7 @@ cell_drawline(int w, int h, int x0, int y0, int x1, int y1, int c)
 }
 
 int
-search_index(int x, int y, uint32_t index[101], int *i0, int *i1)
+search_index_range(int x, int y, uint32_t index[101], int *i0, int *i1)
 {
   int i, j;
   int head = 0;
@@ -843,7 +843,7 @@ search_index(int x, int y, uint32_t index[101], int *i0, int *i1)
 }
 
 int
-search_index_x(int x, uint32_t index[101], int *i0, int *i1)
+search_index_range_x(int x, uint32_t index[101], int *i0, int *i1)
 {
   int i, j;
   int head = 0;
@@ -852,12 +852,13 @@ search_index_x(int x, uint32_t index[101], int *i0, int *i1)
   i = 0;
   while (head < tail) {
     i = (head + tail) / 2;
+    if (x == CELL_X0(index[i]))
+      break;
+
     if (x < CELL_X0(index[i]))
       tail = i+1;
-    else if (x > CELL_X0(index[i]))
-      head = i;
     else
-      break;
+      head = i;
   }
 
   if (x != CELL_X0(index[i]))
@@ -1106,9 +1107,11 @@ draw_cell(int m, int n)
     if (trace[t].type == TRC_SMITH || trace[t].type == TRC_POLAR)
       continue;
     
-    if (search_index_x(x0, trace_index[t], &i0, &i1)) {
+    if (search_index_range_x(x0, trace_index[t], &i0, &i1)) {
       if (i0 > 0)
         i0--;
+      if (i1 < 101-1)
+        i1++;
       for (i = i0; i < i1; i++) {
         int x1 = CELL_X(trace_index[t][i]);
         int x2 = CELL_X(trace_index[t][i+1]);

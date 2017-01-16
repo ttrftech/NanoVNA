@@ -421,7 +421,7 @@ void sweep(void)
 
  rewind:
   frequency_updated = FALSE;
-  delay = 4;
+  delay = 5;
 
   for (i = 0; i < sweep_points; i++) {
     set_frequency(frequencies[i]);
@@ -447,6 +447,7 @@ void sweep(void)
     if (frequency_updated)
       goto rewind;
   }
+  set_frequency(frequencies[0]);
 
   if (cal_status & CALSTAT_APPLY)
     apply_error_term();

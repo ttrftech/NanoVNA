@@ -65,7 +65,7 @@ enum {
 };
 
 enum {
-  KM_START, KM_STOP, KM_CENTER, KM_SPAN, KM_CW, KM_SCALE
+  KM_START, KM_STOP, KM_CENTER, KM_SPAN, KM_CW, KM_SCALE, KM_REFPOS, KM_EDELAY
 };
 
 uint8_t ui_mode = UI_NORMAL;
@@ -89,7 +89,7 @@ int16_t last_touch_y;
 #define EVT_TOUCH_RELEASED 3
 
 int awd_count;
-int touch_x, touch_y;
+//int touch_x, touch_y;
 
 #define NUMINPUT_LEN 10
 
@@ -184,6 +184,7 @@ static int btn_wait_release(void)
 int
 touch_measure_y(void)
 {
+  int v;
   // open Y line
   palSetPadMode(GPIOB, 1, PAL_MODE_INPUT_PULLDOWN );
   palSetPadMode(GPIOA, 7, PAL_MODE_INPUT_PULLDOWN );
@@ -193,14 +194,17 @@ touch_measure_y(void)
   palSetPadMode(GPIOA, 6, PAL_MODE_OUTPUT_PUSHPULL );
   palSetPad(GPIOA, 6);
 
-  chThdSleepMilliseconds(1);
-
-  return adc_single_read(ADC1, ADC_CHSELR_CHSEL7);
+  chThdSleepMilliseconds(2);
+  v = adc_single_read(ADC1, ADC_CHSELR_CHSEL7);
+  chThdSleepMilliseconds(2);
+  v += adc_single_read(ADC1, ADC_CHSELR_CHSEL7);
+  return v/2;
 }
 
 int
 touch_measure_x(void)
 {
+  int v;
   // open X line
   palSetPadMode(GPIOB, 0, PAL_MODE_INPUT_PULLDOWN );
   palSetPadMode(GPIOA, 6, PAL_MODE_INPUT_PULLDOWN );
@@ -210,9 +214,11 @@ touch_measure_x(void)
   palSetPadMode(GPIOA, 7, PAL_MODE_OUTPUT_PUSHPULL );
   palClearPad(GPIOA, 7);
 
-  chThdSleepMilliseconds(1);
-
-  return adc_single_read(ADC1, ADC_CHSELR_CHSEL6);
+  chThdSleepMilliseconds(2);
+  v = adc_single_read(ADC1, ADC_CHSELR_CHSEL6);
+  chThdSleepMilliseconds(2);
+  v += adc_single_read(ADC1, ADC_CHSELR_CHSEL6);
+  return v/2;
 }
 
 void
@@ -497,8 +503,7 @@ menu_single_trace_cb(int item)
 static void
 menu_scale_cb(int item)
 {
-  (void)item;
-  ui_mode_keypad(KM_SCALE);
+  ui_mode_keypad(KM_SCALE + item);
   ui_process_keypad();
 }
 
@@ -514,7 +519,7 @@ menu_stimulus_cb(int item)
     ui_mode_keypad(item);
     ui_process_keypad();
     break;
-  case 5:
+  case 5: /* TOGGLE SWEEP */
     toggle_sweep();
     menu_move_back();
     ui_mode_normal();
@@ -852,7 +857,7 @@ draw_keypad(void)
 }
 
 const char *keypad_mode_label[] = {
-  "START", "STOP", "CENTER", "SPAN", "CW FREQ", "SCALE"
+  "START", "STOP", "CENTER", "SPAN", "CW FREQ", "SCALE", "REFPOS", "EDELAY"
 };
 
 void
@@ -958,8 +963,8 @@ menu_apply_touch(void)
     if (menu[i].type == MT_BLANK) 
       continue;
     int y = 32*i;
-    if (y < touch_y && touch_y < y+30
-        && 320-60 < touch_x && touch_x < 320) {
+    if (y-2 < touch_y && touch_y < y+30+2
+        && 320-60 < touch_x) {
       menu_select_touch(i);
       return;
     }
@@ -1107,6 +1112,12 @@ keypad_click(int selection)
     case KM_SCALE:
       set_trace_scale(uistat.current_trace, value);
       break;
+    case KM_REFPOS:
+      set_trace_refpos(uistat.current_trace, value);
+      break;
+    case KM_EDELAY:
+      //set_trace_edelay(uistat.current_trace, value);
+      break;
     }
 
     return KP_DONE;
@@ -1140,8 +1151,8 @@ keypad_apply_touch(void)
   touch_position(&touch_x, &touch_y);
 
   while (keypads[i].x) {
-    if (keypads[i].x < touch_x && touch_x < keypads[i].x+44
-        && keypads[i].y < touch_y && touch_y < keypads[i].y+44) {
+    if (keypads[i].x-2 < touch_x && touch_x < keypads[i].x+44+2
+        && keypads[i].y-2 < touch_y && touch_y < keypads[i].y+44+2) {
       selection = i;
       draw_keypad();
       touch_wait_release();
@@ -1222,7 +1233,7 @@ void drag_marker(int t, int m)
     int touch_x, touch_y;
     int index;
     touch_position(&touch_x, &touch_y);
-    index = search_nearest_index(touch_x, touch_y, t);
+    index = search_nearest_index(touch_x + OFFSETX, touch_y + OFFSETY, t);
     if (index >= 0) {
       markers[m].index = index;
       redraw_marker(m, TRUE);
@@ -1244,6 +1255,8 @@ touch_pickup_marker(void)
   int touch_x, touch_y;
   int m, t;
   touch_position(&touch_x, &touch_y);
+  touch_x += OFFSETX;
+  touch_y += OFFSETY;
 
   for (m = 0; m < 4; m++) {
     if (!markers[m].enabled)

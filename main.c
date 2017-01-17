@@ -46,7 +46,7 @@ static THD_WORKING_AREA(waThread1, 440);
 static THD_FUNCTION(Thread1, arg)
 {
     (void)arg;
-    chRegSetThreadName("blink");
+    chRegSetThreadName("sweep");
 
     while (1) {
       if (sweep_enabled) {
@@ -1060,7 +1060,9 @@ static void cmd_trace(BaseSequentialStream *chp, int argc, char *argv[])
       if (trace[t].enabled) {
         const char *type = trc_type_name[trace[t].type];
         const char *channel = trc_channel_name[trace[t].channel];
-        chprintf(chp, "%d %s %s\r\n", t, type, channel);
+        float scale = trace[t].scale;
+        float refpos = trace[t].refpos;
+        chprintf(chp, "%d %s %s %f %f\r\n", t, type, channel, scale, refpos);
       }
     }
     return;

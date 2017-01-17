@@ -158,6 +158,9 @@ class NanoVNA():
     def resume(self):
         self.send_command("resume\r")
     
+    def pause(self):
+        self.send_command("pause\r")
+    
     def scan(self, port = None):
         self.set_port(port)
         return np.vectorize(self.gamma)(self.frequencies)
@@ -175,6 +178,15 @@ class NanoVNA():
                 d = line.strip().split(' ')
                 x.append(float(d[0])+float(d[1])*1.j)
         return np.array(x)
+
+    def fetch_frequencies(self):
+        self.send_command("frequencies\r")
+        data = self.fetch_data()
+        x = []
+        for line in data.split('\n'):
+            if line:
+                x.append(float(line))
+        self._frequencies = np.array(x)
 
     def logmag(self, x):
         pl.grid(True)

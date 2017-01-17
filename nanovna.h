@@ -188,6 +188,7 @@ extern config_t config;
 void set_trace_type(int t, int type);
 void set_trace_channel(int t, int channel);
 void set_trace_scale(int t, float scale);
+void set_trace_refpos(int t, float refpos);
 
 // marker
 
@@ -209,6 +210,7 @@ void redraw_marker(int marker, int update_info);
 void trace_get_info(int t, char *buf, int len);
 void plot_into_index(float measured[2][101][2]);
 void force_set_markmap(void);
+void draw_all_cells(void);
 
 void draw_cal_status(void);
 

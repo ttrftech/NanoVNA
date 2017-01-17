@@ -481,18 +481,19 @@ trace_into_index(int x, int t, int i, float coeff[2])
   int y = 0;
   float v = 0;
   float refpos = 8 - trace[t].refpos;
+  float scale = trace[t].scale;
   switch (trace[t].type) {
   case TRC_LOGMAG:
-    v = refpos - logmag(coeff);
+    v = refpos - logmag(coeff) * scale;
     break;
   case TRC_PHASE:
-    v = refpos - phase(coeff);
+    v = refpos - phase(coeff) * scale;
     break;
   case TRC_LINEAR:
-    v = refpos + linear(coeff);
+    v = refpos + linear(coeff) * scale;
     break;
   case TRC_SWR:
-    v = refpos+1 - swr(coeff);
+    v = refpos+ (1 - swr(coeff)) * scale;
     break;
   case TRC_SMITH:
   //case TRC_ADMIT:

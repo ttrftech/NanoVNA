@@ -178,6 +178,7 @@ typedef struct {
   uint16_t menu_active_color;
   uint16_t trace_color[TRACES_MAX];
   int16_t touch_cal[4];
+  int8_t default_loadcal;
   int32_t checksum;
 } config_t;
 
@@ -289,6 +290,8 @@ int caldata_recall(int id);
 
 int config_save(void);
 int config_recall(void);
+
+void clear_all_config_prop_data(void);
 
 /*
  * ui.c

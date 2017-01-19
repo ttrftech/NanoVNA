@@ -191,6 +191,22 @@ static void cmd_saveconfig(BaseSequentialStream *chp, int argc, char *argv[])
   chprintf(chp, "Config saved.\r\n");
 }
 
+static void cmd_clearconfig(BaseSequentialStream *chp, int argc, char *argv[])
+{
+  if (argc != 1) {
+    chprintf(chp, "usage: clearconfig {protection key}\r\n");
+    return;
+  }
+
+  if (strcmp(argv[0], "1234") != 0) {
+    chprintf(chp, "Key unmatched.\r\n");
+    return;
+  }
+
+  clear_all_config_prop_data();
+  chprintf(chp, "Config and all cal data cleared.\r\n");
+}
+
 static struct {
   int16_t rms[2];
   int16_t ave[2];
@@ -313,6 +329,7 @@ static void cmd_dump(BaseSequentialStream *chp, int argc, char *argv[])
   }
 }
 
+#if 0
 static void cmd_gamma(BaseSequentialStream *chp, int argc, char *argv[])
 {
   float gamma[2];
@@ -327,6 +344,7 @@ static void cmd_gamma(BaseSequentialStream *chp, int argc, char *argv[])
 
   chprintf(chp, "%d %d\r\n", gamma[0], gamma[1]);
 }
+#endif
 
 #if 0
 int32_t frequency0 = 1000000;
@@ -347,6 +365,7 @@ config_t config = {
   /* trace_colors[4] */ { RGB565(0,255,255), RGB565(255,0,40), RGB565(0,0,255), RGB565(50,255,0) },
   ///* touch_cal[4] */ { 620, 600, 160, 190 },
   /* touch_cal[4] */ { 620, 600, 130, 180 },
+  /* default_loadcal */    0,
   /* checksum */           0
 };
 
@@ -385,7 +404,7 @@ ensure_edit_config(void)
   cal_status = 0;
 }
 
-
+#if 0
 static void cmd_scan(BaseSequentialStream *chp, int argc, char *argv[])
 {
   float gamma[2];
@@ -412,6 +431,7 @@ static void cmd_scan(BaseSequentialStream *chp, int argc, char *argv[])
   }
   chMtxUnlock(&mutex);
 }
+#endif
 
 // main loop for measurement
 void sweep(void)
@@ -1336,6 +1356,7 @@ static const ShellCommand commands[] =
     { "time", cmd_time },
     { "dac", cmd_dac },
     { "saveconfig", cmd_saveconfig },
+    { "clearconfig", cmd_clearconfig },
     { "data", cmd_data },
     { "dump", cmd_dump },
     { "frequencies", cmd_frequencies },
@@ -1343,8 +1364,8 @@ static const ShellCommand commands[] =
     { "stat", cmd_stat },
     { "gain", cmd_gain },
     { "power", cmd_power },
-    { "gamma", cmd_gamma },
-    { "scan", cmd_scan },
+    //{ "gamma", cmd_gamma },
+    //{ "scan", cmd_scan },
     { "sweep", cmd_sweep },
     { "test", cmd_test },
     { "touchcal", cmd_touchcal },
@@ -1427,7 +1448,8 @@ int main(void)
   dacStart(&DACD2, &dac1cfg1);
 
   /* restore frequencies and calibration properties from flash memory */
-  caldata_recall(0);
+  if (config.default_loadcal >= 0)
+    caldata_recall(config.default_loadcal);
 
   /* initial frequencies */
   update_frequencies();

@@ -194,3 +194,21 @@ caldata_recall(int id)
 
   return 0;
 }
+
+
+const uint32_t save_config_prop_area_size = 0x8000;
+
+void
+clear_all_config_prop_data(void)
+{
+  flash_unlock();
+
+  /* erase flash pages */
+  void *p = (void*)save_config_area;
+  void *tail = p + save_config_prop_area_size;
+  while (p < tail) {
+    flash_erase_page((uint32_t)p);
+    p += FLASH_PAGESIZE;
+  }
+}
+

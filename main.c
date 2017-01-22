@@ -31,6 +31,8 @@
 #include <ctype.h>
 #include <math.h>
 
+#define ENABLED_DUMP
+
 static void apply_error_term(void);
 void sweep(void);
 

@@ -74,7 +74,6 @@ extern void ui_process(void);
 #define AUDIO_BUFFER_LEN 96
 
 extern int16_t rx_buffer[];
-extern int16_t tx_buffer[];
 
 #define STATE_LEN 32
 #define SAMPLE_LEN 48

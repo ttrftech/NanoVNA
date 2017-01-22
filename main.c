@@ -1485,3 +1485,22 @@ int main(void)
       chThdSleepMilliseconds(1000);
     }
 }
+
+/* The prototype shows it is a naked function - in effect this is just an
+assembly function. */
+void HardFault_Handler( void );
+
+void hard_fault_handler_c(uint32_t *sp) __attribute__( ( naked ) );;
+
+void HardFault_Handler(void)
+{
+  uint32_t* sp;
+  //__asm volatile ("mrs %0, msp \n\t": "=r" (sp) );
+  __asm volatile ("mrs %0, psp \n\t": "=r" (sp) );
+  hard_fault_handler_c(sp);
+}
+
+void hard_fault_handler_c(uint32_t* sp)
+{
+  while (true) {}
+}

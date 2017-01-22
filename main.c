@@ -221,8 +221,11 @@ static struct {
 
 int16_t rx_buffer[AUDIO_BUFFER_LEN * 2];
 
+#ifdef ENABLED_DUMP
 int16_t dump_buffer[AUDIO_BUFFER_LEN];
 int16_t dump_selection = 0;
+#endif
+
 volatile int16_t wait_count = 0;
 
 float measured[2][101][2];
@@ -232,9 +235,10 @@ wait_dsp(int count)
 {
   wait_count = count;
   while (wait_count)
-    ;
+    __WFI();
 }
 
+#ifdef ENABLED_DUMP
 static void
 duplicate_buffer_to_dump(int16_t *p)
 {
@@ -246,6 +250,7 @@ duplicate_buffer_to_dump(int16_t *p)
     p = refiq_buf;
   memcpy(dump_buffer, p, sizeof dump_buffer);
 }
+#endif
 
 void i2s_end_callback(I2SDriver *i2sp, size_t offset, size_t n)
 {
@@ -260,8 +265,10 @@ void i2s_end_callback(I2SDriver *i2sp, size_t offset, size_t n)
   dsp_process(p, n);
 
   if (wait_count > 0) {
+#ifdef ENABLED_DUMP
     if (wait_count == 1)
       duplicate_buffer_to_dump(p);
+#endif
     --wait_count;
   }
 
@@ -308,6 +315,7 @@ static void cmd_data(BaseSequentialStream *chp, int argc, char *argv[])
   }
 }
 
+#ifdef ENABLED_DUMP
 static void cmd_dump(BaseSequentialStream *chp, int argc, char *argv[])
 {
   int i, j;
@@ -328,6 +336,7 @@ static void cmd_dump(BaseSequentialStream *chp, int argc, char *argv[])
     chprintf(chp, "\r\n");
   }
 }
+#endif
 
 #if 0
 static void cmd_gamma(BaseSequentialStream *chp, int argc, char *argv[])
@@ -1358,7 +1367,9 @@ static const ShellCommand commands[] =
     { "saveconfig", cmd_saveconfig },
     { "clearconfig", cmd_clearconfig },
     { "data", cmd_data },
+#ifdef ENABLED_DUMP
     { "dump", cmd_dump },
+#endif
     { "frequencies", cmd_frequencies },
     { "port", cmd_port },
     { "stat", cmd_stat },

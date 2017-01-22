@@ -42,7 +42,7 @@ uint8_t drive_strength = SI5351_CLK_DRIVE_STRENGTH_2MA;
 int8_t frequency_updated = FALSE;
 int8_t sweep_enabled = TRUE;
 
-static THD_WORKING_AREA(waThread1, 440);
+static THD_WORKING_AREA(waThread1, 768);
 static THD_FUNCTION(Thread1, arg)
 {
     (void)arg;
@@ -1354,7 +1354,7 @@ static void cmd_stat(BaseSequentialStream *chp, int argc, char *argv[])
 
 
 
-#define SHELL_WA_SIZE THD_WORKING_AREA_SIZE(440)
+#define SHELL_WA_SIZE THD_WORKING_AREA_SIZE(256)
 static THD_WORKING_AREA(waThread2, SHELL_WA_SIZE);
 
 static const ShellCommand commands[] =

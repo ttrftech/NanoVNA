@@ -65,10 +65,10 @@ dsp_process(int16_t *capture, size_t length)
     samp_buf[i] = smp;
     int32_t s = sincos_tbl[i][0];
     int32_t c = sincos_tbl[i][1];
-    samp_s += smp * s / 64;
-    samp_c += smp * c / 64;
-    ref_s += ref * s / 64;
-    ref_c += ref * c / 64;
+    samp_s += smp * s / 16;
+    samp_c += smp * c / 16;
+    ref_s += ref * s / 16;
+    ref_c += ref * c / 16;
 #if 0
     uint32_t sc = *(uint32_t)&sincos_tbl[i];
     samp_s = __SMLABB(sr, sc, samp_s);
@@ -91,8 +91,8 @@ calculate_gamma(float gamma[2])
   float rr = rs * rs + rc * rc;
   float ss = acc_samp_s;
   float sc = acc_samp_c;
-  gamma[0] = (sc * rc + ss * rs) / rr;
-  gamma[1] = (sc * rs - sc * rc) / rr;
+  gamma[0] =  (sc * rc + ss * rs) / rr;
+  gamma[1] =  (ss * rc - sc * rs) / rr;
 }
 
 void

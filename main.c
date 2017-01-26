@@ -452,7 +452,7 @@ void sweep(void)
 
  rewind:
   frequency_updated = FALSE;
-  delay = 5;
+  delay = 3;
 
   for (i = 0; i < sweep_points; i++) {
     set_frequency(frequencies[i]);

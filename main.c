@@ -236,6 +236,7 @@ static void
 wait_dsp(int count)
 {
   wait_count = count;
+  //reset_dsp_accumerator();
   while (wait_count)
     __WFI();
 }
@@ -264,11 +265,10 @@ void i2s_end_callback(I2SDriver *i2sp, size_t offset, size_t n)
   (void)i2sp;
   (void)n;
 
-  dsp_process(p, n);
-
   if (wait_count > 0) {
+    if (wait_count == 1) 
+      dsp_process(p, n);
 #ifdef ENABLED_DUMP
-    if (wait_count == 1)
       duplicate_buffer_to_dump(p);
 #endif
     --wait_count;

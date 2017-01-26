@@ -21,131 +21,30 @@
 #include <arm_math.h>
 #include "nanovna.h"
 
-/*
- * (I2S DMA)
- *     |
- * [capture]
- *     |              \
- * [ref_state,ref_buf] [samp_buf]
- *     | hilbert_transform
- * [refiq_buf]
- */
-
 int16_t samp_buf[SAMPLE_LEN];
 int16_t ref_state[STATE_LEN];
 int16_t ref_buf[SAMPLE_LEN];
 int16_t refiq_buf[AUDIO_BUFFER_LEN];
 
-
-#if 0
-// Bi-Quad IIR Filter state
-q15_t bq_state1[4 * 4];
-q15_t bq_state2[4 * 4];
-
-q15_t bq_coeffs[] = {
-         189, 0,    -72,   189, 26371, -15931,
-        1008, 0,  -1952,  1008, 25915, -15917,
-        1761, 0,  -2113,  1761, 26887, -16201,
-        3075, 0,  -5627,  3075, 25801, -16186,
+const int16_t sincos_tbl[48][2] = {
+  { 10533,  31029 }, { 27246,  18205 }, { 32698,  -2143 }, { 24636, -21605 },
+  {  6393, -32138 }, {-14493, -29389 }, {-29389, -14493 }, {-32138,   6393 },
+  {-21605,  24636 }, { -2143,  32698 }, { 18205,  27246 }, { 31029,  10533 },
+  { 31029, -10533 }, { 18205, -27246 }, { -2143, -32698 }, {-21605, -24636 },
+  {-32138,  -6393 }, {-29389,  14493 }, {-14493,  29389 }, {  6393,  32138 },
+  { 24636,  21605 }, { 32698,   2143 }, { 27246, -18205 }, { 10533, -31029 },
+  {-10533, -31029 }, {-27246, -18205 }, {-32698,   2143 }, {-24636,  21605 },
+  { -6393,  32138 }, { 14493,  29389 }, { 29389,  14493 }, { 32138,  -6393 },
+  { 21605, -24636 }, { 2143,  -32698 }, {-18205, -27246 }, {-31029, -10533 },
+  {-31029,  10533 }, {-18205,  27246 }, {  2143,  32698 }, { 21605,  24636 },
+  { 32138,   6393 }, { 29389, -14493 }, { 14493, -29389 }, { -6393, -32138 },
+  {-24636, -21605 }, {-32698,  -2143 }, {-27246,  18205 }, {-10533,  31029 }
 };
 
-arm_biquad_casd_df1_inst_q15 bq1 = { 3, bq_state1, bq_coeffs, 1};
-arm_biquad_casd_df1_inst_q15 bq2 = { 3, bq_state2, bq_coeffs, 1};
-#endif
-
-const q15_t hilbert31_coeffs[] = {
-  20570, 6125, 2918, 1456, 682, 279, 91, 19 
-};
-
-static void
-hilbert_transform(void)
-{ 
-  __SIMD32_TYPE *src = __SIMD32_CONST(ref_state);
-  __SIMD32_TYPE *dst = __SIMD32_CONST(refiq_buf);
-  int j;
-
-  for (j = 0; j < SAMPLE_LEN / 2; j++) {
-    int i;
-    int32_t acc0 = 0;
-    int32_t accn0 = 0;
-    int32_t acc1 = 0;
-    int32_t accn1 = 0;
-
-    for (i = 0; i < 8; i += 2) {
-      uint32_t c = *(uint32_t*)&hilbert31_coeffs[i];
-#define OFFSET (STATE_LEN / 2 / 2)
-      __SIMD32_TYPE a0 = src[OFFSET - i-1];
-      __SIMD32_TYPE a1 = src[OFFSET - i-2];
-      __SIMD32_TYPE b0 = src[OFFSET + i];
-      __SIMD32_TYPE b1 = src[OFFSET + i+1];
-
-      __SIMD32_TYPE a = __PKHTB(a1, a0, 16);
-      __SIMD32_TYPE b = __PKHTB(b1, b0, 16);
-      acc0 = __SMLAD(c, b, acc0);
-      accn0 = __SMLAD(c, a, accn0);
-      a = __PKHBT(a0, a1, 16);
-      b = __PKHBT(b0, b1, 16);
-      acc1 = __SMLAD(c, b, acc1);
-      accn1 = __SMLAD(c, a, accn1);
-    }
-    acc0 -= accn0;
-    acc1 -= accn1;
-    //*dst++ = __PKHTB(acc0, acc1, 16);
-    *dst++ = __PKHTB(acc1<<1, src[OFFSET-1], 16);
-    *dst++ = __PKHTB(acc0<<1, src[OFFSET], 0);
-    src++;
-  }
-
-  /* copy last samples as fir state onto buffer */
-  dst = __SIMD32_CONST(ref_state);
-  for (j = 0; j < STATE_LEN / 2; j++) {
-    *dst++ = *src++;
-  }
-}
-
-void calculate_gamma(float *gamma)
-{
-  int16_t *r = refiq_buf;
-  int16_t *s = samp_buf;
-  int len = SAMPLE_LEN;
-  float acc_r = 0;
-  float acc_i = 0;
-  float acc_ref = 0;
-  int i;
-  float rn;
-  int32_t offset_s0 = 0;
-  int32_t offset_r0 = 0;
-  int32_t offset_i0 = 0;
-
-  __disable_irq();
-
-  for (i = 0; i < len; i++) {
-    offset_s0 += *s++;
-    offset_i0 += *r++;
-    offset_r0 += *r++;
-  }
-  offset_s0 /= len;
-  offset_r0 /= len;
-  offset_i0 /= len;
-
-  r = refiq_buf;
-  s = samp_buf;
-  for (i = 0; i < len; i++) {
-    int16_t s0 = *s++ - offset_s0;
-    int16_t ri = *r++ - offset_i0;
-    int16_t rr = *r++ - offset_r0;
-    acc_r += (float)(s0 * rr);
-    acc_i += (float)(s0 * ri);
-    acc_ref += (float)rr*rr + (float)ri*ri;
-  }
-
-  __enable_irq();
-
-  //rn = sqrtf(acc_ref / len) * 2e3 * len;
-  rn = acc_ref / 10;
-  gamma[0] = -acc_r / rn;
-  gamma[1] = -acc_i / rn;
-}
+int32_t acc_samp_s;
+int32_t acc_samp_c;
+int32_t acc_ref_s;
+int32_t acc_ref_c;
 
 void
 dsp_process(int16_t *capture, size_t length)
@@ -153,16 +52,54 @@ dsp_process(int16_t *capture, size_t length)
   uint32_t *p = (uint32_t*)capture;
   uint32_t len = length / 2;
   uint32_t i;
+  int32_t samp_s = 0;
+  int32_t samp_c = 0;
+  int32_t ref_s = 0;
+  int32_t ref_c = 0;
+
   for (i = 0; i < len; i++) {
     uint32_t sr = *p++;
-    ref_buf[i] = sr & 0xffff;
-    samp_buf[i] = (sr>>16) & 0xffff;
+    int16_t ref = sr & 0xffff;
+    int16_t smp = (sr>>16) & 0xffff;
+    ref_buf[i] = ref;
+    samp_buf[i] = smp;
+    int32_t s = sincos_tbl[i][0];
+    int32_t c = sincos_tbl[i][1];
+    samp_s += smp * s / 64;
+    samp_c += smp * c / 64;
+    ref_s += ref * s / 64;
+    ref_c += ref * c / 64;
+#if 0
+    uint32_t sc = *(uint32_t)&sincos_tbl[i];
+    samp_s = __SMLABB(sr, sc, samp_s);
+    samp_c = __SMLABT(sr, sc, samp_c);
+    ref_s = __SMLATB(sr, sc, ref_s);
+    ref_c = __SMLATT(sr, sc, ref_c);
+#endif
   }
-
-  // apply low pass filter
-  //arm_biquad_cascade_df1_q15(&bq1, ref_buf, ref_buf, len);
-  //arm_biquad_cascade_df1_q15(&bq2, samp_buf, samp_buf, len);
-
-  hilbert_transform();
+  acc_samp_s = samp_s;
+  acc_samp_c = samp_c;
+  acc_ref_s = ref_s;
+  acc_ref_c = ref_c;
 }
 
+void
+calculate_gamma(float gamma[2])
+{
+  float rs = acc_ref_s;
+  float rc = acc_ref_c;
+  float rr = rs * rs + rc * rc;
+  float ss = acc_samp_s;
+  float sc = acc_samp_c;
+  gamma[0] = (sc * rc + ss * rs) / rr;
+  gamma[1] = (sc * rs - sc * rc) / rr;
+}
+
+void
+reset_dsp_accumerator(void)
+{
+  acc_ref_s = 0;
+  acc_ref_c = 0;
+  acc_samp_s = 0;
+  acc_samp_c = 0;
+}

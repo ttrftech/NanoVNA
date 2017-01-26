@@ -97,8 +97,8 @@ void tlv320aic3204_init(void)
     I2CWrite(AIC3204_ADDR, 0x51, 0xc0); /* Power up Left and Right ADC Channels */
     I2CWrite(AIC3204_ADDR, 0x52, 0x00); /* Unmute Left and Right ADC Digital Volume Control */    
 
-    tlv320aic3204_config_adc_filter();
-    tlv320aic3204_adc_filter_enable(TRUE);
+    //tlv320aic3204_config_adc_filter();
+    //tlv320aic3204_adc_filter_enable(TRUE);
 }
 
 void tlv320aic3204_select_in3(void)

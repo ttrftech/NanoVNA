@@ -313,7 +313,7 @@ si5351_set_frequency_with_offset(int freq, int offset, uint8_t drive_strength)
     band = 2;
   }
 
-#if 0
+#if 1
   if (current_band != band)
     si5351_disable_output();
 #endif
@@ -321,8 +321,12 @@ si5351_set_frequency_with_offset(int freq, int offset, uint8_t drive_strength)
   switch (band) {
   case 0:
     // fractional divider mode. only PLL A is used.
-    //if (current_band != 0)
+    if (current_band != 0)
       si5351_setupPLL(SI5351_PLL_A, 32, 0, 1);
+    // Set PLL twice on changing from band 2
+    if (current_band == 2) 
+      si5351_setupPLL(SI5351_PLL_A, 32, 0, 1);
+
     si5351_set_frequency_fixedpll(0, SI5351_PLL_A, PLLFREQ, freq + offset,
                                   SI5351_CLK_DRIVE_STRENGTH_2MA);
     si5351_set_frequency_fixedpll(1, SI5351_PLL_A, PLLFREQ, freq, drive_strength);
@@ -350,9 +354,9 @@ si5351_set_frequency_with_offset(int freq, int offset, uint8_t drive_strength)
     break;
   }
 
-  si5351_reset_pll();
   if (current_band != band) {
-#if 0
+    si5351_reset_pll();
+#if 1
     si5351_enable_output();
 #endif
     delay += 0;

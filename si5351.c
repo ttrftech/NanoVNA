@@ -239,7 +239,7 @@ gcd(uint32_t x, uint32_t y)
 
 void
 si5351_set_frequency_fixedpll(int channel, int pll, int pllfreq, int freq,
-                              uint8_t drive_strength)
+                              uint32_t rdiv, uint8_t drive_strength)
 {
     int32_t div = pllfreq / freq; // range: 8 ~ 1800
     int32_t num = pllfreq - freq * div;
@@ -252,7 +252,7 @@ si5351_set_frequency_fixedpll(int channel, int pll, int pllfreq, int freq,
       num >>= 1;
       denom >>= 1;
     }
-    si5351_setupMultisynth(channel, pll, div, num, denom, SI5351_R_DIV_1, drive_strength);
+    si5351_setupMultisynth(channel, pll, div, num, denom, rdiv, drive_strength);
 }
 
 void
@@ -283,7 +283,8 @@ void
 si5351_set_frequency(int channel, int freq, uint8_t drive_strength)
 {
   if (freq <= 100000000) {
-    si5351_set_frequency_fixedpll(channel, SI5351_PLL_B, PLLFREQ, freq, drive_strength);
+    si5351_setupPLL(SI5351_PLL_B, 32, 0, 1);
+    si5351_set_frequency_fixedpll(channel, SI5351_PLL_B, PLLFREQ, freq, SI5351_R_DIV_1, drive_strength);
   } else if (freq < 150000000) {
     si5351_set_frequency_fixeddiv(channel, SI5351_PLL_B, freq, 6, drive_strength);
   } else {
@@ -306,12 +307,19 @@ si5351_set_frequency_with_offset(int freq, int offset, uint8_t drive_strength)
 {
   int band;
   int delay = 5;
+  uint32_t ofreq = freq + offset;
+  uint32_t rdiv = SI5351_R_DIV_1;
   if (freq <= 100000000) {
     band = 0;
   } else if (freq < 150000000) {
     band = 1;
   } else {
     band = 2;
+  }
+  if (freq <= 500000) {
+    rdiv = SI5351_R_DIV_64;
+  } else if (freq <= 4000000) {
+    rdiv = SI5351_R_DIV_8;
   }
 
 #if 1
@@ -322,18 +330,27 @@ si5351_set_frequency_with_offset(int freq, int offset, uint8_t drive_strength)
   switch (band) {
   case 0:
     // fractional divider mode. only PLL A is used.
-    if (current_band != 0)
+    if (current_band == 1 || current_band == 2)
       si5351_setupPLL(SI5351_PLL_A, 32, 0, 1);
     // Set PLL twice on changing from band 2
     if (current_band == 2) 
       si5351_setupPLL(SI5351_PLL_A, 32, 0, 1);
 
-    si5351_set_frequency_fixedpll(0, SI5351_PLL_A, PLLFREQ, freq + offset,
-                                  SI5351_CLK_DRIVE_STRENGTH_2MA);
-    si5351_set_frequency_fixedpll(1, SI5351_PLL_A, PLLFREQ, freq, drive_strength);
+    if (rdiv == SI5351_R_DIV_8) {
+      freq *= 8;
+      ofreq *= 8;
+    } else if (rdiv == SI5351_R_DIV_64) {
+      freq *= 64;
+      ofreq *= 64;
+    }
+
+    si5351_set_frequency_fixedpll(0, SI5351_PLL_A, PLLFREQ, ofreq,
+                                  rdiv, SI5351_CLK_DRIVE_STRENGTH_2MA);
+    si5351_set_frequency_fixedpll(1, SI5351_PLL_A, PLLFREQ, freq,
+                                  rdiv, drive_strength);
     //if (current_band != 0)
       si5351_set_frequency_fixedpll(2, SI5351_PLL_A, PLLFREQ, CLK2_FREQUENCY,
-                                    SI5351_CLK_DRIVE_STRENGTH_2MA);
+                                    SI5351_R_DIV_1, SI5351_CLK_DRIVE_STRENGTH_2MA);
     break;
 
   case 1:
@@ -349,14 +366,14 @@ si5351_set_frequency_with_offset(int freq, int offset, uint8_t drive_strength)
                                   SI5351_CLK_DRIVE_STRENGTH_2MA);
     si5351_set_frequency_fixeddiv(1, SI5351_PLL_B, freq, 6, drive_strength);
     si5351_set_frequency_fixedpll(2, SI5351_PLL_B, freq * 6, CLK2_FREQUENCY,
-                                  SI5351_CLK_DRIVE_STRENGTH_2MA);
+                                  SI5351_R_DIV_1, SI5351_CLK_DRIVE_STRENGTH_2MA);
     break;
 
   case 2:
     // div by 4 mode. both PLL A and B are dedicated for CLK0, CLK1
     si5351_set_frequency_fixeddiv(1, SI5351_PLL_B, freq, 4, drive_strength);
     si5351_set_frequency_fixedpll(2, SI5351_PLL_B, freq * 4, CLK2_FREQUENCY,
-                                  SI5351_CLK_DRIVE_STRENGTH_2MA);
+                                  SI5351_R_DIV_1, SI5351_CLK_DRIVE_STRENGTH_2MA);
     si5351_set_frequency_fixeddiv(0, SI5351_PLL_A, freq + offset, 4,
                                   SI5351_CLK_DRIVE_STRENGTH_2MA);
     break;

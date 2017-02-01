@@ -534,7 +534,7 @@ freq_mode_centerspan(void)
 }
 
 
-#define START_MIN 500000
+#define START_MIN 50000
 #define STOP_MAX 300000000
 
 void
@@ -549,6 +549,9 @@ set_sweep_frequency(int type, float frequency)
     if (frequency0 != freq) {
       ensure_edit_config();
       frequency0 = freq;
+      // if start > stop then make start = stop
+      if (frequency1 < freq)
+        frequency1 = freq;
       update_frequencies();
     }
     break;
@@ -559,6 +562,9 @@ set_sweep_frequency(int type, float frequency)
     if (frequency1 != freq) {
       ensure_edit_config();
       frequency1 = freq;
+      // if start > stop then make start = stop
+      if (frequency0 > freq)
+        frequency0 = freq;
       update_frequencies();
     }
     break;

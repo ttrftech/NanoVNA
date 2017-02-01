@@ -83,6 +83,7 @@ void si5351_setupMultisynth(uint8_t     output,
                             uint32_t    div,
                             uint32_t    num,
                             uint32_t    denom,
+                            uint32_t    rdiv,
                             uint8_t drive_strength);
 
 void si5351_set_frequency(int channel, int freq, uint8_t drive_strength);

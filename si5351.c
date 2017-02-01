@@ -152,6 +152,7 @@ si5351_setupMultisynth(uint8_t     output,
                        uint32_t    div, // 4,6,8, 8+ ~ 900
                        uint32_t    num,
                        uint32_t    denom,
+                       uint32_t    rdiv, // SI5351_R_DIV_1~128
                        uint8_t     drive_strength)
 {
   /* Get the appropriate starting point for the PLL registers */
@@ -203,7 +204,7 @@ si5351_setupMultisynth(uint8_t     output,
   reg[0] = msreg_base[output];
   reg[1] = (P3 & 0x0000FF00) >> 8;
   reg[2] = (P3 & 0x000000FF);
-  reg[3] = ((P1 & 0x00030000) >> 16) | div4;
+  reg[3] = ((P1 & 0x00030000) >> 16) | div4 | rdiv;
   reg[4] = (P1 & 0x0000FF00) >> 8;
   reg[5] = (P1 & 0x000000FF);
   reg[6] = ((P3 & 0x000F0000) >> 12) | ((P2 & 0x000F0000) >> 16);
@@ -251,7 +252,7 @@ si5351_set_frequency_fixedpll(int channel, int pll, int pllfreq, int freq,
       num >>= 1;
       denom >>= 1;
     }
-    si5351_setupMultisynth(channel, pll, div, num, denom, drive_strength);
+    si5351_setupMultisynth(channel, pll, div, num, denom, SI5351_R_DIV_1, drive_strength);
 }
 
 void
@@ -270,7 +271,7 @@ si5351_set_frequency_fixeddiv(int channel, int pll, int freq, int div,
       denom >>= 1;
     }
     si5351_setupPLL(pll, multi, num, denom);
-    si5351_setupMultisynth(channel, pll, div, 0, 1, drive_strength);
+    si5351_setupMultisynth(channel, pll, div, 0, 1, SI5351_R_DIV_1, drive_strength);
 }
 
 /* 
@@ -336,6 +337,13 @@ si5351_set_frequency_with_offset(int freq, int offset, uint8_t drive_strength)
     break;
 
   case 1:
+    // Set PLL twice on changing from band 2
+    if (current_band == 2) {
+      si5351_set_frequency_fixeddiv(0, SI5351_PLL_A, freq + offset, 6,
+                                    SI5351_CLK_DRIVE_STRENGTH_2MA);
+      si5351_set_frequency_fixeddiv(1, SI5351_PLL_B, freq, 6, drive_strength);
+    }
+
     // div by 6 mode. both PLL A and B are dedicated for CLK0, CLK1
     si5351_set_frequency_fixeddiv(0, SI5351_PLL_A, freq + offset, 6,
                                   SI5351_CLK_DRIVE_STRENGTH_2MA);

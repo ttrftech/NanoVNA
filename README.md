@@ -1,11 +1,15 @@
-NanoVNA - Low budget tiny handheld Vector Network Analyzer
+NanoVNA - Very tiny handheld Vector Network Analyzer
 ==========================================================
+
+<div align="center">
+<img src="/doc/nanovna.jpg" width="480px">
+</div>
 
 # About
 
 NanoVNA is very tiny handheld Vector Network Analyzer, works as
-standalone, portable with battery, own lcd display. This project aim
-to provide useful measuring tool for RF enthusiast.
+standalone, portable with battery and lcd display. This project aim
+to provide an RF gadget but useful measuring tool for enthusiast.
 
 This repository contains source of NanoVNA firmware.
 
@@ -18,7 +22,7 @@ Install cross tools and dfu-util.
     $ brew install gcc-arm-none-eabi
     $ brew instal dfu-util
 
-Otherwise, using toolchains inside LPCxpresso. Like this.
+Otherwise, use toolchains included inside LPCxpresso. Like this.
 
     $ PATH=$PATH:/Applications/lpcxpresso_7.8.0_426/lpcxpresso/tools/bin
 
@@ -44,7 +48,25 @@ And then, burn firmware using dfu-util via USB.
 # Control NanoVNA from Host PC
 
 NanoVNA is able to work standalone, but also be controlled from host
-PC. Directory python contains sample script to control NanoVNA.
+PC. python folder contains some sample scripts to control NanoVNA.
 
+Plot reflection LOGMAG.
+
+    $ cd python
+    $ ./nanovna.py -p
+
+Plot transmission LOGMAG.
+
+    $ ./nanovna.py -p -P 1
+
+Plot smithchart.
+
+    $ ./nanovna.py -s
+
+Show usage.
+
+    $ ./nanovna.py -h
+
+To use nanovna module in Jupyter, see [this page](/python/NanoVNA-example.ipynb).
 
 [EOF]

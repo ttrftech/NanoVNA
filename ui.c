@@ -196,9 +196,9 @@ touch_measure_y(void)
 
   chThdSleepMilliseconds(2);
   v = adc_single_read(ADC1, ADC_CHSELR_CHSEL7);
-  chThdSleepMilliseconds(2);
-  v += adc_single_read(ADC1, ADC_CHSELR_CHSEL7);
-  return v/2;
+  //chThdSleepMilliseconds(2);
+  //v += adc_single_read(ADC1, ADC_CHSELR_CHSEL7);
+  return v;
 }
 
 int
@@ -216,9 +216,9 @@ touch_measure_x(void)
 
   chThdSleepMilliseconds(2);
   v = adc_single_read(ADC1, ADC_CHSELR_CHSEL6);
-  chThdSleepMilliseconds(2);
-  v += adc_single_read(ADC1, ADC_CHSELR_CHSEL6);
-  return v/2;
+  //chThdSleepMilliseconds(2);
+  //v += adc_single_read(ADC1, ADC_CHSELR_CHSEL6);
+  return v;
 }
 
 void
@@ -252,8 +252,13 @@ int touch_check(void)
 {
   int stat = touch_status();
   if (stat) {
-    last_touch_x = touch_measure_x();
-    last_touch_y = touch_measure_y();
+    chThdSleepMilliseconds(10);
+    int x = touch_measure_x();
+    int y = touch_measure_y();
+    if (touch_status()) {
+      last_touch_x = x;
+      last_touch_y = y;
+    }
     touch_prepare_sense();
   }
 
@@ -289,11 +294,19 @@ touch_cal_exec(void)
   
   adc_stop(ADC1);
 
+  ili9341_fill(0, 0, 320, 240, 0);
+  ili9341_line(0, 0, 0, 32, 0xffff);
+  ili9341_line(0, 0, 32, 0, 0xffff);
+
   do {
     status = touch_check();
   } while(status != EVT_TOUCH_PRESSED);
   x1 = last_touch_x;
   y1 = last_touch_y;
+
+  ili9341_fill(0, 0, 320, 240, 0);
+  ili9341_line(320-1, 240-1, 320-1, 240-32, 0xffff);
+  ili9341_line(320-1, 240-1, 320-32, 240-1, 0xffff);
 
   do {
     status = touch_check();
@@ -305,7 +318,37 @@ touch_cal_exec(void)
   config.touch_cal[1] = y1;
   config.touch_cal[2] = (x2 - x1) * 16 / 320;
   config.touch_cal[3] = (y2 - y1) * 16 / 240;
+
+  touch_start_watchdog();
+  redraw_all();
 }
+
+void
+touch_draw_test(void)
+{
+  int status;
+  int x0, y0;
+  int x1, y1;
+  
+  adc_stop(ADC1);
+
+  do {
+    status = touch_check();
+  } while(status != EVT_TOUCH_PRESSED);
+  touch_position(&x0, &y0);
+
+  do {
+    status = touch_check();
+    touch_position(&x1, &y1);
+    ili9341_line(x0, y0, x1, y1, 0xffff);
+    x0 = x1;
+    y0 = y1;
+    chThdSleepMilliseconds(50);
+  } while(status != EVT_TOUCH_RELEASED);
+
+  touch_start_watchdog();
+}
+
 
 void
 touch_position(int *x, int *y)
@@ -1233,7 +1276,9 @@ void drag_marker(int t, int m)
     int touch_x, touch_y;
     int index;
     touch_position(&touch_x, &touch_y);
-    index = search_nearest_index(touch_x + OFFSETX, touch_y + OFFSETY, t);
+    touch_x -= OFFSETX;
+    touch_y -= OFFSETY;
+    index = search_nearest_index(touch_x, touch_y, t);
     if (index >= 0) {
       markers[m].index = index;
       redraw_marker(m, TRUE);
@@ -1255,8 +1300,8 @@ touch_pickup_marker(void)
   int touch_x, touch_y;
   int m, t;
   touch_position(&touch_x, &touch_y);
-  touch_x += OFFSETX;
-  touch_y += OFFSETY;
+  touch_x -= OFFSETX;
+  touch_y -= OFFSETY;
 
   for (m = 0; m < 4; m++) {
     if (!markers[m].enabled)

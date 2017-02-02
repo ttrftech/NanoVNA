@@ -375,7 +375,7 @@ config_t config = {
   /* menu_active_color */ 0x7777,
   /* trace_colors[4] */ { RGB565(0,255,255), RGB565(255,0,40), RGB565(0,0,255), RGB565(50,255,0) },
   ///* touch_cal[4] */ { 620, 600, 160, 190 },
-  /* touch_cal[4] */ { 620, 600, 130, 180 },
+  /* touch_cal[4] */ { 693, 605, 124, 171 },
   /* default_loadcal */    0,
   /* checksum */           0
 };
@@ -546,6 +546,8 @@ set_sweep_frequency(int type, float frequency)
     freq_mode_startstop();
     if (frequency < START_MIN)
       freq = START_MIN;
+    if (frequency > STOP_MAX)
+      freq = STOP_MAX;
     if (frequency0 != freq) {
       ensure_edit_config();
       frequency0 = freq;
@@ -559,6 +561,8 @@ set_sweep_frequency(int type, float frequency)
     freq_mode_startstop();
     if (frequency > STOP_MAX)
       freq = STOP_MAX;
+    if (frequency < START_MIN)
+      freq = START_MIN;
     if (frequency1 != freq) {
       ensure_edit_config();
       frequency1 = freq;
@@ -1228,6 +1232,18 @@ static void cmd_touchcal(BaseSequentialStream *chp, int argc, char *argv[])
   touch_start_watchdog();
 }
 
+static void cmd_touchtest(BaseSequentialStream *chp, int argc, char *argv[])
+{
+  (void)chp;
+  (void)argc;
+  (void)argv;
+  chMtxLock(&mutex);
+  do {
+    touch_draw_test();
+  } while(argc);
+  chMtxUnlock(&mutex);
+}
+
 static void cmd_frequencies(BaseSequentialStream *chp, int argc, char *argv[])
 {
   int i;
@@ -1388,6 +1404,7 @@ static const ShellCommand commands[] =
     { "sweep", cmd_sweep },
     { "test", cmd_test },
     { "touchcal", cmd_touchcal },
+    { "touchtest", cmd_touchtest },
     { "pause", cmd_pause },
     { "resume", cmd_resume },
     { "cal", cmd_cal },

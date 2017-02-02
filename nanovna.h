@@ -307,6 +307,7 @@ void handle_touch_interrupt(void);
 #define TOUCH_THRESHOLD 2000
 
 void touch_cal_exec(void);
+void touch_draw_test(void);
 
 /*
  * adc.c

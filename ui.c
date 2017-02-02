@@ -43,7 +43,7 @@ struct {
 #define BUTTON_DOWN_LONG_TICKS		5000  /* 1sec */
 #define BUTTON_DOUBLE_TICKS			5000   /* 500ms */
 #define BUTTON_REPEAT_TICKS			1000   /* 100ms */
-#define BUTTON_DEBOUNCE_TICKS		100
+#define BUTTON_DEBOUNCE_TICKS		200
 
 /* lever switch assignment */
 #define BIT_UP1 	3
@@ -119,35 +119,27 @@ static int btn_check(void)
 	int status = 0;
     uint32_t ticks = chVTGetSystemTime();
 	if (changed & (1<<BIT_PUSH)) {
-		if (cur_button & (1<<BIT_PUSH)
-            && ticks - last_button_down_ticks >= BUTTON_DEBOUNCE_TICKS) {
-          // button pushed
-          status |= EVT_BUTTON_SINGLE_CLICK;
-		}
-        last_button_down_ticks = ticks;
+      if ((cur_button & (1<<BIT_PUSH))
+          && ticks - last_button_down_ticks >= BUTTON_DEBOUNCE_TICKS) {
+        // button pushed
+        status |= EVT_BUTTON_SINGLE_CLICK;
+      }
+      last_button_down_ticks = ticks;
 	}
 
-	if (cur_button & (1<<BIT_UP1)) {
-		if (ticks >= last_button_down_ticks + BUTTON_DEBOUNCE_TICKS) {
-          if (changed & (1<<BIT_UP1)) {
-            status |= EVT_UP;
-            last_button_down_ticks = ticks;
-          }
-          if (ticks >= last_button_down_ticks + BUTTON_DOWN_LONG_TICKS) {
-            status |= EVT_UP;
-          }
-        }
+    if (changed & (1<<BIT_UP1)) {
+      if ((cur_button & (1<<BIT_UP1))
+          && (ticks >= last_button_down_ticks + BUTTON_DEBOUNCE_TICKS)) {
+        status |= EVT_UP;
+      }
+      last_button_down_ticks = ticks;
     }
-	if (cur_button & (1<<BIT_DOWN1)) {
-		if (ticks >= last_button_down_ticks + BUTTON_DEBOUNCE_TICKS) {
-          if (changed & (1<<BIT_DOWN1)) {
-            status |= EVT_DOWN;
-            last_button_down_ticks = ticks;
-          }
-          if (ticks >= last_button_down_ticks + BUTTON_DOWN_LONG_TICKS) {
-            status |= EVT_DOWN;
-          }
-        }
+    if (changed & (1<<BIT_DOWN1)) {
+      if ((cur_button & (1<<BIT_DOWN1))
+          && (ticks >= last_button_down_ticks + BUTTON_DEBOUNCE_TICKS)) {
+        status |= EVT_DOWN;
+      }
+      last_button_down_ticks = ticks;
     }
     last_button = cur_button;
 
@@ -164,6 +156,7 @@ static int btn_wait_release(void)
     if (changed) {
       // finished
       last_button = cur_button;
+      last_button_down_ticks = ticks;
       return 0;
     }
 
@@ -396,7 +389,7 @@ menu_calop_cb(int item)
     cal_collect(CAL_THRU);
     break;
   }
-  selection++;
+  selection = item+1;
   draw_cal_status();
   draw_menu();
 }
@@ -417,18 +410,17 @@ static void
 menu_cal2_cb(int item)
 {
   switch (item) {
-  case 0: // RESET
+  case 1: // RESET
     cal_status = 0;
     break;
-  case 1: // OFF
-    cal_status &= ~CALSTAT_APPLY;
-    break;
-  case 2: // ON
-    cal_status |= CALSTAT_APPLY;
+  case 2: // CORRECTION
+    // toggle applying correction
+    if (cal_status)
+      cal_status ^= CALSTAT_APPLY;
     break;
   }
   draw_cal_status();
-  menu_move_back();
+  //menu_move_back();
 }
 
 static void
@@ -437,6 +429,7 @@ menu_recall_cb(int item)
   if (item < 0 || item >= 5)
     return;
   if (caldata_recall(item) == 0) {
+    menu_move_back();
     ui_mode_normal();
     update_grid();
     draw_cal_status();
@@ -561,7 +554,7 @@ menu_stimulus_cb(int item)
     ui_mode_keypad(item);
     ui_process_keypad();
     break;
-  case 5: /* TOGGLE SWEEP */
+  case 5: /* SWEEP */
     toggle_sweep();
     menu_move_back();
     ui_mode_normal();
@@ -643,25 +636,13 @@ const menuitem_t menu_save[] = {
 };
 
 const menuitem_t menu_cal[] = {
+  { MT_SUBMENU, "CALIBRATE", menu_calop },
   { MT_CALLBACK, "RESET", menu_cal2_cb },
-  { MT_CALLBACK, "OFF", menu_cal2_cb },
-  { MT_CALLBACK, "ON", menu_cal2_cb },
+  { MT_CALLBACK, "CORRECTION", menu_cal2_cb },
   { MT_SUBMENU, "SAVE", menu_save },
   { MT_CANCEL, "BACK", NULL },
   { MT_NONE, NULL, NULL } // sentinel
 };
-
-static void
-menu_cal_cb(int item)
-{
-  (void)item;
-  if (cal_status != 0) {
-    menu_push_submenu(menu_cal);
-  } else {
-    menu_push_submenu(menu_calop);
-  }
-}
-
 
 const menuitem_t menu_trace[] = {
   { MT_CALLBACK, "TRACE 0", menu_trace_cb },
@@ -724,7 +705,7 @@ const menuitem_t menu_stimulus[] = {
   { MT_CALLBACK, "CENTER", menu_stimulus_cb },
   { MT_CALLBACK, "SPAN", menu_stimulus_cb },
   { MT_CALLBACK, "CW FREQ", menu_stimulus_cb },
-  { MT_CALLBACK, "\2TOGGLE\0SWEEP", menu_stimulus_cb },
+  { MT_CALLBACK, "SWEEP", menu_stimulus_cb },
   { MT_CANCEL, "BACK", NULL },
   { MT_NONE, NULL, NULL } // sentinel
 };
@@ -763,7 +744,7 @@ const menuitem_t menu_top[] = {
   { MT_SUBMENU, "DISPLAY", menu_display },
   { MT_SUBMENU, "MARKER", menu_marker },
   { MT_SUBMENU, "STIMULUS", menu_stimulus },
-  { MT_CALLBACK, "CAL", menu_cal_cb },
+  { MT_SUBMENU, "CAL", menu_cal },
   { MT_SUBMENU, "RECALL", menu_recall },
   { MT_CLOSE, "CLOSE", NULL },
   { MT_NONE, NULL, NULL } // sentinel
@@ -863,7 +844,7 @@ void menu_invoke(int item)
 
 const struct {
   uint16_t x, y;
-  uint8_t c;
+  int8_t c;
 } keypads[] = {
   { KP_X(1), KP_Y(3), KP_PERIOD },
   { KP_X(0), KP_Y(3), 0 },
@@ -881,8 +862,9 @@ const struct {
   { KP_X(3), KP_Y(2), KP_K },
   { KP_X(3), KP_Y(3), KP_X1 },
   { KP_X(2), KP_Y(3), KP_BS },
-  { 0, 0, 0 }
+  { 0, 0, -1 }
 };
+#define KEYPADS_LAST_INDEX 15
 
 void
 draw_keypad(void)
@@ -1126,9 +1108,9 @@ ui_process_menu(void)
 
 
 int
-keypad_click(int selection) 
+keypad_click(int key) 
 {
-  int c = keypads[selection].c;
+  int c = keypads[key].c;
   if (c >= KP_X1 && c <= KP_G) {
     int n = c - KP_X1;
     float scale = 1;
@@ -1196,15 +1178,18 @@ keypad_apply_touch(void)
   while (keypads[i].x) {
     if (keypads[i].x-2 < touch_x && touch_x < keypads[i].x+44+2
         && keypads[i].y-2 < touch_y && touch_y < keypads[i].y+44+2) {
+      // draw focus
       selection = i;
       draw_keypad();
       touch_wait_release();
+      // erase focus
       selection = -1;
-      return TRUE;
+      draw_keypad();
+      return i;
     }
     i++;
   }
-  return FALSE;
+  return -1;
 }
 
 void
@@ -1221,12 +1206,16 @@ ui_process_keypad(void)
       do {
         if (s & EVT_UP) {
           selection--;
-          selection %= 16;
+          if (selection < 0)
+            selection = KEYPADS_LAST_INDEX;
           draw_keypad();
         }
         if (s & EVT_DOWN) {
           selection++;
-          selection %= 16;
+          if (keypads[selection].c < 0) {
+            // reaches to tail
+            selection = 0;
+          }
           draw_keypad();
         }
         s = btn_wait_release();
@@ -1241,8 +1230,8 @@ ui_process_keypad(void)
 
     status = touch_check();
     if (status == EVT_TOUCH_PRESSED) {
-      if (keypad_apply_touch()
-          && keypad_click(selection))
+      int key = keypad_apply_touch();
+      if (key >= 0 && keypad_click(key))
         /* exit loop on done or cancel */
         break; 
     }
@@ -1250,6 +1239,7 @@ ui_process_keypad(void)
 
   ui_mode_normal();
   redraw_all();
+  touch_start_watchdog();
 }
 
 void

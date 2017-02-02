@@ -1332,29 +1332,29 @@ draw_cal_status(void)
       c[1] = '*';
     else
       c[1] += lastsaveid;
-
     ili9341_drawstring_5x7(c, x, y, 0xffff, 0x0000);
     y += YSTEP;
-    if (cal_status & CALSTAT_ED) {
-      ili9341_drawstring_5x7("D", x, y, 0xffff, 0x0000);
-      y += YSTEP;
-    }
-    if (cal_status & CALSTAT_ER) {
-      ili9341_drawstring_5x7("R", x, y, 0xffff, 0x0000);
-      y += YSTEP;
-    }
-    if (cal_status & CALSTAT_ES) {
-      ili9341_drawstring_5x7("S", x, y, 0xffff, 0x0000);
-      y += YSTEP;
-    }
-    if (cal_status & CALSTAT_ET) {
-      ili9341_drawstring_5x7("T", x, y, 0xffff, 0x0000);
-      y += YSTEP;
-    }
-    if (cal_status & CALSTAT_EX) {
-      ili9341_drawstring_5x7("X", x, y, 0xffff, 0x0000);
-      y += YSTEP;
-    }
+  }
+
+  if (cal_status & CALSTAT_ED) {
+    ili9341_drawstring_5x7("D", x, y, 0xffff, 0x0000);
+    y += YSTEP;
+  }
+  if (cal_status & CALSTAT_ER) {
+    ili9341_drawstring_5x7("R", x, y, 0xffff, 0x0000);
+    y += YSTEP;
+  }
+  if (cal_status & CALSTAT_ES) {
+    ili9341_drawstring_5x7("S", x, y, 0xffff, 0x0000);
+    y += YSTEP;
+  }
+  if (cal_status & CALSTAT_ET) {
+    ili9341_drawstring_5x7("T", x, y, 0xffff, 0x0000);
+    y += YSTEP;
+  }
+  if (cal_status & CALSTAT_EX) {
+    ili9341_drawstring_5x7("X", x, y, 0xffff, 0x0000);
+    y += YSTEP;
   }
 }
 

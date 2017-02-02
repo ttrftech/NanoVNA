@@ -410,7 +410,6 @@ menu_caldone_cb(int item)
   cal_done();
   draw_cal_status();
   menu_move_back();
-  menu_push_submenu(menu_cal);
   menu_push_submenu(menu_save);
 }
 
@@ -989,7 +988,8 @@ menu_select_touch(int i)
   selection = i;
   draw_menu();
   touch_wait_release();
-  menu_invoke(selection);
+  selection = -1;
+  menu_invoke(i);
 }
 
 void
@@ -1199,6 +1199,7 @@ keypad_apply_touch(void)
       selection = i;
       draw_keypad();
       touch_wait_release();
+      selection = -1;
       return TRUE;
     }
     i++;

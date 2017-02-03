@@ -1042,6 +1042,15 @@ void set_trace_channel(int t, int channel)
 
 void set_trace_scale(int t, float scale)
 {
+  switch (trace[t].type) {
+  case TRC_LOGMAG:
+    scale /= 10;
+    break;
+  case TRC_PHASE:
+    scale /= 90;
+    break;
+  }
+
   if (trace[t].scale != scale) {
     trace[t].scale = scale;
     force_set_markmap();

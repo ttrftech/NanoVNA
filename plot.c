@@ -481,7 +481,7 @@ trace_into_index(int x, int t, int i, float coeff[2])
   int y = 0;
   float v = 0;
   float refpos = 8 - trace[t].refpos;
-  float scale = trace[t].scale;
+  float scale = 1 / trace[t].scale;
   switch (trace[t].type) {
   case TRC_LOGMAG:
     v = refpos - logmag(coeff) * scale;
@@ -498,7 +498,7 @@ trace_into_index(int x, int t, int i, float coeff[2])
   case TRC_SMITH:
   //case TRC_ADMIT:
   case TRC_POLAR:
-    cartesian_scale(coeff[0], coeff[1], &x, &y, trace[t].scale);
+    cartesian_scale(coeff[0], coeff[1], &x, &y, scale);
     return INDEX(x +CELLOFFSETX, y, i);
     break;
   }

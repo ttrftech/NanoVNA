@@ -842,10 +842,15 @@ void menu_invoke(int item)
 #define KP_INF 17
 #define KP_DB 18
 
-const struct {
+typedef struct {
   uint16_t x, y;
   int8_t c;
-} keypads[] = {
+} keypads_t;
+
+const keypads_t *keypads;
+uint8_t keypads_last_index;
+
+const keypads_t keypads_freq[] = {
   { KP_X(1), KP_Y(3), KP_PERIOD },
   { KP_X(0), KP_Y(3), 0 },
   { KP_X(0), KP_Y(2), 1 },
@@ -864,7 +869,39 @@ const struct {
   { KP_X(2), KP_Y(3), KP_BS },
   { 0, 0, -1 }
 };
-#define KEYPADS_LAST_INDEX 15
+
+const keypads_t keypads_scale[] = {
+  { KP_X(1), KP_Y(3), KP_PERIOD },
+  { KP_X(0), KP_Y(3), 0 },
+  { KP_X(0), KP_Y(2), 1 },
+  { KP_X(1), KP_Y(2), 2 },
+  { KP_X(2), KP_Y(2), 3 },
+  { KP_X(0), KP_Y(1), 4 },
+  { KP_X(1), KP_Y(1), 5 },
+  { KP_X(2), KP_Y(1), 6 },
+  { KP_X(0), KP_Y(0), 7 },
+  { KP_X(1), KP_Y(0), 8 },
+  { KP_X(2), KP_Y(0), 9 },
+  { KP_X(3), KP_Y(3), KP_X1 },
+  { KP_X(2), KP_Y(3), KP_BS },
+  { 0, 0, -1 }
+};
+
+const keypads_t *keypads_mode_tbl[] = {
+  keypads_freq, // start
+  keypads_freq, // stop
+  keypads_freq, // center
+  keypads_freq, // span
+  keypads_freq, // cw freq
+  keypads_scale, // scale
+  keypads_scale, // respos
+  keypads_scale // electrical delay
+};
+
+const char *keypad_mode_label[] = {
+  "START", "STOP", "CENTER", "SPAN", "CW FREQ", "SCALE", "REFPOS", "EDELAY"
+};
+
 
 void
 draw_keypad(void)
@@ -879,10 +916,6 @@ draw_keypad(void)
     i++;
   }
 }
-
-const char *keypad_mode_label[] = {
-  "START", "STOP", "CENTER", "SPAN", "CW FREQ", "SCALE", "REFPOS", "EDELAY"
-};
 
 void
 draw_numeric_input(const char *buf)
@@ -1032,12 +1065,19 @@ ui_mode_keypad(int _keypad_mode)
   if (ui_mode == UI_KEYPAD) 
     return;
 
+  // keypads array
+  keypad_mode = _keypad_mode;
+  keypads = keypads_mode_tbl[_keypad_mode];
+  int i;
+  for (i = 0; keypads[i+1].c >= 0; i++)
+    ;
+  keypads_last_index = i;
+
   ui_mode = UI_KEYPAD;
   area_width = AREA_WIDTH_NORMAL - (64-8);
   area_height = HEIGHT;
   draw_menu();
   draw_keypad();
-  keypad_mode = _keypad_mode;
   draw_numeric_input("");
 }
 
@@ -1207,7 +1247,7 @@ ui_process_keypad(void)
         if (s & EVT_UP) {
           selection--;
           if (selection < 0)
-            selection = KEYPADS_LAST_INDEX;
+            selection = keypads_last_index;
           draw_keypad();
         }
         if (s & EVT_DOWN) {

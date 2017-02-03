@@ -1220,6 +1220,7 @@ static void cmd_touchcal(BaseSequentialStream *chp, int argc, char *argv[])
   //extern int16_t touch_cal[4];
   int i;
 
+  chMtxLock(&mutex);
   chprintf(chp, "first touch upper left, then lower right...");
   touch_cal_exec();
   chprintf(chp, "done\r\n");
@@ -1229,7 +1230,7 @@ static void cmd_touchcal(BaseSequentialStream *chp, int argc, char *argv[])
     chprintf(chp, "%d ", config.touch_cal[i]);
   }
   chprintf(chp, "\r\n");
-  touch_start_watchdog();
+  chMtxUnlock(&mutex);
 }
 
 static void cmd_touchtest(BaseSequentialStream *chp, int argc, char *argv[])

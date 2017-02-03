@@ -293,7 +293,7 @@ touch_cal_exec(void)
 
   do {
     status = touch_check();
-  } while(status != EVT_TOUCH_PRESSED);
+  } while(status != EVT_TOUCH_RELEASED);
   x1 = last_touch_x;
   y1 = last_touch_y;
 
@@ -303,7 +303,7 @@ touch_cal_exec(void)
 
   do {
     status = touch_check();
-  } while(status != EVT_TOUCH_PRESSED);
+  } while(status != EVT_TOUCH_RELEASED);
   x2 = last_touch_x;
   y2 = last_touch_y;
 
@@ -312,8 +312,8 @@ touch_cal_exec(void)
   config.touch_cal[2] = (x2 - x1) * 16 / 320;
   config.touch_cal[3] = (y2 - y1) * 16 / 240;
 
+  //redraw_all();
   touch_start_watchdog();
-  redraw_all();
 }
 
 void

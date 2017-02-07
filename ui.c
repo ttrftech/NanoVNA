@@ -451,13 +451,20 @@ menu_save_cb(int item)
 static void
 menu_trace_cb(int item)
 {
+  extern const menuitem_t menu_trace_op[];
+
   if (item < 0 || item >= 4)
     return;
-  trace[item].enabled = TRUE;
-  uistat.current_trace = item;
-  menu_move_back();
-  ui_mode_normal();
-  redraw_all();
+  if (trace[item].enabled) {
+    uistat.current_trace = item;
+    menu_push_submenu(menu_trace_op);
+  } else {
+    trace[item].enabled = TRUE;
+    uistat.current_trace = item;
+    menu_move_back();
+    ui_mode_normal();
+    redraw_all();
+  }
 }
 
 static void
@@ -522,15 +529,38 @@ choose_active_marker(void)
   active_marker = -1;
 }
 
+static void 
+choose_active_trace(void)
+{
+  int i;
+  for (i = 0; i < 4; i++)
+    if (trace[i].enabled) {
+      uistat.current_trace = i;
+      return;
+    }
+}
+
 static void
-menu_single_trace_cb(int item)
+menu_trace_op_cb(int item)
 {
   (void)item;
   int t;
-  for (t = 0; t < 4; t++)
-    if (uistat.current_trace != t) {
-      trace[t].enabled = FALSE;
+  switch (item) {
+  case 0: // OFF
+    if (uistat.current_trace >= 0) {
+      trace[uistat.current_trace].enabled = FALSE;
+      choose_active_trace();
     }
+    break;
+
+  case 1: // SINGLE
+    for (t = 0; t < 4; t++)
+      if (uistat.current_trace != t) {
+        trace[t].enabled = FALSE;
+      }
+    break;
+  }
+  menu_move_back();
   ui_mode_normal();
   redraw_all();
 }
@@ -644,12 +674,18 @@ const menuitem_t menu_cal[] = {
   { MT_NONE, NULL, NULL } // sentinel
 };
 
+const menuitem_t menu_trace_op[] = {
+  { MT_CALLBACK, "OFF", menu_trace_op_cb },
+  { MT_CALLBACK, "SINGLE", menu_trace_op_cb },
+  { MT_CANCEL, "BACK", NULL },
+  { MT_NONE, NULL, NULL } // sentinel
+};
+
 const menuitem_t menu_trace[] = {
   { MT_CALLBACK, "TRACE 0", menu_trace_cb },
   { MT_CALLBACK, "TRACE 1", menu_trace_cb },
   { MT_CALLBACK, "TRACE 2", menu_trace_cb },
   { MT_CALLBACK, "TRACE 3", menu_trace_cb },
-  { MT_CALLBACK, "\2SINGLE\0TRACE", menu_single_trace_cb },
   { MT_CANCEL, "BACK", NULL },
   { MT_NONE, NULL, NULL } // sentinel
 };

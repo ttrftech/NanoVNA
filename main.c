@@ -43,6 +43,7 @@ int32_t frequency = 10000000;
 uint8_t drive_strength = SI5351_CLK_DRIVE_STRENGTH_2MA;
 int8_t frequency_updated = FALSE;
 int8_t sweep_enabled = TRUE;
+int8_t cal_auto_interpolate = TRUE;
 
 static THD_WORKING_AREA(waThread1, 768);
 static THD_FUNCTION(Thread1, arg)
@@ -503,6 +504,9 @@ update_frequencies(void)
   for (i = 0; i < sweep_points; i++)
     frequencies[i] = start + span * i / (sweep_points - 1) * 100;
 
+  if (cal_auto_interpolate)
+    cal_interpolate(0);
+  
   frequency_updated = TRUE;
   // set grid layout
   update_grid();
@@ -897,6 +901,62 @@ cal_done(void)
   cal_status |= CALSTAT_APPLY;
 }
 
+void
+cal_interpolate(int s)
+{
+  const properties_t *src = caldata_ref(s);
+  int i, j;
+  int eterm;
+  if (src == NULL)
+    return;
+
+  ensure_edit_config();
+
+  // lower than start freq of src range
+  for (i = 0; i < sweep_points; i++) {
+    if (frequencies[i] >= src->_frequencies[0])
+      break;
+
+    // fill cal_data at head of src range
+    for (eterm = 0; eterm < 5; eterm++) {
+      cal_data[eterm][i][0] = src->_cal_data[eterm][0][0];
+      cal_data[eterm][i][1] = src->_cal_data[eterm][0][1];
+    }
+  }
+
+  j = 0;
+  for (; i < sweep_points; i++) {
+    uint32_t f = frequencies[i];
+
+    for (; j < sweep_points-1; j++) {
+      if (src->_frequencies[j] <= f && f < src->_frequencies[j+1]) {
+        // found f between freqs at j and j+1
+        float k1 = (float)(f - src->_frequencies[j])
+                        / (src->_frequencies[j+1] - src->_frequencies[j]);
+        float k0 = 1.0 - k1;
+        for (eterm = 0; eterm < 5; eterm++) {
+          cal_data[eterm][i][0] = src->_cal_data[eterm][j][0] * k0 + src->_cal_data[eterm][j+1][0] * k1;
+          cal_data[eterm][i][1] = src->_cal_data[eterm][j][1] * k0 + src->_cal_data[eterm][j+1][1] * k1;
+        }
+        break;
+      }
+    }
+    if (j == sweep_points-1)
+      break;
+  }
+  
+  // upper than end freq of src range
+  for (; i < sweep_points; i++) {
+    // fill cal_data at tail of src
+    for (eterm = 0; eterm < 5; eterm++) {
+      cal_data[eterm][i][0] = src->_cal_data[eterm][sweep_points-1][0];
+      cal_data[eterm][i][1] = src->_cal_data[eterm][sweep_points-1][1];
+    }
+  }
+    
+  cal_status |= src->_cal_status | CALSTAT_APPLY | CALSTAT_INTERPOLATED;
+}
+
 static void cmd_cal(BaseSequentialStream *chp, int argc, char *argv[])
 {
   const char *items[] = { "load", "open", "short", "thru", "isoln", "Es", "Er", "Et", "cal'ed" };
@@ -945,8 +1005,15 @@ static void cmd_cal(BaseSequentialStream *chp, int argc, char *argv[])
     chprintf(chp, "%f %f\r\n", cal_data[CAL_THRU][0][0], cal_data[CAL_THRU][0][1]);
     chprintf(chp, "%f %f\r\n", cal_data[CAL_ISOLN][0][0], cal_data[CAL_ISOLN][0][1]);
     return;
+  } else if (strcmp(cmd, "in") == 0) {
+    int s = 0;
+    if (argc > 1)
+      s = atoi(argv[1]);
+    cal_interpolate(s);
+    draw_cal_status();
+    return;
   } else {
-    chprintf(chp, "usage: cal [load|open|short|thru|isoln|done|reset|on|off]\r\n");
+    chprintf(chp, "usage: cal [load|open|short|thru|isoln|done|reset|on|off|in]\r\n");
     return;
   }
 }
@@ -1493,12 +1560,12 @@ int main(void)
    */
   dacStart(&DACD2, &dac1cfg1);
 
+  /* initial frequencies */
+  update_frequencies();
+
   /* restore frequencies and calibration properties from flash memory */
   if (config.default_loadcal >= 0)
     caldata_recall(config.default_loadcal);
-
-  /* initial frequencies */
-  update_frequencies();
 
   redraw();
 

@@ -41,6 +41,7 @@ extern float measured[2][101][2];
 #define CALSTAT_ED CALSTAT_LOAD
 #define CALSTAT_EX CALSTAT_ISOLN
 #define CALSTAT_APPLY (1<<8)
+#define CALSTAT_INTERPOLATED (1<<9)
 
 #define ETERM_ED 0 /* error term directivity */
 #define ETERM_ES 1 /* error term source match */
@@ -287,6 +288,7 @@ extern properties_t current_props;
 
 int caldata_save(int id);
 int caldata_recall(int id);
+const properties_t *caldata_ref(int id);
 
 int config_save(void);
 int config_recall(void);

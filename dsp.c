@@ -89,6 +89,7 @@ calculate_gamma(float gamma[2])
   float rs = acc_ref_s;
   float rc = acc_ref_c;
   float rr = rs * rs + rc * rc;
+  //rr = sqrtf(rr) * 1e8;
   float ss = acc_samp_s;
   float sc = acc_samp_c;
   gamma[0] =  (sc * rc + ss * rs) / rr;

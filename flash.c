@@ -195,6 +195,20 @@ caldata_recall(int id)
   return 0;
 }
 
+const properties_t *
+caldata_ref(int id)
+{
+  const properties_t *src;
+  if (id < 0 || id >= SAVEAREA_MAX)
+    return NULL;
+  src = (const properties_t*)saveareas[id];
+
+  if (src->magic != CONFIG_MAGIC)
+    return NULL;
+  if (checksum(src, sizeof(properties_t)) != 0)
+    return NULL;
+  return src;
+}
 
 const uint32_t save_config_prop_area_size = 0x8000;
 

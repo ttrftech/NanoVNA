@@ -9,7 +9,7 @@
 
 void cell_draw_marker_info(int m, int n, int w, int h);
 void draw_frequencies(void);
-void frequency_string(char *buf, size_t len, uint32_t freq);
+void frequency_string(char *buf, size_t len, int32_t freq);
 void markmap_all_markers(void);
 
 //#define GRID_COLOR 0x0863
@@ -1266,15 +1266,40 @@ cell_draw_marker_info(int m, int n, int w, int h)
   xpos += 16;
   frequency_string(buf, sizeof buf, frequencies[idx]);
   cell_drawstring_5x7(w, h, buf, xpos, ypos, 0xffff);
+
+  if (active_marker != previous_marker && markers[previous_marker].enabled) {
+    int idx0 = markers[previous_marker].index;
+    xpos = 192;
+    xpos -= m * CELLWIDTH -CELLOFFSETX;
+    ypos += 7;
+    chsnprintf(buf, sizeof buf, "\001%d:", previous_marker+1);
+    cell_drawstring_5x7(w, h, buf, xpos, ypos, 0xffff);
+    xpos += 16;
+    frequency_string(buf, sizeof buf, frequencies[idx] - frequencies[idx0]);
+    cell_drawstring_5x7(w, h, buf, xpos, ypos, 0xffff);
+  }
 }
 
 void
-frequency_string(char *buf, size_t len, uint32_t freq)
+frequency_string(char *buf, size_t len, int32_t freq)
 {
-  chsnprintf(buf, len, "%d.%03d %03d MHz",
+  if (freq < 0) {
+    freq = -freq;
+    *buf++ = '-';
+    len -= 1;
+  }
+  if (freq < 1000) {
+    chsnprintf(buf, len, "%d Hz", (int)freq);
+  } else if (freq < 1000000) {
+    chsnprintf(buf, len, "%d.%03d kHz",
+             (int)(freq / 1000),
+             (int)(freq % 1000));
+  } else {
+    chsnprintf(buf, len, "%d.%03d %03d MHz",
              (int)(freq / 1000000),
              (int)((freq / 1000) % 1000),
              (int)(freq % 1000));
+  }
 }
 
 void
@@ -1284,28 +1309,20 @@ draw_frequencies(void)
   if (frequency1 > 0) {
     int start = frequency0;
     int stop = frequency1;
-    chsnprintf(buf, 24, "START %d.%03d %03d MHz  ",
-               (int)(start / 1000000),
-               (int)((start / 1000) % 1000),
-               (int)(start % 1000));
+    strcpy(buf, "START ");
+    frequency_string(buf+6, 24-6, start);
     ili9341_drawstring_5x7(buf, OFFSETX, 233, 0xffff, 0x0000);
-    chsnprintf(buf, 24, "STOP %d.%03d %03d MHz",
-               (int)(stop / 1000000),
-               (int)((stop / 1000) % 1000),
-               (int)(stop % 1000));
+    strcpy(buf, "STOP ");
+    frequency_string(buf+5, 24-5, stop);
     ili9341_drawstring_5x7(buf, 205, 233, 0xffff, 0x0000);
   } else if (frequency1 < 0) {
     int fcenter = frequency0;
     int fspan = -frequency1;
-    chsnprintf(buf, 24, "CENTER %d.%03d %03d MHz  ",
-               (int)(fcenter / 1000000),
-               (int)((fcenter / 1000) % 1000),
-               (int)(fcenter % 1000));
+    strcpy(buf, "CENTER ");
+    frequency_string(buf+7, 24-7, fcenter);
     ili9341_drawstring_5x7(buf, OFFSETX, 233, 0xffff, 0x0000);
-    chsnprintf(buf, 24, "SPAN %d.%03d %03d MHz",
-               (int)(fspan / 1000000),
-               (int)((fspan / 1000) % 1000),
-               (int)(fspan % 1000));
+    strcpy(buf, "SPAN ");
+    frequency_string(buf+5, 24-5, fspan);
     ili9341_drawstring_5x7(buf, 205, 233, 0xffff, 0x0000);
   } else {
     int fcenter = frequency0;

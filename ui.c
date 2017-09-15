@@ -60,6 +60,8 @@ static uint32_t last_button_repeat_ticks;
 enum { OP_NONE = 0, OP_LEVER, OP_TOUCH };
 uint8_t operation_requested = OP_NONE;
 
+uint8_t previous_marker = 0;
+
 enum {
   UI_NORMAL, UI_MENU, UI_KEYPAD
 };
@@ -630,8 +632,11 @@ menu_marker_sel_cb(int item)
   if (item >= 0 && item < 4) {
     if (active_marker == item) {
       markers[active_marker].enabled = FALSE;
-      choose_active_marker();
+      active_marker = previous_marker;
+      previous_marker = 0;
+      //choose_active_marker();
     } else {
+      previous_marker = active_marker;
       active_marker = item;
       markers[active_marker].enabled = TRUE;
     }
@@ -641,6 +646,7 @@ menu_marker_sel_cb(int item)
     markers[1].enabled = FALSE;
     markers[2].enabled = FALSE;
     markers[3].enabled = FALSE;
+    previous_marker = 0;
     active_marker = -1;
   } 
 

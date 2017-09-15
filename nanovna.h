@@ -205,6 +205,7 @@ typedef struct {
 
 void plot_init(void);
 void update_grid(void);
+void clear_screen(void);
 void redraw(void);
 void redraw_all(void);
 void force_draw_cells(void);

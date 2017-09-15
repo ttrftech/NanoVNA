@@ -467,7 +467,7 @@ menu_trace_cb(int item)
     uistat.current_trace = item;
     menu_move_back();
     ui_mode_normal();
-    redraw_all();
+    //redraw_all();
   }
 }
 
@@ -493,7 +493,7 @@ menu_format_cb(int item)
   }
 
   ui_mode_normal();
-  redraw_all();
+  //redraw_all();
 }
 
 static void
@@ -566,7 +566,7 @@ menu_trace_op_cb(int item)
   }
   menu_move_back();
   ui_mode_normal();
-  redraw_all();
+  //redraw_all();
 }
 
 static void
@@ -623,7 +623,7 @@ menu_marker_op_cb(int item)
     break;
   }
   ui_mode_normal();
-  redraw_all();
+  //redraw_all();
 }
 
 static void
@@ -1325,8 +1325,9 @@ ui_process_keypad(void)
     }
   }
 
+  clear_screen();
   ui_mode_normal();
-  redraw_all();
+  //redraw_all();
   touch_start_watchdog();
 }
 

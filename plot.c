@@ -1379,6 +1379,12 @@ draw_cal_status(void)
 
 
 void
+clear_screen(void)
+{
+  ili9341_fill(0, 0, 320, 240, 0);
+}
+
+void
 redraw(void)
 {
   ili9341_fill(0, 0, 320, 240, 0);

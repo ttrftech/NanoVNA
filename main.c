@@ -34,6 +34,8 @@
 #define ENABLED_DUMP
 
 static void apply_error_term(void);
+static void apply_error_term_at(int i);
+
 void sweep(void);
 
 static MUTEX_DECL(mutex);
@@ -44,6 +46,7 @@ uint8_t drive_strength = SI5351_CLK_DRIVE_STRENGTH_2MA;
 int8_t frequency_updated = FALSE;
 int8_t sweep_enabled = TRUE;
 int8_t cal_auto_interpolate = TRUE;
+int8_t redraw_requested = FALSE;
 
 static THD_WORKING_AREA(waThread1, 768);
 static THD_FUNCTION(Thread1, arg)
@@ -474,15 +477,22 @@ void sweep(void)
 
     // blink LED while scanning
     palSetPad(GPIOC, GPIOC_LED);
-    ui_process();
 
+    if (cal_status & CALSTAT_APPLY)
+      apply_error_term_at(i);
+
+    redraw_requested = FALSE;
+    ui_process();
+    if (redraw_requested)
+      return; // return to redraw screen asap.
+      
     if (frequency_updated)
       goto rewind;
   }
   set_frequency(frequencies[0]);
 
-  if (cal_status & CALSTAT_APPLY)
-    apply_error_term();
+  //if (cal_status & CALSTAT_APPLY)
+  //  apply_error_term();
 }
 
 void
@@ -828,6 +838,35 @@ void apply_error_term(void)
     measured[1][i][0] = s21ar;
     measured[1][i][1] = s21ai;
   }
+}
+
+void apply_error_term_at(int i)
+{
+    // S11m' = S11m - Ed
+    // S11a = S11m' / (Er + Es S11m')
+    float s11mr = measured[0][i][0] - cal_data[ETERM_ED][i][0];
+    float s11mi = measured[0][i][1] - cal_data[ETERM_ED][i][1];
+    float err = cal_data[ETERM_ER][i][0] + s11mr * cal_data[ETERM_ES][i][0] - s11mi * cal_data[ETERM_ES][i][1];
+    float eri = cal_data[ETERM_ER][i][1] + s11mr * cal_data[ETERM_ES][i][1] + s11mi * cal_data[ETERM_ES][i][0];
+    float sq = err*err + eri*eri;
+    float s11ar = (s11mr * err + s11mi * eri) / sq;
+    float s11ai = (s11mi * err - s11mr * eri) / sq;
+    measured[0][i][0] = s11ar;
+    measured[0][i][1] = s11ai;
+
+    // CAUTION: Et is inversed for efficiency
+    // S21m' = S21m - Ex
+    // S21a = S21m' (1-EsS11a)Et
+    float s21mr = measured[1][i][0] - cal_data[ETERM_EX][i][0];
+    float s21mi = measured[1][i][1] - cal_data[ETERM_EX][i][1];
+    float esr = 1 - (cal_data[ETERM_ES][i][0] * s11ar - cal_data[ETERM_ES][i][1] * s11ai);
+    float esi = - (cal_data[ETERM_ES][i][1] * s11ar + cal_data[ETERM_ES][i][0] * s11ai);
+    float etr = esr * cal_data[ETERM_ET][i][0] - esi * cal_data[ETERM_ET][i][1];
+    float eti = esr * cal_data[ETERM_ET][i][1] + esi * cal_data[ETERM_ET][i][0];
+    float s21ar = s21mr * etr - s21mi * eti;
+    float s21ai = s21mi * etr + s21mr * eti;
+    measured[1][i][0] = s21ar;
+    measured[1][i][1] = s21ai;
 }
 
 void
@@ -1567,7 +1606,7 @@ int main(void)
   if (config.default_loadcal >= 0)
     caldata_recall(config.default_loadcal);
 
-  redraw();
+  redraw_frame();
 
   /*
    * I2S Initialize

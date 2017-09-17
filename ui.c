@@ -25,10 +25,7 @@
 #include <string.h>
 
 
-struct {
-  int digit; /* 0~5 */
-  int current_trace; /* 0..3 */
-} uistat;
+uistat_t uistat;
 
 
 
@@ -466,6 +463,7 @@ menu_trace_cb(int item)
     trace[item].enabled = TRUE;
     uistat.current_trace = item;
     menu_move_back();
+    request_to_redraw_grid();
     ui_mode_normal();
     //redraw_all();
   }
@@ -492,6 +490,7 @@ menu_format_cb(int item)
     break;
   }
 
+  request_to_redraw_grid();
   ui_mode_normal();
   //redraw_all();
 }
@@ -508,6 +507,7 @@ menu_format2_cb(int item)
     break;
   }
 
+  request_to_redraw_grid();
   ui_mode_normal();
 }
 
@@ -565,6 +565,7 @@ menu_trace_op_cb(int item)
     break;
   }
   menu_move_back();
+  request_to_redraw_grid();
   ui_mode_normal();
   //redraw_all();
 }
@@ -596,29 +597,50 @@ menu_stimulus_cb(int item)
   }
 }
 
+
+static int32_t
+get_marker_frequency(int marker)
+{
+  if (marker < 0 || marker >= 4)
+    return -1;
+  if (!markers[marker].enabled)
+    return -1;
+  return frequencies[markers[marker].index];
+}
+
 static void
 menu_marker_op_cb(int item)
 {
-  if (active_marker < 0)
-    return;
-  int idx = markers[active_marker].index;
-  int32_t marker_freq = frequencies[idx];
+  int32_t freq = get_marker_frequency(active_marker);
+  if (freq < 0)
+    return; // no active marker
 
   switch (item) {
   case 1: /* MARKER->START */
-    set_sweep_frequency(ST_START, marker_freq);
+    set_sweep_frequency(ST_START, freq);
     break;
   case 2: /* MARKER->STOP */
-    set_sweep_frequency(ST_STOP, marker_freq);
+    set_sweep_frequency(ST_STOP, freq);
     break;
   case 3: /* MARKER->CENTER */
-    set_sweep_frequency(ST_CENTER, marker_freq);
+    set_sweep_frequency(ST_CENTER, freq);
     break;
-  case 4: /* MARKER->SPAN */
+  case 4: /* MARKERS->SPAN */
     {
-      int32_t span = (frequency0 - marker_freq) * 2;
+      int32_t freq2 = get_marker_frequency(previous_marker);
+      if (freq2 < 0)
+        return;
+      if (freq > freq2) {
+        freq2 = freq;
+        freq = get_marker_frequency(previous_marker);
+      }
+      set_sweep_frequency(ST_START, freq);
+      set_sweep_frequency(ST_STOP, freq2);
+#if 0
+      int32_t span = (freq - freq2) * 2;
       if (span < 0) span = -span;
       set_sweep_frequency(ST_SPAN, span);
+#endif
     }
     break;
   }
@@ -1139,7 +1161,7 @@ ui_mode_normal(void)
   area_width = AREA_WIDTH_NORMAL;
   area_height = HEIGHT;
   erase_menu_buttons();
-  force_draw_cells();
+  request_to_draw_cells_behind_menu();
 }
 
 void
@@ -1325,7 +1347,8 @@ ui_process_keypad(void)
     }
   }
 
-  clear_screen();
+  redraw_frame();
+  request_to_redraw_grid();
   ui_mode_normal();
   //redraw_all();
   touch_start_watchdog();

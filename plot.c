@@ -627,22 +627,18 @@ trace_get_info(int t, char *buf, int len)
   const char *type = trc_type_name[trace[t].type];
   switch (trace[t].type) {
   case TRC_LOGMAG:
-    chsnprintf(buf, len, "CH%d %s %ddB/",
-               trace[t].channel, type, (int)(trace[t].scale*10));
+    chsnprintf(buf, len, "%s %ddB/", type, (int)(trace[t].scale*10));
     break;
   case TRC_PHASE:
-    chsnprintf(buf, len, "CH%d %s %d" S_DEGREE "/",
-               trace[t].channel, type, (int)(trace[t].scale*90));
+    chsnprintf(buf, len, "%s %d" S_DEGREE "/", type, (int)(trace[t].scale*90));
     break;
   case TRC_SMITH:
   //case TRC_ADMIT:
   case TRC_POLAR:
-    chsnprintf(buf, len, "CH%d %s %.1fFS",
-               trace[t].channel, type, trace[t].scale);
+    chsnprintf(buf, len, "%s %.1fFS", type, trace[t].scale);
     break;
   default:
-    chsnprintf(buf, len, "CH%d %s %.1f/",
-               trace[t].channel, type, trace[t].scale);
+    chsnprintf(buf, len, "%s %.1f/", type, trace[t].scale);
     break;
   }
 }
@@ -1193,17 +1189,19 @@ redraw_marker(int marker, int update_info)
 }
 
 void
-force_draw_cells(void)
+request_to_draw_cells_behind_menu(void)
 {
   int n, m;
   for (m = 7; m <= 9; m++)
     for (n = 0; n < (area_height+CELLHEIGHT-1) / CELLHEIGHT; n++)
-      draw_cell(m, n);
+      //draw_cell(m, n);
+      mark_map(m, n);
+  redraw_requested = TRUE;
 }
 
 
 void
-cell_drawchar_5x7(int w, int h, uint8_t ch, int x, int y, uint16_t fg)
+cell_drawchar_5x7(int w, int h, uint8_t ch, int x, int y, uint16_t fg, int invert)
 {
   uint16_t bits;
   int c, r;
@@ -1213,6 +1211,8 @@ cell_drawchar_5x7(int w, int h, uint8_t ch, int x, int y, uint16_t fg)
     if ((y + c) < 0 || (y + c) >= h)
       continue;
     bits = x5x7_bits[(ch * 7) + c];
+    if (invert)
+      bits = ~bits;
     for (r = 0; r < 5; r++) {
       if ((x+r) >= 0 && (x+r) < w && (0x8000 & bits)) 
         spi_buffer[(y+c)*w + (x+r)] = fg;
@@ -1225,7 +1225,17 @@ void
 cell_drawstring_5x7(int w, int h, char *str, int x, int y, uint16_t fg)
 {
   while (*str) {
-    cell_drawchar_5x7(w, h, *str, x, y, fg);
+    cell_drawchar_5x7(w, h, *str, x, y, fg, FALSE);
+    x += 5;
+    str++;
+  }
+}
+
+void
+cell_drawstring_invert_5x7(int w, int h, char *str, int x, int y, uint16_t fg, int invert)
+{
+  while (*str) {
+    cell_drawchar_5x7(w, h, *str, x, y, fg, invert);
     x += 5;
     str++;
   }
@@ -1249,14 +1259,18 @@ cell_draw_marker_info(int m, int n, int w, int h)
     int ypos = 1 + (j/2)*7;
     xpos -= m * CELLWIDTH -CELLOFFSETX;
     ypos -= n * CELLHEIGHT;
+    chsnprintf(buf, sizeof buf, "CH%d", trace[t].channel);
+    cell_drawstring_invert_5x7(w, h, buf, xpos, ypos, config.trace_color[t], t == uistat.current_trace);
+    xpos += 20;
     trace_get_info(t, buf, sizeof buf);
     cell_drawstring_5x7(w, h, buf, xpos, ypos, config.trace_color[t]);
-    xpos += 84;
+    xpos += 64;
     trace_get_value_string(t, buf, sizeof buf, measured[trace[t].channel][idx], frequencies[idx]);
     cell_drawstring_5x7(w, h, buf, xpos, ypos, config.trace_color[t]);
     j++;
   }    
 
+  // draw marker frequency
   int xpos = 192;
   int ypos = 1 + (j/2)*7;
   xpos -= m * CELLWIDTH -CELLOFFSETX;
@@ -1267,6 +1281,7 @@ cell_draw_marker_info(int m, int n, int w, int h)
   frequency_string(buf, sizeof buf, frequencies[idx]);
   cell_drawstring_5x7(w, h, buf, xpos, ypos, 0xffff);
 
+  // draw marker delta
   if (active_marker != previous_marker && markers[previous_marker].enabled) {
     int idx0 = markers[previous_marker].index;
     xpos = 192;
@@ -1311,18 +1326,22 @@ draw_frequencies(void)
     int stop = frequency1;
     strcpy(buf, "START ");
     frequency_string(buf+6, 24-6, start);
+    strcat(buf, "    ");
     ili9341_drawstring_5x7(buf, OFFSETX, 233, 0xffff, 0x0000);
     strcpy(buf, "STOP ");
     frequency_string(buf+5, 24-5, stop);
+    strcat(buf, "    ");
     ili9341_drawstring_5x7(buf, 205, 233, 0xffff, 0x0000);
   } else if (frequency1 < 0) {
     int fcenter = frequency0;
     int fspan = -frequency1;
     strcpy(buf, "CENTER ");
     frequency_string(buf+7, 24-7, fcenter);
+    strcat(buf, "    ");
     ili9341_drawstring_5x7(buf, OFFSETX, 233, 0xffff, 0x0000);
     strcpy(buf, "SPAN ");
     frequency_string(buf+5, 24-5, fspan);
+    strcat(buf, "    ");
     ili9341_drawstring_5x7(buf, 205, 233, 0xffff, 0x0000);
   } else {
     int fcenter = frequency0;
@@ -1377,28 +1396,28 @@ draw_cal_status(void)
   }
 }
 
-
 void
-clear_screen(void)
+request_to_redraw_grid(void)
 {
-  ili9341_fill(0, 0, 320, 240, 0);
+  force_set_markmap();
+  redraw_requested = TRUE;
 }
 
 void
-redraw(void)
+redraw_frame(void)
 {
   ili9341_fill(0, 0, 320, 240, 0);
   draw_frequencies();
   draw_cal_status();
 }
 
-void
+/*void
 redraw_all(void)
 {
   redraw();
   force_set_markmap();
   draw_all_cells();
-}
+  }*/
 
 void
 plot_init(void)

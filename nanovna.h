@@ -205,10 +205,10 @@ typedef struct {
 
 void plot_init(void);
 void update_grid(void);
-void clear_screen(void);
-void redraw(void);
-void redraw_all(void);
-void force_draw_cells(void);
+void request_to_redraw_grid(void);
+void redraw_frame(void);
+//void redraw_all(void);
+void request_to_draw_cells_behind_menu(void);
 void redraw_marker(int marker, int update_info);
 void trace_get_info(int t, char *buf, int len);
 void plot_into_index(float measured[2][101][2]);
@@ -221,6 +221,8 @@ void markmap_all_markers(void);
 
 void marker_position(int m, int t, int *x, int *y);
 int search_nearest_index(int x, int y, int t);
+
+extern int8_t redraw_requested;
 
 /*
  * ili9341.c
@@ -301,6 +303,14 @@ void clear_all_config_prop_data(void);
 /*
  * ui.c
  */
+
+typedef struct {
+  int digit; /* 0~5 */
+  int current_trace; /* 0..3 */
+} uistat_t;
+
+extern uistat_t uistat;
+  
 void ui_init(void);
 void ui_show(void);
 void ui_hide(void);

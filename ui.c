@@ -1422,6 +1422,9 @@ touch_pickup_marker(void)
           active_marker = m;
           redraw_marker(active_marker, TRUE);
         }
+        // select trace
+        uistat.current_trace = t;
+        
         // drag marker until release
         drag_marker(t, m);
         return TRUE;

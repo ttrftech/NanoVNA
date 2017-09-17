@@ -645,6 +645,7 @@ menu_marker_op_cb(int item)
     break;
   }
   ui_mode_normal();
+  draw_cal_status();
   //redraw_all();
 }
 
@@ -702,7 +703,6 @@ const menuitem_t menu_cal[] = {
   { MT_SUBMENU, "CALIBRATE", menu_calop },
   { MT_CALLBACK, "RESET", menu_cal2_cb },
   { MT_CALLBACK, "CORRECTION", menu_cal2_cb },
-  { MT_SUBMENU, "SAVE", menu_save },
   { MT_CANCEL, "BACK", NULL },
   { MT_NONE, NULL, NULL } // sentinel
 };
@@ -805,17 +805,23 @@ const menuitem_t menu_recall[] = {
   { MT_CALLBACK, "RECALL 2", menu_recall_cb },
   { MT_CALLBACK, "RECALL 3", menu_recall_cb },
   { MT_CALLBACK, "RECALL 4", menu_recall_cb },
-  { MT_SUBMENU, "SAVE", menu_save },
   { MT_CANCEL, "BACK", NULL },
   { MT_NONE, NULL, NULL } // sentinel
 };
 
+const menuitem_t menu_recall_save[] = {
+  { MT_SUBMENU, "RECALL", menu_recall },
+  { MT_SUBMENU, "SAVE", menu_save },
+  { MT_CANCEL, "BACK", NULL },
+  { MT_NONE, NULL, NULL } // sentinel
+};
+  
 const menuitem_t menu_top[] = {
   { MT_SUBMENU, "DISPLAY", menu_display },
   { MT_SUBMENU, "MARKER", menu_marker },
   { MT_SUBMENU, "STIMULUS", menu_stimulus },
   { MT_SUBMENU, "CAL", menu_cal },
-  { MT_SUBMENU, "\2RECALL\0/SAVE", menu_recall },
+  { MT_SUBMENU, "\2RECALL\0SAVE", menu_recall_save },
   { MT_CLOSE, "CLOSE", NULL },
   { MT_NONE, NULL, NULL } // sentinel
 };
@@ -1176,10 +1182,12 @@ ui_process_normal(void)
         if (active_marker >= 0 && markers[active_marker].enabled) {
           if ((status & EVT_DOWN) && markers[active_marker].index > 0) {
             markers[active_marker].index--;
+            markers[active_marker].frequency = frequencies[markers[active_marker].index];
             redraw_marker(active_marker, FALSE);
           }
           if ((status & EVT_UP) && markers[active_marker].index < 100) {
             markers[active_marker].index++;
+            markers[active_marker].frequency = frequencies[markers[active_marker].index];
             redraw_marker(active_marker, FALSE);
           }
         }
@@ -1384,6 +1392,7 @@ void drag_marker(int t, int m)
     index = search_nearest_index(touch_x, touch_y, t);
     if (index >= 0) {
       markers[m].index = index;
+      markers[m].frequency = frequencies[index];
       redraw_marker(m, TRUE);
     }
 
@@ -1419,6 +1428,7 @@ touch_pickup_marker(void)
 
       if (sq_distance(x - touch_x, y - touch_y) < 400) {
         if (active_marker != m) {
+          previous_marker = active_marker;
           active_marker = m;
           redraw_marker(active_marker, TRUE);
         }

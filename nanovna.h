@@ -195,9 +195,9 @@ void set_trace_refpos(int t, float refpos);
 // marker
 
 typedef struct {
-  int enabled;
-  //uint32_t frequency;
-  int index;
+  int8_t enabled;
+  int16_t index;
+  uint32_t frequency;
 } marker_t;
 
 //extern marker_t markers[4];

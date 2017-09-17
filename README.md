@@ -27,7 +27,7 @@ Otherwise, use toolchains included inside LPCxpresso. Like this.
 
     $ PATH=$PATH:/Applications/lpcxpresso_7.8.0_426/lpcxpresso/tools/bin
 
-## Build the firmware
+## Build firmware
 
 Fetch ChibiOS submodule into tree.
 
@@ -38,7 +38,7 @@ Just make in the top directory.
 
     $ make
 
-## Burn the firmware
+## Flash firmware
 
 Boot MCU in DFU mode. To do this, jumper BOOT0 pin at powering device.
 Then, burn firmware using dfu-util via USB.

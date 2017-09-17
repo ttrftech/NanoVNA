@@ -35,6 +35,7 @@
 
 static void apply_error_term(void);
 static void apply_error_term_at(int i);
+static void cal_interpolate(int s);
 
 void sweep(void);
 
@@ -400,7 +401,7 @@ properties_t current_props = {
     { 1, TRC_PHASE,  1, 0, 1.0, 4.0 }
   },
   /* markers[4] */ {
-  { 1, 30 }, { 0, 40 }, { 0, 60 }, { 0, 80 }
+    { 1, 30, 0 }, { 0, 40, 0 }, { 0, 60, 0 }, { 0, 80, 0 }
   },
   /* active_marker */      0,
   /* checksum */           0
@@ -495,6 +496,37 @@ void sweep(void)
   //  apply_error_term();
 }
 
+static void
+update_marker_index(void)
+{
+  int m;
+  int i;
+  for (m = 0; m < 4; m++) {
+    if (!markers[m].enabled)
+      continue;
+    uint32_t f = markers[m].frequency;
+    if (f < frequencies[0]) {
+      markers[m].index = 0;
+      markers[m].frequency = frequencies[0];
+    } else if (f >= frequencies[sweep_points-1]) {
+      markers[m].index = sweep_points-1;
+      markers[m].frequency = frequencies[sweep_points-1];
+    } else {
+      for (i = 0; i < sweep_points-1; i++) {
+        if (frequencies[i] <= f && f < frequencies[i+1]) {
+          uint32_t mid = (frequencies[i] + frequencies[i+1])/2;
+          if (f < mid) {
+            markers[m].index = i;
+          } else {
+            markers[m].index = i + 1;
+          }
+          break;
+        }
+      }      
+    }
+  }
+}
+
 void
 update_frequencies(void)
 {
@@ -516,6 +548,8 @@ update_frequencies(void)
 
   if (cal_auto_interpolate)
     cal_interpolate(0);
+
+  update_marker_index();
   
   frequency_updated = TRUE;
   // set grid layout
@@ -1287,7 +1321,7 @@ static void cmd_marker(BaseSequentialStream *chp, int argc, char *argv[])
   if (argc == 0) {
     for (t = 0; t < 4; t++) {
       if (markers[t].enabled) {
-        chprintf(chp, "%d %d\r\n", t+1, markers[t].index);
+        chprintf(chp, "%d %d %d\r\n", t+1, markers[t].index, markers[t].frequency);
       }
     }
     return;
@@ -1303,7 +1337,7 @@ static void cmd_marker(BaseSequentialStream *chp, int argc, char *argv[])
   if (t < 0 || t >= 4)
     goto usage;
   if (argc == 1) {
-    chprintf(chp, "%d %d\r\n", t+1, markers[t].index);
+    chprintf(chp, "%d %d %d\r\n", t+1, markers[t].index, frequency);
     active_marker = t;
     markers[t].enabled = TRUE;
     return;
@@ -1320,6 +1354,7 @@ static void cmd_marker(BaseSequentialStream *chp, int argc, char *argv[])
       markers[t].enabled = TRUE;
       int index = atoi(argv[1]);
       markers[t].index = index;
+      markers[t].frequency = frequencies[index];
       active_marker = t;
     }
   }

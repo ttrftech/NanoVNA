@@ -627,6 +627,8 @@ menu_marker_op_cb(int item)
     break;
   case 4: /* MARKERS->SPAN */
     {
+      if (previous_marker == active_marker)
+        return;
       int32_t freq2 = get_marker_frequency(previous_marker);
       if (freq2 < 0)
         return;
@@ -1259,7 +1261,7 @@ keypad_click(int key)
       set_trace_refpos(uistat.current_trace, value);
       break;
     case KM_EDELAY:
-      //set_trace_edelay(uistat.current_trace, value);
+      set_electrical_delay(value);
       break;
     }
 

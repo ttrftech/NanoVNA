@@ -387,12 +387,13 @@ config_t config = {
 
 properties_t current_props = {
   /* magic */   CONFIG_MAGIC,
-  /* frequency0 */   1000000,
-  /* frequency1 */ 300000000,
+  /* frequency0 */     50000, // start = 50kHz
+  /* frequency1 */ 300000000, // end = 300MHz
   /* sweep_points */     101,
   /* cal_status */         0,
   /* frequencies */       {},
   /* cal_data */          {},
+  /* electrical_delay */   0,
   /* trace[4] */
   {/*enable, type, channel, polar, scale*/
     { 1, TRC_LOGMAG, 0, 0, 1.0, 7.0 },
@@ -481,6 +482,9 @@ void sweep(void)
 
     if (cal_status & CALSTAT_APPLY)
       apply_error_term_at(i);
+
+    if (electrical_delay != 0)
+      apply_edelay_at(i);
 
     redraw_requested = FALSE;
     ui_process();
@@ -903,6 +907,21 @@ void apply_error_term_at(int i)
     measured[1][i][1] = s21ai;
 }
 
+void apply_edelay_at(int i)
+{
+  float w = 2 * M_PI * electrical_delay * frequencies[i] * 1E-12;
+  float s = sin(w);
+  float c = cos(w);
+  float real = measured[0][i][0];
+  float imag = measured[0][i][1];
+  measured[0][i][0] = real * c - imag * s;
+  measured[0][i][1] = imag * c + real * s;
+  real = measured[1][i][0];
+  imag = measured[1][i][1];
+  measured[1][i][0] = real * c - imag * s;
+  measured[1][i][1] = imag * c + real * s;
+}
+
 void
 cal_collect(int type)
 {
@@ -1315,6 +1334,27 @@ static void cmd_trace(BaseSequentialStream *chp, int argc, char *argv[])
   chprintf(chp, "trace {0|1|2|3|all} [logmag|phase|smith|linear|delay|swr|off] [src]\r\n");
 }
 
+
+void set_electrical_delay(float picoseconds)
+{
+  if (electrical_delay != picoseconds) {
+    electrical_delay = picoseconds;
+    force_set_markmap();
+  }
+}
+
+static void cmd_edelay(BaseSequentialStream *chp, int argc, char *argv[])
+{
+  if (argc == 0) {
+    chprintf(chp, "%f\r\n", electrical_delay);
+    return;
+  }
+  if (argc > 0) {
+    set_electrical_delay(my_atof(argv[0]));
+  }
+}
+
+
 static void cmd_marker(BaseSequentialStream *chp, int argc, char *argv[])
 {
   int t;
@@ -1563,6 +1603,7 @@ static const ShellCommand commands[] =
     { "recall", cmd_recall },
     { "trace", cmd_trace },
     { "marker", cmd_marker },
+    { "edelay", cmd_edelay },
     { NULL, NULL }
 };
 

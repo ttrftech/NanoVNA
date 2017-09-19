@@ -192,6 +192,8 @@ void set_trace_channel(int t, int channel);
 void set_trace_scale(int t, float scale);
 void set_trace_refpos(int t, float refpos);
 
+void set_electrical_delay(float picoseconds);
+
 // marker
 
 typedef struct {
@@ -264,7 +266,8 @@ typedef struct {
 
   uint32_t _frequencies[101];
   float _cal_data[5][101][2];
-
+  float _electrical_delay; // picoseconds
+  
   trace_t _trace[TRACES_MAX];
   marker_t _markers[4];
   int _active_marker;
@@ -272,7 +275,7 @@ typedef struct {
   int32_t checksum;
 } properties_t;
 
-#define CONFIG_MAGIC 0x436f4e45 /* 'CoNF' */
+#define CONFIG_MAGIC 0x434f4e45 /* 'CONF' */
 
 extern int16_t lastsaveid;
 extern properties_t *active_props;
@@ -286,6 +289,7 @@ extern uint8_t previous_marker;
 #define cal_status current_props._cal_status
 #define frequencies current_props._frequencies
 #define cal_data active_props->_cal_data
+#define electrical_delay active_props->_electrical_delay
 
 #define trace current_props._trace
 #define markers current_props._markers

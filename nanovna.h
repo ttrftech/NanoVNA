@@ -192,8 +192,11 @@ void set_trace_type(int t, int type);
 void set_trace_channel(int t, int channel);
 void set_trace_scale(int t, float scale);
 void set_trace_refpos(int t, float refpos);
+float get_trace_scale(int t);
+float get_trace_refpos(int t);
 
 void set_electrical_delay(float picoseconds);
+float get_electrical_delay(void);
 
 // marker
 
@@ -314,7 +317,7 @@ typedef struct {
   int8_t digit; /* 0~5 */
   int8_t digit_mode;
   int8_t current_trace; /* 0..3 */
-  uint32_t freq;
+  uint32_t value;
 } uistat_t;
 
 extern uistat_t uistat;

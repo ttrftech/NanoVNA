@@ -1240,12 +1240,27 @@ void set_trace_scale(int t, float scale)
   }
 }
 
+float get_trace_scale(int t)
+{
+  float n = 1;
+  if (trace[t].type == TRC_LOGMAG)
+    n = 10;
+  else if (trace[t].type == TRC_PHASE)
+    n = 90;
+  return trace[t].scale * n;
+}
+
 void set_trace_refpos(int t, float refpos)
 {
   if (trace[t].refpos != refpos) {
     trace[t].refpos = refpos;
     force_set_markmap();
   }
+}
+
+float get_trace_refpos(int t)
+{
+  return trace[t].refpos;
 }
 
 float
@@ -1365,6 +1380,11 @@ void set_electrical_delay(float picoseconds)
     electrical_delay = picoseconds;
     force_set_markmap();
   }
+}
+
+float get_electrical_delay(void)
+{
+  return electrical_delay;
 }
 
 static void cmd_edelay(BaseSequentialStream *chp, int argc, char *argv[])

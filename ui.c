@@ -599,8 +599,15 @@ menu_trace_op_cb(int item)
 static void
 menu_scale_cb(int item)
 {
-  ui_mode_numeric(KM_SCALE + item);
-  ui_process_keypad();
+  int status;
+  status = btn_wait_release();
+  if (status & EVT_BUTTON_DOWN_LONG) {
+    ui_mode_keypad(KM_SCALE + item);
+    ui_process_keypad();
+  } else {
+    ui_mode_numeric(KM_SCALE + item);
+    ui_process_numeric();
+  }
 }
 
 static void
@@ -1207,31 +1214,29 @@ fetch_numeric_target(void)
 {
   switch (keypad_mode) {
   case KM_START:
-    uistat.freq = get_sweep_frequency(ST_START);
+    uistat.value = get_sweep_frequency(ST_START);
     break;
   case KM_STOP:
-    uistat.freq = get_sweep_frequency(ST_STOP);
+    uistat.value = get_sweep_frequency(ST_STOP);
     break;
   case KM_CENTER:
-    uistat.freq = get_sweep_frequency(ST_CENTER);
+    uistat.value = get_sweep_frequency(ST_CENTER);
     break;
   case KM_SPAN:
-    uistat.freq = get_sweep_frequency(ST_SPAN);
+    uistat.value = get_sweep_frequency(ST_SPAN);
     break;
   case KM_CW:
-    uistat.freq = get_sweep_frequency(ST_CW);
+    uistat.value = get_sweep_frequency(ST_CW);
     break;
-#if 0
   case KM_SCALE:
-    uistat.freq = get_trace_scale(uistat.current_trace);
+    uistat.value = get_trace_scale(uistat.current_trace) * 1000;
     break;
   case KM_REFPOS:
-    uistat.freq = get_trace_refpos(uistat.current_trace);
+    uistat.value = get_trace_refpos(uistat.current_trace) * 1000;
     break;
   case KM_EDELAY:
-    uistat.freq = get_electrical_delay();
+    uistat.value = get_electrical_delay();
     break;
-#endif
   }
 }
 
@@ -1239,31 +1244,29 @@ void set_numeric_value(void)
 {
   switch (keypad_mode) {
   case KM_START:
-    set_sweep_frequency(ST_START, uistat.freq);
+    set_sweep_frequency(ST_START, uistat.value);
     break;
   case KM_STOP:
-    set_sweep_frequency(ST_STOP, uistat.freq);
+    set_sweep_frequency(ST_STOP, uistat.value);
     break;
   case KM_CENTER:
-    set_sweep_frequency(ST_CENTER, uistat.freq);
+    set_sweep_frequency(ST_CENTER, uistat.value);
     break;
   case KM_SPAN:
-    set_sweep_frequency(ST_SPAN, uistat.freq);
+    set_sweep_frequency(ST_SPAN, uistat.value);
     break;
   case KM_CW:
-    set_sweep_frequency(ST_CW, uistat.freq);
+    set_sweep_frequency(ST_CW, uistat.value);
     break;
-#if 0
   case KM_SCALE:
-    set_trace_scale(uistat.current_trace, xxx);
+    set_trace_scale(uistat.current_trace, uistat.value / 1000.0);
     break;
   case KM_REFPOS:
-    set_trace_refpos(uistat.current_trace, xxx);
+    set_trace_refpos(uistat.current_trace, uistat.value / 1000.0);
     break;
   case KM_EDELAY:
-    set_electrical_delay(xxx);
+    set_electrical_delay(uistat.value);
     break;
-#endif
   }
 }
 
@@ -1271,7 +1274,7 @@ void
 draw_numeric_area(void)
 {
   char buf[10];
-  chsnprintf(buf, sizeof buf, "%9d", uistat.freq);
+  chsnprintf(buf, sizeof buf, "%9d", uistat.value);
   draw_numeric_input(buf);
 }
 
@@ -1535,11 +1538,11 @@ ui_process_numeric(void)
           for (n = uistat.digit; n > 0; n--)
             step *= 10;
           if (status & EVT_DOWN) {
-            uistat.freq += step;
+            uistat.value += step;
             draw_numeric_area();
           }
           if (status & EVT_UP) {
-            uistat.freq -= step;
+            uistat.value -= step;
             draw_numeric_area();
           }
         }

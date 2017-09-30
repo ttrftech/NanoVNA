@@ -25,7 +25,10 @@
 #include <string.h>
 
 
-uistat_t uistat;
+uistat_t uistat = {
+ digit: 6,
+ current_trace: 0
+};
 
 
 
@@ -53,6 +56,7 @@ uistat_t uistat;
 static uint16_t last_button = 0b0000;
 static uint32_t last_button_down_ticks;
 static uint32_t last_button_repeat_ticks;
+static int8_t inhibit_until_release = FALSE;
 
 enum { OP_NONE = 0, OP_LEVER, OP_TOUCH };
 uint8_t operation_requested = OP_NONE;
@@ -60,7 +64,7 @@ uint8_t operation_requested = OP_NONE;
 uint8_t previous_marker = 0;
 
 enum {
-  UI_NORMAL, UI_MENU, UI_KEYPAD
+  UI_NORMAL, UI_MENU, UI_NUMERIC, UI_KEYPAD
 };
 
 enum {
@@ -102,8 +106,10 @@ int8_t kp_index = 0;
 
 void ui_mode_normal(void);
 void ui_mode_menu(void);
+void ui_mode_numeric(int _keypad_mode);
 void ui_mode_keypad(int _keypad_mode);
 void draw_menu(void);
+void leave_ui_mode(void);
 void erase_menu_buttons(void);
 void ui_process_keypad(void);
 
@@ -118,12 +124,17 @@ static int btn_check(void)
 	int status = 0;
     uint32_t ticks = chVTGetSystemTime();
 	if (changed & (1<<BIT_PUSH)) {
-      if ((cur_button & (1<<BIT_PUSH))
-          && ticks - last_button_down_ticks >= BUTTON_DEBOUNCE_TICKS) {
-        // button pushed
-        status |= EVT_BUTTON_SINGLE_CLICK;
+      if (ticks - last_button_down_ticks >= BUTTON_DEBOUNCE_TICKS) {
+        if (cur_button & (1<<BIT_PUSH)) {
+          // button released
+          status |= EVT_BUTTON_SINGLE_CLICK;
+          if (inhibit_until_release) {
+            status = 0;
+            inhibit_until_release = FALSE;
+          }
+        }
+        last_button_down_ticks = ticks;
       }
-      last_button_down_ticks = ticks;
 	}
 
     if (changed & (1<<BIT_UP1)) {
@@ -152,10 +163,24 @@ static int btn_wait_release(void)
     int changed = last_button ^ cur_button;
     uint32_t ticks = chVTGetSystemTime();
     int status = 0;
+
+    if (!inhibit_until_release) {
+      if ((cur_button & (1<<BIT_PUSH))
+          && ticks - last_button_down_ticks >= BUTTON_DOWN_LONG_TICKS) {
+        inhibit_until_release = TRUE;
+        return EVT_BUTTON_DOWN_LONG;
+      }
+      if ((changed & (1<<BIT_PUSH))
+          && ticks - last_button_down_ticks < BUTTON_DOWN_LONG_TICKS) {
+        return EVT_BUTTON_SINGLE_CLICK;
+      }
+    }
+
     if (changed) {
       // finished
       last_button = cur_button;
       last_button_down_ticks = ticks;
+      inhibit_until_release = FALSE;
       return 0;
     }
 
@@ -573,7 +598,7 @@ menu_trace_op_cb(int item)
 static void
 menu_scale_cb(int item)
 {
-  ui_mode_keypad(KM_SCALE + item);
+  ui_mode_numeric(KM_SCALE + item);
   ui_process_keypad();
 }
 
@@ -586,8 +611,8 @@ menu_stimulus_cb(int item)
   case 2: /* CENTER */
   case 3: /* SPAN */
   case 4: /* CW */
-    ui_mode_keypad(item);
-    ui_process_keypad();
+    ui_mode_numeric(item);
+    ui_process_numeric();
     break;
   case 5: /* PAUSE */
     toggle_sweep();
@@ -996,25 +1021,51 @@ draw_keypad(void)
 }
 
 void
+draw_numeric_area_frame(void)
+{
+  ili9341_fill(0, 208, 320, 32, 0xffff);
+  ili9341_drawstring_5x7(keypad_mode_label[keypad_mode], 10, 220, 0x0000, 0xffff);
+}
+
+void
 draw_numeric_input(const char *buf)
 {
   int i = 0;
-  ili9341_fill(0, 208, 320, 32, 0xffff);
-  ili9341_drawstring_5x7(keypad_mode_label[keypad_mode], 10, 220, 0x0000, 0xffff);
-  while (buf[i] && i < 10) {
-    int c;
-    if (buf[i] == '.')
+  int x = 64;
+  int focused = FALSE;
+  const uint16_t xsim[] = { 0, 0, 8, 0, 0, 8, 0, 0, 0, 0 };
+  for (i = 0; i < 10 && buf[i]; i++) {
+    uint16_t fg = 0x0000;
+    uint16_t bg = 0xffff;
+    int c = buf[i];
+    if (c == '.')
       c = KP_PERIOD;
-    else if (buf[i] == '-')
+    else if (c == '-')
       c = KP_MINUS;
-    else if (buf[i] >= '0' && buf[i] <= '9')
-      c = buf[i] - '0';
-    else {
-      i++;
-      continue;
+    else if (c >= '0' && c <= '9')
+      c = c - '0';
+    else
+      c = -1;
+
+    if (uistat.digit == 8-i) {
+      fg = RGB565(128,255,128);
+      focused = TRUE;
+      if (uistat.digit_mode)
+        bg = 0x0000;
     }
-    ili9341_drawfont(c, &NF20x24, i * 20 + 64, 208+4, 0x0000, 0xffff);
-    i++;
+
+    if (c >= 0)
+      ili9341_drawfont(c, &NF20x24, x, 208+4, fg, bg);
+    else if (focused)
+      ili9341_drawfont(0, &NF20x24, x, 208+4, fg, bg);
+    else
+      ili9341_fill(x, 208+4, 20, 24, bg);
+      
+    x += 20;
+    if (xsim[i] > 0) {
+      //ili9341_fill(x, 208+4, xsim[i], 20, bg);
+      x += xsim[i];
+    }
   }
 }
 
@@ -1124,6 +1175,102 @@ erase_menu_buttons(void)
 }
 
 void
+erase_numeric_input(void)
+{
+  uint16_t bg = 0;
+  ili9341_fill(0, 240-32, 320, 32, bg);
+}
+
+void
+leave_ui_mode()
+{
+  if (ui_mode == UI_MENU) {
+    request_to_draw_cells_behind_menu();
+    erase_menu_buttons();
+  } else if (ui_mode == UI_NUMERIC) {
+    request_to_draw_cells_behind_numeric_input();
+    erase_numeric_input();
+    draw_frequencies();
+  }
+}
+
+void
+fetch_numeric_target(void)
+{
+  uint32_t value;
+  switch (keypad_mode) {
+  case KM_START:
+    value = get_sweep_frequency(ST_START);
+    break;
+  case KM_STOP:
+    value = get_sweep_frequency(ST_STOP);
+    break;
+  case KM_CENTER:
+    value = get_sweep_frequency(ST_CENTER);
+    break;
+  case KM_SPAN:
+    value = get_sweep_frequency(ST_SPAN);
+    break;
+  case KM_CW:
+    value = get_sweep_frequency(ST_CW);
+    break;
+#if 0
+  case KM_SCALE:
+    value = get_trace_scale(uistat.current_trace);
+    break;
+  case KM_REFPOS:
+    value = get_trace_refpos(uistat.current_trace);
+    break;
+  case KM_EDELAY:
+    value = get_electrical_delay();
+    break;
+#endif
+  }
+  uistat.freq = value;
+}
+
+void set_numeric_value(void)
+{
+  switch (keypad_mode) {
+  case KM_START:
+    set_sweep_frequency(ST_START, uistat.freq);
+    break;
+  case KM_STOP:
+    set_sweep_frequency(ST_STOP, uistat.freq);
+    break;
+  case KM_CENTER:
+    set_sweep_frequency(ST_CENTER, uistat.freq);
+    break;
+  case KM_SPAN:
+    set_sweep_frequency(ST_SPAN, uistat.freq);
+    break;
+  case KM_CW:
+    set_sweep_frequency(ST_CW, uistat.freq);
+    break;
+#if 0
+  case KM_SCALE:
+    set_trace_scale(uistat.current_trace, xxx);
+    break;
+  case KM_REFPOS:
+    set_trace_refpos(uistat.current_trace, xxx);
+    break;
+  case KM_EDELAY:
+    set_electrical_delay(xxx);
+    break;
+#endif
+  }
+}
+
+void
+draw_numeric_area(void)
+{
+  char buf[10];
+  chsnprintf(buf, sizeof buf, "%9d", uistat.freq);
+  draw_numeric_input(buf);
+}
+
+
+void
 ui_mode_menu(void)
 {
   if (ui_mode == UI_MENU) 
@@ -1135,6 +1282,25 @@ ui_mode_menu(void)
   area_height = HEIGHT;
   ensure_selection();
   draw_menu();
+}
+
+void
+ui_mode_numeric(int _keypad_mode)
+{
+  if (ui_mode == UI_NUMERIC) 
+    return;
+
+  leave_ui_mode();
+  
+  // keypads array
+  keypad_mode = _keypad_mode;
+  ui_mode = UI_NUMERIC;
+  area_width = AREA_WIDTH_NORMAL;
+  area_height = 240-32;//HEIGHT - 32;
+
+  draw_numeric_area_frame();
+  fetch_numeric_target();
+  draw_numeric_area();
 }
 
 void
@@ -1153,7 +1319,7 @@ ui_mode_keypad(int _keypad_mode)
 
   ui_mode = UI_KEYPAD;
   area_width = AREA_WIDTH_NORMAL - (64-8);
-  area_height = HEIGHT;
+  area_height = HEIGHT - 32;
   draw_menu();
   draw_keypad();
   draw_numeric_input("");
@@ -1165,11 +1331,10 @@ ui_mode_normal(void)
   if (ui_mode == UI_NORMAL) 
     return;
 
-  ui_mode = UI_NORMAL;
   area_width = AREA_WIDTH_NORMAL;
   area_height = HEIGHT;
-  erase_menu_buttons();
-  request_to_draw_cells_behind_menu();
+  leave_ui_mode();
+  ui_mode = UI_NORMAL;
 }
 
 void
@@ -1312,6 +1477,59 @@ keypad_apply_touch(void)
   return -1;
 }
 
+
+void
+ui_process_numeric(void)
+{
+  int status = btn_check();
+  if (status != 0) {
+    if (status == EVT_BUTTON_SINGLE_CLICK) {
+      status = btn_wait_release();
+      if (uistat.digit_mode) {
+        if (status & (EVT_BUTTON_SINGLE_CLICK | EVT_BUTTON_DOWN_LONG)) {
+          uistat.digit_mode = FALSE;
+          draw_numeric_area();
+        }
+      } else {
+        if (status & EVT_BUTTON_DOWN_LONG) {
+          uistat.digit_mode = TRUE;
+          draw_numeric_area();
+        } else if (status & EVT_BUTTON_SINGLE_CLICK) {
+          set_numeric_value();
+          ui_mode_normal();
+        }
+      }
+    } else {
+      do {
+        if (uistat.digit_mode) {
+          if (status & EVT_DOWN && uistat.digit < 8) {
+            uistat.digit++;
+            draw_numeric_area();
+          }
+          if (status & EVT_UP && uistat.digit > 0) {
+            uistat.digit--;
+            draw_numeric_area();
+          }
+        } else {
+          int32_t step = 1;
+          int n;
+          for (n = uistat.digit; n > 0; n--)
+            step *= 10;
+          if (status & EVT_DOWN) {
+            uistat.freq += step;
+            draw_numeric_area();
+          }
+          if (status & EVT_UP) {
+            uistat.freq -= step;
+            draw_numeric_area();
+          }
+        }
+        status = btn_wait_release();
+      } while (status != 0);
+    }
+  }
+}
+
 void
 ui_process_keypad(void)
 {
@@ -1373,6 +1591,9 @@ ui_process_lever(void)
     break;    
   case UI_MENU:
     ui_process_menu();
+    break;    
+  case UI_NUMERIC:
+    ui_process_numeric();
     break;    
   case UI_KEYPAD:
     ui_process_keypad();

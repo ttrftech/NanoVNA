@@ -1193,8 +1193,17 @@ request_to_draw_cells_behind_menu(void)
 {
   int n, m;
   for (m = 7; m <= 9; m++)
-    for (n = 0; n < (area_height+CELLHEIGHT-1) / CELLHEIGHT; n++)
-      //draw_cell(m, n);
+    for (n = 0; n < 8; n++)
+      mark_map(m, n);
+  redraw_requested = TRUE;
+}
+
+void
+request_to_draw_cells_behind_numeric_input(void)
+{
+  int n, m;
+  for (m = 0; m <= 9; m++)
+    for (n = 6; n < 8; n++)
       mark_map(m, n);
   redraw_requested = TRUE;
 }

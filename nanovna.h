@@ -57,6 +57,7 @@ enum {
 };
 
 void set_sweep_frequency(int type, float frequency);
+uint32_t get_sweep_frequency(int type);
 
 float my_atof(const char *p);
 
@@ -211,6 +212,7 @@ void request_to_redraw_grid(void);
 void redraw_frame(void);
 //void redraw_all(void);
 void request_to_draw_cells_behind_menu(void);
+void request_to_draw_cells_behind_numeric_input(void);
 void redraw_marker(int marker, int update_info);
 void trace_get_info(int t, char *buf, int len);
 void plot_into_index(float measured[2][101][2]);
@@ -289,7 +291,7 @@ extern uint8_t previous_marker;
 #define cal_status current_props._cal_status
 #define frequencies current_props._frequencies
 #define cal_data active_props->_cal_data
-#define electrical_delay active_props->_electrical_delay
+#define electrical_delay current_props._electrical_delay
 
 #define trace current_props._trace
 #define markers current_props._markers
@@ -309,8 +311,10 @@ void clear_all_config_prop_data(void);
  */
 
 typedef struct {
-  int digit; /* 0~5 */
-  int current_trace; /* 0..3 */
+  int8_t digit; /* 0~5 */
+  int8_t digit_mode;
+  int8_t current_trace; /* 0..3 */
+  uint32_t freq;
 } uistat_t;
 
 extern uistat_t uistat;

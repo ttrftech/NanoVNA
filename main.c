@@ -676,30 +676,24 @@ set_sweep_frequency(int type, float frequency)
 uint32_t
 get_sweep_frequency(int type)
 {
-  uint32_t result = 0;
-  switch (type) {
-  case ST_START:
-    freq_mode_startstop();
-    result = frequency0;
-    break;
-  case ST_STOP:
-    freq_mode_startstop();
-    result = frequency1;
-    break;
-  case ST_CENTER:
-    freq_mode_centerspan();
-    result = frequency0;
-    break;
-  case ST_SPAN:
-    freq_mode_centerspan();
-    result = -frequency1;
-    break;
-  case ST_CW:
-    freq_mode_centerspan();
-    result = frequency0;
-    break;
+  if (frequency1 >= 0) {
+    switch (type) {
+    case ST_START: return frequency0;
+    case ST_STOP: return frequency1;
+    case ST_CENTER: return (frequency0 + frequency1)/2;
+    case ST_SPAN: return frequency1 - frequency0;
+    case ST_CW: return (frequency0 + frequency1)/2;
+    }
+  } else {
+    switch (type) {
+    case ST_START: return frequency0 + frequency1/2;
+    case ST_STOP: return frequency1 - frequency1/2;
+    case ST_CENTER: return frequency0;
+    case ST_SPAN: return -frequency1;
+    case ST_CW: return frequency0;
+    }
   }
-  return result;
+  return 0;
 }
 
 

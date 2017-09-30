@@ -112,6 +112,7 @@ void draw_menu(void);
 void leave_ui_mode(void);
 void erase_menu_buttons(void);
 void ui_process_keypad(void);
+void ui_process_numeric(void);
 
 static void menu_push_submenu(const menuitem_t *submenu);
 
@@ -605,14 +606,21 @@ menu_scale_cb(int item)
 static void
 menu_stimulus_cb(int item)
 {
+  int status;
   switch (item) {
   case 0: /* START */
   case 1: /* STOP */
   case 2: /* CENTER */
   case 3: /* SPAN */
   case 4: /* CW */
-    ui_mode_numeric(item);
-    ui_process_numeric();
+    status = btn_wait_release();
+    if (status & EVT_BUTTON_DOWN_LONG) {
+      ui_mode_keypad(item);
+      ui_process_keypad();
+    } else {
+      ui_mode_numeric(item);
+      ui_process_numeric();
+    }
     break;
   case 5: /* PAUSE */
     toggle_sweep();
@@ -1197,36 +1205,34 @@ leave_ui_mode()
 void
 fetch_numeric_target(void)
 {
-  uint32_t value;
   switch (keypad_mode) {
   case KM_START:
-    value = get_sweep_frequency(ST_START);
+    uistat.freq = get_sweep_frequency(ST_START);
     break;
   case KM_STOP:
-    value = get_sweep_frequency(ST_STOP);
+    uistat.freq = get_sweep_frequency(ST_STOP);
     break;
   case KM_CENTER:
-    value = get_sweep_frequency(ST_CENTER);
+    uistat.freq = get_sweep_frequency(ST_CENTER);
     break;
   case KM_SPAN:
-    value = get_sweep_frequency(ST_SPAN);
+    uistat.freq = get_sweep_frequency(ST_SPAN);
     break;
   case KM_CW:
-    value = get_sweep_frequency(ST_CW);
+    uistat.freq = get_sweep_frequency(ST_CW);
     break;
 #if 0
   case KM_SCALE:
-    value = get_trace_scale(uistat.current_trace);
+    uistat.freq = get_trace_scale(uistat.current_trace);
     break;
   case KM_REFPOS:
-    value = get_trace_refpos(uistat.current_trace);
+    uistat.freq = get_trace_refpos(uistat.current_trace);
     break;
   case KM_EDELAY:
-    value = get_electrical_delay();
+    uistat.freq = get_electrical_delay();
     break;
 #endif
   }
-  uistat.freq = value;
 }
 
 void set_numeric_value(void)
@@ -1322,6 +1328,7 @@ ui_mode_keypad(int _keypad_mode)
   area_height = HEIGHT - 32;
   draw_menu();
   draw_keypad();
+  draw_numeric_area_frame();
   draw_numeric_input("");
 }
 
@@ -1502,13 +1509,25 @@ ui_process_numeric(void)
     } else {
       do {
         if (uistat.digit_mode) {
-          if (status & EVT_DOWN && uistat.digit < 8) {
-            uistat.digit++;
-            draw_numeric_area();
+          if (status & EVT_DOWN) {
+            if (uistat.digit < 8) {
+              uistat.digit++;
+              draw_numeric_area();
+            } else {
+              // cancel operation
+              ui_mode_normal();
+              break;
+            }
           }
-          if (status & EVT_UP && uistat.digit > 0) {
-            uistat.digit--;
-            draw_numeric_area();
+          if (status & EVT_UP) {
+            if (uistat.digit > 0) {
+              uistat.digit--;
+              draw_numeric_area();
+            } else {
+              // cancel operation
+              ui_mode_normal();
+              break;
+            }
           }
         } else {
           int32_t step = 1;

@@ -687,7 +687,7 @@ get_sweep_frequency(int type)
   } else {
     switch (type) {
     case ST_START: return frequency0 + frequency1/2;
-    case ST_STOP: return frequency1 - frequency1/2;
+    case ST_STOP: return frequency0 - frequency1/2;
     case ST_CENTER: return frequency0;
     case ST_SPAN: return -frequency1;
     case ST_CW: return frequency0;

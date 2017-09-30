@@ -1487,11 +1487,41 @@ keypad_apply_touch(void)
   return -1;
 }
 
+void
+numeric_apply_touch(void)
+{
+  int touch_x, touch_y;
+  int i = 0;
+
+  touch_position(&touch_x, &touch_y);
+
+  if (touch_x < 64) {
+    ui_mode_normal();
+    return;
+  }
+  if (touch_y < 240-32) {
+    ui_mode_normal();
+    return;
+  }
+  if (touch_x > 64+9*20+8+8) {
+    ui_mode_keypad(keypad_mode);
+    ui_process_keypad();
+    return;
+  }
+  
+  i = 9 - (touch_x - 64) / 20;
+  if (uistat.digit != i) {
+    uistat.digit = i;
+    draw_numeric_area();
+  }
+  return;
+}
 
 void
 ui_process_numeric(void)
 {
   int status = btn_check();
+
   if (status != 0) {
     if (status == EVT_BUTTON_SINGLE_CLICK) {
       status = btn_wait_release();
@@ -1517,9 +1547,7 @@ ui_process_numeric(void)
               uistat.digit++;
               draw_numeric_area();
             } else {
-              // cancel operation
-              ui_mode_normal();
-              break;
+              goto exit;
             }
           }
           if (status & EVT_UP) {
@@ -1527,9 +1555,7 @@ ui_process_numeric(void)
               uistat.digit--;
               draw_numeric_area();
             } else {
-              // cancel operation
-              ui_mode_normal();
-              break;
+              goto exit;
             }
           }
         } else {
@@ -1550,6 +1576,12 @@ ui_process_numeric(void)
       } while (status != 0);
     }
   }
+
+  return;
+
+ exit:
+  // cancel operation
+  ui_mode_normal();
 }
 
 void
@@ -1715,6 +1747,10 @@ void ui_process_touch(void)
 
     case UI_MENU:
       menu_apply_touch();
+      break;
+
+    case UI_NUMERIC:
+      numeric_apply_touch();
       break;
     }
   }

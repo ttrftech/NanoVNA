@@ -1477,6 +1477,7 @@ static void cmd_touchtest(BaseSequentialStream *chp, int argc, char *argv[])
     touch_draw_test();
   } while(argc);
   chMtxUnlock(&mutex);
+  
 }
 
 static void cmd_frequencies(BaseSequentialStream *chp, int argc, char *argv[])
@@ -1540,9 +1541,12 @@ static void cmd_test(BaseSequentialStream *chp, int argc, char *argv[])
   //chprintf(chp, "adc: %d %d\r\n", touch_x, touch_y);
 #endif
 
-  int x, y;
-  touch_position(&x, &y);
-  chprintf(chp, "touch: %d %d\r\n", x, y);
+  while (argc > 1) {
+    int x, y;
+    touch_position(&x, &y);
+    chprintf(chp, "touch: %d %d\r\n", x, y);
+    chThdSleepMilliseconds(200);
+  }
 }
 
 static void cmd_gain(BaseSequentialStream *chp, int argc, char *argv[])

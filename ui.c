@@ -273,10 +273,10 @@ int touch_check(void)
     chThdSleepMilliseconds(10);
     int x = touch_measure_x();
     int y = touch_measure_y();
-    if (touch_status()) {
+    //if (touch_status()) {
       last_touch_x = x;
       last_touch_y = y;
-    }
+    //}
     touch_prepare_sense();
   }
 
@@ -1492,14 +1492,14 @@ numeric_apply_touch(void)
 {
   int touch_x, touch_y;
   int i = 0;
-
+  int step;
   touch_position(&touch_x, &touch_y);
 
   if (touch_x < 64) {
     ui_mode_normal();
     return;
   }
-  if (touch_y < 240-32) {
+  if (touch_y < 240-40) {
     ui_mode_normal();
     return;
   }
@@ -1508,12 +1508,24 @@ numeric_apply_touch(void)
     ui_process_keypad();
     return;
   }
+  if (touch_y < 240-20) {
+    step = 1;
+  } else {
+    step = -1;
+  }
   
   i = 9 - (touch_x - 64) / 20;
-  if (uistat.digit != i) {
-    uistat.digit = i;
-    draw_numeric_area();
-  }
+  uistat.digit = i;
+  uistat.digit_mode = TRUE;
+  for (i = uistat.digit; i > 0; i--)
+    step *= 10;
+  uistat.value += step;
+  draw_numeric_area();
+  
+  touch_wait_release();
+  uistat.digit_mode = FALSE;
+  draw_numeric_area();
+  
   return;
 }
 
@@ -1730,7 +1742,7 @@ void ui_process_touch(void)
   adc_stop(ADC1);
 
   int status = touch_check();
-  if (status == EVT_TOUCH_PRESSED) {
+  if (status == EVT_TOUCH_PRESSED || status == EVT_TOUCH_DOWN) {
     switch (ui_mode) {
     case UI_NORMAL:
 

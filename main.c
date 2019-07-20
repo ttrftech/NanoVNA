@@ -841,7 +841,6 @@ eterm_calc_er(int sign)
     }
     cal_data[ETERM_ER][i][0] = err;
     cal_data[ETERM_ER][i][1] = eri;
-    cal_data[ETERM_ES][i][1] = 0;
   }
   cal_status &= ~CALSTAT_SHORT;
   cal_status |= CALSTAT_ER;

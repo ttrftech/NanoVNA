@@ -17,10 +17,10 @@ This repository contains source of NanoVNA firmware.
 
 ## Prepare ARM Cross Tools
 
-Install cross tools and firmware updating tool.
+Install cross tools and firmware updating tool. gcc-4.9 is required.
 
-    $ brew tap PX4/px4
-    $ brew install gcc-arm-none-eabi
+    $ brew tap px4/px4
+    $ brew install gcc-arm-none-eabi-49
     $ brew instal dfu-util
 
 Otherwise, use toolchains included inside LPCxpresso. Like this.
@@ -74,12 +74,18 @@ Show usage.
 
 To use NanoVNA from Jupyter notebook, see [this page](/python/NanoVNA-example.ipynb).
 
+
+## Note
+
+Hardware design material is disclosed to prevent bad quality clone. Please let me know if you would have your own unit.
+
+
 ## Reference
 
 * [Schematics](/doc/nanovna-sch.pdf)
 * [PCB Photo](/doc/nanovna-pcb-photo.jpg)
 * [Block Diagram](/doc/nanovna-blockdiagram.png)
-* Kit available from http://ttrftech.tumblr.com/kit/nanovna
+* Kit available from https://ttrf.tk/kit/nanovna
 * Credit: @edy555
 
 [EOF]

@@ -313,7 +313,8 @@ typedef struct {
   int8_t digit; /* 0~5 */
   int8_t digit_mode;
   int8_t current_trace; /* 0..3 */
-  uint32_t value;
+  uint32_t value; // for editing at numeric input area
+  uint32_t previous_value;
 } uistat_t;
 
 extern uistat_t uistat;

@@ -602,11 +602,11 @@ menu_scale_cb(int item)
   int status;
   status = btn_wait_release();
   if (status & EVT_BUTTON_DOWN_LONG) {
-    ui_mode_keypad(KM_SCALE + item);
-    ui_process_keypad();
-  } else {
     ui_mode_numeric(KM_SCALE + item);
     ui_process_numeric();
+  } else {
+    ui_mode_keypad(KM_SCALE + item);
+    ui_process_keypad();
   }
 }
 
@@ -622,11 +622,11 @@ menu_stimulus_cb(int item)
   case 4: /* CW */
     status = btn_wait_release();
     if (status & EVT_BUTTON_DOWN_LONG) {
-      ui_mode_keypad(item);
-      ui_process_keypad();
-    } else {
       ui_mode_numeric(item);
       ui_process_numeric();
+    } else {
+      ui_mode_keypad(item);
+      ui_process_keypad();
     }
     break;
   case 5: /* PAUSE */
@@ -727,7 +727,7 @@ const menuitem_t menu_calop[] = {
   { MT_CALLBACK, "ISOLN", menu_calop_cb },
   { MT_CALLBACK, "THRU", menu_calop_cb },
   { MT_CALLBACK, "DONE", menu_caldone_cb },
-  { MT_CANCEL, "BACK", NULL },
+  { MT_CANCEL, "<- BACK", NULL },
   { MT_NONE, NULL, NULL } // sentinel
 };
 
@@ -737,7 +737,7 @@ const menuitem_t menu_save[] = {
   { MT_CALLBACK, "SAVE 2", menu_save_cb },
   { MT_CALLBACK, "SAVE 3", menu_save_cb },
   { MT_CALLBACK, "SAVE 4", menu_save_cb },
-  { MT_CANCEL, "BACK", NULL },
+  { MT_CANCEL, "<- BACK", NULL },
   { MT_NONE, NULL, NULL } // sentinel
 };
 
@@ -745,14 +745,14 @@ const menuitem_t menu_cal[] = {
   { MT_SUBMENU, "CALIBRATE", menu_calop },
   { MT_CALLBACK, "RESET", menu_cal2_cb },
   { MT_CALLBACK, "CORRECTION", menu_cal2_cb },
-  { MT_CANCEL, "BACK", NULL },
+  { MT_CANCEL, "<- BACK", NULL },
   { MT_NONE, NULL, NULL } // sentinel
 };
 
 const menuitem_t menu_trace_op[] = {
   { MT_CALLBACK, "OFF", menu_trace_op_cb },
   { MT_CALLBACK, "SINGLE", menu_trace_op_cb },
-  { MT_CANCEL, "BACK", NULL },
+  { MT_CANCEL, "<- BACK", NULL },
   { MT_NONE, NULL, NULL } // sentinel
 };
 
@@ -761,14 +761,14 @@ const menuitem_t menu_trace[] = {
   { MT_CALLBACK, "TRACE 1", menu_trace_cb },
   { MT_CALLBACK, "TRACE 2", menu_trace_cb },
   { MT_CALLBACK, "TRACE 3", menu_trace_cb },
-  { MT_CANCEL, "BACK", NULL },
+  { MT_CANCEL, "<- BACK", NULL },
   { MT_NONE, NULL, NULL } // sentinel
 };
 
 const menuitem_t menu_format2[] = {
   { MT_CALLBACK, "POLAR", menu_format2_cb },
   { MT_CALLBACK, "LINEAR", menu_format2_cb },
-  { MT_CANCEL, "BACK", NULL },
+  { MT_CANCEL, "<- BACK", NULL },
   { MT_NONE, NULL, NULL } // sentinel
 };
 
@@ -778,10 +778,10 @@ const menuitem_t menu_format[] = {
   { MT_CALLBACK, "DELAY", menu_format_cb },
   { MT_CALLBACK, "SMITH", menu_format_cb },
   { MT_CALLBACK, "SWR", menu_format_cb },
-  { MT_SUBMENU, "MORE", menu_format2 },  
+  { MT_SUBMENU, "-> MORE", menu_format2 },  
   //{ MT_CALLBACK, "LINEAR", menu_format_cb },
   //{ MT_CALLBACK, "SWR", menu_format_cb },
-  { MT_CANCEL, "BACK", NULL },
+  { MT_CANCEL, "<- BACK", NULL },
   { MT_NONE, NULL, NULL } // sentinel
 };
 
@@ -789,7 +789,7 @@ const menuitem_t menu_scale[] = {
   { MT_CALLBACK, "SCALE/DIV", menu_scale_cb },
   { MT_CALLBACK, "\2REFERENCE\0POSITION", menu_scale_cb },
   { MT_CALLBACK, "\2ELECTRICAL\0DELAY", menu_scale_cb },
-  { MT_CANCEL, "BACK", NULL },
+  { MT_CANCEL, "<- BACK", NULL },
   { MT_NONE, NULL, NULL } // sentinel
 };
 
@@ -797,7 +797,7 @@ const menuitem_t menu_scale[] = {
 const menuitem_t menu_channel[] = {
   { MT_CALLBACK, "\2CH0\0REFLECT", menu_channel_cb },
   { MT_CALLBACK, "\2CH1\0THROUGH", menu_channel_cb },
-  { MT_CANCEL, "BACK", NULL },
+  { MT_CANCEL, "<- BACK", NULL },
   { MT_NONE, NULL, NULL } // sentinel
 };
 
@@ -806,7 +806,7 @@ const menuitem_t menu_display[] = {
   { MT_SUBMENU, "FORMAT", menu_format },
   { MT_SUBMENU, "SCALE", menu_scale },
   { MT_SUBMENU, "CHANNEL", menu_channel },
-  { MT_CANCEL, "BACK", NULL },
+  { MT_CANCEL, "<- BACK", NULL },
   { MT_NONE, NULL, NULL } // sentinel
 };
 
@@ -817,7 +817,7 @@ const menuitem_t menu_stimulus[] = {
   { MT_CALLBACK, "SPAN", menu_stimulus_cb },
   { MT_CALLBACK, "CW FREQ", menu_stimulus_cb },
   { MT_CALLBACK, "\2PAUSE\0SWEEP", menu_stimulus_cb },
-  { MT_CANCEL, "BACK", NULL },
+  { MT_CANCEL, "<- BACK", NULL },
   { MT_NONE, NULL, NULL } // sentinel
 };
 
@@ -827,7 +827,7 @@ const menuitem_t menu_marker_sel[] = {
   { MT_CALLBACK, "MARKER 3", menu_marker_sel_cb },
   { MT_CALLBACK, "MARKER 4", menu_marker_sel_cb },
   { MT_CALLBACK, "ALL OFF", menu_marker_sel_cb },
-  { MT_CANCEL, "BACK", NULL },
+  { MT_CANCEL, "<- BACK", NULL },
   { MT_NONE, NULL, NULL } // sentinel
 };
 
@@ -837,7 +837,7 @@ const menuitem_t menu_marker[] = {
   { MT_CALLBACK, S_RARROW"STOP", menu_marker_op_cb },
   { MT_CALLBACK, S_RARROW"CENTER", menu_marker_op_cb },
   { MT_CALLBACK, S_RARROW"SPAN", menu_marker_op_cb },
-  { MT_CANCEL, "BACK", NULL },
+  { MT_CANCEL, "<- BACK", NULL },
   { MT_NONE, NULL, NULL } // sentinel
 };
 
@@ -847,14 +847,14 @@ const menuitem_t menu_recall[] = {
   { MT_CALLBACK, "RECALL 2", menu_recall_cb },
   { MT_CALLBACK, "RECALL 3", menu_recall_cb },
   { MT_CALLBACK, "RECALL 4", menu_recall_cb },
-  { MT_CANCEL, "BACK", NULL },
+  { MT_CANCEL, "<- BACK", NULL },
   { MT_NONE, NULL, NULL } // sentinel
 };
 
 const menuitem_t menu_recall_save[] = {
   { MT_SUBMENU, "RECALL", menu_recall },
   { MT_SUBMENU, "SAVE", menu_save },
-  { MT_CANCEL, "BACK", NULL },
+  { MT_CANCEL, "<- BACK", NULL },
   { MT_NONE, NULL, NULL } // sentinel
 };
   
@@ -959,6 +959,11 @@ void menu_invoke(int item)
 #define KP_BS 16
 #define KP_INF 17
 #define KP_DB 18
+#define KP_SPK 19
+#define KP_ANT 20
+#define KP_KEYPAD 21
+#define KP_N 22
+#define KP_P 23
 
 typedef struct {
   uint16_t x, y;
@@ -1005,6 +1010,24 @@ const keypads_t keypads_scale[] = {
   { 0, 0, -1 }
 };
 
+const keypads_t keypads_time[] = {
+  { KP_X(1), KP_Y(3), KP_PERIOD },
+  { KP_X(0), KP_Y(3), 0 },
+  { KP_X(0), KP_Y(2), 1 },
+  { KP_X(1), KP_Y(2), 2 },
+  { KP_X(2), KP_Y(2), 3 },
+  { KP_X(0), KP_Y(1), 4 },
+  { KP_X(1), KP_Y(1), 5 },
+  { KP_X(2), KP_Y(1), 6 },
+  { KP_X(0), KP_Y(0), 7 },
+  { KP_X(1), KP_Y(0), 8 },
+  { KP_X(2), KP_Y(0), 9 },
+  { KP_X(3), KP_Y(2), KP_N },
+  { KP_X(3), KP_Y(3), KP_P },
+  { KP_X(2), KP_Y(3), KP_BS },
+  { 0, 0, -1 }
+};
+
 const keypads_t *keypads_mode_tbl[] = {
   keypads_freq, // start
   keypads_freq, // stop
@@ -1013,13 +1036,12 @@ const keypads_t *keypads_mode_tbl[] = {
   keypads_freq, // cw freq
   keypads_scale, // scale
   keypads_scale, // respos
-  keypads_scale // electrical delay
+  keypads_time // electrical delay
 };
 
 const char *keypad_mode_label[] = {
   "START", "STOP", "CENTER", "SPAN", "CW FREQ", "SCALE", "REFPOS", "EDELAY"
 };
-
 
 void
 draw_keypad(void)
@@ -1040,6 +1062,7 @@ draw_numeric_area_frame(void)
 {
   ili9341_fill(0, 208, 320, 32, 0xffff);
   ili9341_drawstring_5x7(keypad_mode_label[keypad_mode], 10, 220, 0x0000, 0xffff);
+  ili9341_drawfont(KP_KEYPAD, &NF20x24, 300, 216, 0x0000, 0xffff);
 }
 
 void
@@ -1238,6 +1261,15 @@ fetch_numeric_target(void)
     uistat.value = get_electrical_delay();
     break;
   }
+  
+  {
+    uint32_t x = uistat.value;
+    int n = 0;
+    for (; x >= 10 && n < 9; n++)
+      x /= 10;
+    uistat.digit = n;
+  }
+  uistat.previous_value = uistat.value;
 }
 
 void set_numeric_value(void)
@@ -1401,16 +1433,19 @@ ui_process_menu(void)
   }
 }
 
-
 int
 keypad_click(int key) 
 {
   int c = keypads[key].c;
-  if (c >= KP_X1 && c <= KP_G) {
-    int n = c - KP_X1;
+  if ((c >= KP_X1 && c <= KP_G) || c == KP_N || c == KP_P) {
     float scale = 1;
-    while (n-- > 0)
+    if (c >= KP_X1 && c <= KP_G) {
+      int n = c - KP_X1;
+      while (n-- > 0)
+        scale *= 1000;
+    } else if (c == KP_N) {
       scale *= 1000;
+    }
     /* numeric input done */
     float value = my_atof(kp_buf) * scale;
     switch (keypad_mode) {
@@ -1436,7 +1471,7 @@ keypad_click(int key)
       set_trace_refpos(uistat.current_trace, value);
       break;
     case KM_EDELAY:
-      set_electrical_delay(value);
+      set_electrical_delay(value); // pico seconds
       break;
     }
 
@@ -1484,6 +1519,10 @@ keypad_apply_touch(void)
     }
     i++;
   }
+  if (touch_y > 48 * 4) {
+    // exit keypad mode
+    return -2;
+  }
   return -1;
 }
 
@@ -1491,15 +1530,9 @@ void
 numeric_apply_touch(void)
 {
   int touch_x, touch_y;
-  int i = 0;
-  int step;
   touch_position(&touch_x, &touch_y);
 
   if (touch_x < 64) {
-    ui_mode_normal();
-    return;
-  }
-  if (touch_y < 240-40) {
     ui_mode_normal();
     return;
   }
@@ -1508,18 +1541,23 @@ numeric_apply_touch(void)
     ui_process_keypad();
     return;
   }
-  if (touch_y < 240-20) {
-    step = 1;
+
+  if (touch_y > 240-40) {
+    int n = 9 - (touch_x - 64) / 20;
+    uistat.digit = n;
+    uistat.digit_mode = TRUE;
   } else {
-    step = -1;
+    int step, n;
+    if (touch_y < 100) {
+      step = 1;
+    } else {
+      step = -1;
+    }
+
+    for (n = uistat.digit; n > 0; n--)
+      step *= 10;
+    uistat.value += step;
   }
-  
-  i = 9 - (touch_x - 64) / 20;
-  uistat.digit = i;
-  uistat.digit_mode = TRUE;
-  for (i = uistat.digit; i > 0; i--)
-    step *= 10;
-  uistat.value += step;
   draw_numeric_area();
   
   touch_wait_release();
@@ -1637,7 +1675,11 @@ ui_process_keypad(void)
       int key = keypad_apply_touch();
       if (key >= 0 && keypad_click(key))
         /* exit loop on done or cancel */
-        break; 
+        break;
+      else if (key == -2) {
+        //xxx;
+        return;
+      }
     }
   }
 

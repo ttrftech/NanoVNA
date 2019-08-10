@@ -309,7 +309,10 @@ si5351_set_frequency_with_offset(int freq, int offset, uint8_t drive_strength)
   int delay = 3;
   uint32_t ofreq = freq + offset;
   uint32_t rdiv = SI5351_R_DIV_1;
-  if (freq > 300000000) {
+  if (freq > 900000000) {
+    freq /= 5;
+    ofreq /= 7;
+  } else if (freq > 300000000) {
     freq /= 3;
     ofreq /= 5;
   }

@@ -132,10 +132,14 @@ int set_frequency(int freq)
     if (frequency == freq)
       return delay;
 
+    if (freq > 900000000 && frequency <= 900000000) {
+      tlv320aic3204_set_gain(95, 95);
+      delay += 10;
+    } else
     if (freq > FREQ_HARMONICS && frequency <= FREQ_HARMONICS) {
       tlv320aic3204_set_gain(30, 30);
       delay += 10;
-    }
+    } else
     if (freq <= FREQ_HARMONICS && frequency > FREQ_HARMONICS) {
       tlv320aic3204_set_gain(0, 0);
       delay += 10;
@@ -531,6 +535,7 @@ void sweep(void)
       goto rewind;
   }
   set_frequency(frequencies[0]);
+  tlv320aic3204_select_in3(); // CH0:REFLECT
 
   //if (cal_status & CALSTAT_APPLY)
   //  apply_error_term();
@@ -623,7 +628,8 @@ freq_mode_centerspan(void)
 
 
 #define START_MIN 50000
-#define STOP_MAX 900000000
+//#define STOP_MAX 900000000
+#define STOP_MAX 1500000000
 
 void
 set_sweep_frequency(int type, float frequency)

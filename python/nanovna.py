@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 import serial
 import numpy as np
 import pylab as pl
@@ -46,7 +46,7 @@ class NanoVNA():
 
     def send_command(self, cmd):
         self.open()
-        self.serial.write(cmd)
+        self.serial.write(cmd.encode())
         self.serial.readline() # discard empty line
 
     def set_frequency(self, freq):
@@ -59,7 +59,7 @@ class NanoVNA():
 
     def set_gain(self, gain):
         if gain is not None:
-            self.send_command("gain %d\r" % gain)
+            self.send_command("gain %d %d\r" % (gain,gain))
 
     def set_offset(self, offset):
         if offset is not None:
@@ -76,7 +76,7 @@ class NanoVNA():
         result = ''
         line = ''
         while True:
-            c = self.serial.read()
+            c = self.serial.read().decode('utf-8')
             if c == chr(13):
                 next # ignore CR
             line += c
@@ -333,15 +333,15 @@ if __name__ == '__main__':
     nv.set_strength(opt.strength)
     if opt.rawwave is not None:
         samp = nv.fetch_buffer(buffer = opt.rawwave)
-        print len(samp)
+        print(len(samp))
         if opt.rawwave == 1 or opt.rawwave == 2:
             plot_sample0(samp)
-            print np.average(samp)
+            print(np.average(samp))
         else:
             plot_sample(samp[0::2], samp[1::2])
-            print np.average(samp[0::2])
-            print np.average(samp[1::2])
-            print np.average(samp[0::2] * samp[1::2])
+            print(np.average(samp[0::2]))
+            print(np.average(samp[1::2]))
+            print(np.average(samp[0::2] * samp[1::2]))
         pl.show()
         exit(0)
     plot = opt.phase or opt.plot or opt.vswr or opt.delay or opt.groupdelay or opt.smith or opt.unwrapphase or opt.polar

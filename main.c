@@ -136,8 +136,12 @@ int set_frequency(int freq)
       tlv320aic3204_set_gain(95, 95);
       delay += 10;
     } else
+    if (freq > 600000000 && frequency <= 600000000) {
+      tlv320aic3204_set_gain(60, 60);
+      delay += 10;
+    } else
     if (freq > FREQ_HARMONICS && frequency <= FREQ_HARMONICS) {
-      tlv320aic3204_set_gain(30, 30);
+      tlv320aic3204_set_gain(40, 40);
       delay += 10;
     } else
     if (freq <= FREQ_HARMONICS && frequency > FREQ_HARMONICS) {

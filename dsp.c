@@ -84,6 +84,7 @@ dsp_process(int16_t *capture, size_t length)
 void
 calculate_gamma(float gamma[2])
 {
+#if 1
   // calculate reflection coeff. by samp divide by ref
   float rs = acc_ref_s;
   float rc = acc_ref_c;
@@ -93,6 +94,13 @@ calculate_gamma(float gamma[2])
   float sc = acc_samp_c;
   gamma[0] =  (sc * rc + ss * rs) / rr;
   gamma[1] =  (ss * rc - sc * rs) / rr;
+#elif 0
+  gamma[0] =  acc_samp_s;
+  gamma[1] =  acc_samp_c;
+#else
+  gamma[0] =  acc_ref_s;
+  gamma[1] =  acc_ref_c;
+#endif
 }
 
 void

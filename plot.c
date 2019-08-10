@@ -571,7 +571,7 @@ gamma2imp(char *buf, int len, const float coeff[2], uint32_t frequency)
   // z = (gamma+1)/(gamma-1) * z0
   float z0 = 50;
   float d = z0 / ((1-coeff[0])*(1-coeff[0])+coeff[1]*coeff[1]);
-  float zr = ((1+coeff[0])*(1-coeff[0]) + coeff[1]*coeff[1]) * d;
+  float zr = ((1+coeff[0])*(1-coeff[0]) - coeff[1]*coeff[1]) * d;
   float zi = 2*coeff[1] * d;
   int n;
 

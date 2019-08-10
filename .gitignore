@@ -1,4 +1,11 @@
 *~
 .DS_Store
 .dep
-build
+build*
+test
+CMSIS
+python
+*.py
+*.ipynb
+TAGS
+.emacs-dirvars

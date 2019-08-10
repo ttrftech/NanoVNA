@@ -41,9 +41,12 @@ void sweep(void);
 
 static MUTEX_DECL(mutex);
 
+#define DRIVE_STRENGTH_AUTO (-1)
+#define FREQ_HARMONICS 300000000
+
 int32_t frequency_offset = 5000;
 int32_t frequency = 10000000;
-uint8_t drive_strength = SI5351_CLK_DRIVE_STRENGTH_2MA;
+int8_t drive_strength = DRIVE_STRENGTH_AUTO;
 int8_t frequency_updated = FALSE;
 int8_t sweep_enabled = TRUE;
 int8_t cal_auto_interpolate = TRUE;
@@ -126,10 +129,25 @@ static void cmd_reset(BaseSequentialStream *chp, int argc, char *argv[])
 int set_frequency(int freq)
 {
     int delay = 0;
-    if (frequency != freq) {
-      delay = si5351_set_frequency_with_offset(freq, frequency_offset, drive_strength);
-      frequency = freq;
+    if (frequency == freq)
+      return delay;
+
+    if (freq > FREQ_HARMONICS && frequency <= FREQ_HARMONICS) {
+      tlv320aic3204_set_gain(30, 30);
+      delay += 10;
     }
+    if (freq <= FREQ_HARMONICS && frequency > FREQ_HARMONICS) {
+      tlv320aic3204_set_gain(0, 0);
+      delay += 10;
+    }
+
+    int8_t ds = drive_strength;
+    if (ds == DRIVE_STRENGTH_AUTO) {
+      ds = freq > FREQ_HARMONICS ? SI5351_CLK_DRIVE_STRENGTH_8MA : SI5351_CLK_DRIVE_STRENGTH_2MA;
+    }
+    delay += si5351_set_frequency_with_offset(freq, frequency_offset, ds);
+
+    frequency = freq;
     return delay;
 }
 
@@ -160,7 +178,7 @@ static void cmd_freq(BaseSequentialStream *chp, int argc, char *argv[])
 static void cmd_power(BaseSequentialStream *chp, int argc, char *argv[])
 {
     if (argc != 1) {
-        chprintf(chp, "usage: power {0-3}\r\n");
+        chprintf(chp, "usage: power {0-3|-1}\r\n");
         return;
     }
     drive_strength = atoi(argv[0]);
@@ -458,10 +476,10 @@ void sweep(void)
 
  rewind:
   frequency_updated = FALSE;
-  delay = 3;
+  //delay = 3;
 
   for (i = 0; i < sweep_points; i++) {
-    set_frequency(frequencies[i]);
+    delay = set_frequency(frequencies[i]);
     tlv320aic3204_select_in3(); // CH0:REFLECT
     wait_dsp(delay);
 

@@ -81,6 +81,12 @@ void tlv320aic3204_init(void)
     I2CWrite(AIC3204_ADDR, 0x13, 0x82); /* Power up the MADC divider with value 2 */
     I2CWrite(AIC3204_ADDR, 0x14, 0x80); /* Program the OSR of ADC to 128 */
     I2CWrite(AIC3204_ADDR, 0x3d, 0x01); /* Select ADC PRB_R1 */
+#if 0
+  tlv320aic3204_adc_filter_enable(TRUE);
+  I2CWrite(AIC3204_ADDR, 0x00, 0x08); // Select page 8, Disable Adaptive Filtering for ADC
+  I2CWrite(AIC3204_ADDR, 0x01, 0x00);
+  tlv320aic3204_config_adc_filter();
+#endif
     I2CWrite(AIC3204_ADDR, 0x00, 0x01); /* Select Page 1 */
     I2CWrite(AIC3204_ADDR, 0x3d, 0x00); /* Select ADC PTM_R4 */
     I2CWrite(AIC3204_ADDR, 0x47, 0x32); /* Set MicPGA startup delay to 3.1ms */
@@ -97,8 +103,8 @@ void tlv320aic3204_init(void)
     I2CWrite(AIC3204_ADDR, 0x51, 0xc0); /* Power up Left and Right ADC Channels */
     I2CWrite(AIC3204_ADDR, 0x52, 0x00); /* Unmute Left and Right ADC Digital Volume Control */    
 
-    //tlv320aic3204_config_adc_filter();
-    //tlv320aic3204_adc_filter_enable(TRUE);
+    tlv320aic3204_config_adc_filter();
+    tlv320aic3204_adc_filter_enable(TRUE);
 }
 
 void tlv320aic3204_select_in3(void)

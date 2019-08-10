@@ -272,8 +272,6 @@ duplicate_buffer_to_dump(int16_t *p)
     p = samp_buf;
   else if (dump_selection == 2)
     p = ref_buf;
-  else if (dump_selection == 3)
-    p = refiq_buf;
   memcpy(dump_buffer, p, sizeof dump_buffer);
 }
 #endif

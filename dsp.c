@@ -22,9 +22,7 @@
 #include "nanovna.h"
 
 int16_t samp_buf[SAMPLE_LEN];
-int16_t ref_state[STATE_LEN];
 int16_t ref_buf[SAMPLE_LEN];
-int16_t refiq_buf[AUDIO_BUFFER_LEN];
 
 const int16_t sincos_tbl[48][2] = {
   { 10533,  31029 }, { 27246,  18205 }, { 32698,  -2143 }, { 24636, -21605 },
@@ -86,6 +84,7 @@ dsp_process(int16_t *capture, size_t length)
 void
 calculate_gamma(float gamma[2])
 {
+  // calculate reflection coeff. by samp divide by ref
   float rs = acc_ref_s;
   float rc = acc_ref_c;
   float rr = rs * rs + rc * rc;

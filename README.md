@@ -21,7 +21,7 @@ Install cross tools and firmware updating tool. gcc-4.9 is required.
 
     $ brew tap px4/px4
     $ brew install gcc-arm-none-eabi-49
-    $ brew instal dfu-util
+    $ brew install dfu-util
 
 Otherwise, use toolchains included inside LPCxpresso. Like this.
 
@@ -46,7 +46,7 @@ Then, burn firmware using dfu-util via USB.
     $ dfu-util -d 0483:df11 -a 0 -s 0x08000000:leave -D build/ch.bin
 
 
-# Control from PC
+## Control from PC
 
 NanoVNA is able to work standalone, but also be controlled via USB serial interface from PC. There are sample scripts in python directory.
 

@@ -13,6 +13,9 @@ jobs:
       - run:
           name: "Build Firmware"
           command: make
+      - run:
+          name: "Remove obj/lst files"
+          command: rm -r build/obj build/lst
       - store_artifacts:
-          path: build/ch.elf
-          destination: .
+          path: build
+          destination: build

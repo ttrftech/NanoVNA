@@ -437,10 +437,10 @@ static void
 menu_cal2_cb(int item)
 {
   switch (item) {
-  case 1: // RESET
+  case 2: // RESET
     cal_status = 0;
     break;
-  case 2: // CORRECTION
+  case 3: // CORRECTION
     // toggle applying correction
     if (cal_status)
       cal_status ^= CALSTAT_APPLY;
@@ -745,6 +745,7 @@ const menuitem_t menu_save[] = {
 
 const menuitem_t menu_cal[] = {
   { MT_SUBMENU, "CALIBRATE", menu_calop },
+  { MT_SUBMENU, "SAVE", menu_save },
   { MT_CALLBACK, "RESET", menu_cal2_cb },
   { MT_CALLBACK, "CORRECTION", menu_cal2_cb },
   { MT_CANCEL, S_LARROW" BACK", NULL },
@@ -853,19 +854,12 @@ const menuitem_t menu_recall[] = {
   { MT_NONE, NULL, NULL } // sentinel
 };
 
-const menuitem_t menu_recall_save[] = {
-  { MT_SUBMENU, "RECALL", menu_recall },
-  { MT_SUBMENU, "SAVE", menu_save },
-  { MT_CANCEL, S_LARROW" BACK", NULL },
-  { MT_NONE, NULL, NULL } // sentinel
-};
-  
 const menuitem_t menu_top[] = {
   { MT_SUBMENU, "DISPLAY", menu_display },
   { MT_SUBMENU, "MARKER", menu_marker },
   { MT_SUBMENU, "STIMULUS", menu_stimulus },
   { MT_SUBMENU, "CAL", menu_cal },
-  { MT_SUBMENU, "\2RECALL\0SAVE", menu_recall_save },
+  { MT_SUBMENU, "RECALL", menu_recall },
   { MT_CLOSE, "CLOSE", NULL },
   { MT_NONE, NULL, NULL } // sentinel
 };
@@ -1141,7 +1135,7 @@ menu_item_modify_attribute(const menuitem_t *menu, int item,
       *fg = 0xffff;
     }
   } else if (menu == menu_cal) {
-    if (item == 2 /* CORRECTION */ && (cal_status & CALSTAT_APPLY)) {
+    if (item == 3 /* CORRECTION */ && (cal_status & CALSTAT_APPLY)) {
       *bg = 0x0000;
       *fg = 0xffff;
     }

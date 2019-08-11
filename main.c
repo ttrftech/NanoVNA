@@ -567,7 +567,7 @@ update_frequencies(void)
     frequencies[i] = start + span * i / (sweep_points - 1) * 100;
 
   if (cal_auto_interpolate)
-    cal_interpolate(0);
+    cal_interpolate(lastsaveid);
 
   update_marker_index();
   

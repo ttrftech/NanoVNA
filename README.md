@@ -1,6 +1,11 @@
 NanoVNA - Very tiny handheld Vector Network Analyzer
 ==========================================================
 
+[![GitHub release](http://img.shields.io/github/release/ttrftech/NanoVNA.svg?style=flat)][release]
+[![CircleCI](https://circleci.com/gh/ttrftech/NanoVNA.svg?style=shield)](https://circleci.com/gh/ttrftech/NanoVNA)
+
+[release]: https://github.com/ttrftech/NanoVNA/releases
+
 <div align="center">
 <img src="/doc/nanovna.jpg" width="480px">
 </div>

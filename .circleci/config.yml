@@ -1,0 +1,13 @@
+version: 2
+jobs:
+  build:
+    docker:
+      - image: edy555/arm-embedded:4.9
+    steps:
+      - checkout
+      - run:
+          name: Build Firmware
+          command: make
+      - store_artifacts:
+          path: build/ch.elf
+          destination: .

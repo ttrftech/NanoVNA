@@ -444,6 +444,7 @@ menu_cal2_cb(int item)
     // toggle applying correction
     if (cal_status)
       cal_status ^= CALSTAT_APPLY;
+    draw_menu();
     break;
   }
   draw_cal_status();
@@ -631,8 +632,9 @@ menu_stimulus_cb(int item)
     break;
   case 5: /* PAUSE */
     toggle_sweep();
-    menu_move_back();
-    ui_mode_normal();
+    //menu_move_back();
+    //ui_mode_normal();
+    draw_menu();
     break;
   }
 }
@@ -1130,6 +1132,16 @@ menu_item_modify_attribute(const menuitem_t *menu, int item,
         || (item == 2 && (cal_status & CALSTAT_LOAD))
         || (item == 3 && (cal_status & CALSTAT_ISOLN))
         || (item == 4 && (cal_status & CALSTAT_THRU))) {
+      *bg = 0x0000;
+      *fg = 0xffff;
+    }
+  } else if (menu == menu_stimulus) {
+    if (item == 5 /* PAUSE */ && !sweep_enabled) {
+      *bg = 0x0000;
+      *fg = 0xffff;
+    }
+  } else if (menu == menu_cal) {
+    if (item == 2 /* CORRECTION */ && (cal_status & CALSTAT_APPLY)) {
       *bg = 0x0000;
       *fg = 0xffff;
     }

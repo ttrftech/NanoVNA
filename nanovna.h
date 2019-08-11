@@ -63,6 +63,8 @@ float my_atof(const char *p);
 
 void toggle_sweep(void);
 
+extern int8_t sweep_enabled;
+
 /*
  * ui.c
  */

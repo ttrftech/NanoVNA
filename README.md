@@ -19,10 +19,13 @@ enthusiast.
 
 This repository contains source of NanoVNA firmware.
 
-
 ## Prepare ARM Cross Tools
 
-Install cross tools and firmware updating tool. gcc-4.9 is required.
+Requires gcc-4.9 to build firmware from source code. (Not work gcc-5.4 or lator, because of SRAM shortage that those runtime use more SRAM)
+
+### MacOSX
+
+Install cross tools and firmware updating tool.
 
     $ brew tap px4/px4
     $ brew install gcc-arm-none-eabi-49
@@ -32,16 +35,38 @@ Otherwise, use toolchains included inside LPCxpresso. Like this.
 
     $ PATH=$PATH:/Applications/lpcxpresso_7.8.0_426/lpcxpresso/tools/bin
 
-## Build firmware
+### Linux (ubuntu)
 
-Fetch ChibiOS submodule into tree.
+Download arm cross tools from [here](https://launchpad.net/gcc-arm-embedded/4.9/4.9-2015-q3-update).
+This version is 32-bit binary, so additional lib32z1 and lib32ncurses5 package required.
 
-    $ cd nanovna
+    $ wget https://launchpad.net/gcc-arm-embedded/4.9/4.9-2015-q3-update/+download/gcc-arm-none-eabi-4_9-2015q3-20150921-linux.tar.bz2
+    $ sudo tar xfj -C /usr/local gcc-arm-none-eabi-4_9-2015q3-20150921-linux.tar.bz2
+    $ PATH=/usr/local/gcc-arm-none-eabi-4_9-2015q3/bin:$PATH
+    $ sudo apt install -y lib32z1 lib32ncurses5
+    $ sudo apt install -y dfu-util
+
+## Fetch source code
+
+Fetch source and submodule.
+
+    $ git clone https://github.com/ttrftech/NanoVNA.git
+    $ cd NanoVNA
     $ git submodule update --init --recursive
 
-Just make in the top directory.
+## Build
+
+Just make in the directory.
 
     $ make
+
+### Build firmware using docker
+
+If you can use docker, you can build firmware without installing arm toolchain.
+
+    $ cd NanoVNA
+    $ docker run -it --rm -v $(PWD):/work edy555/arm-embedded make
+
 
 ## Flash firmware
 

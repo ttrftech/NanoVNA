@@ -96,6 +96,20 @@ calculate_gamma(float gamma[2])
 }
 
 void
+fetch_amplitude(float gamma[2])
+{
+  gamma[0] =  acc_samp_s * 1e-9;
+  gamma[1] =  acc_samp_c * 1e-9;
+}
+
+void
+fetch_amplitude_ref(float gamma[2])
+{
+  gamma[0] =  acc_ref_s * 1e-9;
+  gamma[1] =  acc_ref_c * 1e-9;
+}
+
+void
 reset_dsp_accumerator(void)
 {
   acc_ref_s = 0;

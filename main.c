@@ -378,6 +378,26 @@ static void cmd_gamma(BaseSequentialStream *chp, int argc, char *argv[])
 }
 #endif
 
+static void (*sample_func)(float *gamma) = calculate_gamma;
+
+static void cmd_sample(BaseSequentialStream *chp, int argc, char *argv[])
+{
+  if (argc == 1) {
+    if (strcmp(argv[0], "ref") == 0) {
+      sample_func = fetch_amplitude_ref;
+      return;
+    } else if (strcmp(argv[0], "ampl") == 0) {
+      sample_func = fetch_amplitude;
+      return;
+    } else if (strcmp(argv[0], "gamma") == 0) {
+      sample_func = calculate_gamma;
+      return;
+    }
+  }
+  chprintf(chp, "usage: sample {gamma|ampl|ref}\r\n");
+}
+
+
 #if 0
 int32_t frequency0 = 1000000;
 int32_t frequency1 = 300000000;
@@ -485,13 +505,13 @@ void sweep(void)
     palClearPad(GPIOC, GPIOC_LED);
 
     /* calculate reflection coeficient */
-    calculate_gamma(measured[0][i]);
+    (*sample_func)(measured[0][i]);
 
     tlv320aic3204_select_in1(); // CH1:TRANSMISSION
     wait_dsp(delay);
 
     /* calculate transmission coeficient */
-    calculate_gamma(measured[1][i]);
+    (*sample_func)(measured[1][i]);
 
     // blink LED while scanning
     palSetPad(GPIOC, GPIOC_LED);
@@ -1653,6 +1673,7 @@ static const ShellCommand commands[] =
     { "stat", cmd_stat },
     { "gain", cmd_gain },
     { "power", cmd_power },
+    { "sample", cmd_sample },
     //{ "gamma", cmd_gamma },
     //{ "scan", cmd_scan },
     { "sweep", cmd_sweep },

@@ -546,11 +546,6 @@ void sweep(void)
     if (frequency_updated)
       goto rewind;
   }
-  set_frequency(frequencies[0]);
-  tlv320aic3204_select_in3(); // CH0:REFLECT
-
-  //if (cal_status & CALSTAT_APPLY)
-  //  apply_error_term();
 }
 
 static void

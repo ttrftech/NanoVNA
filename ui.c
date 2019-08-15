@@ -476,24 +476,38 @@ menu_save_cb(int item)
   }
 }
 
+static void 
+choose_active_trace(void)
+{
+  int i;
+  if (trace[uistat.current_trace].enabled)
+    // do nothing
+    return;
+  for (i = 0; i < 4; i++)
+    if (trace[i].enabled) {
+      uistat.current_trace = i;
+      return;
+    }
+}
+
 static void
 menu_trace_cb(int item)
 {
-  extern const menuitem_t menu_trace_op[];
-
   if (item < 0 || item >= 4)
     return;
   if (trace[item].enabled) {
-    uistat.current_trace = item;
-    menu_push_submenu(menu_trace_op);
+    trace[item].enabled = FALSE;
+    choose_active_trace();
   } else {
     trace[item].enabled = TRUE;
     uistat.current_trace = item;
-    menu_move_back();
-    request_to_redraw_grid();
-    ui_mode_normal();
+    //menu_move_back();
+    //request_to_redraw_grid();
+    //ui_mode_normal();
     //redraw_all();
   }
+  request_to_redraw_grid();
+  draw_menu();
 }
 
 static void
@@ -558,43 +572,6 @@ choose_active_marker(void)
       return;
     }
   active_marker = -1;
-}
-
-static void 
-choose_active_trace(void)
-{
-  int i;
-  for (i = 0; i < 4; i++)
-    if (trace[i].enabled) {
-      uistat.current_trace = i;
-      return;
-    }
-}
-
-static void
-menu_trace_op_cb(int item)
-{
-  (void)item;
-  int t;
-  switch (item) {
-  case 0: // OFF
-    if (uistat.current_trace >= 0) {
-      trace[uistat.current_trace].enabled = FALSE;
-      choose_active_trace();
-    }
-    break;
-
-  case 1: // SINGLE
-    for (t = 0; t < 4; t++)
-      if (uistat.current_trace != t) {
-        trace[t].enabled = FALSE;
-      }
-    break;
-  }
-  menu_move_back();
-  request_to_redraw_grid();
-  ui_mode_normal();
-  //redraw_all();
 }
 
 static void
@@ -748,13 +725,6 @@ const menuitem_t menu_cal[] = {
   { MT_SUBMENU, "SAVE", menu_save },
   { MT_CALLBACK, "RESET", menu_cal2_cb },
   { MT_CALLBACK, "CORRECTION", menu_cal2_cb },
-  { MT_CANCEL, S_LARROW" BACK", NULL },
-  { MT_NONE, NULL, NULL } // sentinel
-};
-
-const menuitem_t menu_trace_op[] = {
-  { MT_CALLBACK, "OFF", menu_trace_op_cb },
-  { MT_CALLBACK, "SINGLE", menu_trace_op_cb },
   { MT_CANCEL, S_LARROW" BACK", NULL },
   { MT_NONE, NULL, NULL } // sentinel
 };
@@ -1119,7 +1089,8 @@ menu_item_modify_attribute(const menuitem_t *menu, int item,
                            uint16_t *fg, uint16_t *bg)
 {
   if (menu == menu_trace && item < 4) {
-    *bg = config.trace_color[item];
+    if (trace[item].enabled)
+      *bg = config.trace_color[item];
   } else if (menu == menu_calop) {
     if ((item == 0 && (cal_status & CALSTAT_OPEN))
         || (item == 1 && (cal_status & CALSTAT_SHORT))

@@ -603,9 +603,6 @@ update_frequencies(void)
   for (i = 0; i < sweep_points; i++)
     frequencies[i] = start + span * i / (sweep_points - 1) * 100;
 
-  if (cal_auto_interpolate)
-    cal_interpolate(lastsaveid);
-
   update_marker_index();
   
   frequency_updated = TRUE;
@@ -647,6 +644,7 @@ void
 set_sweep_frequency(int type, float frequency)
 {
   int32_t freq = frequency;
+  bool cal_applied = cal_status & CALSTAT_APPLY;
   switch (type) {
   case ST_START:
     freq_mode_startstop();
@@ -725,6 +723,9 @@ set_sweep_frequency(int type, float frequency)
     }
     break;
   }
+
+  if (cal_auto_interpolate && cal_applied)
+    cal_interpolate(lastsaveid);
 }
 
 uint32_t

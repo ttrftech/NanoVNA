@@ -61,7 +61,7 @@ static int8_t inhibit_until_release = FALSE;
 enum { OP_NONE = 0, OP_LEVER, OP_TOUCH };
 uint8_t operation_requested = OP_NONE;
 
-uint8_t previous_marker = 0;
+int8_t previous_marker = -1;
 
 enum {
   UI_NORMAL, UI_MENU, UI_NUMERIC, UI_KEYPAD
@@ -673,21 +673,19 @@ menu_marker_op_cb(int item)
 static void
 menu_marker_sel_cb(int item)
 {
-  if (item >= 4)
-    return;
   if (item >= 0 && item < 4) {
-    if (markers[item].enabled) {
-      markers[item].enabled = FALSE;
-      if (item == active_marker) {
-        active_marker = previous_marker;
-        previous_marker = 0;
-      }
-      //choose_active_marker();
-    } else {
-      markers[item].enabled = TRUE;
+    // enable specified marker
+    markers[item].enabled = TRUE;
+    if (previous_marker != active_marker)
       previous_marker = active_marker;
-      active_marker = item;
-    }
+    active_marker = item;
+  } else if (item == 4) { /* all off */
+      markers[0].enabled = FALSE;
+      markers[1].enabled = FALSE;
+      markers[2].enabled = FALSE;
+      markers[3].enabled = FALSE;
+      previous_marker = -1;
+      active_marker = -1;      
   }
   if (active_marker >= 0)
     redraw_marker(active_marker, TRUE);
@@ -795,6 +793,7 @@ const menuitem_t menu_marker_sel[] = {
   { MT_CALLBACK, "MARKER 2", menu_marker_sel_cb },
   { MT_CALLBACK, "MARKER 3", menu_marker_sel_cb },
   { MT_CALLBACK, "MARKER 4", menu_marker_sel_cb },
+  { MT_CALLBACK, "ALL OFF", menu_marker_sel_cb },
   { MT_CANCEL, S_LARROW" BACK", NULL },
   { MT_NONE, NULL, NULL } // sentinel
 };

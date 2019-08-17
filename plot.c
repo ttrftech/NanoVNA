@@ -1291,7 +1291,7 @@ cell_draw_marker_info(int m, int n, int w, int h)
   cell_drawstring_5x7(w, h, buf, xpos, ypos, 0xffff);
 
   // draw marker delta
-  if (active_marker != previous_marker && markers[previous_marker].enabled) {
+  if (previous_marker >= 0 && active_marker != previous_marker && markers[previous_marker].enabled) {
     int idx0 = markers[previous_marker].index;
     xpos = 192;
     xpos -= m * CELLWIDTH -CELLOFFSETX;

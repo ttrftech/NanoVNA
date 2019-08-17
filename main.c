@@ -1663,14 +1663,23 @@ static void cmd_stat(BaseSequentialStream *chp, int argc, char *argv[])
 }
 
 
+#ifndef VERSION
+#define VERSION "unknown"
+#endif
 
-
+static void cmd_version(BaseSequentialStream *chp, int argc, char *argv[])
+{
+  (void)argc;
+  (void)argv;
+  chprintf(chp, VERSION "\r\n");
+}
 
 #define SHELL_WA_SIZE THD_WORKING_AREA_SIZE(256)
 static THD_WORKING_AREA(waThread2, SHELL_WA_SIZE);
 
 static const ShellCommand commands[] =
 {
+    { "version", cmd_version },
     { "reset", cmd_reset },
     { "freq", cmd_freq },
     { "offset", cmd_offset },

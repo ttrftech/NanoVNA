@@ -53,6 +53,11 @@ endif
 # Build global options
 ##############################################################################
 
+ifeq ($(VERSION),)
+  #VERSION="unknown"
+  VERSION="$(shell git describe --tags)"
+endif
+
 ##############################################################################
 # Architecture or project specific options
 #
@@ -200,7 +205,7 @@ CPPWARN = -Wall -Wextra -Wundef
 #
 
 # List all user C define here, like -D_DEBUG=1
-UDEFS = -DSHELL_CMD_TEST_ENABLED=FALSE -DSHELL_CMD_MEM_ENABLED=FALSE -DARM_MATH_CM0
+UDEFS = -DSHELL_CMD_TEST_ENABLED=FALSE -DSHELL_CMD_MEM_ENABLED=FALSE -DARM_MATH_CM0 -DVERSION=\"$(VERSION)\"
 
 # Define ASM defines here
 UADEFS =

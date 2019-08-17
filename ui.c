@@ -673,30 +673,26 @@ menu_marker_op_cb(int item)
 static void
 menu_marker_sel_cb(int item)
 {
+  if (item >= 4)
+    return;
   if (item >= 0 && item < 4) {
-    if (active_marker == item) {
-      markers[active_marker].enabled = FALSE;
-      active_marker = previous_marker;
-      previous_marker = 0;
+    if (markers[item].enabled) {
+      markers[item].enabled = FALSE;
+      if (item == active_marker) {
+        active_marker = previous_marker;
+        previous_marker = 0;
+      }
       //choose_active_marker();
     } else {
+      markers[item].enabled = TRUE;
       previous_marker = active_marker;
       active_marker = item;
-      markers[active_marker].enabled = TRUE;
     }
-  } else if (item == 4) {
-    // ALL OFF
-    markers[0].enabled = FALSE;
-    markers[1].enabled = FALSE;
-    markers[2].enabled = FALSE;
-    markers[3].enabled = FALSE;
-    previous_marker = 0;
-    active_marker = -1;
-  } 
-
+  }
   if (active_marker >= 0)
     redraw_marker(active_marker, TRUE);
-  ui_mode_normal();
+  draw_menu();
+  //ui_mode_normal();
 }
 
 const menuitem_t menu_calop[] = {
@@ -799,7 +795,6 @@ const menuitem_t menu_marker_sel[] = {
   { MT_CALLBACK, "MARKER 2", menu_marker_sel_cb },
   { MT_CALLBACK, "MARKER 3", menu_marker_sel_cb },
   { MT_CALLBACK, "MARKER 4", menu_marker_sel_cb },
-  { MT_CALLBACK, "ALL OFF", menu_marker_sel_cb },
   { MT_CANCEL, S_LARROW" BACK", NULL },
   { MT_NONE, NULL, NULL } // sentinel
 };
@@ -1091,6 +1086,11 @@ menu_item_modify_attribute(const menuitem_t *menu, int item,
   if (menu == menu_trace && item < 4) {
     if (trace[item].enabled)
       *bg = config.trace_color[item];
+  } else if (menu == menu_marker_sel && item < 4) {
+    if (markers[item].enabled) {
+      *bg = 0x0000;
+      *fg = 0xffff;
+    }   
   } else if (menu == menu_calop) {
     if ((item == 0 && (cal_status & CALSTAT_OPEN))
         || (item == 1 && (cal_status & CALSTAT_SHORT))

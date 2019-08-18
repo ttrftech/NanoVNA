@@ -18,18 +18,43 @@ jobs:
           command: rm -r build/obj build/lst
       - run:
           name: "Archive artifacts"
-          command: zip NanoVNA-${CIRCLE_TAG}.zip build/*
+          command: mkdir archives && zip archives/nanovna-firmware-${CIRCLE_TAG}.zip build/*.bin build/*.hex build/*.elf
       - store_artifacts:
           path: build
           destination: build
+      - store_artifacts:
+          path: archives
+          destination: .
+      - persist_to_workspace:
+          root: archives
+          paths:
+            - .
   publish-github-release:
     docker:
       - image: circleci/golang:1.8
     steps:
       - attach_workspace:
-          at: ./artifacts
+          at: .
       - run:
           name: "Publish Release on GitHub"
           command: |
             go get github.com/tcnksm/ghr
-            ghr -t ${GITHUB_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} -delete ${CIRCLE_TAG} ./artifacts/NanoVNA-${CIRCLE_TAG}.zip
+            ghr -t ${GITHUB_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} -delete ${CIRCLE_TAG} nanovna-firmware-${CIRCLE_TAG}.zip
+workflows:
+  version: 2
+  main:
+    jobs:
+      - build:
+          filters:
+            tags:
+              # 1.0.0
+              only: /^\d+\.\d+\.\d+$/
+      - publish-github-release:
+          requires:
+            - build
+          filters:
+            branches:
+              ignore: /.*/
+            tags:
+              # 1.0.0
+              only: /^\d+\.\d+\.\d+$/

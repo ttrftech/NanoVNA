@@ -1667,11 +1667,13 @@ static void cmd_stat(BaseSequentialStream *chp, int argc, char *argv[])
 #define VERSION "unknown"
 #endif
 
+const char NANOVNA_VERSION[] = VERSION;
+
 static void cmd_version(BaseSequentialStream *chp, int argc, char *argv[])
 {
   (void)argc;
   (void)argv;
-  chprintf(chp, VERSION "\r\n");
+  chprintf(chp, "%s\r\n", NANOVNA_VERSION);
 }
 
 #define SHELL_WA_SIZE THD_WORKING_AREA_SIZE(256)

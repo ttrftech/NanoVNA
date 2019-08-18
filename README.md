@@ -78,31 +78,7 @@ Then, burn firmware using dfu-util via USB.
 
 ## Control from PC
 
-NanoVNA is able to work standalone, but also be controlled via USB serial interface from PC. There are sample scripts in python directory.
-
-Preparation.
-
-    $ pip install numpy
-    $ pip install scikit-rf   
-
-Plot reflection LOGMAG.
-
-    $ cd python
-    $ ./nanovna.py -p
-
-Plot transmission LOGMAG.
-
-    $ ./nanovna.py -p -P 1
-
-Plot smithchart.
-
-    $ ./nanovna.py -s
-
-Show usage.
-
-    $ ./nanovna.py -h
-
-To use NanoVNA from Jupyter notebook, see [this page](/python/NanoVNA-example.ipynb).
+See [python directory](/python/README.md).
 
 
 ## Note

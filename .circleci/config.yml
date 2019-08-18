@@ -12,10 +12,24 @@ jobs:
             git submodule update --remote
       - run:
           name: "Build Firmware"
-          command: make
+          command: make VERSION=\"${CIRCLE_TAG}\"
       - run:
           name: "Remove obj/lst files"
           command: rm -r build/obj build/lst
+      - run:
+          name: "Archive artifacts"
+          command: zip NanoVNA-${CIRCLE_TAG}.zip build/*
       - store_artifacts:
           path: build
           destination: build
+  publish-github-release:
+    docker:
+      - image: circleci/golang:1.8
+    steps:
+      - attach_workspace:
+          at: ./artifacts
+      - run:
+          name: "Publish Release on GitHub"
+          command: |
+            go get github.com/tcnksm/ghr
+            ghr -t ${GITHUB_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} -delete ${CIRCLE_TAG} ./artifacts/NanoVNA-${CIRCLE_TAG}.zip

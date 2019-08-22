@@ -52,6 +52,18 @@ ssp_senddata(uint8_t x)
     ;
 }
 
+uint8_t
+ssp_sendrecvdata(uint8_t x)
+{
+    while (!(SPI1->SR & SPI_SR_TXE));
+    // clear OVR
+    while (SPI1->SR & SPI_SR_RXNE) (void)SPI1->DR;
+
+    *(uint8_t*)(&SPI1->DR) = x;
+    while (!(SPI1->SR & SPI_SR_RXNE));
+    return SPI1->DR;
+}
+
 void
 ssp_senddata16(uint16_t x)
 {
@@ -104,8 +116,8 @@ spi_init(void)
   dmaStreamSetPeripheral(dmatx, &SPI1->DR);
 
   SPI1->CR1 = 0;
-  SPI1->CR1 = SPI_CR1_MSTR | SPI_CR1_BIDIOE | SPI_CR1_SSM | SPI_CR1_SSI;// | SPI_CR1_BR_1;
-  SPI1->CR2 = 0x0700 | SPI_CR2_TXDMAEN;
+  SPI1->CR1 = SPI_CR1_MSTR | SPI_CR1_SSM | SPI_CR1_SSI;// | SPI_CR1_BR_1;
+  SPI1->CR2 = 0x0700 | SPI_CR2_TXDMAEN | SPI_CR2_FRXTH;
   SPI1->CR1 |= SPI_CR1_SPE;  
 }
 
@@ -277,6 +289,50 @@ void ili9341_bulk(int x, int y, int w, int h)
     dmaWaitCompletion(dmatx);
 }
 #endif
+
+void
+ili9341_read_memory_raw(uint8_t cmd, int len, uint16_t* out)
+{
+    uint8_t r, g, b;
+    send_command(cmd, 0, NULL);
+    ssp_databit8();
+
+    // consume old data
+    while (!(SPI1->SR & SPI_SR_TXE));
+    // clear OVR
+    while (SPI1->SR & SPI_SR_RXNE) r = SPI1->DR;
+
+    // require 8bit dummy clock
+    r = ssp_sendrecvdata(0);
+
+    while (len-- > 0) {
+        // read data is always 18bit
+        r = ssp_sendrecvdata(0);
+        g = ssp_sendrecvdata(0);
+        b = ssp_sendrecvdata(0);
+        *out++ = ((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3);
+    }
+
+    CS_HIGH;
+}
+
+void
+ili9341_read_memory(int x, int y, int w, int h, int len, uint16_t *out)
+{
+    uint8_t xx[4] = { x >> 8, x, (x+w-1) >> 8, (x+w-1) };
+    uint8_t yy[4] = { y >> 8, y, (y+h-1) >> 8, (y+h-1) };
+
+    send_command(0x2A, 4, xx);
+    send_command(0x2B, 4, yy);
+
+    ili9341_read_memory_raw(0x2E, len, out);
+}
+
+void
+ili9341_read_memory_continue(int len, uint16_t* out)
+{
+    ili9341_read_memory_raw(0x3E, len, out);
+}
 
 void
 ili9341_drawchar_5x7(uint8_t ch, int x, int y, uint16_t fg, uint16_t bg)

@@ -51,6 +51,7 @@ int8_t frequency_updated = FALSE;
 int8_t sweep_enabled = TRUE;
 int8_t cal_auto_interpolate = TRUE;
 int8_t redraw_requested = FALSE;
+int8_t stop_the_world = FALSE;
 
 static THD_WORKING_AREA(waThread1, 768);
 static THD_FUNCTION(Thread1, arg)
@@ -59,6 +60,11 @@ static THD_FUNCTION(Thread1, arg)
     chRegSetThreadName("sweep");
 
     while (1) {
+      if (stop_the_world) {
+          __WFI();
+          continue;
+      }
+
       if (sweep_enabled) {
         chMtxLock(&mutex);
         sweep();
@@ -376,6 +382,45 @@ static void cmd_dump(BaseSequentialStream *chp, int argc, char *argv[])
   }
 }
 #endif
+
+static void cmd_capture(BaseSequentialStream *chp, int argc, char *argv[])
+{
+// read pixel count at one time (PART*2 bytes required for read buffer)
+#define PART 320
+    (void)argc;
+    (void)argv;
+
+    chMtxLock(&mutex);
+
+    // pause sweep
+    stop_the_world = TRUE;
+
+    chThdSleepMilliseconds(1000);
+
+    // use uint16_t spi_buffer[1024] (defined in ili9341) for read buffer
+    uint16_t *buf = &spi_buffer[0];
+    int len = 320 * 240;
+    int i;
+    ili9341_read_memory(0, 0, 320, 240, PART, buf);
+    for (i = 0; i < PART; i++) {
+      chprintf(chp, "%04x ", buf[i]);
+    }
+    chprintf(chp, "\r\n");
+
+    len -= PART;
+    while (len > 0) {
+        ili9341_read_memory_continue(PART, buf);
+        for (i = 0; i < PART; i++) {
+          chprintf(chp, "%04x ", buf[i]);
+        }
+        chprintf(chp, "\r\n");
+        len -= PART;
+    }
+    //*/
+
+    stop_the_world = FALSE;
+    chMtxUnlock(&mutex);
+}
 
 #if 0
 static void cmd_gamma(BaseSequentialStream *chp, int argc, char *argv[])
@@ -1713,6 +1758,7 @@ static const ShellCommand commands[] =
     { "trace", cmd_trace },
     { "marker", cmd_marker },
     { "edelay", cmd_edelay },
+    { "capture", cmd_capture },
     { NULL, NULL }
 };
 

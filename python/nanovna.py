@@ -188,6 +188,19 @@ class NanoVNA():
                 x.append(float(line))
         self._frequencies = np.array(x)
 
+    def capture(self):
+        from PIL import Image
+        self.send_command("capture\r")
+        data = self.fetch_data()
+        x = []
+        for line in data.split('\n'):
+            if line:
+                x.extend([int(d, 16) for d in line.strip().split(' ')])
+        # convert pixel format from 565(RGB) to 8888(RGBA)
+        arr = np.array(x, dtype=np.uint32)
+        arr = 0xFF000000 + ((arr & 0xF800) >> 8) + ((arr & 0x07E0) << 5) + ((arr & 0x001F) << 19)
+        return Image.frombuffer('RGBA', (320, 240), arr, 'raw', 'RGBA', 0, 1)
+
     def logmag(self, x):
         pl.grid(True)
         pl.plot(self.frequencies, 20*np.log10(np.abs(x)))
@@ -323,9 +336,18 @@ if __name__ == '__main__':
     parser.add_option("-l", "--filter",
                       action="store_true", dest="filter", default=False,
                       help="apply IF filter on raw wave plot")
+    parser.add_option("-C", "--capture", dest="capture",
+                      help="capture current display to FILE", metavar="FILE")
     (opt, args) = parser.parse_args()
 
     nv = NanoVNA(opt.device or '/dev/cu.usbmodem401')
+
+    if opt.capture:
+        print("capturing...")
+        img = nv.capture()
+        img.save(opt.capture)
+        exit(0)
+
     nv.set_frequency(opt.freq)
     nv.set_port(opt.port)
     nv.set_gain(opt.gain)

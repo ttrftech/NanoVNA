@@ -403,17 +403,17 @@ static void cmd_capture(BaseSequentialStream *chp, int argc, char *argv[])
     int i;
     ili9341_read_memory(0, 0, 320, 240, PART, buf);
     for (i = 0; i < PART; i++) {
-      chprintf(chp, "%04x ", buf[i]);
+        streamPut(chp, buf[i] >> 8);
+        streamPut(chp, buf[i] & 0xff);
     }
-    chprintf(chp, "\r\n");
 
     len -= PART;
     while (len > 0) {
         ili9341_read_memory_continue(PART, buf);
         for (i = 0; i < PART; i++) {
-          chprintf(chp, "%04x ", buf[i]);
+            streamPut(chp, buf[i] >> 8);
+            streamPut(chp, buf[i] & 0xff);
         }
-        chprintf(chp, "\r\n");
         len -= PART;
     }
     //*/

@@ -4,6 +4,7 @@ import numpy as np
 import pylab as pl
 import scipy.signal as signal
 import time
+import struct
 
 REF_LEVEL = (1<<9)
 
@@ -191,11 +192,8 @@ class NanoVNA():
     def capture(self):
         from PIL import Image
         self.send_command("capture\r")
-        data = self.fetch_data()
-        x = []
-        for line in data.split('\n'):
-            if line:
-                x.extend([int(d, 16) for d in line.strip().split(' ')])
+        b = self.serial.read(320 * 240 * 2)
+        x = struct.unpack(">76800H", b)
         # convert pixel format from 565(RGB) to 8888(RGBA)
         arr = np.array(x, dtype=np.uint32)
         arr = 0xFF000000 + ((arr & 0xF800) >> 8) + ((arr & 0x07E0) << 5) + ((arr & 0x001F) << 19)

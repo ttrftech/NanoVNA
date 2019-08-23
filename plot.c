@@ -459,6 +459,20 @@ float swr(float *v)
   return (1 + x)/(1 - x);
 }
 
+float resitance(float *v) {
+  float z0 = 50;
+  float d = z0 / ((1-v[0])*(1-v[0])+v[1]*v[1]);
+  float zr = ((1+v[0])*(1-v[0]) - v[1]*v[1]) * d;
+  return zr;
+}
+
+float reactance(float *v) {
+  float z0 = 50;
+  float d = z0 / ((1-v[0])*(1-v[0])+v[1]*v[1]);
+  float zi = 2*v[1] * d;
+  return zi;
+}
+
 #define RADIUS ((HEIGHT-1)/2)
 void
 cartesian_scale(float re, float im, int *xp, int *yp, float scale)
@@ -494,6 +508,18 @@ trace_into_index(int x, int t, int i, float coeff[2])
     break;
   case TRC_SWR:
     v = refpos+ (1 - swr(coeff)) * scale;
+    break;
+  case TRC_REAL:
+    v = refpos - coeff[0] * 8 * scale;
+    break;
+  case TRC_IMAG:
+    v = refpos - coeff[1] * 8 * scale;
+    break;
+  case TRC_R:
+    v = refpos - resitance(coeff) * scale;
+    break;
+  case TRC_X:
+    v = refpos - reactance(coeff) * scale;
     break;
   case TRC_SMITH:
   //case TRC_ADMIT:
@@ -588,6 +614,24 @@ gamma2imp(char *buf, int len, const float coeff[2], uint32_t frequency)
 }
 
 void
+gamma2resistance(char *buf, int len, const float coeff[2], uint32_t frequency)
+{
+  float z0 = 50;
+  float d = z0 / ((1-coeff[0])*(1-coeff[0])+coeff[1]*coeff[1]);
+  float zr = ((1+coeff[0])*(1-coeff[0]) - coeff[1]*coeff[1]) * d;
+  string_value_with_prefix(buf, len, zr, S_OHM[0]);
+}
+
+void
+gamma2reactance(char *buf, int len, const float coeff[2], uint32_t frequency)
+{
+  float z0 = 50;
+  float d = z0 / ((1-coeff[0])*(1-coeff[0])+coeff[1]*coeff[1]);
+  float zi = 2*coeff[1] * d;
+  string_value_with_prefix(buf, len, zi, S_OHM[0]);
+}
+
+void
 trace_get_value_string(int t, char *buf, int len, float coeff[2], uint32_t frequency)
 {
   float v;
@@ -613,6 +657,18 @@ trace_get_value_string(int t, char *buf, int len, float coeff[2], uint32_t frequ
     break;
   case TRC_SMITH:
     gamma2imp(buf, len, coeff, frequency);
+    break;
+  case TRC_REAL:
+    chsnprintf(buf, len, "%.2f", coeff[0]);
+    break;
+  case TRC_IMAG:
+    chsnprintf(buf, len, "%.2fj", coeff[1]);
+    break;
+  case TRC_R:
+    gamma2resistance(buf, len, coeff, frequency);
+    break;
+  case TRC_X:
+    gamma2reactance(buf, len, coeff, frequency);
     break;
   //case TRC_ADMIT:
   case TRC_POLAR:

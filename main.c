@@ -1273,10 +1273,10 @@ static void cmd_recall(BaseSequentialStream *chp, int argc, char *argv[])
 
 
 const char *trc_type_name[] = {
-  "LOGMAG", "PHASE", "DELAY", "SMITH", "POLAR", "LINEAR", "SWR"
+  "LOGMAG", "PHASE", "DELAY", "SMITH", "POLAR", "LINEAR", "SWR", "REAL", "IMAG", "R", "X"
 };
 const uint8_t default_refpos[] = {
-  7, 4, 4, 0, 0, 0, 0
+  7, 4, 4, 0, 0, 0, 0, 4, 4, 0, 4
 };
 
 const char *trc_channel_name[] = {

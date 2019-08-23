@@ -546,6 +546,18 @@ menu_format2_cb(int item)
   case 1:
     set_trace_type(uistat.current_trace, TRC_LINEAR);
     break;
+  case 2:
+    set_trace_type(uistat.current_trace, TRC_REAL);
+    break;
+  case 3:
+    set_trace_type(uistat.current_trace, TRC_IMAG);
+    break;
+  case 4:
+    set_trace_type(uistat.current_trace, TRC_R);
+    break;
+  case 5:
+    set_trace_type(uistat.current_trace, TRC_X);
+    break;
   }
 
   request_to_redraw_grid();
@@ -735,6 +747,10 @@ const menuitem_t menu_trace[] = {
 const menuitem_t menu_format2[] = {
   { MT_CALLBACK, "POLAR", menu_format2_cb },
   { MT_CALLBACK, "LINEAR", menu_format2_cb },
+  { MT_CALLBACK, "REAL", menu_format2_cb },
+  { MT_CALLBACK, "IMAG", menu_format2_cb },
+  { MT_CALLBACK, "RESISTANCE", menu_format2_cb },
+  { MT_CALLBACK, "REACTANCE", menu_format2_cb },
   { MT_CANCEL, S_LARROW" BACK", NULL },
   { MT_NONE, NULL, NULL } // sentinel
 };

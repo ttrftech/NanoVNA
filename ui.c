@@ -273,10 +273,10 @@ int touch_check(void)
     chThdSleepMilliseconds(10);
     int x = touch_measure_x();
     int y = touch_measure_y();
-    //if (touch_status()) {
+    if (touch_status()) {
       last_touch_x = x;
       last_touch_y = y;
-    //}
+    }
     touch_prepare_sense();
   }
 
@@ -317,6 +317,7 @@ touch_cal_exec(void)
   ili9341_fill(0, 0, 320, 240, 0);
   ili9341_line(0, 0, 0, 32, 0xffff);
   ili9341_line(0, 0, 32, 0, 0xffff);
+  ili9341_drawstring_5x7("TOUCH UPPER LEFT", 10, 10, 0xffff, 0x0000);
 
   do {
     status = touch_check();
@@ -327,6 +328,7 @@ touch_cal_exec(void)
   ili9341_fill(0, 0, 320, 240, 0);
   ili9341_line(320-1, 240-1, 320-1, 240-32, 0xffff);
   ili9341_line(320-1, 240-1, 320-32, 240-1, 0xffff);
+  ili9341_drawstring_5x7("TOUCH LOWER RIGHT", 230, 220, 0xffff, 0x0000);
 
   do {
     status = touch_check();
@@ -351,6 +353,9 @@ touch_draw_test(void)
   int x1, y1;
   
   adc_stop(ADC1);
+
+  ili9341_fill(0, 0, 320, 240, 0);
+  ili9341_drawstring_5x7("TOUCH TEST: DRAG PANEL", OFFSETX, 233, 0xffff, 0x0000);
 
   do {
     status = touch_check();
@@ -461,6 +466,30 @@ menu_recall_cb(int item)
     ui_mode_normal();
     update_grid();
     draw_cal_status();
+  }
+}
+
+static void
+menu_config_cb(int item)
+{
+  switch (item) {
+  case 0:
+      touch_cal_exec();
+      redraw_frame();
+      request_to_redraw_grid();
+      draw_menu();
+      break;
+  case 1:
+      touch_draw_test();
+      redraw_frame();
+      request_to_redraw_grid();
+      draw_menu();
+      break;
+  case 2:
+      config_save();
+      menu_move_back();
+      ui_mode_normal();
+      break;
   }
 }
 
@@ -818,12 +847,21 @@ const menuitem_t menu_recall[] = {
   { MT_NONE, NULL, NULL } // sentinel
 };
 
+const menuitem_t menu_config[] = {
+  { MT_CALLBACK, "TOUCH CAL", menu_config_cb },
+  { MT_CALLBACK, "TOUCH TEST", menu_config_cb },
+  { MT_CALLBACK, "SAVE", menu_config_cb },
+  { MT_CANCEL, S_LARROW" BACK", NULL },
+  { MT_NONE, NULL, NULL } // sentinel
+};
+
 const menuitem_t menu_top[] = {
   { MT_SUBMENU, "DISPLAY", menu_display },
   { MT_SUBMENU, "MARKER", menu_marker },
   { MT_SUBMENU, "STIMULUS", menu_stimulus },
   { MT_SUBMENU, "CAL", menu_cal },
   { MT_SUBMENU, "RECALL", menu_recall },
+  { MT_SUBMENU, "CONFIG", menu_config },
   { MT_CLOSE, "CLOSE", NULL },
   { MT_NONE, NULL, NULL } // sentinel
 };

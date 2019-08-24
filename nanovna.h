@@ -149,7 +149,7 @@ extern const uint32_t numfont20x24[][24];
 #define TRACES_MAX 4
 
 enum {
-  TRC_LOGMAG, TRC_PHASE, TRC_DELAY, TRC_SMITH, TRC_POLAR, TRC_LINEAR, TRC_SWR, TRC_OFF
+  TRC_LOGMAG, TRC_PHASE, TRC_DELAY, TRC_SMITH, TRC_POLAR, TRC_LINEAR, TRC_SWR, TRC_REAL, TRC_IMAG, TRC_R, TRC_X, TRC_OFF
 };
 
 extern const char *trc_type_name[];

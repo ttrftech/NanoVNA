@@ -5,8 +5,7 @@ NanoVNA is able to be controlled via USB serial interface from PC. There are sam
 ## Preparation
 
     $ cd python
-    $ pip install numpy
-    $ pip install scikit-rf   
+    $ pip3 install -r requirements.txt
 
 ## Run
 
@@ -21,6 +20,10 @@ NanoVNA is able to be controlled via USB serial interface from PC. There are sam
 ### Plot smithchart.
 
     $ ./nanovna.py -s
+
+### Capture display
+
+    $ ./nanovna.py -C out.png
 
 ### Show usage.
 

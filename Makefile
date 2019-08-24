@@ -54,7 +54,6 @@ endif
 ##############################################################################
 
 ifeq ($(VERSION),)
-  #VERSION="unknown"
   VERSION="$(shell git describe --tags)"
 endif
 

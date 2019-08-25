@@ -1459,7 +1459,9 @@ static void cmd_trace(BaseSequentialStream *chp, int argc, char *argv[])
       //trace[t].refpos = my_atof(argv[2]);
       set_trace_refpos(t, my_atof(argv[2]));
       goto exit;
-    } 
+    } else {
+      goto usage;
+    }
   }
   if (argc > 2) {
     int src = atoi(argv[2]);
@@ -1471,6 +1473,7 @@ static void cmd_trace(BaseSequentialStream *chp, int argc, char *argv[])
   return;
  usage:
   chprintf(chp, "trace {0|1|2|3|all} [logmag|phase|smith|linear|delay|swr|real|imag|r|x|off] [src]\r\n");
+  chprintf(chp, "trace {0|1|2|3} {scale|refpos} {value}\r\n");
 }
 
 

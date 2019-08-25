@@ -1443,6 +1443,16 @@ static void cmd_trace(BaseSequentialStream *chp, int argc, char *argv[])
       set_trace_type(t, TRC_LINEAR);
     } else if (strcmp(argv[1], "swr") == 0) {
       set_trace_type(t, TRC_SWR);
+    } else if (strcmp(argv[1], "real") == 0) {
+      set_trace_type(t, TRC_REAL);
+    } else if (strcmp(argv[1], "imag") == 0) {
+      set_trace_type(t, TRC_IMAG);
+    } else if (strcmp(argv[1], "r") == 0) {
+      set_trace_type(t, TRC_R);
+    } else if (strcmp(argv[1], "x") == 0) {
+      set_trace_type(t, TRC_X);
+    } else if (strcmp(argv[1], "linear") == 0) {
+      set_trace_type(t, TRC_LINEAR);
     } else if (strcmp(argv[1], "off") == 0) {
       set_trace_type(t, TRC_OFF);
     } else if (strcmp(argv[1], "scale") == 0 && argc >= 3) {
@@ -1464,7 +1474,7 @@ static void cmd_trace(BaseSequentialStream *chp, int argc, char *argv[])
  exit:
   return;
  usage:
-  chprintf(chp, "trace {0|1|2|3|all} [logmag|phase|smith|linear|delay|swr|off] [src]\r\n");
+  chprintf(chp, "trace {0|1|2|3|all} [logmag|phase|smith|linear|delay|swr|real|imag|r|x|off] [src]\r\n");
 }
 
 

@@ -429,7 +429,7 @@ draw_on_strut(int v0, int d, int color)
  */ 
 float logmag(float *v)
 {
-  return log10f(v[0]*v[0] + v[1]*v[1]);
+  return log10f(v[0]*v[0] + v[1]*v[1]) * 10;
 }
 
 /*
@@ -437,15 +437,15 @@ float logmag(float *v)
  */ 
 float phase(float *v)
 {
-  return 2 * atan2f(v[1], v[0]) / M_PI;
+  return 2 * atan2f(v[1], v[0]) / M_PI * 90;
 }
 
 /*
- * calculate abs(gamma) * 8
- */ 
+ * calculate abs(gamma)
+ */
 float linear(float *v)
 {
-  return - sqrtf(v[0]*v[0] + v[1]*v[1]) * 8;
+  return - sqrtf(v[0]*v[0] + v[1]*v[1]);
 }
 
 /*
@@ -641,11 +641,11 @@ trace_get_value_string(int t, char *buf, int len, float coeff[2], uint32_t frequ
     if (v == -INFINITY)
       chsnprintf(buf, len, "-INF dB");
     else
-      chsnprintf(buf, len, "%.2fdB", v * 10);
+      chsnprintf(buf, len, "%.2fdB", v);
     break;
   case TRC_PHASE:
     v = phase(coeff);
-    chsnprintf(buf, len, "%.2f" S_DEGREE, v * 90);
+    chsnprintf(buf, len, "%.2f" S_DEGREE, v);
     break;
   case TRC_LINEAR:
     v = linear(coeff);
@@ -683,10 +683,10 @@ trace_get_info(int t, char *buf, int len)
   const char *type = trc_type_name[trace[t].type];
   switch (trace[t].type) {
   case TRC_LOGMAG:
-    chsnprintf(buf, len, "%s %ddB/", type, (int)(trace[t].scale*10));
+    chsnprintf(buf, len, "%s %ddB/", type, (int)(trace[t].scale));
     break;
   case TRC_PHASE:
-    chsnprintf(buf, len, "%s %d" S_DEGREE "/", type, (int)(trace[t].scale*90));
+    chsnprintf(buf, len, "%s %d" S_DEGREE "/", type, (int)(trace[t].scale));
     break;
   case TRC_SMITH:
   //case TRC_ADMIT:

@@ -485,18 +485,18 @@ config_t config = {
 properties_t current_props = {
   /* magic */   CONFIG_MAGIC,
   /* frequency0 */     50000, // start = 50kHz
-  /* frequency1 */ 300000000, // end = 300MHz
+  /* frequency1 */ 900000000, // end = 900MHz
   /* sweep_points */     101,
   /* cal_status */         0,
   /* frequencies */       {},
   /* cal_data */          {},
   /* electrical_delay */   0,
   /* trace[4] */
-  {/*enable, type, channel, polar, scale*/
-    { 1, TRC_LOGMAG, 0, 0, 1.0, 7.0 },
-    { 1, TRC_LOGMAG, 1, 0, 1.0, 7.0 },
+  {/*enable, type, channel, polar, scale, refpos*/
+    { 1, TRC_LOGMAG, 0, 0, 10, 7.0 },
+    { 1, TRC_LOGMAG, 1, 0, 10, 7.0 },
     { 1, TRC_SMITH,  0, 1, 1.0, 0.0 },
-    { 1, TRC_PHASE,  1, 0, 1.0, 4.0 }
+    { 1, TRC_PHASE,  1, 0, 90, 4.0 }
   },
   /* markers[4] */ {
     { 1, 30, 0 }, { 0, 40, 0 }, { 0, 60, 0 }, { 0, 80, 0 }
@@ -1273,10 +1273,19 @@ static void cmd_recall(BaseSequentialStream *chp, int argc, char *argv[])
 
 
 const char *trc_type_name[] = {
-  "LOGMAG", "PHASE", "DELAY", "SMITH", "POLAR", "LINEAR", "SWR", "REAL", "IMAG", "R", "X"
+  "LOGMAG", "PHASE", "DELAY", 
+  "SMITH", "POLAR", "LINEAR", "SWR",
+  "REAL", "IMAG", "R", "X"
 };
 const uint8_t default_refpos[] = {
-  7, 4, 4, 0, 0, 0, 0, 4, 4, 0, 4
+  7, 4, 4, 
+  0, 0, 0, 0, 
+  4, 4, 0, 4
+};
+const float default_scale[] = {
+  10, 90, 1, 
+  0, 0, 0.125, 1, 
+  0.25, 0.25, 100, 100
 };
 
 const char *trc_channel_name[] = {
@@ -1300,6 +1309,7 @@ void set_trace_type(int t, int type)
   if (trace[t].type != type) {
     trace[t].type = type;
     trace[t].refpos = default_refpos[type];
+    trace[t].scale = default_scale[type];
     if (polar)
       force = TRUE;
   }    
@@ -1319,15 +1329,6 @@ void set_trace_channel(int t, int channel)
 
 void set_trace_scale(int t, float scale)
 {
-  switch (trace[t].type) {
-  case TRC_LOGMAG:
-    scale /= 10;
-    break;
-  case TRC_PHASE:
-    scale /= 90;
-    break;
-  }
-
   if (trace[t].scale != scale) {
     trace[t].scale = scale;
     force_set_markmap();
@@ -1336,12 +1337,7 @@ void set_trace_scale(int t, float scale)
 
 float get_trace_scale(int t)
 {
-  float n = 1;
-  if (trace[t].type == TRC_LOGMAG)
-    n = 10;
-  else if (trace[t].type == TRC_PHASE)
-    n = 90;
-  return trace[t].scale * n;
+  return trace[t].scale;
 }
 
 void set_trace_refpos(int t, float refpos)

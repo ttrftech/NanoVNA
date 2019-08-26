@@ -494,8 +494,8 @@ trace_into_index(int x, int t, int i, float coeff[2])
 {
   int y = 0;
   float v = 0;
-  float refpos = 8 - trace[t].refpos;
-  float scale = 1 / trace[t].scale;
+  float refpos = 8 - get_trace_refpos(t);
+  float scale = 1 / get_trace_scale(t);
   switch (trace[t].type) {
   case TRC_LOGMAG:
     v = refpos - logmag(coeff) * scale;
@@ -510,10 +510,10 @@ trace_into_index(int x, int t, int i, float coeff[2])
     v = refpos+ (1 - swr(coeff)) * scale;
     break;
   case TRC_REAL:
-    v = refpos - coeff[0] * 8 * scale;
+    v = refpos - coeff[0] * scale;
     break;
   case TRC_IMAG:
-    v = refpos - coeff[1] * 8 * scale;
+    v = refpos - coeff[1] * scale;
     break;
   case TRC_R:
     v = refpos - resitance(coeff) * scale;
@@ -680,21 +680,21 @@ trace_get_value_string(int t, char *buf, int len, float coeff[2], uint32_t frequ
 void
 trace_get_info(int t, char *buf, int len)
 {
-  const char *type = trc_type_name[trace[t].type];
+  const char *type = get_trace_typename(t);
   switch (trace[t].type) {
   case TRC_LOGMAG:
-    chsnprintf(buf, len, "%s %ddB/", type, (int)(trace[t].scale));
+    chsnprintf(buf, len, "%s %ddB/", type, (int)get_trace_scale(t));
     break;
   case TRC_PHASE:
-    chsnprintf(buf, len, "%s %d" S_DEGREE "/", type, (int)(trace[t].scale));
+    chsnprintf(buf, len, "%s %d" S_DEGREE "/", type, (int)get_trace_scale(t));
     break;
   case TRC_SMITH:
   //case TRC_ADMIT:
   case TRC_POLAR:
-    chsnprintf(buf, len, "%s %.1fFS", type, trace[t].scale);
+    chsnprintf(buf, len, "%s %.1fFS", type, get_trace_scale(t));
     break;
   default:
-    chsnprintf(buf, len, "%s %.1f/", type, trace[t].scale);
+    chsnprintf(buf, len, "%s %.1f/", type, get_trace_scale(t));
     break;
   }
 }
@@ -962,7 +962,7 @@ cell_draw_refpos(int m, int n, int w, int h)
     if (trace[t].type == TRC_SMITH || trace[t].type == TRC_POLAR)
       continue;
     int x = 0 - x0 +CELLOFFSETX;
-    int y = 8*GRIDY - (int)(trace[t].refpos * GRIDY) - y0;
+    int y = 8*GRIDY - (int)(get_trace_refpos(t) * GRIDY) - y0;
     if (x > -5 && x < w && y >= -3 && y < h+3)
       draw_refpos(w, h, x, y, config.trace_color[t]);
   }

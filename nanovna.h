@@ -152,8 +152,6 @@ enum {
   TRC_LOGMAG, TRC_PHASE, TRC_DELAY, TRC_SMITH, TRC_POLAR, TRC_LINEAR, TRC_SWR, TRC_REAL, TRC_IMAG, TRC_R, TRC_X, TRC_OFF
 };
 
-extern const char *trc_type_name[];
-
 // LOGMAG: SCALE, REFPOS, REFVAL
 // PHASE: SCALE, REFPOS, REFVAL
 // DELAY: SCALE, REFPOS, REFVAL
@@ -195,6 +193,7 @@ void set_trace_scale(int t, float scale);
 void set_trace_refpos(int t, float refpos);
 float get_trace_scale(int t);
 float get_trace_refpos(int t);
+const char *get_trace_typename(int t);
 
 void set_electrical_delay(float picoseconds);
 float get_electrical_delay(void);

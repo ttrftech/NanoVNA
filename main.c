@@ -493,10 +493,10 @@ properties_t current_props = {
   /* electrical_delay */   0,
   /* trace[4] */
   {/*enable, type, channel, polar, scale, refpos*/
-    { 1, TRC_LOGMAG, 0, 0, 10, 7.0 },
-    { 1, TRC_LOGMAG, 1, 0, 10, 7.0 },
+    { 1, TRC_LOGMAG, 0, 0, 1.0, 7.0 },
+    { 1, TRC_LOGMAG, 1, 0, 1.0, 7.0 },
     { 1, TRC_SMITH,  0, 1, 1.0, 0.0 },
-    { 1, TRC_PHASE,  1, 0, 90, 4.0 }
+    { 1, TRC_PHASE,  1, 0, 1.0, 4.0 }
   },
   /* markers[4] */ {
     { 1, 30, 0 }, { 0, 40, 0 }, { 0, 60, 0 }, { 0, 80, 0 }
@@ -1271,26 +1271,33 @@ static void cmd_recall(BaseSequentialStream *chp, int argc, char *argv[])
   chprintf(chp, "recall {id}\r\n");
 }
 
-
-const char *trc_type_name[] = {
-  "LOGMAG", "PHASE", "DELAY", 
-  "SMITH", "POLAR", "LINEAR", "SWR",
-  "REAL", "IMAG", "R", "X"
-};
-const uint8_t default_refpos[] = {
-  7, 4, 4, 
-  0, 0, 0, 0, 
-  4, 4, 0, 4
-};
-const float default_scale[] = {
-  10, 90, 1, 
-  0, 0, 0.125, 1, 
-  0.25, 0.25, 100, 100
+const struct {
+  const char *name;
+  uint16_t refpos;
+  float scale_unit;
+} trace_info[] = {
+  { "LOGMAG", 7, 10 },
+  { "PHASE",  4, 90 },
+  { "DELAY",  4,  1 },
+  { "SMITH",  0,  1 },
+  { "POLAR",  0,  1 },
+  { "LINEAR", 0,  0.125 },
+  { "SWR",    0,  1 },
+  { "REAL",   4,  0.25 },
+  { "IMAG",   4,  0.25 },
+  { "R",      0, 100 },
+  { "X",      4, 100 }
 };
 
 const char *trc_channel_name[] = {
   "CH0", "CH1"
 };
+
+const char *
+get_trace_typename(int t)
+{
+  return trace_info[trace[t].type].name;
+}
 
 void set_trace_type(int t, int type)
 {
@@ -1308,8 +1315,7 @@ void set_trace_type(int t, int type)
   }
   if (trace[t].type != type) {
     trace[t].type = type;
-    trace[t].refpos = default_refpos[type];
-    trace[t].scale = default_scale[type];
+    trace[t].refpos = trace_info[type].refpos;
     if (polar)
       force = TRUE;
   }    
@@ -1329,6 +1335,7 @@ void set_trace_channel(int t, int channel)
 
 void set_trace_scale(int t, float scale)
 {
+  scale /= trace_info[trace[t].type].scale_unit;
   if (trace[t].scale != scale) {
     trace[t].scale = scale;
     force_set_markmap();
@@ -1337,7 +1344,7 @@ void set_trace_scale(int t, float scale)
 
 float get_trace_scale(int t)
 {
-  return trace[t].scale;
+  return trace[t].scale * trace_info[trace[t].type].scale_unit;
 }
 
 void set_trace_refpos(int t, float refpos)
@@ -1396,10 +1403,10 @@ static void cmd_trace(BaseSequentialStream *chp, int argc, char *argv[])
   if (argc == 0) {
     for (t = 0; t < 4; t++) {
       if (trace[t].enabled) {
-        const char *type = trc_type_name[trace[t].type];
+        const char *type = trace_info[trace[t].type].name;
         const char *channel = trc_channel_name[trace[t].channel];
-        float scale = trace[t].scale;
-        float refpos = trace[t].refpos;
+        float scale = get_trace_scale(t);
+        float refpos = get_trace_refpos(t);
         chprintf(chp, "%d %s %s %f %f\r\n", t, type, channel, scale, refpos);
       }
     }
@@ -1419,7 +1426,7 @@ static void cmd_trace(BaseSequentialStream *chp, int argc, char *argv[])
   if (t < 0 || t >= 4)
     goto usage;
   if (argc == 1) {
-    const char *type = trc_type_name[trace[t].type];
+    const char *type = get_trace_typename(t);
     const char *channel = trc_channel_name[trace[t].channel];
     chprintf(chp, "%d %s %s\r\n", t, type, channel);
     return;

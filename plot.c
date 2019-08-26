@@ -805,61 +805,6 @@ void plot_into_index(float measured[2][101][2])
   markmap_all_markers();
 }
 
-#if 0
-void
-cell_drawline(int w, int h, int x0, int y0, int x1, int y1, int c)
-{
-  if (x0 > x1) {
-    SWAP(x0, x1);
-    SWAP(y0, y1);
-  }
-
-  while (x0 <= x1) {
-    int dx = x1 - x0 + 1;
-    int dy = y1 - y0;
-    if (dy >= 0) {
-      dy++;
-      if (dy > dx) {
-        dy /= dx; dx = 1;
-      } else {
-        dx /= dy; dy = 1;
-      }
-    } else {
-      dy--;
-      if (-dy > dx) {
-        dy /= dx; dx = 1;
-      } else {
-        dx /= -dy; dy = -1;
-      }
-    }
-
-    if (dx == 1) {
-      if (dy > 0) {
-        while (dy-- > 0) {
-          if (y0 >= 0 && y0 < h && x0 >= 0 && x0 < w)
-            spi_buffer[y0*w+x0] |= c;
-          y0++;
-        }
-      } else {
-        while (dy++ < 0) {
-          if (y0 >= 0 && y0 < h && x0 >= 0 && x0 < w)
-            spi_buffer[y0*w+x0] |= c;
-          y0--;
-        }
-      }
-      x0++;
-    } else {
-      while (dx-- > 0) {
-        if (y0 >= 0 && y0 < h && x0 >= 0 && x0 < w)
-          spi_buffer[y0*w+x0] |= c;
-        x0++;
-      }
-      y0 += dy;
-    }
-  }
-}
-#else
-
 const uint8_t INSIDE = 0b0000;
 const uint8_t LEFT   = 0b0001;
 const uint8_t RIGHT  = 0b0010;
@@ -934,7 +879,6 @@ cell_drawline(int w, int h, int x0, int y0, int x1, int y1, int c)
       if (y0 >= 0 && y0 < h && x0 >= 0 && x0 < w)  spi_buffer[y0*w+x0] |= c;
   }
 }
-#endif
 
 int
 search_index_range(int x, int y, uint32_t index[101], int *i0, int *i1)

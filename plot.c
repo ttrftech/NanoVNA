@@ -805,6 +805,7 @@ void plot_into_index(float measured[2][101][2])
   markmap_all_markers();
 }
 
+#if 0
 void
 cell_drawline(int w, int h, int x0, int y0, int x1, int y1, int c)
 {
@@ -857,6 +858,83 @@ cell_drawline(int w, int h, int x0, int y0, int x1, int y1, int c)
     }
   }
 }
+#else
+
+const uint8_t INSIDE = 0b0000;
+const uint8_t LEFT   = 0b0001;
+const uint8_t RIGHT  = 0b0010;
+const uint8_t BOTTOM = 0b0100;
+const uint8_t TOP    = 0b1000;
+
+inline static uint8_t
+_compute_outcode(int w, int h, int x, int y)
+{
+    uint8_t code = 0;
+    if (x < 0) {
+        code |= LEFT;
+    } else
+    if (x > w) {
+        code |= RIGHT;
+    }
+    if (y < 0) {
+        code |= BOTTOM;
+    } else
+    if (y > h) {
+        code |= TOP;
+    }
+    return code;
+}
+
+void
+cell_drawline(int w, int h, int x0, int y0, int x1, int y1, int c)
+{
+  uint8_t outcode0 = _compute_outcode(w, h, x0, y0);
+  uint8_t outcode1 = _compute_outcode(w, h, x1, y1);
+
+  if (outcode0 & outcode1) {
+      // this line is out of requested area. early return
+      return;
+  }
+
+  if (x0 > x1) {
+    SWAP(x0, x1);
+    SWAP(y0, y1);
+  }
+
+  int dx = x1 - x0;
+  int dy = y1 - y0;
+  int sy = dy > 0 ? 1 : -1;
+  int e = 0;
+
+  dy *= sy;
+
+  if (dx >= dy) {
+      e = dy * 2 - dx;
+      while (x0 != x1) {
+          if (y0 >= 0 && y0 < h && x0 >= 0 && x0 < w)  spi_buffer[y0*w+x0] |= c;
+          x0++;
+          e += dy * 2;
+          if (e >= 0) {
+              e -= dx * 2;
+              y0 += sy;
+          }
+      }
+      if (y0 >= 0 && y0 < h && x0 >= 0 && x0 < w)  spi_buffer[y0*w+x0] |= c;
+  } else {
+      e = dx * 2 - dy;
+      while (y0 != y1) {
+          if (y0 >= 0 && y0 < h && x0 >= 0 && x0 < w)  spi_buffer[y0*w+x0] |= c;
+          y0 += sy;
+          e += dx * 2;
+          if (e >= 0) {
+              e -= dy * 2;
+              x0++;
+          }
+      }
+      if (y0 >= 0 && y0 < h && x0 >= 0 && x0 < w)  spi_buffer[y0*w+x0] |= c;
+  }
+}
+#endif
 
 int
 search_index_range(int x, int y, uint32_t index[101], int *i0, int *i1)

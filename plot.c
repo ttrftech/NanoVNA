@@ -681,6 +681,7 @@ void
 trace_get_info(int t, char *buf, int len)
 {
   const char *type = get_trace_typename(t);
+  int n;
   switch (trace[t].type) {
   case TRC_LOGMAG:
     chsnprintf(buf, len, "%s %ddB/", type, (int)get_trace_scale(t));
@@ -694,7 +695,8 @@ trace_get_info(int t, char *buf, int len)
     chsnprintf(buf, len, "%s %.1fFS", type, get_trace_scale(t));
     break;
   default:
-    chsnprintf(buf, len, "%s %.1f/", type, get_trace_scale(t));
+    n = chsnprintf(buf, len, "%s ", type);
+    string_value_with_prefix(buf+n, len-n, get_trace_scale(t), '/');
     break;
   }
 }

@@ -62,11 +62,10 @@ Just make in the directory.
 
 ### Build firmware using docker
 
-If you can use docker, you can build firmware without installing arm toolchain.
+You can build firmware using [this docker image](https://cloud.docker.com/u/edy555/repository/docker/edy555/arm-embedded) without installing arm toolchain.
 
     $ cd NanoVNA
-    $ docker run -it --rm -v $(PWD):/work edy555/arm-embedded make
-
+    $ docker run -it --rm -v $(PWD):/work edy555/arm-embedded:4.9 make
 
 ## Flash firmware
 
@@ -75,6 +74,9 @@ Then, burn firmware using dfu-util via USB.
 
     $ dfu-util -d 0483:df11 -a 0 -s 0x08000000:leave -D build/ch.bin
 
+Or do simply
+
+    $ make flash
 
 ## Control from PC
 

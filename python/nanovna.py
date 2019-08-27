@@ -237,6 +237,18 @@ class NanoVNA:
         ax.set_ylim((0,1))
         ax.plot(np.angle(x), np.abs(x))
 
+    def tdr(self, x):
+        pl.grid(True)
+        window = np.blackman(len(x))
+        NFFT = 256
+        td = np.abs(np.fft.ifft(window * x, NFFT))
+        time = 1 / (self.frequencies[1] - self.frequencies[0])
+        t_axis = np.linspace(0, time, NFFT)
+        pl.plot(t_axis, td)
+        pl.xlim(0, time)
+        pl.xlabel("time (s)")
+        pl.ylabel("magnitude")
+
     def smithd3(self, x):
         import mpld3
         import twoport as tp
@@ -313,6 +325,9 @@ if __name__ == '__main__':
     parser.add_option("-U", "--unwrapphase", dest="unwrapphase",
                       action="store_true", default=False,
                       help="plot unwrapped phase", metavar="UNWRAPPHASE")
+    parser.add_option("-T", "--timedomain", dest="tdr",
+                      action="store_true", default=False,
+                      help="plot TDR", metavar="TDR")
     parser.add_option("-c", "--scan", dest="scan",
                       action="store_true", default=False,
                       help="scan by script", metavar="SCAN")
@@ -364,7 +379,7 @@ if __name__ == '__main__':
             print(np.average(samp[0::2] * samp[1::2]))
         pl.show()
         exit(0)
-    plot = opt.phase or opt.plot or opt.vswr or opt.delay or opt.groupdelay or opt.smith or opt.unwrapphase or opt.polar
+    plot = opt.phase or opt.plot or opt.vswr or opt.delay or opt.groupdelay or opt.smith or opt.unwrapphase or opt.polar or opt.tdr
     if plot:
         if opt.scan:
             s = nv.scan()
@@ -389,5 +404,7 @@ if __name__ == '__main__':
         nv.groupdelay(s)
     if opt.vswr:
         nv.vswr(s)
+    if opt.tdr:
+        nv.tdr(s)
     if plot:
         pl.show()

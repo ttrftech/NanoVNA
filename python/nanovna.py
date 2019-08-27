@@ -18,20 +18,20 @@ REF_LEVEL = (1<<9)
 #     ref1,x = signal.lfilter(b, a, ref, zi = zi)
 #     return ref1,samp1
 
-class NanoVNA():
+class NanoVNA:
     def __init__(self, dev):
         self.dev = dev
         self.serial = None
-        self.filter = None #bandpassfilter_5khz
+        self.filter = None # bandpassfilter_5khz
         self._frequencies = None
         self.points = 101
-        self.set_sweep(1e6, 300e6)
+        self.set_sweep(1e6, 900e6)
         
     @property
     def frequencies(self):
         return self._frequencies
 
-    def set_sweep(self, start = 1e6, stop = 300e6, points = None):
+    def set_sweep(self, start = 1e6, stop = 900e6, points = None):
         if points:
             self.points = points
         self._frequencies = np.linspace(start, stop, self.points)
@@ -60,7 +60,7 @@ class NanoVNA():
 
     def set_gain(self, gain):
         if gain is not None:
-            self.send_command("gain %d %d\r" % (gain,gain))
+            self.send_command("gain %d %d\r" % (gain, gain))
 
     def set_offset(self, offset):
         if offset is not None:
@@ -118,7 +118,7 @@ class NanoVNA():
         for line in data.split('\n'):
             if line:
                 x.extend([float(d) for d in line.strip().split(' ')])
-        return np.array(x[0::2]) + np.array(x[1::2])*1j
+        return np.array(x[0::2]) + np.array(x[1::2]) * 1j
 
     def fetch_gamma(self, freq = None):
         if freq:

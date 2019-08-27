@@ -112,7 +112,7 @@ void draw_menu(void);
 void leave_ui_mode(void);
 void erase_menu_buttons(void);
 void ui_process_keypad(void);
-void ui_process_numeric(void);
+static void ui_process_numeric(void);
 
 static void menu_push_submenu(const menuitem_t *submenu);
 
@@ -1042,7 +1042,7 @@ const keypads_t keypads_time[] = {
   { 0, 0, -1 }
 };
 
-const keypads_t *keypads_mode_tbl[] = {
+const keypads_t * const keypads_mode_tbl[] = {
   keypads_freq, // start
   keypads_freq, // stop
   keypads_freq, // center
@@ -1053,7 +1053,7 @@ const keypads_t *keypads_mode_tbl[] = {
   keypads_time // electrical delay
 };
 
-const char *keypad_mode_label[] = {
+const char * const keypad_mode_label[] = {
   "START", "STOP", "CENTER", "SPAN", "CW FREQ", "SCALE", "REFPOS", "EDELAY"
 };
 
@@ -1409,7 +1409,7 @@ ui_mode_normal(void)
   ui_mode = UI_NORMAL;
 }
 
-void
+static void
 ui_process_normal(void)
 {
   int status = btn_check();
@@ -1438,7 +1438,7 @@ ui_process_normal(void)
   }
 }
 
-void
+static void
 ui_process_menu(void)
 {
   int status = btn_check();
@@ -1463,7 +1463,7 @@ ui_process_menu(void)
   }
 }
 
-int
+static int
 keypad_click(int key) 
 {
   int c = keypads[key].c;
@@ -1527,7 +1527,7 @@ keypad_click(int key)
   return KP_CONTINUE;
 }
 
-int
+static int
 keypad_apply_touch(void)
 {
   int touch_x, touch_y;
@@ -1556,7 +1556,7 @@ keypad_apply_touch(void)
   return -1;
 }
 
-void
+static void
 numeric_apply_touch(void)
 {
   int touch_x, touch_y;
@@ -1597,7 +1597,7 @@ numeric_apply_touch(void)
   return;
 }
 
-void
+static void
 ui_process_numeric(void)
 {
   int status = btn_check();
@@ -1720,7 +1720,7 @@ ui_process_keypad(void)
   touch_start_watchdog();
 }
 
-void
+static void
 ui_process_lever(void)
 {
   switch (ui_mode) {
@@ -1740,7 +1740,8 @@ ui_process_lever(void)
 }
 
 
-void drag_marker(int t, int m)
+static void
+drag_marker(int t, int m)
 {
   int status;
   /* wait touch release */
@@ -1767,7 +1768,7 @@ sq_distance(int x0, int y0)
   return x0*x0 + y0*y0;
 }
 
-int
+static int
 touch_pickup_marker(void)
 {
   int touch_x, touch_y;
@@ -1807,7 +1808,7 @@ touch_pickup_marker(void)
 }
 
 
-
+static
 void ui_process_touch(void)
 {
   awd_count++;

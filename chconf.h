@@ -526,6 +526,19 @@
 
 #define CHPRINTF_USE_FLOAT          TRUE
 
+/**
+ * ChibiOS/os/various/shell/shell_cmd.c
+ */
+#define SHELL_CMD_EXIT_ENABLED TRUE
+#define SHELL_CMD_INFO_ENABLED TRUE
+#define SHELL_CMD_ECHO_ENABLED FALSE
+#define SHELL_CMD_SYSTIME_ENABLED FALSE
+#define SHELL_CMD_MEM_ENABLED FALSE
+#define SHELL_CMD_THREADS_ENABLED TRUE
+#define SHELL_CMD_TEST_ENABLED FALSE
+
+
+
 #endif  /* _CHCONF_H_ */
 
 /** @} */

@@ -53,7 +53,7 @@ int8_t cal_auto_interpolate = TRUE;
 int8_t redraw_requested = FALSE;
 int8_t stop_the_world = FALSE;
 
-static THD_WORKING_AREA(waThread1, 768);
+static THD_WORKING_AREA(waThread1, 640);
 static THD_FUNCTION(Thread1, arg)
 {
     (void)arg;
@@ -1289,7 +1289,7 @@ const struct {
   { "X",      4, 100 }
 };
 
-const char *trc_channel_name[] = {
+const char * const trc_channel_name[] = {
   "CH0", "CH1"
 };
 
@@ -1737,8 +1737,7 @@ static void cmd_version(BaseSequentialStream *chp, int argc, char *argv[])
   chprintf(chp, "%s\r\n", NANOVNA_VERSION);
 }
 
-#define SHELL_WA_SIZE THD_WORKING_AREA_SIZE(256)
-static THD_WORKING_AREA(waThread2, SHELL_WA_SIZE);
+static THD_WORKING_AREA(waThread2, /* cmd_* max stack size + alpha */410);
 
 static const ShellCommand commands[] =
 {

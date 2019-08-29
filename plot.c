@@ -7,7 +7,7 @@
 
 #define SWAP(x,y) do { int z=x; x = y; y = z; } while(0)
 
-void cell_draw_marker_info(int m, int n, int w, int h);
+static void cell_draw_marker_info(int m, int n, int w, int h);
 void draw_frequencies(void);
 void frequency_string(char *buf, size_t len, int32_t freq);
 void markmap_all_markers(void);
@@ -534,7 +534,7 @@ trace_into_index(int x, int t, int i, float coeff[2])
   return INDEX(x +CELLOFFSETX, y, i);
 }
 
-int
+static int
 string_value_with_prefix(char *buf, int len, float val, char unit)
 {
   char prefix;
@@ -591,7 +591,7 @@ string_value_with_prefix(char *buf, int len, float val, char unit)
 
 #define PI2 6.283184
 
-void
+static void
 gamma2imp(char *buf, int len, const float coeff[2], uint32_t frequency)
 {
   // z = (gamma+1)/(gamma-1) * z0
@@ -613,7 +613,7 @@ gamma2imp(char *buf, int len, const float coeff[2], uint32_t frequency)
   }
 }
 
-void
+static void
 gamma2resistance(char *buf, int len, const float coeff[2], uint32_t frequency)
 {
   float z0 = 50;
@@ -622,7 +622,7 @@ gamma2resistance(char *buf, int len, const float coeff[2], uint32_t frequency)
   string_value_with_prefix(buf, len, zr, S_OHM[0]);
 }
 
-void
+static void
 gamma2reactance(char *buf, int len, const float coeff[2], uint32_t frequency)
 {
   float z0 = 50;
@@ -631,7 +631,7 @@ gamma2reactance(char *buf, int len, const float coeff[2], uint32_t frequency)
   string_value_with_prefix(buf, len, zi, S_OHM[0]);
 }
 
-void
+static void
 trace_get_value_string(int t, char *buf, int len, float coeff[2], uint32_t frequency)
 {
   float v;
@@ -721,7 +721,7 @@ markmap_upperarea(void)
   markmap[current_mappage][0] |= 0xffff;
 }
 
-static void
+static inline void
 swap_markmap(void)
 {
   current_mappage = 1 - current_mappage;
@@ -733,7 +733,7 @@ clear_markmap(void)
   memset(markmap[current_mappage], 0, sizeof markmap[current_mappage]);
 }
 
-void
+void inline
 force_set_markmap(void)
 {
   memset(markmap[current_mappage], 0xff, sizeof markmap[current_mappage]);
@@ -1107,7 +1107,7 @@ markmap_all_markers(void)
 }
 
 
-void
+static void
 draw_cell(int m, int n)
 {
   int x0 = m * CELLWIDTH;
@@ -1330,7 +1330,7 @@ cell_drawstring_invert_5x7(int w, int h, char *str, int x, int y, uint16_t fg, i
   }
 }
 
-void
+static void
 cell_draw_marker_info(int m, int n, int w, int h)
 {
   char buf[24];

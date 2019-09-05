@@ -46,6 +46,9 @@ static MUTEX_DECL(mutex);
 
 int32_t frequency_offset = 5000;
 int32_t frequency = 10000000;
+int32_t freq = 1;
+int32_t step = 1;
+int     count;
 int8_t drive_strength = DRIVE_STRENGTH_AUTO;
 int8_t frequency_updated = FALSE;
 int8_t sweep_enabled = TRUE;
@@ -53,6 +56,8 @@ int8_t sweep_once = FALSE;
 int8_t cal_auto_interpolate = TRUE;
 int8_t redraw_requested = FALSE;
 int8_t stop_the_world = FALSE;
+
+BaseSequentialStream *saved_chp;
 
 static THD_WORKING_AREA(waThread1, 640);
 static THD_FUNCTION(Thread1, arg)
@@ -526,11 +531,23 @@ ensure_edit_config(void)
 
 static void cmd_scan(BaseSequentialStream *chp, int argc, char *argv[])
 {
-  sweep_once = TRUE;
-  sweep_enabled = TRUE;
   (void)argc;
   (void)argv;
-  (void)chp;
+
+  if (argc == 3 ) {
+    freq = atoi(argv[0]);
+    step = atoi(argv[1]);
+    count = atoi(argv[2]);
+  } else {
+    chprintf(chp, "usage: scan start(Hz) step(Hz) points\r\n");
+    return;
+  }
+  saved_chp = chp;
+  sweep_once = TRUE;
+  sweep_enabled = TRUE;
+
+
+
 
 #if 0
   float gamma0[2],gamma1[2];
@@ -619,13 +636,26 @@ void sweep(void)
 {
   int i;
   int delay;
+  float gamma0[2],gamma1[2];
+  float *rg;
+
+  if (sweep_once)
+    chprintf(saved_chp, "start\n\r");
 
  rewind:
   frequency_updated = FALSE;
   //delay = 3;
-
-  for (i = 0; i < sweep_points; i++) {
-    delay = set_frequency(frequencies[i]);
+  if (!sweep_once) {
+    count = sweep_points;
+  }
+  for (i = 0; i < count; i++) {
+    if (!sweep_once) {
+      freq = frequencies[i];
+      rg = measured[0][i];
+    } else {
+      rg = gamma0;
+    }
+    delay = set_frequency(freq);
     tlv320aic3204_select_in3(); // CH0:REFLECT
     wait_dsp(delay);
 
@@ -633,23 +663,33 @@ void sweep(void)
     palClearPad(GPIOC, GPIOC_LED);
 
     /* calculate reflection coeficient */
-    (*sample_func)(measured[0][i]);
+    (*sample_func)(rg);
 
     tlv320aic3204_select_in1(); // CH1:TRANSMISSION
     wait_dsp(delay);
 
+    if (!sweep_once) {
+      rg = measured[1][i];
+    } else {
+      rg = gamma1;
+    }
+
     /* calculate transmission coeficient */
-    (*sample_func)(measured[1][i]);
+    (*sample_func)(rg);
+
+    if (sweep_once)
+      chprintf(saved_chp, "%d %f %f %f %f\r\n", freq, gamma0[0], gamma0[1], gamma1[0], gamma1[1]);
 
     // blink LED while scanning
     palSetPad(GPIOC, GPIOC_LED);
 
-    if (cal_status & CALSTAT_APPLY)
-      apply_error_term_at(i);
+    if (!sweep_once) {
+      if (cal_status & CALSTAT_APPLY)
+        apply_error_term_at(i);
 
-    if (electrical_delay != 0)
-      apply_edelay_at(i);
-
+      if (electrical_delay != 0)
+        apply_edelay_at(i);
+    }
     redraw_requested = FALSE;
     ui_process();
     if (redraw_requested)
@@ -657,7 +697,10 @@ void sweep(void)
       
     if (frequency_updated)
       goto rewind;
+    freq += step;
   }
+  if (sweep_once)
+    chprintf(saved_chp, "done\n\r");
 }
 
 static void

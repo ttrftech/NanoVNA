@@ -1155,6 +1155,9 @@ draw_numeric_input(const char *buf)
       x += xsim[i];
     }
   }
+  if (i < 10) {
+      ili9341_fill(x, 208+4, 20*(10-i), 24, 0xffff);
+  }
 }
 
 static int

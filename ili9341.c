@@ -360,6 +360,34 @@ ili9341_drawstring_5x7(const char *str, int x, int y, uint16_t fg, uint16_t bg)
   }
 }
 
+void
+ili9341_drawchar_size(uint8_t ch, int x, int y, uint16_t fg, uint16_t bg, uint8_t size)
+{
+  uint16_t *buf = spi_buffer;
+  uint16_t bits;
+  int c, r;
+  for(c = 0; c < 7*size; c++) {
+    bits = x5x7_bits[(ch * 7) + (c / size)];
+    for (r = 0; r < 5*size; r++) {
+      *buf++ = (0x8000 & bits) ? fg : bg;
+      if (r % size == (size-1)) {
+          bits <<= 1;
+      }
+    }
+  }
+  ili9341_bulk(x, y, 5*size, 7*size);
+}
+
+void
+ili9341_drawstring_size(const char *str, int x, int y, uint16_t fg, uint16_t bg, uint8_t size)
+{
+  while (*str) {
+    ili9341_drawchar_size(*str, x, y, fg, bg, size);
+    x += 5 * size;
+    str++;
+  }
+}
+
 #define SWAP(x,y) do { int z=x; x = y; y = z; } while(0)
 
 void

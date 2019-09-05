@@ -36,7 +36,7 @@
 static void apply_error_term(void);
 static void apply_error_term_at(int i);
 static void cal_interpolate(int s);
-
+static void apply_edelay_at(int i);
 void sweep(void);
 
 static MUTEX_DECL(mutex);
@@ -49,6 +49,7 @@ int32_t frequency = 10000000;
 int8_t drive_strength = DRIVE_STRENGTH_AUTO;
 int8_t frequency_updated = FALSE;
 int8_t sweep_enabled = TRUE;
+int8_t sweep_once = FALSE;
 int8_t cal_auto_interpolate = TRUE;
 int8_t redraw_requested = FALSE;
 int8_t stop_the_world = FALSE;
@@ -68,6 +69,10 @@ static THD_FUNCTION(Thread1, arg)
       if (sweep_enabled) {
         chMtxLock(&mutex);
         sweep();
+        if (sweep_once) {
+          sweep_enabled = FALSE;
+          sweep_once = FALSE;
+        }
         chMtxUnlock(&mutex);
       } else {
         __WFI();
@@ -518,11 +523,73 @@ ensure_edit_config(void)
   cal_status = 0;
 }
 
-#if 0
+
 static void cmd_scan(BaseSequentialStream *chp, int argc, char *argv[])
 {
-  float gamma[2];
+  sweep_once = TRUE;
+  sweep_enabled = TRUE;
+  (void)argc;
+  (void)argv;
+  (void)chp;
+
+#if 0
+  float gamma0[2],gamma1[2];
   int i;
+  int delay;
+  int32_t freq, step, count;
+
+  if (argc == 3 ) {
+    freq = atoi(argv[0]);
+    step = atoi(argv[1]);
+    count = atoi(argv[2]);
+  } else {
+    chprintf(chp, "usage: scan start(Hz) step(Hz) points\r\n");
+    return;
+  }
+  if (count <= 0 || count >1601)
+    count = 101;
+
+//  pause_sweep();
+  chMtxLock(&mutex);
+  chprintf(chp, "for starting at %d\r\n", freq);
+
+  for (i = 0; i < count; i++) {
+    chprintf(chp, "%d\r\n", freq);
+
+    delay = set_frequency(freq);
+    tlv320aic3204_select_in3(); // CH0:REFLECT
+
+    chprintf(chp, "delay %d\r\n", delay);
+
+    wait_dsp(delay);
+
+    // blink LED while scanning
+    palClearPad(GPIOC, GPIOC_LED);
+
+    chprintf(chp, "%d\n\r", freq);
+
+    /* calculate reflection coeficient */
+    (*sample_func)(measured[0][i]);
+//    chprintf(chp, "%f %f", gamma0[0], gamma0[1]);
+
+    tlv320aic3204_select_in1(); // CH1:TRANSMISSION
+    wait_dsp(delay);
+
+    // blink LED while scanning
+    palSetPad(GPIOC, GPIOC_LED);
+
+    /* calculate transmission coeficient */
+    chprintf(chp, " ");
+    (*sample_func)(measured[1][i]);
+    chprintf(chp, "%f %f %f\r\n", freq, measured[0][i][0], measured[0][i][1]);
+    freq += step;
+  }
+//  resume_sweep();
+  chMtxUnlock(&mutex);
+
+#endif
+#if 0
+  float gamma[2];
   int32_t freq, step;
   int delay;
   (void)argc;
@@ -534,7 +601,7 @@ static void cmd_scan(BaseSequentialStream *chp, int argc, char *argv[])
   step = (frequency1 - frequency0) / (sweep_points-1);
   set_frequency(freq);
   delay = 4;
-  for (i = 0; i < sweep_points; i++) {
+  for (int i = 0; i < sweep_points; i++) {
     freq = freq + step;
     wait_dsp(delay);
     delay = set_frequency(freq);
@@ -544,8 +611,8 @@ static void cmd_scan(BaseSequentialStream *chp, int argc, char *argv[])
     chprintf(chp, "%d %d\r\n", gamma[0], gamma[1]);
   }
   chMtxUnlock(&mutex);
-}
 #endif
+}
 
 // main loop for measurement
 void sweep(void)
@@ -1607,6 +1674,11 @@ static void cmd_test(BaseSequentialStream *chp, int argc, char *argv[])
   (void)chp;
   (void)argc;
   (void)argv;
+  if (sweep_once)
+    chprintf(chp, "busy\r\n");
+  else
+    chprintf(chp, "done\r\n");
+
 
 #if 0
   int i;
@@ -1760,7 +1832,7 @@ static const ShellCommand commands[] =
     { "power", cmd_power },
     { "sample", cmd_sample },
     //{ "gamma", cmd_gamma },
-    //{ "scan", cmd_scan },
+    { "scan", cmd_scan },
     { "sweep", cmd_sweep },
     { "test", cmd_test },
     { "touchcal", cmd_touchcal },

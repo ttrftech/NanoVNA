@@ -31,13 +31,26 @@ void adc_init(void)
 {
   rccEnableADC1(FALSE);
 
+  /* Ensure flag states */
+  ADC1->IER = 0;
+
   /* Calibration procedure.*/
   ADC->CCR = 0;
+  if (ADC1->CR & ADC_CR_ADEN) {
+      ADC1->CR |= ~ADC_CR_ADDIS; /* Disable ADC */
+  }
+  while (ADC1->CR & ADC_CR_ADEN)
+    ;
+  ADC1->CFGR1 &= ~ADC_CFGR1_DMAEN;
   ADC1->CR |= ADC_CR_ADCAL;
   while (ADC1->CR & ADC_CR_ADCAL)
     ;
 
-  ADC1->CR = ADC_CR_ADEN;
+  if (ADC1->ISR & ADC_ISR_ADRDY) {
+      ADC1->ISR |= ADC_ISR_ADRDY; /* clear ADRDY */
+  }
+  /* Enable ADC */
+  ADC1->CR |= ADC_CR_ADEN;
   while (!(ADC1->ISR & ADC_ISR_ADRDY))
     ;
 }

@@ -390,8 +390,6 @@ static void cmd_capture(BaseSequentialStream *chp, int argc, char *argv[])
     (void)argc;
     (void)argv;
 
-    chMtxLock(&mutex);
-
     // pause sweep
     stop_the_world = TRUE;
 
@@ -419,7 +417,6 @@ static void cmd_capture(BaseSequentialStream *chp, int argc, char *argv[])
     //*/
 
     stop_the_world = FALSE;
-    chMtxUnlock(&mutex);
 }
 
 #if 0

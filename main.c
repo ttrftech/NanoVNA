@@ -640,7 +640,7 @@ void sweep(void)
   float *rg;
 
   if (sweep_once)
-    chprintf(saved_chp, "start\n\r");
+    chprintf(saved_chp, "start\r\n");
 
  rewind:
   frequency_updated = FALSE;
@@ -700,7 +700,7 @@ void sweep(void)
     freq += step;
   }
   if (sweep_once)
-    chprintf(saved_chp, "done\n\r");
+    chprintf(saved_chp, "done\r\n");
 }
 
 static void

@@ -542,69 +542,12 @@ static void cmd_scan(BaseSequentialStream *chp, int argc, char *argv[])
     chprintf(chp, "usage: scan start(Hz) step(Hz) points\r\n");
     return;
   }
+  pause_sweep();
+  chMtxLock(&mutex);
   saved_chp = chp;
   sweep_once = TRUE;
   sweep_enabled = TRUE;
-
-
-
-
-#if 0
-  float gamma0[2],gamma1[2];
-  int i;
-  int delay;
-  int32_t freq, step, count;
-
-  if (argc == 3 ) {
-    freq = atoi(argv[0]);
-    step = atoi(argv[1]);
-    count = atoi(argv[2]);
-  } else {
-    chprintf(chp, "usage: scan start(Hz) step(Hz) points\r\n");
-    return;
-  }
-  if (count <= 0 || count >1601)
-    count = 101;
-
-//  pause_sweep();
-  chMtxLock(&mutex);
-  chprintf(chp, "for starting at %d\r\n", freq);
-
-  for (i = 0; i < count; i++) {
-    chprintf(chp, "%d\r\n", freq);
-
-    delay = set_frequency(freq);
-    tlv320aic3204_select_in3(); // CH0:REFLECT
-
-    chprintf(chp, "delay %d\r\n", delay);
-
-    wait_dsp(delay);
-
-    // blink LED while scanning
-    palClearPad(GPIOC, GPIOC_LED);
-
-    chprintf(chp, "%d\n\r", freq);
-
-    /* calculate reflection coeficient */
-    (*sample_func)(measured[0][i]);
-//    chprintf(chp, "%f %f", gamma0[0], gamma0[1]);
-
-    tlv320aic3204_select_in1(); // CH1:TRANSMISSION
-    wait_dsp(delay);
-
-    // blink LED while scanning
-    palSetPad(GPIOC, GPIOC_LED);
-
-    /* calculate transmission coeficient */
-    chprintf(chp, " ");
-    (*sample_func)(measured[1][i]);
-    chprintf(chp, "%f %f %f\r\n", freq, measured[0][i][0], measured[0][i][1]);
-    freq += step;
-  }
-//  resume_sweep();
   chMtxUnlock(&mutex);
-
-#endif
 #if 0
   float gamma[2];
   int32_t freq, step;

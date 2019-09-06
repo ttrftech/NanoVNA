@@ -120,6 +120,14 @@ static void cmd_reset(BaseSequentialStream *chp, int argc, char *argv[])
     (void)argc;
     (void)argv;
 
+    if (argc == 1) {
+        if (strcmp(argv[0], "dfu") == 0) {
+            chprintf(chp, "Performing reset to DFU mode\r\n");
+            enter_dfu();
+            return;
+        }
+    }
+
     chprintf(chp, "Performing reset\r\n");
 
     rccEnableWWDG(FALSE);

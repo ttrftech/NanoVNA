@@ -70,6 +70,17 @@ const PALConfig pal_default_config = {
  * any other initialization.
  */
 void __early_init(void) {
+  if ( *((unsigned long *)BOOT_FROM_SYTEM_MEMORY_MAGIC_ADDRESS) == BOOT_FROM_SYTEM_MEMORY_MAGIC ) {
+    // require irq
+    __enable_irq();
+    *((unsigned long *)BOOT_FROM_SYTEM_MEMORY_MAGIC_ADDRESS) = 0;
+    // remap memory. unneeded for F072?
+    // RCC->APB2ENR |= RCC_APB2ENR_SYSCFGEN;
+    // SYSCFG->CFGR1 = 0x01;
+    __set_MSP(SYSTEM_BOOT_MSP); 
+    ( (void (*)(void)) (*((uint32_t *)(STM32F072xB_SYSTEM_MEMORY+4))) )();
+  }
+
   //si5351_setup();
   stm32_clock_init();
 }

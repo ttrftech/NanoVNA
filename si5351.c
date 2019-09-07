@@ -295,6 +295,10 @@ si5351_set_frequency(int channel, int freq, uint8_t drive_strength)
 
 int current_band = -1;
 
+#define DELAY_NORMAL 1
+#define DELAY_BANDCHANGE 1
+#define DELAY_LOWBAND 1
+
 /*
  * configure output as follows:
  * CLK0: frequency + offset
@@ -306,7 +310,7 @@ int
 si5351_set_frequency_with_offset(int freq, int offset, uint8_t drive_strength)
 {
   int band;
-  int delay = 3;
+  int delay = DELAY_NORMAL;
   uint32_t ofreq = freq + offset;
   uint32_t rdiv = SI5351_R_DIV_1;
   if (freq > 900000000) {
@@ -388,8 +392,10 @@ si5351_set_frequency_with_offset(int freq, int offset, uint8_t drive_strength)
 #if 1
     si5351_enable_output();
 #endif
-    delay += 10;
+    delay += DELAY_BANDCHANGE;
   }
+  if (band == 0)
+    delay += DELAY_LOWBAND;
 
   current_band = band;
   return delay;

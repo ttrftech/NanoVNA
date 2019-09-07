@@ -339,6 +339,7 @@ void handle_touch_interrupt(void);
 
 void touch_cal_exec(void);
 void touch_draw_test(void);
+void enter_dfu(void);
 
 /*
  * adc.c

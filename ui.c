@@ -414,6 +414,23 @@ show_version(void)
   touch_start_watchdog();
 }
 
+void
+enter_dfu(void)
+{
+  adc_stop(ADC1);
+
+  int x = 5, y = 5;
+
+  // leave a last message 
+  ili9341_fill(0, 0, 320, 240, 0);
+  ili9341_drawstring_5x7("DFU: Device Firmware Update Mode", x, y += 10, 0xffff, 0x0000);
+  ili9341_drawstring_5x7("To exit DFU mode, please reset device yourself.", x, y += 10, 0xffff, 0x0000);
+
+  // see __early_init in ./NANOVNA_STM32_F072/board.c
+  *((unsigned long *)BOOT_FROM_SYTEM_MEMORY_MAGIC_ADDRESS) = BOOT_FROM_SYTEM_MEMORY_MAGIC;
+  NVIC_SystemReset();
+}
+
 
 // type of menu item 
 enum {
@@ -525,6 +542,15 @@ menu_config_cb(int item)
       redraw_frame();
       request_to_redraw_grid();
       draw_menu();
+  }
+}
+
+static void
+menu_dfu_cb(int item)
+{
+  switch (item) {
+  case 0:
+      enter_dfu();
   }
 }
 
@@ -898,11 +924,18 @@ const menuitem_t menu_recall[] = {
   { MT_NONE, NULL, NULL } // sentinel
 };
 
+const menuitem_t menu_dfu[] = {
+  { MT_CALLBACK, "\2RESET AND\0ENTER DFU", menu_dfu_cb },
+  { MT_CANCEL, S_LARROW"CANCEL", NULL },
+  { MT_NONE, NULL, NULL } // sentinel
+};
+
 const menuitem_t menu_config[] = {
   { MT_CALLBACK, "TOUCH CAL", menu_config_cb },
   { MT_CALLBACK, "TOUCH TEST", menu_config_cb },
   { MT_CALLBACK, "SAVE", menu_config_cb },
   { MT_CALLBACK, "VERSION", menu_config_cb },
+  { MT_SUBMENU, S_RARROW"DFU", menu_dfu },
   { MT_CANCEL, S_LARROW" BACK", NULL },
   { MT_NONE, NULL, NULL } // sentinel
 };

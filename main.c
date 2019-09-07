@@ -269,6 +269,8 @@ const int8_t gain_table[] = {
   95  // 1400MHz ~
 };
 
+#define DELAY_GAIN_CHANGE 10
+
 static int
 adjust_gain(int newfreq)
 {
@@ -277,7 +279,7 @@ adjust_gain(int newfreq)
   int old_order = frequency / FREQ_HARMONICS;
   if (new_order != old_order) {
     tlv320aic3204_set_gain(gain_table[new_order], gain_table[new_order]);
-    delay += 10;
+    delay += DELAY_GAIN_CHANGE;
   }
   return delay;
 }
@@ -655,6 +657,8 @@ ensure_edit_config(void)
   cal_status = 0;
 }
 
+#define DELAY_CHANNEL_CHANGE 1
+
 // main loop for measurement
 bool sweep(bool break_on_operation)
 {
@@ -672,7 +676,7 @@ bool sweep(bool break_on_operation)
     (*sample_func)(measured[0][i]);
 
     tlv320aic3204_select_in1(); // CH1:TRANSMISSION
-    wait_dsp(delay);
+    wait_dsp(delay + DELAY_CHANNEL_CHANGE);
 
     /* calculate transmission coeficient */
     (*sample_func)(measured[1][i]);

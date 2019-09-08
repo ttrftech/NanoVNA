@@ -1221,7 +1221,7 @@ const keypads_t * const keypads_mode_tbl[] = {
   keypads_freq, // span
   keypads_freq, // cw freq
   keypads_scale, // scale
-  keypads_scale, // respos
+  keypads_scale, // refpos
   keypads_time, // electrical delay
   keypads_scale // velocity factor
 };

@@ -258,7 +258,7 @@ static void cmd_reset(BaseSequentialStream *chp, int argc, char *argv[])
       ;
 }
 
-#define DELAY_ON_GAIN_CHANGE 3
+#define DELAY_ON_GAIN_CHANGE 6
 
 int set_frequency(int freq)
 {

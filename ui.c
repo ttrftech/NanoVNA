@@ -383,6 +383,53 @@ touch_position(int *x, int *y)
 }
 
 
+void
+show_version(void)
+{
+  int status;
+  int x = 5, y = 5;
+  int i;
+  
+  adc_stop(ADC1);
+  ili9341_fill(0, 0, 320, 240, 0);
+
+  ili9341_drawstring_size(BOARD_NAME, x, y, 0xffff, 0x0000, 4);
+  y += 25;
+
+  ili9341_drawstring_5x7("2016-2019 Copyright @edy555", x, y += 10, 0xffff, 0x0000);
+  ili9341_drawstring_5x7("Licensed under GPL. See: https://github.com/ttrftech/NanoVNA", x, y += 10, 0xffff, 0x0000);
+  ili9341_drawstring_5x7("Version: " VERSION, x, y += 10, 0xffff, 0x0000);
+  ili9341_drawstring_5x7("Build Time: " __DATE__ " - " __TIME__, x, y += 10, 0xffff, 0x0000);
+  y += 5;
+  ili9341_drawstring_5x7("Kernel: " CH_KERNEL_VERSION, x, y += 10, 0xffff, 0x0000);
+  ili9341_drawstring_5x7("Compiler: " PORT_COMPILER_NAME, x, y += 10, 0xffff, 0x0000);
+  ili9341_drawstring_5x7("Architecture: " PORT_ARCHITECTURE_NAME " Core Variant: " PORT_CORE_VARIANT_NAME, x, y += 10, 0xffff, 0x0000);
+  ili9341_drawstring_5x7("Port Info: " PORT_INFO, x, y += 10, 0xffff, 0x0000);
+  ili9341_drawstring_5x7("Platform: " PLATFORM_NAME, x, y += 10, 0xffff, 0x0000);
+
+  do {
+    status = touch_check();
+  } while(status != EVT_TOUCH_PRESSED);
+
+  touch_start_watchdog();
+}
+
+void
+enter_dfu(void)
+{
+  adc_stop(ADC1);
+
+  int x = 5, y = 5;
+
+  // leave a last message 
+  ili9341_fill(0, 0, 320, 240, 0);
+  ili9341_drawstring_5x7("DFU: Device Firmware Update Mode", x, y += 10, 0xffff, 0x0000);
+  ili9341_drawstring_5x7("To exit DFU mode, please reset device yourself.", x, y += 10, 0xffff, 0x0000);
+
+  // see __early_init in ./NANOVNA_STM32_F072/board.c
+  *((unsigned long *)BOOT_FROM_SYTEM_MEMORY_MAGIC_ADDRESS) = BOOT_FROM_SYTEM_MEMORY_MAGIC;
+  NVIC_SystemReset();
+}
 
 
 // type of menu item 
@@ -490,6 +537,20 @@ menu_config_cb(int item)
       menu_move_back();
       ui_mode_normal();
       break;
+  case 3:
+      show_version();
+      redraw_frame();
+      request_to_redraw_grid();
+      draw_menu();
+  }
+}
+
+static void
+menu_dfu_cb(int item)
+{
+  switch (item) {
+  case 0:
+      enter_dfu();
   }
 }
 
@@ -863,10 +924,18 @@ const menuitem_t menu_recall[] = {
   { MT_NONE, NULL, NULL } // sentinel
 };
 
+const menuitem_t menu_dfu[] = {
+  { MT_CALLBACK, "\2RESET AND\0ENTER DFU", menu_dfu_cb },
+  { MT_CANCEL, S_LARROW"CANCEL", NULL },
+  { MT_NONE, NULL, NULL } // sentinel
+};
+
 const menuitem_t menu_config[] = {
   { MT_CALLBACK, "TOUCH CAL", menu_config_cb },
   { MT_CALLBACK, "TOUCH TEST", menu_config_cb },
   { MT_CALLBACK, "SAVE", menu_config_cb },
+  { MT_CALLBACK, "VERSION", menu_config_cb },
+  { MT_SUBMENU, S_RARROW"DFU", menu_dfu },
   { MT_CANCEL, S_LARROW" BACK", NULL },
   { MT_NONE, NULL, NULL } // sentinel
 };
@@ -1118,6 +1187,9 @@ draw_numeric_input(const char *buf)
       //ili9341_fill(x, 208+4, xsim[i], 20, bg);
       x += xsim[i];
     }
+  }
+  if (i < 10) {
+      ili9341_fill(x, 208+4, 20*(10-i), 24, 0xffff);
   }
 }
 

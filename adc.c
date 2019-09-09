@@ -25,6 +25,7 @@
 #define ADC_TR(low, high)               (((uint32_t)(high) << 16U) |        \
                                          (uint32_t)(low))
 #define ADC_SMPR_SMP_1P5        0U  /**< @brief 14 cycles conversion time   */
+#define ADC_SMPR_SMP_239P5      7U  /**< @brief 252 cycles conversion time. */ 
 #define ADC_CFGR1_RES_12BIT             (0U << 3U)
 
 void adc_init(void)
@@ -61,7 +62,7 @@ uint16_t adc_single_read(ADC_TypeDef *adc, uint32_t chsel)
   adc->ISR    = adc->ISR;
   adc->IER    = 0;
   adc->TR     = ADC_TR(0, 0);
-  adc->SMPR   = ADC_SMPR_SMP_1P5;
+  adc->SMPR   = ADC_SMPR_SMP_239P5;
   adc->CFGR1  = ADC_CFGR1_RES_12BIT;
   adc->CHSELR = chsel;
 
@@ -72,6 +73,32 @@ uint16_t adc_single_read(ADC_TypeDef *adc, uint32_t chsel)
     ;
 
   return adc->DR;
+}
+
+int16_t adc_vbat_read(ADC_TypeDef *adc)
+{
+#define ADC_FULL_SCALE 3300
+#define VBAT_DIODE_VF 500
+#define VREFINT_CAL (*((uint16_t*)0x1FFFF7BA))
+	float vbat = 0;
+	float vrefint = 0;
+
+	ADC->CCR |= ADC_CCR_VREFEN | ADC_CCR_VBATEN;
+	// VREFINT == ADC_IN17
+	vrefint = adc_single_read(adc, ADC_CHSELR_CHSEL17);
+	// VBAT == ADC_IN18
+	// VBATEN enables resiter devider circuit. It consume vbat power.
+	vbat = adc_single_read(adc, ADC_CHSELR_CHSEL18);
+	ADC->CCR &= ~(ADC_CCR_VREFEN | ADC_CCR_VBATEN);
+
+	uint16_t vbat_raw = (ADC_FULL_SCALE * VREFINT_CAL * vbat * 2 / (vrefint * ((1<<12)-1)));
+	if (vbat_raw < 100) {
+		// maybe D2 is not installed
+		return -1;
+	}
+	
+	return vbat_raw + VBAT_DIODE_VF;
+
 }
 
 void adc_start_analog_watchdogd(ADC_TypeDef *adc, uint32_t chsel)

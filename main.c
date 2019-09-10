@@ -37,7 +37,6 @@
 static void apply_error_term(void);
 static void apply_error_term_at(int i);
 static void cal_interpolate(int s);
-static void transform_domain(void);
 
 void sweep(void);
 
@@ -84,7 +83,6 @@ static THD_FUNCTION(Thread1, arg)
           draw_battery_status();
       }
 
-      transform_domain();
       /* calculate trace coordinates */
       plot_into_index(measured);
       /* plot trace as raster */
@@ -119,13 +117,13 @@ transform_domain(void)
   // and calculate ifft for time domain
   float* tmp = (float*)spi_buffer;
   for (int ch = 0; ch < 2; ch++) {
-      for (int i = 0; i < 128; i++) {
+      memcpy(tmp, measured[ch], sizeof(measured[0]));
+      for (int i = 101+1; i < 128; i++) {
           tmp[i*2+0] = 0.0;
           tmp[i*2+1] = 0.0;
       }
-      memcpy(spi_buffer, measured[ch], sizeof(measured[0]));
       fft((float(*)[2])tmp, 128, 1);
-      memcpy(measured[ch], spi_buffer, sizeof(measured[0]));
+      memcpy(measured[ch], tmp, sizeof(measured[0]));
       for (int i = 0; i < 101; i++) {
           measured[ch][i][0] /= 128.0;
           measured[ch][i][1] /= 128.0;
@@ -633,11 +631,13 @@ void sweep(void)
     redraw_requested = FALSE;
     ui_process();
     if (redraw_requested)
-      return; // return to redraw screen asap.
+      break; // return to redraw screen asap.
       
     if (frequency_updated)
       goto rewind;
   }
+
+  transform_domain();
 }
 
 static void

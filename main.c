@@ -23,6 +23,7 @@
 #include "usbcfg.h"
 #include "si5351.h"
 #include "nanovna.h"
+#include "fft.h"
 
 #include <chprintf.h>
 #include <shell.h>
@@ -36,6 +37,7 @@
 static void apply_error_term(void);
 static void apply_error_term_at(int i);
 static void cal_interpolate(int s);
+static void transform_domain(void);
 
 void sweep(void);
 
@@ -54,6 +56,8 @@ int8_t redraw_requested = FALSE;
 int8_t stop_the_world = FALSE;
 int16_t vbat = 0;
 
+uint8_t domain = DOMAIN_TIME;
+uint8_t tdrfunc = TDR_IMPULSE;
 static THD_WORKING_AREA(waThread1, 640);
 static THD_FUNCTION(Thread1, arg)
 {
@@ -82,6 +86,7 @@ static THD_FUNCTION(Thread1, arg)
           draw_battery_status();
       }
 
+      transform_domain();
       /* calculate trace coordinates */
       plot_into_index(measured);
       /* plot trace as raster */
@@ -105,6 +110,35 @@ void
 toggle_sweep(void)
 {
   sweep_enabled = !sweep_enabled;
+}
+
+static
+void
+transform_domain(void)
+{
+  if (domain != DOMAIN_TIME) return; // nothing to do for freq domain
+  // use spi_buffer as temporary buffer
+  // and calculate ifft for time domain
+  float* tmp = (float*)spi_buffer;
+  for (int ch = 0; ch < 2; ch++) {
+      for (int i = 0; i < 128; i++) {
+          tmp[i*2+0] = 0.0;
+          tmp[i*2+1] = 0.0;
+      }
+      memcpy(spi_buffer, measured[ch], sizeof(measured[0]));
+      fft((float(*)[2])tmp, 128, 1);
+      memcpy(measured[ch], spi_buffer, sizeof(measured[0]));
+      for (int i = 0; i < 101; i++) {
+          measured[ch][i][0] /= 128.0;
+          measured[ch][i][1] /= 128.0;
+      }
+      if (tdrfunc == TDR_STEP) {
+          for (int i = 1; i < 101; i++) {
+              measured[ch][i][0] += measured[ch][i-1][0];
+              measured[ch][i][1] += measured[ch][i-1][1];
+          }
+      }
+  }
 }
 
 static void cmd_pause(BaseSequentialStream *chp, int argc, char *argv[])

@@ -664,6 +664,24 @@ menu_channel_cb(int item)
   ui_mode_normal();
 }
 
+static void
+menu_tdr_cb(int item)
+{
+  switch (item) {
+    case 0:
+      domain = (domain == DOMAIN_FREQ) ? DOMAIN_TIME : DOMAIN_FREQ;
+      break;
+    case 1:
+      tdrfunc = TDR_IMPULSE;
+      break;
+    case 2:
+      tdrfunc = TDR_STEP;
+      break;
+  }
+
+  ui_mode_normal();
+}
+
 static void 
 choose_active_marker(void)
 {
@@ -874,11 +892,20 @@ const menuitem_t menu_channel[] = {
   { MT_NONE, NULL, NULL } // sentinel
 };
 
+const menuitem_t menu_tdr[] = {
+  { MT_CALLBACK, "TDR MODE", menu_tdr_cb },
+  { MT_CALLBACK, "IMPULSE", menu_tdr_cb },
+  { MT_CALLBACK, "STEP", menu_tdr_cb },
+  { MT_CANCEL, S_LARROW" BACK", NULL },
+  { MT_NONE, NULL, NULL } // sentinel
+};
+
 const menuitem_t menu_display[] = {
   { MT_SUBMENU, "TRACE", menu_trace },
   { MT_SUBMENU, "FORMAT", menu_format },
   { MT_SUBMENU, "SCALE", menu_scale },
   { MT_SUBMENU, "CHANNEL", menu_channel },
+  { MT_SUBMENU, "TDR", menu_tdr },
   { MT_CANCEL, S_LARROW" BACK", NULL },
   { MT_NONE, NULL, NULL } // sentinel
 };
@@ -1235,6 +1262,14 @@ menu_item_modify_attribute(const menuitem_t *menu, int item,
       *bg = 0x0000;
       *fg = 0xffff;
     }
+  } else if (menu == menu_tdr) {
+      if ((item == 0 && domain == DOMAIN_TIME)
+       || (item == 1 && tdrfunc == TDR_IMPULSE)
+       || (item == 2 && tdrfunc == TDR_STEP)
+       ) {
+        *bg = 0x0000;
+        *fg = 0xffff;
+      }
   }
 }
 

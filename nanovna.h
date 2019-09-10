@@ -22,7 +22,19 @@
 /*
  * main.c
  */
+
 extern float measured[2][101][2];
+
+enum {
+  DOMAIN_FREQ, DOMAIN_TIME
+};
+
+enum {
+  TDR_IMPULSE, TDR_STEP
+};
+
+extern uint8_t domain;
+extern uint8_t tdrfunc;
 
 #define CAL_LOAD 0
 #define CAL_OPEN 1

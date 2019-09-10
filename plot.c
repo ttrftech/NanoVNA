@@ -1367,8 +1367,15 @@ cell_draw_marker_info(int m, int n, int w, int h)
   chsnprintf(buf, sizeof buf, "%d:", active_marker + 1);
   cell_drawstring_5x7(w, h, buf, xpos, ypos, 0xffff);
   xpos += 16;
-  frequency_string(buf, sizeof buf, frequencies[idx]);
-  cell_drawstring_5x7(w, h, buf, xpos, ypos, 0xffff);
+  if (domain == DOMAIN_FREQ) {
+      frequency_string(buf, sizeof buf, frequencies[idx]);
+      cell_drawstring_5x7(w, h, buf, xpos, ypos, 0xffff);
+  } else {
+#define SPEED_OF_LIGHT 299792458
+      float distance = ((float)idx * (float)SPEED_OF_LIGHT) / ( (float)(frequencies[1] - frequencies[0]) * 128.0 * 2.0);
+      chsnprintf(buf, sizeof buf, "%f m", distance);
+      cell_drawstring_5x7(w, h, buf, xpos, ypos, 0xffff);
+  }
 
   // draw marker delta
   if (previous_marker >= 0 && active_marker != previous_marker && markers[previous_marker].enabled) {

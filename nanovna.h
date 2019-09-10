@@ -33,9 +33,6 @@ enum {
   TDR_IMPULSE, TDR_STEP
 };
 
-extern uint8_t domain;
-extern uint8_t tdrfunc;
-
 #define CAL_LOAD 0
 #define CAL_OPEN 1
 #define CAL_SHORT 2
@@ -60,6 +57,13 @@ extern uint8_t tdrfunc;
 #define ETERM_ER 2 /* error term refrection tracking */
 #define ETERM_ET 3 /* error term transmission tracking */
 #define ETERM_EX 4 /* error term isolation */
+
+#define DOMAIN_MODE (1<<0)
+#define DOMAIN_FREQ (0<<0)
+#define DOMAIN_TIME (1<<0)
+#define TDR_FUNC (1<<1)
+#define TDR_FUNC_IMPULSE (0<<1)
+#define TDR_FUNC_STEP    (1<<1)
 
 void cal_collect(int type);
 void cal_done(void);
@@ -294,6 +298,7 @@ typedef struct {
   trace_t _trace[TRACES_MAX];
   marker_t _markers[4];
   int _active_marker;
+  uint8_t _domain_mode;
 
   int32_t checksum;
 } properties_t;
@@ -317,6 +322,7 @@ extern int8_t previous_marker;
 #define trace current_props._trace
 #define markers current_props._markers
 #define active_marker current_props._active_marker
+#define domain_mode current_props._domain_mode
 
 int caldata_save(int id);
 int caldata_recall(int id);

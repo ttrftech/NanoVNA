@@ -669,13 +669,17 @@ menu_tdr_cb(int item)
 {
   switch (item) {
     case 0:
-      domain = (domain == DOMAIN_FREQ) ? DOMAIN_TIME : DOMAIN_FREQ;
+        if ((domain_mode & DOMAIN_MODE) == DOMAIN_TIME) {
+            domain_mode = (domain_mode & ~DOMAIN_MODE) | DOMAIN_FREQ;
+        } else {
+            domain_mode = (domain_mode & ~DOMAIN_MODE) | DOMAIN_TIME;
+        }
       break;
     case 1:
-      tdrfunc = TDR_IMPULSE;
+      domain_mode = (domain_mode & ~TDR_FUNC) | TDR_FUNC_IMPULSE;
       break;
     case 2:
-      tdrfunc = TDR_STEP;
+      domain_mode = (domain_mode & ~TDR_FUNC) | TDR_FUNC_STEP;
       break;
   }
 
@@ -1249,6 +1253,7 @@ menu_item_modify_attribute(const menuitem_t *menu, int item,
         || (item == 2 && (cal_status & CALSTAT_LOAD))
         || (item == 3 && (cal_status & CALSTAT_ISOLN))
         || (item == 4 && (cal_status & CALSTAT_THRU))) {
+      domain_mode = (domain_mode & ~DOMAIN_MODE) | DOMAIN_FREQ;
       *bg = 0x0000;
       *fg = 0xffff;
     }
@@ -1263,9 +1268,9 @@ menu_item_modify_attribute(const menuitem_t *menu, int item,
       *fg = 0xffff;
     }
   } else if (menu == menu_tdr) {
-      if ((item == 0 && domain == DOMAIN_TIME)
-       || (item == 1 && tdrfunc == TDR_IMPULSE)
-       || (item == 2 && tdrfunc == TDR_STEP)
+      if ((item == 0 && (domain_mode & DOMAIN_MODE) == DOMAIN_TIME)
+       || (item == 1 && (domain_mode & TDR_FUNC) == TDR_FUNC_IMPULSE)
+       || (item == 2 && (domain_mode & TDR_FUNC) == TDR_FUNC_STEP)
        ) {
         *bg = 0x0000;
         *fg = 0xffff;

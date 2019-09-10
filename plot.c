@@ -1367,7 +1367,7 @@ cell_draw_marker_info(int m, int n, int w, int h)
   chsnprintf(buf, sizeof buf, "%d:", active_marker + 1);
   cell_drawstring_5x7(w, h, buf, xpos, ypos, 0xffff);
   xpos += 16;
-  if (domain == DOMAIN_FREQ) {
+  if ((domain_mode & DOMAIN_MODE) == DOMAIN_FREQ) {
       frequency_string(buf, sizeof buf, frequencies[idx]);
       cell_drawstring_5x7(w, h, buf, xpos, ypos, 0xffff);
   } else {

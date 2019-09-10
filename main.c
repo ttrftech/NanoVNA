@@ -56,8 +56,6 @@ int8_t redraw_requested = FALSE;
 int8_t stop_the_world = FALSE;
 int16_t vbat = 0;
 
-uint8_t domain = DOMAIN_TIME;
-uint8_t tdrfunc = TDR_IMPULSE;
 static THD_WORKING_AREA(waThread1, 640);
 static THD_FUNCTION(Thread1, arg)
 {
@@ -116,7 +114,7 @@ static
 void
 transform_domain(void)
 {
-  if (domain != DOMAIN_TIME) return; // nothing to do for freq domain
+  if ((domain_mode & DOMAIN_MODE) != DOMAIN_TIME) return; // nothing to do for freq domain
   // use spi_buffer as temporary buffer
   // and calculate ifft for time domain
   float* tmp = (float*)spi_buffer;
@@ -132,7 +130,7 @@ transform_domain(void)
           measured[ch][i][0] /= 128.0;
           measured[ch][i][1] /= 128.0;
       }
-      if (tdrfunc == TDR_STEP) {
+      if ( (domain_mode & TDR_FUNC_STEP) == TDR_FUNC_STEP ) {
           for (int i = 1; i < 101; i++) {
               measured[ch][i][0] += measured[ch][i-1][0];
               measured[ch][i][1] += measured[ch][i-1][1];

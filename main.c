@@ -52,6 +52,7 @@ int8_t sweep_enabled = TRUE;
 int8_t cal_auto_interpolate = TRUE;
 int8_t redraw_requested = FALSE;
 int8_t stop_the_world = FALSE;
+int16_t vbat = 0;
 
 static THD_WORKING_AREA(waThread1, 640);
 static THD_FUNCTION(Thread1, arg)
@@ -72,6 +73,13 @@ static THD_FUNCTION(Thread1, arg)
       } else {
         __WFI();
         ui_process();
+      }
+
+      if (vbat != -1) {
+          adc_stop(ADC1);
+          vbat = adc_vbat_read(ADC1);
+          touch_start_watchdog();
+          draw_battery_status();
       }
 
       /* calculate trace coordinates */
@@ -1742,6 +1750,13 @@ static void cmd_version(BaseSequentialStream *chp, int argc, char *argv[])
   chprintf(chp, "%s\r\n", NANOVNA_VERSION);
 }
 
+static void cmd_vbat(BaseSequentialStream *chp, int argc, char *argv[])
+{
+  (void)argc;
+  (void)argv;
+  chprintf(chp, "%d mV\r\n", vbat);
+}
+
 static THD_WORKING_AREA(waThread2, /* cmd_* max stack size + alpha */410);
 
 static const ShellCommand commands[] =
@@ -1779,6 +1794,7 @@ static const ShellCommand commands[] =
     { "marker", cmd_marker },
     { "edelay", cmd_edelay },
     { "capture", cmd_capture },
+    { "vbat", cmd_vbat },
     { NULL, NULL }
 };
 

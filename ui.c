@@ -68,7 +68,7 @@ enum {
 };
 
 enum {
-  KM_START, KM_STOP, KM_CENTER, KM_SPAN, KM_CW, KM_SCALE, KM_REFPOS, KM_EDELAY
+  KM_START, KM_STOP, KM_CENTER, KM_SPAN, KM_CW, KM_SCALE, KM_REFPOS, KM_EDELAY, KM_VELOCITY_FACTOR
 };
 
 uint8_t ui_mode = UI_NORMAL;
@@ -667,23 +667,35 @@ menu_channel_cb(int item)
 static void
 menu_tdr_cb(int item)
 {
+  int status;
   switch (item) {
     case 0:
-        if ((domain_mode & DOMAIN_MODE) == DOMAIN_TIME) {
-            domain_mode = (domain_mode & ~DOMAIN_MODE) | DOMAIN_FREQ;
-        } else {
-            domain_mode = (domain_mode & ~DOMAIN_MODE) | DOMAIN_TIME;
-        }
+      if ((domain_mode & DOMAIN_MODE) == DOMAIN_TIME) {
+          domain_mode = (domain_mode & ~DOMAIN_MODE) | DOMAIN_FREQ;
+      } else {
+          domain_mode = (domain_mode & ~DOMAIN_MODE) | DOMAIN_TIME;
+      }
+      ui_mode_normal();
       break;
     case 1:
       domain_mode = (domain_mode & ~TDR_FUNC) | TDR_FUNC_IMPULSE;
+      ui_mode_normal();
       break;
     case 2:
       domain_mode = (domain_mode & ~TDR_FUNC) | TDR_FUNC_STEP;
+      ui_mode_normal();
+      break;
+    case 3:
+      status = btn_wait_release();
+      if (status & EVT_BUTTON_DOWN_LONG) {
+        ui_mode_numeric(KM_VELOCITY_FACTOR);
+        ui_process_numeric();
+      } else {
+        ui_mode_keypad(KM_VELOCITY_FACTOR);
+        ui_process_keypad();
+      }
       break;
   }
-
-  ui_mode_normal();
 }
 
 static void 
@@ -900,6 +912,7 @@ const menuitem_t menu_tdr[] = {
   { MT_CALLBACK, "TDR MODE", menu_tdr_cb },
   { MT_CALLBACK, "IMPULSE", menu_tdr_cb },
   { MT_CALLBACK, "STEP", menu_tdr_cb },
+  { MT_CALLBACK, "\2VELOCITY\0FACTOR", menu_tdr_cb },
   { MT_CANCEL, S_LARROW" BACK", NULL },
   { MT_NONE, NULL, NULL } // sentinel
 };
@@ -1150,11 +1163,12 @@ const keypads_t * const keypads_mode_tbl[] = {
   keypads_freq, // cw freq
   keypads_scale, // scale
   keypads_scale, // respos
-  keypads_time // electrical delay
+  keypads_time, // electrical delay
+  keypads_scale // velocity factor
 };
 
 const char * const keypad_mode_label[] = {
-  "START", "STOP", "CENTER", "SPAN", "CW FREQ", "SCALE", "REFPOS", "EDELAY"
+  "START", "STOP", "CENTER", "SPAN", "CW FREQ", "SCALE", "REFPOS", "EDELAY", "VELOCITY"
 };
 
 void
@@ -1402,6 +1416,9 @@ fetch_numeric_target(void)
   case KM_EDELAY:
     uistat.value = get_electrical_delay();
     break;
+  case KM_VELOCITY_FACTOR:
+    uistat.value = velocity_factor;
+    break;
   }
   
   {
@@ -1440,6 +1457,9 @@ void set_numeric_value(void)
     break;
   case KM_EDELAY:
     set_electrical_delay(uistat.value);
+    break;
+  case KM_VELOCITY_FACTOR:
+    velocity_factor = uistat.value;
     break;
   }
 }
@@ -1614,6 +1634,9 @@ keypad_click(int key)
       break;
     case KM_EDELAY:
       set_electrical_delay(value); // pico seconds
+      break;
+    case KM_VELOCITY_FACTOR:
+      velocity_factor = value;
       break;
     }
 

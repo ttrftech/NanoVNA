@@ -1373,7 +1373,7 @@ cell_draw_marker_info(int m, int n, int w, int h)
   } else {
 #define SPEED_OF_LIGHT 299792458
       float distance = ((float)idx * (float)SPEED_OF_LIGHT) / ( (float)(frequencies[1] - frequencies[0]) * 128.0 * 2.0);
-      chsnprintf(buf, sizeof buf, "%f m", distance);
+      chsnprintf(buf, sizeof buf, "%.1f m (%d%%)", distance * (velocity_factor / 100.0), velocity_factor);
       cell_drawstring_5x7(w, h, buf, xpos, ypos, 0xffff);
   }
 

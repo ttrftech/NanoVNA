@@ -299,6 +299,7 @@ typedef struct {
   marker_t _markers[4];
   int _active_marker;
   uint8_t _domain_mode;
+  uint8_t _velocity_factor; // %
 
   int32_t checksum;
 } properties_t;
@@ -323,6 +324,7 @@ extern int8_t previous_marker;
 #define markers current_props._markers
 #define active_marker current_props._active_marker
 #define domain_mode current_props._domain_mode
+#define velocity_factor current_props._velocity_factor
 
 int caldata_save(int id);
 int caldata_recall(int id);

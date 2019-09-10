@@ -547,6 +547,8 @@ properties_t current_props = {
     { 1, 30, 0 }, { 0, 40, 0 }, { 0, 60, 0 }, { 0, 80, 0 }
   },
   /* active_marker */      0,
+  /* domain_mode */        0,
+  /* velocity_factor */   70,
   /* checksum */           0
 };
 properties_t *active_props = &current_props;

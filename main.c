@@ -1603,6 +1603,18 @@ static void cmd_touchtest(BaseSequentialStream *chp, int argc, char *argv[])
   
 }
 
+static void cmd_battery(BaseSequentialStream *chp, int argc, char *argv[])
+{
+  (void)argc;
+  (void)argv;
+
+  adc_stop(ADC1);
+  int v = adc_vbat_read(ADC1);
+  chprintf(chp, "%d\r\n", v);
+  touch_start_watchdog();
+}
+
+
 static void cmd_frequencies(BaseSequentialStream *chp, int argc, char *argv[])
 {
   int i;
@@ -1785,6 +1797,7 @@ static const ShellCommand commands[] =
     { "test", cmd_test },
     { "touchcal", cmd_touchcal },
     { "touchtest", cmd_touchtest },
+    { "battery", cmd_battery },
     { "pause", cmd_pause },
     { "resume", cmd_resume },
     { "cal", cmd_cal },

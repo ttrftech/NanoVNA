@@ -665,7 +665,27 @@ menu_channel_cb(int item)
 }
 
 static void
-menu_tdr_cb(int item)
+menu_transform_window_cb(int item)
+{
+  // TODO
+  switch (item) {
+    case 0:
+      domain_mode = (domain_mode & ~TDR_WINDOW) | TDR_WINDOW_MINIMUM;
+      ui_mode_normal();
+      break;
+    case 1:
+      domain_mode = (domain_mode & ~TDR_WINDOW) | TDR_WINDOW_NORMAL;
+      ui_mode_normal();
+      break;
+    case 2:
+      domain_mode = (domain_mode & ~TDR_WINDOW) | TDR_WINDOW_MAXIMUM;
+      ui_mode_normal();
+      break;
+  }
+}
+
+static void
+menu_transform_cb(int item)
 {
   int status;
   switch (item) {
@@ -678,14 +698,18 @@ menu_tdr_cb(int item)
       ui_mode_normal();
       break;
     case 1:
-      domain_mode = (domain_mode & ~TDR_FUNC) | TDR_FUNC_IMPULSE;
+      domain_mode = (domain_mode & ~TDR_FUNC) | TDR_FUNC_LOWPASS_IMPULSE;
       ui_mode_normal();
       break;
     case 2:
-      domain_mode = (domain_mode & ~TDR_FUNC) | TDR_FUNC_STEP;
+      domain_mode = (domain_mode & ~TDR_FUNC) | TDR_FUNC_LOWPASS_STEP;
       ui_mode_normal();
       break;
     case 3:
+      domain_mode = (domain_mode & ~TDR_FUNC) | TDR_FUNC_BANDPASS;
+      ui_mode_normal();
+      break;
+    case 5:
       status = btn_wait_release();
       if (status & EVT_BUTTON_DOWN_LONG) {
         ui_mode_numeric(KM_VELOCITY_FACTOR);
@@ -908,11 +932,21 @@ const menuitem_t menu_channel[] = {
   { MT_NONE, NULL, NULL } // sentinel
 };
 
-const menuitem_t menu_tdr[] = {
-  { MT_CALLBACK, "TDR MODE", menu_tdr_cb },
-  { MT_CALLBACK, "IMPULSE", menu_tdr_cb },
-  { MT_CALLBACK, "STEP", menu_tdr_cb },
-  { MT_CALLBACK, "\2VELOCITY\0FACTOR", menu_tdr_cb },
+const menuitem_t menu_transform_window[] = {
+  { MT_CALLBACK, "MINIMUM", menu_transform_window_cb },
+  { MT_CALLBACK, "NORMAL", menu_transform_window_cb },
+  { MT_CALLBACK, "MAXIMUM", menu_transform_window_cb },
+  { MT_CANCEL, S_LARROW" BACK", NULL },
+  { MT_NONE, NULL, NULL } // sentinel
+};
+
+const menuitem_t menu_transform[] = {
+  { MT_CALLBACK, "\2TRANSFORM\0ON", menu_transform_cb },
+  { MT_CALLBACK, "\2LOW PASS\0IMPULSE", menu_transform_cb },
+  { MT_CALLBACK, "\2LOW PASS\0STEP", menu_transform_cb },
+  { MT_CALLBACK, "BANDPASS", menu_transform_cb },
+  { MT_SUBMENU, "WINDOW", menu_transform_window },
+  { MT_CALLBACK, "\2VELOCITY\0FACTOR", menu_transform_cb },
   { MT_CANCEL, S_LARROW" BACK", NULL },
   { MT_NONE, NULL, NULL } // sentinel
 };
@@ -922,7 +956,7 @@ const menuitem_t menu_display[] = {
   { MT_SUBMENU, "FORMAT", menu_format },
   { MT_SUBMENU, "SCALE", menu_scale },
   { MT_SUBMENU, "CHANNEL", menu_channel },
-  { MT_SUBMENU, "TDR", menu_tdr },
+  { MT_SUBMENU, "TRANSFORM", menu_transform },
   { MT_CANCEL, S_LARROW" BACK", NULL },
   { MT_NONE, NULL, NULL } // sentinel
 };
@@ -1168,7 +1202,7 @@ const keypads_t * const keypads_mode_tbl[] = {
 };
 
 const char * const keypad_mode_label[] = {
-  "START", "STOP", "CENTER", "SPAN", "CW FREQ", "SCALE", "REFPOS", "EDELAY", "VELOCITY"
+  "START", "STOP", "CENTER", "SPAN", "CW FREQ", "SCALE", "REFPOS", "EDELAY", "VELOCITY%"
 };
 
 void
@@ -1281,10 +1315,19 @@ menu_item_modify_attribute(const menuitem_t *menu, int item,
       *bg = 0x0000;
       *fg = 0xffff;
     }
-  } else if (menu == menu_tdr) {
+  } else if (menu == menu_transform) {
       if ((item == 0 && (domain_mode & DOMAIN_MODE) == DOMAIN_TIME)
-       || (item == 1 && (domain_mode & TDR_FUNC) == TDR_FUNC_IMPULSE)
-       || (item == 2 && (domain_mode & TDR_FUNC) == TDR_FUNC_STEP)
+       || (item == 1 && (domain_mode & TDR_FUNC) == TDR_FUNC_LOWPASS_IMPULSE)
+       || (item == 2 && (domain_mode & TDR_FUNC) == TDR_FUNC_LOWPASS_STEP)
+       || (item == 3 && (domain_mode & TDR_FUNC) == TDR_FUNC_BANDPASS)
+       ) {
+        *bg = 0x0000;
+        *fg = 0xffff;
+      }
+  } else if (menu == menu_transform_window) {
+      if ((item == 0 && (domain_mode & TDR_WINDOW) == TDR_WINDOW_MINIMUM)
+       || (item == 1 && (domain_mode & TDR_WINDOW) == TDR_WINDOW_NORMAL)
+       || (item == 2 && (domain_mode & TDR_WINDOW) == TDR_WINDOW_MAXIMUM)
        ) {
         *bg = 0x0000;
         *fg = 0xffff;

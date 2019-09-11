@@ -33,16 +33,38 @@ static uint8_t reverse_bits(uint8_t x, int n) {
 	return result;
 }
 
+static const float sin_table[] = {
+	/*
+	 * float has about 7.2 digits of precision
+		for (uint8_t i = 0; i < 96; i++) {
+			printf("% .8f,%c", sin(2 * M_PI * i / n), i % 8 == 7 ? '\n' : ' ');
+		}
+	*/
+	 0.00000000,  0.04906767,  0.09801714,  0.14673047,  0.19509032,  0.24298018,  0.29028468,  0.33688985,
+	 0.38268343,  0.42755509,  0.47139674,  0.51410274,  0.55557023,  0.59569930,  0.63439328,  0.67155895,
+	 0.70710678,  0.74095113,  0.77301045,  0.80320753,  0.83146961,  0.85772861,  0.88192126,  0.90398929,
+	 0.92387953,  0.94154407,  0.95694034,  0.97003125,  0.98078528,  0.98917651,  0.99518473,  0.99879546,
+	 1.00000000,  0.99879546,  0.99518473,  0.98917651,  0.98078528,  0.97003125,  0.95694034,  0.94154407,
+	 0.92387953,  0.90398929,  0.88192126,  0.85772861,  0.83146961,  0.80320753,  0.77301045,  0.74095113,
+	 0.70710678,  0.67155895,  0.63439328,  0.59569930,  0.55557023,  0.51410274,  0.47139674,  0.42755509,
+	 0.38268343,  0.33688985,  0.29028468,  0.24298018,  0.19509032,  0.14673047,  0.09801714,  0.04906767,
+	 0.00000000, -0.04906767, -0.09801714, -0.14673047, -0.19509032, -0.24298018, -0.29028468, -0.33688985,
+	-0.38268343, -0.42755509, -0.47139674, -0.51410274, -0.55557023, -0.59569930, -0.63439328, -0.67155895,
+	-0.70710678, -0.74095113, -0.77301045, -0.80320753, -0.83146961, -0.85772861, -0.88192126, -0.90398929,
+	-0.92387953, -0.94154407, -0.95694034, -0.97003125, -0.98078528, -0.98917651, -0.99518473, -0.99879546,
+};
+
 /***
  * dir = forward: 0, inverse: 1
+ * https://www.nayuki.io/res/free-small-fft-in-multiple-languages/fft.c
  */
-void fft(float array[][2], uint8_t n, uint8_t dir) {
-	int levels = 0;  // Compute levels = floor(log2(n))
-	for (uint8_t temp = n; temp > 1U; temp >>= 1)
-		levels++;
+static void fft128(float array[][2], const uint8_t dir) {
+	const uint8_t n = 128;
+	const uint8_t levels = 7; // log2(n)
+	const float* const cos_table = &sin_table[32];
 
-	uint8_t real = dir & 1;
-	uint8_t imag = ~real & 1;
+	const uint8_t real =   dir & 1;
+	const uint8_t imag = ~real & 1;
 
 	for (uint8_t i = 0; i < n; i++) {
 		uint8_t j = reverse_bits(i, levels);
@@ -63,8 +85,8 @@ void fft(float array[][2], uint8_t n, uint8_t dir) {
 		for (uint8_t i = 0; i < n; i += size) {
 			for (uint8_t j = i, k = 0; j < i + halfsize; j++, k += tablestep) {
 				uint8_t l = j + halfsize;
-				float tpre =  array[l][real] * cos(2 * M_PI * k / n) + array[l][imag] * sin(2 * M_PI * k / n);
-				float tpim = -array[l][real] * sin(2 * M_PI * k / n) + array[l][imag] * cos(2 * M_PI * k / n);
+				float tpre =  array[l][real] * cos_table[k] + array[l][imag] * sin_table[k];
+				float tpim = -array[l][real] * sin_table[k] + array[l][imag] * cos_table[k] ;
 				array[l][real] = array[j][real] - tpre;
 				array[l][imag] = array[j][imag] - tpim;
 				array[j][real] += tpre;
@@ -76,3 +98,10 @@ void fft(float array[][2], uint8_t n, uint8_t dir) {
 	}
 }
 
+static inline void fft128_forward(float array[][2]) {
+	fft128(array, 0);
+}
+
+static inline void fft128_inverse(float array[][2]) {
+	fft128(array, 1);
+}

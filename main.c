@@ -122,13 +122,13 @@ transform_domain(void)
           tmp[i*2+0] = 0.0;
           tmp[i*2+1] = 0.0;
       }
-      fft((float(*)[2])tmp, 128, 1);
+      fft128_inverse((float(*)[2])tmp);
       memcpy(measured[ch], tmp, sizeof(measured[0]));
       for (int i = 0; i < 101; i++) {
           measured[ch][i][0] /= 128.0;
           measured[ch][i][1] /= 128.0;
       }
-      if ( (domain_mode & TDR_FUNC_STEP) == TDR_FUNC_STEP ) {
+      if ( (domain_mode & TDR_FUNC) == TDR_FUNC_LOWPASS_STEP ) {
           for (int i = 1; i < 101; i++) {
               measured[ch][i][0] += measured[ch][i-1][0];
               measured[ch][i][1] += measured[ch][i-1][1];

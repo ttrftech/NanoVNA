@@ -61,9 +61,14 @@ enum {
 #define DOMAIN_MODE (1<<0)
 #define DOMAIN_FREQ (0<<0)
 #define DOMAIN_TIME (1<<0)
-#define TDR_FUNC (1<<1)
-#define TDR_FUNC_IMPULSE (0<<1)
-#define TDR_FUNC_STEP    (1<<1)
+#define TDR_FUNC (0b11<<1)
+#define TDR_FUNC_BANDPASS (0b00<<1)
+#define TDR_FUNC_LOWPASS_IMPULSE (0b01<<1)
+#define TDR_FUNC_LOWPASS_STEP    (0b10<<1)
+#define TDR_WINDOW (0b11<<3)
+#define TDR_WINDOW_NORMAL (0b00<<3)
+#define TDR_WINDOW_MINIMUM (0b01<<3)
+#define TDR_WINDOW_MAXIMUM (0b10<<3)
 
 void cal_collect(int type);
 void cal_done(void);
@@ -298,7 +303,7 @@ typedef struct {
   trace_t _trace[TRACES_MAX];
   marker_t _markers[4];
   int _active_marker;
-  uint8_t _domain_mode;
+  uint8_t _domain_mode; /* 0bxxxxxffm : where ff: TDR_FUNC m: DOMAIN_MODE */
   uint8_t _velocity_factor; // %
 
   int32_t checksum;

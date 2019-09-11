@@ -140,27 +140,27 @@ transform_domain(void)
   float* tmp = (float*)spi_buffer;
 
   uint8_t window_size, offset;
-  switch (domain_mode & TDR_FUNC) {
-      case TDR_FUNC_BANDPASS:
+  switch (domain_mode & TD_FUNC) {
+      case TD_FUNC_BANDPASS:
           offset = 0;
           window_size = 101;
           break;
-      case TDR_FUNC_LOWPASS_IMPULSE:
-      case TDR_FUNC_LOWPASS_STEP:
+      case TD_FUNC_LOWPASS_IMPULSE:
+      case TD_FUNC_LOWPASS_STEP:
           offset = 101;
           window_size = 202;
           break;
   }
 
   float beta = 0.0;
-  switch (domain_mode & TDR_WINDOW) {
-      case TDR_WINDOW_MINIMUM:
+  switch (domain_mode & TD_WINDOW) {
+      case TD_WINDOW_MINIMUM:
           beta = 0.0; // this is rectangular
           break;
-      case TDR_WINDOW_NORMAL:
+      case TD_WINDOW_NORMAL:
           beta = 6.0;
           break;
-      case TDR_WINDOW_MAXIMUM:
+      case TD_WINDOW_MAXIMUM:
           beta = 13;
           break;
   }
@@ -184,7 +184,7 @@ transform_domain(void)
           measured[ch][i][0] /= 128.0;
           measured[ch][i][1] /= 128.0;
       }
-      if ( (domain_mode & TDR_FUNC) == TDR_FUNC_LOWPASS_STEP ) {
+      if ( (domain_mode & TD_FUNC) == TD_FUNC_LOWPASS_STEP ) {
           for (int i = 1; i < 101; i++) {
               measured[ch][i][0] += measured[ch][i-1][0];
               measured[ch][i][1] += measured[ch][i-1][1];

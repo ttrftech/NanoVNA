@@ -670,15 +670,15 @@ menu_transform_window_cb(int item)
   // TODO
   switch (item) {
     case 0:
-      domain_mode = (domain_mode & ~TDR_WINDOW) | TDR_WINDOW_MINIMUM;
+      domain_mode = (domain_mode & ~TD_WINDOW) | TD_WINDOW_MINIMUM;
       ui_mode_normal();
       break;
     case 1:
-      domain_mode = (domain_mode & ~TDR_WINDOW) | TDR_WINDOW_NORMAL;
+      domain_mode = (domain_mode & ~TD_WINDOW) | TD_WINDOW_NORMAL;
       ui_mode_normal();
       break;
     case 2:
-      domain_mode = (domain_mode & ~TDR_WINDOW) | TDR_WINDOW_MAXIMUM;
+      domain_mode = (domain_mode & ~TD_WINDOW) | TD_WINDOW_MAXIMUM;
       ui_mode_normal();
       break;
   }
@@ -699,15 +699,15 @@ menu_transform_cb(int item)
       ui_mode_normal();
       break;
     case 1:
-      domain_mode = (domain_mode & ~TDR_FUNC) | TDR_FUNC_LOWPASS_IMPULSE;
+      domain_mode = (domain_mode & ~TD_FUNC) | TD_FUNC_LOWPASS_IMPULSE;
       ui_mode_normal();
       break;
     case 2:
-      domain_mode = (domain_mode & ~TDR_FUNC) | TDR_FUNC_LOWPASS_STEP;
+      domain_mode = (domain_mode & ~TD_FUNC) | TD_FUNC_LOWPASS_STEP;
       ui_mode_normal();
       break;
     case 3:
-      domain_mode = (domain_mode & ~TDR_FUNC) | TDR_FUNC_BANDPASS;
+      domain_mode = (domain_mode & ~TD_FUNC) | TD_FUNC_BANDPASS;
       ui_mode_normal();
       break;
     case 5:
@@ -1318,17 +1318,17 @@ menu_item_modify_attribute(const menuitem_t *menu, int item,
     }
   } else if (menu == menu_transform) {
       if ((item == 0 && (domain_mode & DOMAIN_MODE) == DOMAIN_TIME)
-       || (item == 1 && (domain_mode & TDR_FUNC) == TDR_FUNC_LOWPASS_IMPULSE)
-       || (item == 2 && (domain_mode & TDR_FUNC) == TDR_FUNC_LOWPASS_STEP)
-       || (item == 3 && (domain_mode & TDR_FUNC) == TDR_FUNC_BANDPASS)
+       || (item == 1 && (domain_mode & TD_FUNC) == TD_FUNC_LOWPASS_IMPULSE)
+       || (item == 2 && (domain_mode & TD_FUNC) == TD_FUNC_LOWPASS_STEP)
+       || (item == 3 && (domain_mode & TD_FUNC) == TD_FUNC_BANDPASS)
        ) {
         *bg = 0x0000;
         *fg = 0xffff;
       }
   } else if (menu == menu_transform_window) {
-      if ((item == 0 && (domain_mode & TDR_WINDOW) == TDR_WINDOW_MINIMUM)
-       || (item == 1 && (domain_mode & TDR_WINDOW) == TDR_WINDOW_NORMAL)
-       || (item == 2 && (domain_mode & TDR_WINDOW) == TDR_WINDOW_MAXIMUM)
+      if ((item == 0 && (domain_mode & TD_WINDOW) == TD_WINDOW_MINIMUM)
+       || (item == 1 && (domain_mode & TD_WINDOW) == TD_WINDOW_NORMAL)
+       || (item == 2 && (domain_mode & TD_WINDOW) == TD_WINDOW_MAXIMUM)
        ) {
         *bg = 0x0000;
         *fg = 0xffff;

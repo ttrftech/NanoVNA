@@ -695,6 +695,7 @@ menu_transform_cb(int item)
       } else {
           domain_mode = (domain_mode & ~DOMAIN_MODE) | DOMAIN_TIME;
       }
+      draw_frequencies();
       ui_mode_normal();
       break;
     case 1:

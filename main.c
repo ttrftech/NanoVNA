@@ -108,6 +108,28 @@ toggle_sweep(void)
   sweep_enabled = !sweep_enabled;
 }
 
+float bessel0(float x) {
+	const float eps = 0.0001;
+
+	float ret = 0;
+	float term = 1;
+	float m = 0;
+
+	while (term  > eps * ret) {
+		ret += term;
+		++m;
+		term *= (x*x) / (4*m*m);
+	}
+
+	return ret;
+}
+
+float kaiser_window(float k, float n, float beta) {
+	if (beta == 0.0) return 1.0;
+	float r = (2 * k) / (n - 1) - 1;
+	return bessel0(beta * sqrt(1 - r * r)) / bessel0(beta);
+}
+
 static
 void
 transform_domain(void)
@@ -116,9 +138,43 @@ transform_domain(void)
   // use spi_buffer as temporary buffer
   // and calculate ifft for time domain
   float* tmp = (float*)spi_buffer;
+
+  uint8_t window_size, offset;
+  switch (domain_mode & TDR_FUNC) {
+      case TDR_FUNC_BANDPASS:
+          offset = 0;
+          window_size = 101;
+          break;
+      case TDR_FUNC_LOWPASS_IMPULSE:
+      case TDR_FUNC_LOWPASS_STEP:
+          offset = 101;
+          window_size = 202;
+          break;
+  }
+
+  float beta = 0.0;
+  switch (domain_mode & TDR_WINDOW) {
+      case TDR_WINDOW_MINIMUM:
+          beta = 0.0; // this is rectangular
+          break;
+      case TDR_WINDOW_NORMAL:
+          beta = 6.0;
+          break;
+      case TDR_WINDOW_MAXIMUM:
+          beta = 13;
+          break;
+  }
+
   for (int ch = 0; ch < 2; ch++) {
       memcpy(tmp, measured[ch], sizeof(measured[0]));
-      for (int i = 101+1; i < 128; i++) {
+      if (beta != 0.0) {
+          for (int i = 0; i < 101; i++) {
+              float w = kaiser_window(i+offset, window_size, beta);
+              tmp[i*2+0] *= w;
+              tmp[i*2+1] *= w;
+          }
+      }
+      for (int i = 101; i < 128; i++) {
           tmp[i*2+0] = 0.0;
           tmp[i*2+1] = 0.0;
       }

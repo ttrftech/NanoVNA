@@ -2,7 +2,7 @@ version: 2
 jobs:
   build:
     docker:
-      - image: edy555/arm-embedded:4.9
+      - image: edy555/arm-embedded:8.2
     steps:
       - checkout
       - run:

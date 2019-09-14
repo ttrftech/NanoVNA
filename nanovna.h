@@ -22,7 +22,8 @@
 /*
  * main.c
  */
-extern float measured[2][101][2];
+#define MEASURED_LENGTH 101
+extern float measured[2][MEASURED_LENGTH][2];
 
 #define CAL_LOAD 0
 #define CAL_OPEN 1
@@ -149,7 +150,7 @@ extern const uint32_t numfont20x24[][24];
 #define TRACES_MAX 4
 
 enum {
-  TRC_LOGMAG, TRC_PHASE, TRC_DELAY, TRC_SMITH, TRC_POLAR, TRC_LINEAR, TRC_SWR, TRC_REAL, TRC_IMAG, TRC_R, TRC_X, TRC_OFF
+  TRC_LOGMAG, TRC_PHASE, TRC_DELAY, TRC_SMITH, TRC_POLAR, TRC_LINEAR, TRC_SWR, TRC_REAL, TRC_IMAG, TRC_R, TRC_X, TRC_OFF, TRC_TDR
 };
 
 // LOGMAG: SCALE, REFPOS, REFVAL
@@ -218,7 +219,7 @@ void request_to_draw_cells_behind_menu(void);
 void request_to_draw_cells_behind_numeric_input(void);
 void redraw_marker(int marker, int update_info);
 void trace_get_info(int t, char *buf, int len);
-void plot_into_index(float measured[2][101][2]);
+void plot_into_index(float measured[2][MEASURED_LENGTH][2]);
 void force_set_markmap(void);
 void draw_all_cells(void);
 

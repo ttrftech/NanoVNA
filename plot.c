@@ -504,6 +504,7 @@ trace_into_index(int x, int t, int i, float coeff[2])
     v = refpos - phase(coeff) * scale;
     break;
   case TRC_LINEAR:
+  case TRC_TDR:
     v = refpos + linear(coeff) * scale;
     break;
   case TRC_SWR:
@@ -785,9 +786,21 @@ mark_cells_from_index(void)
   }
 }
 
-void plot_into_index(float measured[2][101][2])
+void plot_into_index(float measured[2][MEASURED_LENGTH][2])
 {
   int i, t;
+#if 0
+  if (trace[0].type == TRD_TDR && trace[0].enabled) {
+// Covert real part of S11 to complex FFT in S21
+   for (i = 0; i < sweep_points; i++) {
+      int x = i * (WIDTH-1) / (sweep_points-1);
+        trace_index[t][i] = trace_into_index(x, 0, i, measured[1][i]);
+      }
+    }
+
+
+  } else
+  #endif
   for (i = 0; i < sweep_points; i++) {
     int x = i * (WIDTH-1) / (sweep_points-1);
     for (t = 0; t < TRACES_MAX; t++) {

@@ -386,9 +386,7 @@ touch_position(int *x, int *y)
 void
 show_version(void)
 {
-  int status;
   int x = 5, y = 5;
-  int i;
   
   adc_stop(ADC1);
   ili9341_fill(0, 0, 320, 240, 0);
@@ -407,9 +405,12 @@ show_version(void)
   ili9341_drawstring_5x7("Port Info: " PORT_INFO, x, y += 10, 0xffff, 0x0000);
   ili9341_drawstring_5x7("Platform: " PLATFORM_NAME, x, y += 10, 0xffff, 0x0000);
 
-  do {
-    status = touch_check();
-  } while(status != EVT_TOUCH_PRESSED);
+  while (true) {
+    if (touch_check() == EVT_TOUCH_PRESSED)
+      break;
+    if (btn_check() & EVT_BUTTON_SINGLE_CLICK)
+      break;
+  }
 
   touch_start_watchdog();
 }

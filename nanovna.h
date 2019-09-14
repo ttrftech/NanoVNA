@@ -315,8 +315,6 @@ int config_recall(void);
 
 void clear_all_config_prop_data(void);
 
-int16_t adc_vbat_read(ADC_TypeDef *adc);
-
 /*
  * ui.c
  */

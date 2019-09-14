@@ -92,5 +92,12 @@ Hardware design material is disclosed to prevent bad quality clone. Please let m
 * [PCB Photo](/doc/nanovna-pcb-photo.jpg)
 * [Block Diagram](/doc/nanovna-blockdiagram.png)
 * Kit available from https://ttrf.tk/kit/nanovna
-* Credit: @edy555
-[EOF]
+
+## Credit
+
+* [@edy555](https://github.com/edy555)
+
+### Contributors
+
+* [@hugen79](https://github.com/hugen79)
+* [@cho45](https://github.com/cho45)

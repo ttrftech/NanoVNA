@@ -56,6 +56,7 @@ int8_t sweep_once = FALSE;
 int8_t cal_auto_interpolate = TRUE;
 int8_t redraw_requested = FALSE;
 int8_t stop_the_world = FALSE;
+int16_t vbat = 0;
 
 BaseSequentialStream *saved_chp;
 
@@ -82,6 +83,13 @@ static THD_FUNCTION(Thread1, arg)
       } else {
         __WFI();
         ui_process();
+      }
+
+      if (vbat != -1) {
+          adc_stop(ADC1);
+          vbat = adc_vbat_read(ADC1);
+          touch_start_watchdog();
+          draw_battery_status();
       }
 
       /* calculate trace coordinates */
@@ -1648,6 +1656,18 @@ static void cmd_touchtest(BaseSequentialStream *chp, int argc, char *argv[])
   
 }
 
+static void cmd_battery(BaseSequentialStream *chp, int argc, char *argv[])
+{
+  (void)argc;
+  (void)argv;
+
+  adc_stop(ADC1);
+  int v = adc_vbat_read(ADC1);
+  chprintf(chp, "%d\r\n", v);
+  touch_start_watchdog();
+}
+
+
 static void cmd_frequencies(BaseSequentialStream *chp, int argc, char *argv[])
 {
   int i;
@@ -1800,6 +1820,13 @@ static void cmd_version(BaseSequentialStream *chp, int argc, char *argv[])
   chprintf(chp, "%s\r\n", NANOVNA_VERSION);
 }
 
+static void cmd_vbat(BaseSequentialStream *chp, int argc, char *argv[])
+{
+  (void)argc;
+  (void)argv;
+  chprintf(chp, "%d mV\r\n", vbat);
+}
+
 static THD_WORKING_AREA(waThread2, /* cmd_* max stack size + alpha */410);
 
 static const ShellCommand commands[] =
@@ -1828,6 +1855,7 @@ static const ShellCommand commands[] =
     { "test", cmd_test },
     { "touchcal", cmd_touchcal },
     { "touchtest", cmd_touchtest },
+    { "battery", cmd_battery },
     { "pause", cmd_pause },
     { "resume", cmd_resume },
     { "cal", cmd_cal },
@@ -1837,6 +1865,7 @@ static const ShellCommand commands[] =
     { "marker", cmd_marker },
     { "edelay", cmd_edelay },
     { "capture", cmd_capture },
+    { "vbat", cmd_vbat },
     { NULL, NULL }
 };
 

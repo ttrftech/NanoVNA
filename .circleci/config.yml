@@ -2,7 +2,7 @@ version: 2
 jobs:
   build:
     docker:
-      - image: edy555/arm-embedded:4.9
+      - image: edy555/arm-embedded:8.2
     steps:
       - checkout
       - run:
@@ -25,7 +25,7 @@ jobs:
             - build
   publish-github-release:
     docker:
-      - image: circleci/golang:1.8
+      - image: circleci/golang:1.10
     steps:
       - attach_workspace:
           at: .

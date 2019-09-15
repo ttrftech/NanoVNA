@@ -21,29 +21,23 @@ This repository contains source of NanoVNA firmware.
 
 ## Prepare ARM Cross Tools
 
-Requires gcc-4.9 to build firmware from source code. (Not work gcc-5.4 or lator, because of SRAM shortage that those runtime use more SRAM)
+**UPDATE**: Recent gcc version works to build NanoVNA, no need old version.
 
 ### MacOSX
 
 Install cross tools and firmware updating tool.
 
     $ brew tap px4/px4
-    $ brew install gcc-arm-none-eabi-49
+    $ brew install gcc-arm-none-eabi-80
     $ brew install dfu-util
-
-Otherwise, use toolchains included inside LPCxpresso. Like this.
-
-    $ PATH=$PATH:/Applications/lpcxpresso_7.8.0_426/lpcxpresso/tools/bin
 
 ### Linux (ubuntu)
 
-Download arm cross tools from [here](https://launchpad.net/gcc-arm-embedded/4.9/4.9-2015-q3-update).
-This version is 32-bit binary, so additional lib32z1 and lib32ncurses5 package required.
+Download arm cross tools from [here](https://developer.arm.com/tools-and-software/open-source-software/developer-tools/gnu-toolchain/gnu-rm/downloads).
 
-    $ wget https://launchpad.net/gcc-arm-embedded/4.9/4.9-2015-q3-update/+download/gcc-arm-none-eabi-4_9-2015q3-20150921-linux.tar.bz2
-    $ sudo tar xfj -C /usr/local gcc-arm-none-eabi-4_9-2015q3-20150921-linux.tar.bz2
-    $ PATH=/usr/local/gcc-arm-none-eabi-4_9-2015q3/bin:$PATH
-    $ sudo apt install -y lib32z1 lib32ncurses5
+    $ wget https://developer.arm.com/-/media/Files/downloads/gnu-rm/8-2018q4/gcc-arm-none-eabi-8-2018-q4-major-linux.tar.bz2
+    $ sudo tar xfj -C /usr/local gcc-arm-none-eabi-8-2018-q4-major-linux.tar.bz2
+    $ PATH=/usr/local/gcc-arm-none-eabi-8-2018-q4-major/bin:$PATH
     $ sudo apt install -y dfu-util
 
 ## Fetch source code
@@ -62,19 +56,23 @@ Just make in the directory.
 
 ### Build firmware using docker
 
-You can build firmware using [this docker image](https://cloud.docker.com/u/edy555/repository/docker/edy555/arm-embedded) without installing arm toolchain.
+Using [this docker image](https://cloud.docker.com/u/edy555/repository/docker/edy555/arm-embedded) without installing arm toolchain.
 
     $ cd NanoVNA
-    $ docker run -it --rm -v $(PWD):/work edy555/arm-embedded:4.9 make
+    $ docker run -it --rm -v $(PWD):/work edy555/arm-embedded:8.2 make
 
 ## Flash firmware
 
-Boot MCU in DFU mode. To do this, jumper BOOT0 pin at powering device.
-Then, burn firmware using dfu-util via USB.
+First, make device enter DFU mode by one of following methods.
+
+* Jumper BOOT0 pin at powering device
+* Select menu Config->DFU (needs recent firmware)
+
+Then, flash firmware using dfu-util via USB.
 
     $ dfu-util -d 0483:df11 -a 0 -s 0x08000000:leave -D build/ch.bin
 
-Or do simply
+Or simply use make.
 
     $ make flash
 
@@ -94,6 +92,12 @@ Hardware design material is disclosed to prevent bad quality clone. Please let m
 * [PCB Photo](/doc/nanovna-pcb-photo.jpg)
 * [Block Diagram](/doc/nanovna-blockdiagram.png)
 * Kit available from https://ttrf.tk/kit/nanovna
-* Credit: @edy555
 
-[EOF]
+## Credit
+
+* [@edy555](https://github.com/edy555)
+
+### Contributors
+
+* [@hugen79](https://github.com/hugen79)
+* [@cho45](https://github.com/cho45)

@@ -59,14 +59,11 @@ int8_t stop_the_world = FALSE;
 
 BaseSequentialStream *saved_chp;
 
-static THD_WORKING_AREA(waThread1, 640-64);
+static THD_WORKING_AREA(waThread1, 640);
 static THD_FUNCTION(Thread1, arg)
 {
     (void)arg;
     chRegSetThreadName("sweep");
-
-//FFT(measured[0],measured[1],101,0);
-
 
     while (1) {
       if (stop_the_world) {
@@ -1473,17 +1470,6 @@ static void cmd_trace(BaseSequentialStream *chp, int argc, char *argv[])
     }
     return;
   } 
-#if 0
-  if (strcmp(argv[0], "tdr") == 0) {
-    set_trace_type(1, TRC_TDR);
-    trace[0].channel = 1; // Get data from S21 after doing the FFT
-    set_trace_type(1, TRC_OFF);
-    set_trace_type(2, TRC_OFF);
-    set_trace_type(3, TRC_OFF);
-    goto exit;
-  }
-#endif
-
   if (strcmp(argv[0], "all") == 0 &&
       argc > 1 && strcmp(argv[1], "off") == 0) {
     set_trace_type(0, TRC_OFF);
@@ -1552,10 +1538,7 @@ static void cmd_trace(BaseSequentialStream *chp, int argc, char *argv[])
  usage:
   chprintf(chp, "trace {0|1|2|3|all} [logmag|phase|smith|linear|delay|swr|real|imag|r|x|off] [src]\r\n");
   chprintf(chp, "trace {0|1|2|3} {scale|refpos} {value}\r\n");
-#if 0
-  chprintf(chp, "trace tdr\r\n");
-#endif
-  }
+}
 
 
 void set_electrical_delay(float picoseconds)
@@ -1663,6 +1646,7 @@ static void cmd_touchtest(BaseSequentialStream *chp, int argc, char *argv[])
   chMtxUnlock(&mutex);
   
 }
+
 
 static void cmd_frequencies(BaseSequentialStream *chp, int argc, char *argv[])
 {
@@ -1816,7 +1800,7 @@ static void cmd_version(BaseSequentialStream *chp, int argc, char *argv[])
   chprintf(chp, "%s\r\n", NANOVNA_VERSION);
 }
 
-static THD_WORKING_AREA(waThread2, /* cmd_* max stack size + alpha */410+64);
+static THD_WORKING_AREA(waThread2, /* cmd_* max stack size + alpha */410);
 
 static const ShellCommand commands[] =
 {

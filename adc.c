@@ -25,6 +25,7 @@
 #define ADC_TR(low, high)               (((uint32_t)(high) << 16U) |        \
                                          (uint32_t)(low))
 #define ADC_SMPR_SMP_1P5        0U  /**< @brief 14 cycles conversion time   */
+#define ADC_SMPR_SMP_239P5      7U  /**< @brief 252 cycles conversion time. */ 
 #define ADC_CFGR1_RES_12BIT             (0U << 3U)
 
 void adc_init(void)
@@ -61,7 +62,7 @@ uint16_t adc_single_read(ADC_TypeDef *adc, uint32_t chsel)
   adc->ISR    = adc->ISR;
   adc->IER    = 0;
   adc->TR     = ADC_TR(0, 0);
-  adc->SMPR   = ADC_SMPR_SMP_1P5;
+  adc->SMPR   = ADC_SMPR_SMP_239P5;
   adc->CFGR1  = ADC_CFGR1_RES_12BIT;
   adc->CHSELR = chsel;
 
@@ -73,7 +74,6 @@ uint16_t adc_single_read(ADC_TypeDef *adc, uint32_t chsel)
 
   return adc->DR;
 }
-
 void adc_start_analog_watchdogd(ADC_TypeDef *adc, uint32_t chsel)
 {
   uint32_t cfgr1;

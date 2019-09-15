@@ -9,3 +9,6 @@ python
 *.ipynb
 TAGS
 .emacs-dirvars
+.cproject
+*.project
+.settings/language.settings.xml

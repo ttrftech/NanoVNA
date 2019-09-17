@@ -1757,7 +1757,7 @@ static void cmd_vbat(BaseSequentialStream *chp, int argc, char *argv[])
   chprintf(chp, "%d mV\r\n", vbat);
 }
 
-static THD_WORKING_AREA(waThread2, /* cmd_* max stack size + alpha */410);
+static THD_WORKING_AREA(waThread2, /* cmd_* max stack size + alpha */442);
 
 static const ShellCommand commands[] =
 {

@@ -1800,7 +1800,7 @@ static void cmd_version(BaseSequentialStream *chp, int argc, char *argv[])
   chprintf(chp, "%s\r\n", NANOVNA_VERSION);
 }
 
-static THD_WORKING_AREA(waThread2, /* cmd_* max stack size + alpha */410);
+static THD_WORKING_AREA(waThread2, /* cmd_* max stack size + alpha */442);
 
 static const ShellCommand commands[] =
 {

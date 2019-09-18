@@ -22,6 +22,7 @@
 /*
  * main.c
  */
+
 extern float measured[2][101][2];
 
 #define CAL_LOAD 0
@@ -48,6 +49,18 @@ extern float measured[2][101][2];
 #define ETERM_ER 2 /* error term refrection tracking */
 #define ETERM_ET 3 /* error term transmission tracking */
 #define ETERM_EX 4 /* error term isolation */
+
+#define DOMAIN_MODE (1<<0)
+#define DOMAIN_FREQ (0<<0)
+#define DOMAIN_TIME (1<<0)
+#define TD_FUNC (0b11<<1)
+#define TD_FUNC_BANDPASS (0b00<<1)
+#define TD_FUNC_LOWPASS_IMPULSE (0b01<<1)
+#define TD_FUNC_LOWPASS_STEP    (0b10<<1)
+#define TD_WINDOW (0b11<<3)
+#define TD_WINDOW_NORMAL (0b00<<3)
+#define TD_WINDOW_MINIMUM (0b01<<3)
+#define TD_WINDOW_MAXIMUM (0b10<<3)
 
 void cal_collect(int type);
 void cal_done(void);
@@ -282,6 +295,8 @@ typedef struct {
   trace_t _trace[TRACES_MAX];
   marker_t _markers[4];
   int _active_marker;
+  uint8_t _domain_mode; /* 0bxxxxxffm : where ff: TD_FUNC m: DOMAIN_MODE */
+  uint8_t _velocity_factor; // %
 
   int32_t checksum;
 } properties_t;
@@ -305,6 +320,8 @@ extern int8_t previous_marker;
 #define trace current_props._trace
 #define markers current_props._markers
 #define active_marker current_props._active_marker
+#define domain_mode current_props._domain_mode
+#define velocity_factor current_props._velocity_factor
 
 int caldata_save(int id);
 int caldata_recall(int id);

@@ -23,6 +23,7 @@
 #include "usbcfg.h"
 #include "si5351.h"
 #include "nanovna.h"
+#include "fft.h"
 
 #include <chprintf.h>
 #include <shell.h>
@@ -105,6 +106,91 @@ void
 toggle_sweep(void)
 {
   sweep_enabled = !sweep_enabled;
+}
+
+float bessel0(float x) {
+	const float eps = 0.0001;
+
+	float ret = 0;
+	float term = 1;
+	float m = 0;
+
+	while (term  > eps * ret) {
+		ret += term;
+		++m;
+		term *= (x*x) / (4*m*m);
+	}
+
+	return ret;
+}
+
+float kaiser_window(float k, float n, float beta) {
+	if (beta == 0.0) return 1.0;
+	float r = (2 * k) / (n - 1) - 1;
+	return bessel0(beta * sqrt(1 - r * r)) / bessel0(beta);
+}
+
+static
+void
+transform_domain(void)
+{
+  if ((domain_mode & DOMAIN_MODE) != DOMAIN_TIME) return; // nothing to do for freq domain
+  // use spi_buffer as temporary buffer
+  // and calculate ifft for time domain
+  float* tmp = (float*)spi_buffer;
+
+  uint8_t window_size, offset;
+  switch (domain_mode & TD_FUNC) {
+      case TD_FUNC_BANDPASS:
+          offset = 0;
+          window_size = 101;
+          break;
+      case TD_FUNC_LOWPASS_IMPULSE:
+      case TD_FUNC_LOWPASS_STEP:
+          offset = 101;
+          window_size = 202;
+          break;
+  }
+
+  float beta = 0.0;
+  switch (domain_mode & TD_WINDOW) {
+      case TD_WINDOW_MINIMUM:
+          beta = 0.0; // this is rectangular
+          break;
+      case TD_WINDOW_NORMAL:
+          beta = 6.0;
+          break;
+      case TD_WINDOW_MAXIMUM:
+          beta = 13;
+          break;
+  }
+
+  for (int ch = 0; ch < 2; ch++) {
+      memcpy(tmp, measured[ch], sizeof(measured[0]));
+      if (beta != 0.0) {
+          for (int i = 0; i < 101; i++) {
+              float w = kaiser_window(i+offset, window_size, beta);
+              tmp[i*2+0] *= w;
+              tmp[i*2+1] *= w;
+          }
+      }
+      for (int i = 101; i < 128; i++) {
+          tmp[i*2+0] = 0.0;
+          tmp[i*2+1] = 0.0;
+      }
+      fft128_inverse((float(*)[2])tmp);
+      memcpy(measured[ch], tmp, sizeof(measured[0]));
+      for (int i = 0; i < 101; i++) {
+          measured[ch][i][0] /= 128.0;
+          measured[ch][i][1] /= 128.0;
+      }
+      if ( (domain_mode & TD_FUNC) == TD_FUNC_LOWPASS_STEP ) {
+          for (int i = 1; i < 101; i++) {
+              measured[ch][i][0] += measured[ch][i-1][0];
+              measured[ch][i][1] += measured[ch][i-1][1];
+          }
+      }
+  }
 }
 
 static void cmd_pause(BaseSequentialStream *chp, int argc, char *argv[])
@@ -515,6 +601,8 @@ properties_t current_props = {
     { 1, 30, 0 }, { 0, 40, 0 }, { 0, 60, 0 }, { 0, 80, 0 }
   },
   /* active_marker */      0,
+  /* domain_mode */        0,
+  /* velocity_factor */   70,
   /* checksum */           0
 };
 properties_t *active_props = &current_props;
@@ -599,11 +687,13 @@ void sweep(void)
     redraw_requested = FALSE;
     ui_process();
     if (redraw_requested)
-      return; // return to redraw screen asap.
+      break; // return to redraw screen asap.
       
     if (frequency_updated)
       goto rewind;
   }
+
+  transform_domain();
 }
 
 static void

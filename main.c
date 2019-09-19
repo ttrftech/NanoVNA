@@ -176,27 +176,27 @@ transform_domain(void)
 
   for (int ch = 0; ch < 2; ch++) {
       memcpy(tmp, measured[ch], sizeof(measured[0]));
-      if (beta != 0.0) {
-          for (int i = 0; i < 101; i++) {
-              float w = kaiser_window(i+offset, window_size, beta);
-              tmp[i*2+0] *= w;
-              tmp[i*2+1] *= w;
-          }
-      }
-      for (int i = 101; i < 128; i++) {
-          tmp[i*2+0] = 0.0;
-          tmp[i*2+1] = 0.0;
+//      if (beta != 0.0) {
+//          for (int i = 0; i < 101; i++) {
+//              float w = kaiser_window(i+offset, window_size, beta);
+//              tmp[i*2+0] *= w;
+//              tmp[i*2+1] *= w;
+//          }
+//      }
+      for (int i = 0; i < 128; i +=2) {
+        tmp[256 - i+0] = tmp[i+0];
+        tmp[256 - i+1] = -tmp[i+1];
       }
       fft128_inverse((float(*)[2])tmp);
       memcpy(measured[ch], tmp, sizeof(measured[0]));
       for (int i = 0; i < 101; i++) {
           measured[ch][i][0] /= 128.0;
-          measured[ch][i][1] /= 128.0;
+          measured[ch][i][1] = 0;
       }
       if ( (domain_mode & TD_FUNC) == TD_FUNC_LOWPASS_STEP ) {
           for (int i = 1; i < 101; i++) {
               measured[ch][i][0] += measured[ch][i-1][0];
-              measured[ch][i][1] += measured[ch][i-1][1];
+//              measured[ch][i][1] += measured[ch][i-1][1];
           }
       }
   }
@@ -1888,13 +1888,13 @@ static void cmd_stat(BaseSequentialStream *chp, int argc, char *argv[])
 #define VERSION "unknown"
 #endif
 
-const char NANOVNA_VERSION[] = VERSION;
+const char NANOVNA_VERSION[] = "edy555 0.1.1";
 
 static void cmd_version(BaseSequentialStream *chp, int argc, char *argv[])
 {
   (void)argc;
   (void)argv;
-  chprintf(chp, "%s\r\n", NANOVNA_VERSION);
+  chprintf(chp, "%s %s\r\n", NANOVNA_VERSION, "extended with scan command");
 }
 
 static void cmd_vbat(BaseSequentialStream *chp, int argc, char *argv[])

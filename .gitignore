@@ -13,3 +13,4 @@ TAGS
 *.project
 .settings/language.settings.xml
 FFT.c
+main.c

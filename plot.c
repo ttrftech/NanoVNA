@@ -702,6 +702,17 @@ trace_get_info(int t, char *buf, int len)
   }
 }
 
+static float time_of_index(int idx) {
+   return 1.0 / (float)(frequencies[1] - frequencies[0]) / 128.0 * idx;
+}
+
+static float distance_of_index(int idx) {
+#define SPEED_OF_LIGHT 299792458
+   float distance = ((float)idx * (float)SPEED_OF_LIGHT) / ( (float)(frequencies[1] - frequencies[0]) * 128.0 * 2.0);
+   return distance * (velocity_factor / 100.0);
+}
+
+
 static inline void
 mark_map(int x, int y)
 {
@@ -1380,8 +1391,13 @@ cell_draw_marker_info(int m, int n, int w, int h)
   chsnprintf(buf, sizeof buf, "%d:", active_marker + 1);
   cell_drawstring_5x7(w, h, buf, xpos, ypos, 0xffff);
   xpos += 16;
-  frequency_string(buf, sizeof buf, frequencies[idx]);
-  cell_drawstring_5x7(w, h, buf, xpos, ypos, 0xffff);
+  if ((domain_mode & DOMAIN_MODE) == DOMAIN_FREQ) {
+      frequency_string(buf, sizeof buf, frequencies[idx]);
+      cell_drawstring_5x7(w, h, buf, xpos, ypos, 0xffff);
+  } else {
+      chsnprintf(buf, sizeof buf, "%d ns %.1f m", (uint16_t)(time_of_index(idx) * 1e9), distance_of_index(idx));
+      cell_drawstring_5x7(w, h, buf, xpos, ypos, 0xffff);
+  }
 
   // draw marker delta
   if (previous_marker >= 0 && active_marker != previous_marker && markers[previous_marker].enabled) {
@@ -1423,37 +1439,47 @@ void
 draw_frequencies(void)
 {
   char buf[24];
-  if (frequency1 > 0) {
-    int start = frequency0;
-    int stop = frequency1;
-    strcpy(buf, "START ");
-    frequency_string(buf+6, 24-6, start);
-    strcat(buf, "    ");
-    ili9341_drawstring_5x7(buf, OFFSETX, 233, 0xffff, 0x0000);
-    strcpy(buf, "STOP ");
-    frequency_string(buf+5, 24-5, stop);
-    strcat(buf, "    ");
-    ili9341_drawstring_5x7(buf, 205, 233, 0xffff, 0x0000);
-  } else if (frequency1 < 0) {
-    int fcenter = frequency0;
-    int fspan = -frequency1;
-    strcpy(buf, "CENTER ");
-    frequency_string(buf+7, 24-7, fcenter);
-    strcat(buf, "    ");
-    ili9341_drawstring_5x7(buf, OFFSETX, 233, 0xffff, 0x0000);
-    strcpy(buf, "SPAN ");
-    frequency_string(buf+5, 24-5, fspan);
-    strcat(buf, "    ");
-    ili9341_drawstring_5x7(buf, 205, 233, 0xffff, 0x0000);
+  if ((domain_mode & DOMAIN_MODE) == DOMAIN_FREQ) {
+      if (frequency1 > 0) {
+        int start = frequency0;
+        int stop = frequency1;
+        strcpy(buf, "START ");
+        frequency_string(buf+6, 24-6, start);
+        strcat(buf, "    ");
+        ili9341_drawstring_5x7(buf, OFFSETX, 233, 0xffff, 0x0000);
+        strcpy(buf, "STOP ");
+        frequency_string(buf+5, 24-5, stop);
+        strcat(buf, "    ");
+        ili9341_drawstring_5x7(buf, 205, 233, 0xffff, 0x0000);
+      } else if (frequency1 < 0) {
+        int fcenter = frequency0;
+        int fspan = -frequency1;
+        strcpy(buf, "CENTER ");
+        frequency_string(buf+7, 24-7, fcenter);
+        strcat(buf, "    ");
+        ili9341_drawstring_5x7(buf, OFFSETX, 233, 0xffff, 0x0000);
+        strcpy(buf, "SPAN ");
+        frequency_string(buf+5, 24-5, fspan);
+        strcat(buf, "    ");
+        ili9341_drawstring_5x7(buf, 205, 233, 0xffff, 0x0000);
+      } else {
+        int fcenter = frequency0;
+        chsnprintf(buf, 24, "CW %d.%03d %03d MHz    ",
+                   (int)(fcenter / 1000000),
+                   (int)((fcenter / 1000) % 1000),
+                   (int)(fcenter % 1000));
+        ili9341_drawstring_5x7(buf, OFFSETX, 233, 0xffff, 0x0000);
+        chsnprintf(buf, 24, "                             ");
+        ili9341_drawstring_5x7(buf, 205, 233, 0xffff, 0x0000);
+      }
   } else {
-    int fcenter = frequency0;
-    chsnprintf(buf, 24, "CW %d.%03d %03d MHz    ",
-               (int)(fcenter / 1000000),
-               (int)((fcenter / 1000) % 1000),
-               (int)(fcenter % 1000));
-    ili9341_drawstring_5x7(buf, OFFSETX, 233, 0xffff, 0x0000);
-    chsnprintf(buf, 24, "                             ");
-    ili9341_drawstring_5x7(buf, 205, 233, 0xffff, 0x0000);
+      strcpy(buf, "START 0s        ");
+      ili9341_drawstring_5x7(buf, OFFSETX, 233, 0xffff, 0x0000);
+
+      strcpy(buf, "STOP ");
+      chsnprintf(buf+5, 24-5, "%d ns", (uint16_t)(time_of_index(101) * 1e9));
+      strcat(buf, "          ");
+      ili9341_drawstring_5x7(buf, 205, 233, 0xffff, 0x0000);
   }
 }
 

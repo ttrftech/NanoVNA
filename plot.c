@@ -504,7 +504,6 @@ trace_into_index(int x, int t, int i, float coeff[2])
     v = refpos - phase(coeff) * scale;
     break;
   case TRC_LINEAR:
-  case TRC_TDR:
     v = refpos + linear(coeff) * scale;
     break;
   case TRC_SWR:
@@ -797,21 +796,9 @@ mark_cells_from_index(void)
   }
 }
 
-void plot_into_index(float measured[2][MEASURED_LENGTH][2])
+void plot_into_index(float measured[2][101][2])
 {
   int i, t;
-#if 0
-  if (trace[0].type == TRD_TDR && trace[0].enabled) {
-// Covert real part of S11 to complex FFT in S21
-   for (i = 0; i < sweep_points; i++) {
-      int x = i * (WIDTH-1) / (sweep_points-1);
-        trace_index[t][i] = trace_into_index(x, 0, i, measured[1][i]);
-      }
-    }
-
-
-  } else
-  #endif
   for (i = 0; i < sweep_points; i++) {
     int x = i * (WIDTH-1) / (sweep_points-1);
     for (t = 0; t < TRACES_MAX; t++) {
@@ -1521,6 +1508,76 @@ draw_cal_status(void)
     ili9341_drawstring_5x7("X", x, y, 0xffff, 0x0000);
     y += YSTEP;
   }
+}
+
+void
+draw_battery_status(void)
+{
+    int w = 10, h = 14;
+    int x = 0, y = 0;
+    int i, c;
+    uint16_t *buf = spi_buffer;
+    uint8_t vbati = vbat2bati(vbat);
+    uint16_t col = vbati == 0 ? RGB565(0, 255, 0) : RGB565(0, 0, 240);
+    memset(spi_buffer, 0, w * h * 2);
+
+    // battery head
+    x = 3;
+    buf[y * w + x++] = col;
+    buf[y * w + x++] = col;
+    buf[y * w + x++] = col;
+    buf[y * w + x++] = col;
+
+    y++;
+    x = 3;
+    buf[y * w + x++] = col;
+    x++; x++;
+    buf[y * w + x++] = col;
+
+    y++;
+    x = 1;
+    for (i = 0; i < 8; i++)
+        buf[y * w + x++] = col;
+
+    for (c = 0; c < 3; c++) {
+        y++;
+        x = 1;
+        buf[y * w + x++] = col;
+        x++; x++; x++; x++; x++; x++;
+        buf[y * w + x++] = col;
+
+        y++;
+        x = 1;
+        buf[y * w + x++] = col;
+        x++;
+        for (i = 0; i < 4; i++)
+            buf[y * w + x++] = ( ((c+1) * 25) >= (100 - vbati)) ? col : 0;
+        x++;
+        buf[y * w + x++] = col;
+
+        y++;
+        x = 1;
+        buf[y * w + x++] = col;
+        x++;
+        for (i = 0; i < 4; i++)
+            buf[y * w + x++] = ( ((c+1) * 25) >= (100 - vbati)) ? col : 0;
+        x++;
+        buf[y * w + x++] = col;
+    }
+
+    // battery foot
+    y++;
+    x = 1;
+    buf[y * w + x++] = col;
+    x++; x++; x++; x++; x++; x++;
+    buf[y * w + x++] = col;
+
+    y++;
+    x = 1;
+    for (i = 0; i < 8; i++)
+        buf[y * w + x++] = col;
+
+    ili9341_bulk(0, 1, w, h);
 }
 
 void

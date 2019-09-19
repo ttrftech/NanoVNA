@@ -57,7 +57,7 @@ int8_t sweep_once = FALSE;
 int8_t cal_auto_interpolate = TRUE;
 int8_t redraw_requested = FALSE;
 int8_t stop_the_world = FALSE;
-
+int16_t vbat = 0;
 BaseSequentialStream *saved_chp;
 
 static THD_WORKING_AREA(waThread1, 640);
@@ -83,6 +83,13 @@ static THD_FUNCTION(Thread1, arg)
       } else {
         __WFI();
         ui_process();
+      }
+
+      if (vbat != -1) {
+          adc_stop(ADC1);
+          vbat = adc_vbat_read(ADC1);
+          touch_start_watchdog();
+          draw_battery_status();
       }
 
       /* calculate trace coordinates */
@@ -643,6 +650,7 @@ static void cmd_scan(BaseSequentialStream *chp, int argc, char *argv[])
   chMtxUnlock(&mutex);
 #if 0
   float gamma[2];
+  int i;
   int32_t freq, step;
   int delay;
   (void)argc;
@@ -654,7 +662,7 @@ static void cmd_scan(BaseSequentialStream *chp, int argc, char *argv[])
   step = (frequency1 - frequency0) / (sweep_points-1);
   set_frequency(freq);
   delay = 4;
-  for (int i = 0; i < sweep_points; i++) {
+  for (i = 0; i < sweep_points; i++) {
     freq = freq + step;
     wait_dsp(delay);
     delay = set_frequency(freq);
@@ -1737,7 +1745,6 @@ static void cmd_touchtest(BaseSequentialStream *chp, int argc, char *argv[])
   
 }
 
-
 static void cmd_frequencies(BaseSequentialStream *chp, int argc, char *argv[])
 {
   int i;
@@ -1897,7 +1904,6 @@ static void cmd_vbat(BaseSequentialStream *chp, int argc, char *argv[])
   chprintf(chp, "%d mV\r\n", vbat);
 }
 
-
 static THD_WORKING_AREA(waThread2, /* cmd_* max stack size + alpha */442);
 
 static const ShellCommand commands[] =
@@ -1935,6 +1941,7 @@ static const ShellCommand commands[] =
     { "marker", cmd_marker },
     { "edelay", cmd_edelay },
     { "capture", cmd_capture },
+    { "vbat", cmd_vbat },
     { NULL, NULL }
 };
 

@@ -162,7 +162,7 @@ extern const uint32_t numfont20x24[][24];
 #define TRACES_MAX 4
 
 enum {
-  TRC_LOGMAG, TRC_PHASE, TRC_DELAY, TRC_SMITH, TRC_POLAR, TRC_LINEAR, TRC_SWR, TRC_REAL, TRC_IMAG, TRC_R, TRC_X, TRC_OFF, TRC_TDR
+  TRC_LOGMAG, TRC_PHASE, TRC_DELAY, TRC_SMITH, TRC_POLAR, TRC_LINEAR, TRC_SWR, TRC_REAL, TRC_IMAG, TRC_R, TRC_X, TRC_OFF
 };
 
 // LOGMAG: SCALE, REFPOS, REFVAL
@@ -244,6 +244,7 @@ void marker_position(int m, int t, int *x, int *y);
 int search_nearest_index(int x, int y, int t);
 
 extern int8_t redraw_requested;
+extern int16_t vbat;
 
 /*
  * ili9341.c
@@ -369,10 +370,21 @@ uint16_t adc_single_read(ADC_TypeDef *adc, uint32_t chsel);
 void adc_start_analog_watchdogd(ADC_TypeDef *adc, uint32_t chsel);
 void adc_stop(ADC_TypeDef *adc);
 void adc_interrupt(ADC_TypeDef *adc);
+int16_t adc_vbat_read(ADC_TypeDef *adc);
 
 /*
  * misclinous
  */
 #define PULSE do { palClearPad(GPIOC, GPIOC_LED); palSetPad(GPIOC, GPIOC_LED);} while(0)
+
+// convert vbat [mV] to battery indicator
+static inline uint8_t vbat2bati(int16_t vbat)
+{
+	if (vbat < 3200) return 0;
+	if (vbat < 3450) return 25;
+	if (vbat < 3700) return 50;
+	if (vbat < 4100) return 75;
+	return 100;
+}
 
 /*EOF*/

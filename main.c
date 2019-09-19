@@ -293,7 +293,7 @@ int16_t dump_selection = 0;
 
 volatile int16_t wait_count = 0;
 
-float measured[2][MEASURED_LENGTH][2];
+float measured[2][101][2];
 
 static void
 wait_dsp(int count)

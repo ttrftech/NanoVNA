@@ -68,7 +68,7 @@ enum {
 };
 
 enum {
-  KM_START, KM_STOP, KM_CENTER, KM_SPAN, KM_CW, KM_SCALE, KM_REFPOS, KM_EDELAY
+  KM_START, KM_STOP, KM_CENTER, KM_SPAN, KM_CW, KM_SCALE, KM_REFPOS, KM_EDELAY, KM_VELOCITY_FACTOR
 };
 
 uint8_t ui_mode = UI_NORMAL;
@@ -665,6 +665,65 @@ menu_channel_cb(int item)
   ui_mode_normal();
 }
 
+static void
+menu_transform_window_cb(int item)
+{
+  // TODO
+  switch (item) {
+    case 0:
+      domain_mode = (domain_mode & ~TD_WINDOW) | TD_WINDOW_MINIMUM;
+      ui_mode_normal();
+      break;
+    case 1:
+      domain_mode = (domain_mode & ~TD_WINDOW) | TD_WINDOW_NORMAL;
+      ui_mode_normal();
+      break;
+    case 2:
+      domain_mode = (domain_mode & ~TD_WINDOW) | TD_WINDOW_MAXIMUM;
+      ui_mode_normal();
+      break;
+  }
+}
+
+static void
+menu_transform_cb(int item)
+{
+  int status;
+  switch (item) {
+    case 0:
+      if ((domain_mode & DOMAIN_MODE) == DOMAIN_TIME) {
+          domain_mode = (domain_mode & ~DOMAIN_MODE) | DOMAIN_FREQ;
+      } else {
+          domain_mode = (domain_mode & ~DOMAIN_MODE) | DOMAIN_TIME;
+      }
+      draw_frequencies();
+      ui_mode_normal();
+      break;
+    case 1:
+      domain_mode = (domain_mode & ~TD_FUNC) | TD_FUNC_LOWPASS_IMPULSE;
+      ui_mode_normal();
+      break;
+    case 2:
+      domain_mode = (domain_mode & ~TD_FUNC) | TD_FUNC_LOWPASS_STEP;
+      ui_mode_normal();
+      break;
+    case 3:
+      domain_mode = (domain_mode & ~TD_FUNC) | TD_FUNC_BANDPASS;
+      ui_mode_normal();
+      break;
+    case 5:
+      status = btn_wait_release();
+      if (status & EVT_BUTTON_DOWN_LONG) {
+        ui_mode_numeric(KM_VELOCITY_FACTOR);
+        ui_process_numeric();
+      } else {
+        ui_mode_keypad(KM_VELOCITY_FACTOR);
+        ui_process_keypad();
+      }
+      break;
+  }
+}
+
 static void 
 choose_active_marker(void)
 {
@@ -875,11 +934,31 @@ const menuitem_t menu_channel[] = {
   { MT_NONE, NULL, NULL } // sentinel
 };
 
+const menuitem_t menu_transform_window[] = {
+  { MT_CALLBACK, "MINIMUM", menu_transform_window_cb },
+  { MT_CALLBACK, "NORMAL", menu_transform_window_cb },
+  { MT_CALLBACK, "MAXIMUM", menu_transform_window_cb },
+  { MT_CANCEL, S_LARROW" BACK", NULL },
+  { MT_NONE, NULL, NULL } // sentinel
+};
+
+const menuitem_t menu_transform[] = {
+  { MT_CALLBACK, "\2TRANSFORM\0ON", menu_transform_cb },
+  { MT_CALLBACK, "\2LOW PASS\0IMPULSE", menu_transform_cb },
+  { MT_CALLBACK, "\2LOW PASS\0STEP", menu_transform_cb },
+  { MT_CALLBACK, "BANDPASS", menu_transform_cb },
+  { MT_SUBMENU, "WINDOW", menu_transform_window },
+  { MT_CALLBACK, "\2VELOCITY\0FACTOR", menu_transform_cb },
+  { MT_CANCEL, S_LARROW" BACK", NULL },
+  { MT_NONE, NULL, NULL } // sentinel
+};
+
 const menuitem_t menu_display[] = {
   { MT_SUBMENU, "TRACE", menu_trace },
   { MT_SUBMENU, "FORMAT", menu_format },
   { MT_SUBMENU, "SCALE", menu_scale },
   { MT_SUBMENU, "CHANNEL", menu_channel },
+  { MT_SUBMENU, "TRANSFORM", menu_transform },
   { MT_CANCEL, S_LARROW" BACK", NULL },
   { MT_NONE, NULL, NULL } // sentinel
 };
@@ -1120,11 +1199,12 @@ const keypads_t * const keypads_mode_tbl[] = {
   keypads_freq, // cw freq
   keypads_scale, // scale
   keypads_scale, // respos
-  keypads_time // electrical delay
+  keypads_time, // electrical delay
+  keypads_scale // velocity factor
 };
 
 const char * const keypad_mode_label[] = {
-  "START", "STOP", "CENTER", "SPAN", "CW FREQ", "SCALE", "REFPOS", "EDELAY"
+  "START", "STOP", "CENTER", "SPAN", "CW FREQ", "SCALE", "REFPOS", "EDELAY", "VELOCITY%"
 };
 
 void
@@ -1223,6 +1303,7 @@ menu_item_modify_attribute(const menuitem_t *menu, int item,
         || (item == 2 && (cal_status & CALSTAT_LOAD))
         || (item == 3 && (cal_status & CALSTAT_ISOLN))
         || (item == 4 && (cal_status & CALSTAT_THRU))) {
+      domain_mode = (domain_mode & ~DOMAIN_MODE) | DOMAIN_FREQ;
       *bg = 0x0000;
       *fg = 0xffff;
     }
@@ -1236,6 +1317,23 @@ menu_item_modify_attribute(const menuitem_t *menu, int item,
       *bg = 0x0000;
       *fg = 0xffff;
     }
+  } else if (menu == menu_transform) {
+      if ((item == 0 && (domain_mode & DOMAIN_MODE) == DOMAIN_TIME)
+       || (item == 1 && (domain_mode & TD_FUNC) == TD_FUNC_LOWPASS_IMPULSE)
+       || (item == 2 && (domain_mode & TD_FUNC) == TD_FUNC_LOWPASS_STEP)
+       || (item == 3 && (domain_mode & TD_FUNC) == TD_FUNC_BANDPASS)
+       ) {
+        *bg = 0x0000;
+        *fg = 0xffff;
+      }
+  } else if (menu == menu_transform_window) {
+      if ((item == 0 && (domain_mode & TD_WINDOW) == TD_WINDOW_MINIMUM)
+       || (item == 1 && (domain_mode & TD_WINDOW) == TD_WINDOW_NORMAL)
+       || (item == 2 && (domain_mode & TD_WINDOW) == TD_WINDOW_MAXIMUM)
+       ) {
+        *bg = 0x0000;
+        *fg = 0xffff;
+      }
   }
 }
 
@@ -1363,6 +1461,9 @@ fetch_numeric_target(void)
   case KM_EDELAY:
     uistat.value = get_electrical_delay();
     break;
+  case KM_VELOCITY_FACTOR:
+    uistat.value = velocity_factor;
+    break;
   }
   
   {
@@ -1401,6 +1502,9 @@ void set_numeric_value(void)
     break;
   case KM_EDELAY:
     set_electrical_delay(uistat.value);
+    break;
+  case KM_VELOCITY_FACTOR:
+    velocity_factor = uistat.value;
     break;
   }
 }
@@ -1575,6 +1679,9 @@ keypad_click(int key)
       break;
     case KM_EDELAY:
       set_electrical_delay(value); // pico seconds
+      break;
+    case KM_VELOCITY_FACTOR:
+      velocity_factor = value;
       break;
     }
 

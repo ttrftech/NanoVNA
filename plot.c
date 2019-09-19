@@ -1153,6 +1153,8 @@ draw_cell(int m, int n)
       grid_mode |= GRID_RECTANGULAR;
   }
 
+  chMtxLock(&spi_buffer_mutex);
+
   PULSE;
   /* draw grid */
   if (grid_mode & GRID_RECTANGULAR) {
@@ -1245,6 +1247,7 @@ draw_cell(int m, int n)
     cell_draw_refpos(m, n, w, h);
 
   ili9341_bulk(OFFSETX + x0off, OFFSETY + y0, w, h);
+  chMtxUnlock(&spi_buffer_mutex);
 }
 
 void
@@ -1528,6 +1531,8 @@ draw_battery_status(void)
     uint16_t *buf = spi_buffer;
     uint8_t vbati = vbat2bati(vbat);
     uint16_t col = vbati == 0 ? RGB565(0, 255, 0) : RGB565(0, 0, 240);
+
+    chMtxLock(&spi_buffer_mutex);
     memset(spi_buffer, 0, w * h * 2);
 
     // battery head
@@ -1587,6 +1592,7 @@ draw_battery_status(void)
         buf[y * w + x++] = col;
 
     ili9341_bulk(0, 1, w, h);
+    chMtxUnlock(&spi_buffer_mutex);
 }
 
 void

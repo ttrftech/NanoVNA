@@ -24,6 +24,7 @@
  */
 
 extern float measured[2][101][2];
+extern mutex_t spi_buffer_mutex;
 
 #define CAL_LOAD 0
 #define CAL_OPEN 1

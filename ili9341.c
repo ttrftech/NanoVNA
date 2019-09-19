@@ -29,6 +29,7 @@
 #define DC_DATA			palSetPad(GPIOB, 7)
 
 uint16_t spi_buffer[1024];
+MUTEX_DECL(spi_buffer_mutex);
 
 void
 ssp_wait(void)
@@ -278,6 +279,8 @@ void ili9341_bulk(int x, int y, int w, int h)
 	uint8_t yy[4] = { y >> 8, y, (y+h-1) >> 8, (y+h-1) };
     int len = w * h;
 
+    chMtxLock(&spi_buffer_mutex);
+
 	send_command(0x2A, 4, xx);
 	send_command(0x2B, 4, yy);
 	send_command(0x2C, 0, NULL);
@@ -287,6 +290,8 @@ void ili9341_bulk(int x, int y, int w, int h)
     dmaStreamSetMode(dmatx, txdmamode | STM32_DMA_CR_MINC);
     dmaStreamEnable(dmatx);
     dmaWaitCompletion(dmatx);
+
+    chMtxUnlock(&spi_buffer_mutex);
 }
 #endif
 
@@ -340,6 +345,7 @@ ili9341_drawchar_5x7(uint8_t ch, int x, int y, uint16_t fg, uint16_t bg)
   uint16_t *buf = spi_buffer;
   uint16_t bits;
   int c, r;
+  chMtxLock(&spi_buffer_mutex);
   for(c = 0; c < 7; c++) {
     bits = x5x7_bits[(ch * 7) + c];
     for (r = 0; r < 5; r++) {
@@ -348,6 +354,7 @@ ili9341_drawchar_5x7(uint8_t ch, int x, int y, uint16_t fg, uint16_t bg)
     }
   }
   ili9341_bulk(x, y, 5, 7);
+  chMtxUnlock(&spi_buffer_mutex);
 }
 
 void
@@ -366,6 +373,7 @@ ili9341_drawchar_size(uint8_t ch, int x, int y, uint16_t fg, uint16_t bg, uint8_
   uint16_t *buf = spi_buffer;
   uint16_t bits;
   int c, r;
+  chMtxLock(&spi_buffer_mutex);
   for(c = 0; c < 7*size; c++) {
     bits = x5x7_bits[(ch * 7) + (c / size)];
     for (r = 0; r < 5*size; r++) {
@@ -376,6 +384,7 @@ ili9341_drawchar_size(uint8_t ch, int x, int y, uint16_t fg, uint16_t bg, uint8_
     }
   }
   ili9341_bulk(x, y, 5*size, 7*size);
+  chMtxUnlock(&spi_buffer_mutex);
 }
 
 void
@@ -438,6 +447,7 @@ ili9341_drawfont(uint8_t ch, const font_t *font, int x, int y, uint16_t fg, uint
 	const uint32_t *bitmap = &font->bitmap[font->slide * ch];
 	int c, r, j;
 
+    chMtxLock(&spi_buffer_mutex);
 	for (c = 0; c < font->slide; c++) {
 		for (j = 0; j < font->scaley; j++) {
 			bits = bitmap[c];
@@ -448,6 +458,7 @@ ili9341_drawfont(uint8_t ch, const font_t *font, int x, int y, uint16_t fg, uint
 		}
 	}
     ili9341_bulk(x, y, font->width, font->height);
+    chMtxUnlock(&spi_buffer_mutex);
 }
 
 #if 0

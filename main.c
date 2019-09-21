@@ -185,7 +185,7 @@ transform_domain(void)
           tmp[i*2+0] *= w;
           tmp[i*2+1] *= w;
       }
-      for (int i = 101; i < FFT_SIZE/2; i++) {
+      for (int i = 101; i < FFT_SIZE; i++) {
           tmp[i*2+0] = 0.0;
           tmp[i*2+1] = 0.0;
 
@@ -265,27 +265,27 @@ int set_frequency(int freq)
 
     if (freq > 1400000000 && frequency <= 1400000000) {
       tlv320aic3204_set_gain(95, 95);
-      delay += 11;
+      delay += 10;
     } else
     if (freq > 1200000000 && frequency <= 1200000000) {
       tlv320aic3204_set_gain(85, 85);
-      delay += 11;
+      delay += 10;
     } else
     if (freq > 900000000 && frequency <= 900000000) {
       tlv320aic3204_set_gain(75, 75);
-      delay += 11;
+      delay += 10;
     } else
     if (freq > 600000000 && frequency <= 600000000) {
       tlv320aic3204_set_gain(50, 50);
-      delay += 11;
+      delay += 10;
     } else
     if (freq > FREQ_HARMONICS && frequency <= FREQ_HARMONICS) {
       tlv320aic3204_set_gain(40, 40);
-      delay += 11;
+      delay += 10;
     } else
     if (freq <= FREQ_HARMONICS && frequency > FREQ_HARMONICS) {
       tlv320aic3204_set_gain(0, 0);
-      delay += 11;
+      delay += 10;
     }
 
     int8_t ds = drive_strength;

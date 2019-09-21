@@ -834,7 +834,8 @@ freq_mode_centerspan(void)
 
 #define START_MIN 50000
 //#define STOP_MAX 900000000
-#define STOP_MAX 1500000000
+//#define STOP_MAX 1500000000
+#define STOP_MAX 2100000000
 
 void
 set_sweep_frequency(int type, float frequency)

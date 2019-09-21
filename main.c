@@ -149,6 +149,7 @@ transform_domain(void)
   float* tmp = (float*)spi_buffer;
 
   uint8_t window_size, offset;
+  uint8_t is_lowpass = FALSE;
   switch (domain_mode & TD_FUNC) {
       case TD_FUNC_BANDPASS:
           offset = 0;
@@ -156,6 +157,7 @@ transform_domain(void)
           break;
       case TD_FUNC_LOWPASS_IMPULSE:
       case TD_FUNC_LOWPASS_STEP:
+          is_lowpass = TRUE;
           offset = 101;
           window_size = 202;
           break;
@@ -174,29 +176,41 @@ transform_domain(void)
           break;
   }
 
+
   for (int ch = 0; ch < 2; ch++) {
       memcpy(tmp, measured[ch], sizeof(measured[0]));
-//      if (beta != 0.0) {
-//          for (int i = 0; i < 101; i++) {
-//              float w = kaiser_window(i+offset, window_size, beta);
-//              tmp[i*2+0] *= w;
-//              tmp[i*2+1] *= w;
-//          }
-//      }
-      for (int i = 0; i < 128; i +=2) {
-        tmp[256 - i+0] = tmp[i+0];
-        tmp[256 - i+1] = -tmp[i+1];
+
+      for (int i = 0; i < 101; i++) {
+          float w = kaiser_window(i+offset, window_size, beta);
+          tmp[i*2+0] *= w;
+          tmp[i*2+1] *= w;
       }
-      fft128_inverse((float(*)[2])tmp);
+      for (int i = 101; i < FFT_SIZE/2; i++) {
+          tmp[i*2+0] = 0.0;
+          tmp[i*2+1] = 0.0;
+
+      }
+//      if (is_lowpass) {
+          for (int i = 1; i < 101; i++) {
+              tmp[(FFT_SIZE-i)*2+0] =  tmp[i*2+0];
+              tmp[(FFT_SIZE-i)*2+1] = -tmp[i*2+1];
+          }
+ //     }
+
+      fft256_inverse((float(*)[2])tmp);
       memcpy(measured[ch], tmp, sizeof(measured[0]));
       for (int i = 0; i < 101; i++) {
-          measured[ch][i][0] /= 128.0;
-          measured[ch][i][1] = 0;
+
+          measured[ch][i][0] /= (float)FFT_SIZE;
+          if (is_lowpass) {
+              measured[ch][i][1] = 0.0;
+          } else {
+              measured[ch][i][1] /= (float)FFT_SIZE;
+          }
       }
       if ( (domain_mode & TD_FUNC) == TD_FUNC_LOWPASS_STEP ) {
           for (int i = 1; i < 101; i++) {
               measured[ch][i][0] += measured[ch][i-1][0];
-//              measured[ch][i][1] += measured[ch][i-1][1];
           }
       }
   }

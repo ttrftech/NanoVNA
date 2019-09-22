@@ -334,21 +334,30 @@ ili9341_read_memory_continue(int len, uint16_t* out)
     ili9341_read_memory_raw(0x3E, len, out);
 }
 
+
+
 void
 ili9341_drawchar_5x7(uint8_t ch, int x, int y, uint16_t fg, uint16_t bg)
 {
   uint16_t *buf = spi_buffer;
-  uint16_t bits;
+  uint8_t bits;
   int c, r;
-  for(c = 0; c < 7; c++) {
+
+  ch = x5x7_map_char_table(ch);
+
+  for(c = 0; c < 7; c++) 
+  {
     bits = x5x7_bits[(ch * 7) + c];
-    for (r = 0; r < 5; r++) {
-      *buf++ = (0x8000 & bits) ? fg : bg;
+    for (r = 0; r < 5; r++) 
+    {
+      *buf++ = (0x80 & bits) ? fg : bg;
       bits <<= 1;
     }
   }
   ili9341_bulk(x, y, 5, 7);
 }
+
+
 
 void
 ili9341_drawstring_5x7(const char *str, int x, int y, uint16_t fg, uint16_t bg)
@@ -360,23 +369,33 @@ ili9341_drawstring_5x7(const char *str, int x, int y, uint16_t fg, uint16_t bg)
   }
 }
 
+
+
 void
 ili9341_drawchar_size(uint8_t ch, int x, int y, uint16_t fg, uint16_t bg, uint8_t size)
 {
   uint16_t *buf = spi_buffer;
-  uint16_t bits;
+  uint8_t bits;
   int c, r;
-  for(c = 0; c < 7*size; c++) {
+
+  ch = x5x7_map_char_table(ch);
+  
+  for(c = 0; c < 7*size; c++) 
+  {
     bits = x5x7_bits[(ch * 7) + (c / size)];
-    for (r = 0; r < 5*size; r++) {
-      *buf++ = (0x8000 & bits) ? fg : bg;
-      if (r % size == (size-1)) {
+    for (r = 0; r < 5*size; r++) 
+    {
+      *buf++ = (0x80 & bits) ? fg : bg;
+      if (r % size == (size-1)) 
+      {
           bits <<= 1;
       }
     }
   }
   ili9341_bulk(x, y, 5*size, 7*size);
 }
+
+
 
 void
 ili9341_drawstring_size(const char *str, int x, int y, uint16_t fg, uint16_t bg, uint8_t size)

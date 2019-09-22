@@ -1003,19 +1003,27 @@ cell_draw_refpos(int m, int n, int w, int h)
   }
 }
 
+
+
 void
 draw_marker(int w, int h, int x, int y, int c, int ch)
 {
   int i, j;
-  for (j = 10; j >= 0; j--) {
+
+  ch = x5x7_map_char_table(ch);
+
+  for (j = 10; j >= 0; j--) 
+  {
     int j0 = j / 2;
-    for (i = -j0; i <= j0; i++) {
+    for (i = -j0; i <= j0; i++) 
+    {
       int x0 = x + i;
       int y0 = y - j;
       int cc = c;
-      if (j <= 9 && j > 2 && i >= -1 && i <= 3) {
-        uint16_t bits = x5x7_bits[(ch * 7) + (9-j)];
-        if (bits & (0x8000>>(i+1)))
+      if ( j <= 9 && j > 2 && i >= -1 && i <= 3 ) 
+      {
+        uint8_t bits = x5x7_bits[(ch * 7) + (9-j)];
+        if ( bits & (0x80>>(i+1)) )
           cc = 0;
       }
       if (y0 >= 0 && y0 < h && x0 >= 0 && x0 < w)
@@ -1023,6 +1031,8 @@ draw_marker(int w, int h, int x, int y, int c, int ch)
     }
   }
 }
+
+
 
 void
 marker_position(int m, int t, int *x, int *y)
@@ -1300,26 +1310,39 @@ request_to_draw_cells_behind_numeric_input(void)
 }
 
 
+
 void
 cell_drawchar_5x7(int w, int h, uint8_t ch, int x, int y, uint16_t fg, int invert)
 {
-  uint16_t bits;
+  uint8_t bits;
   int c, r;
+  
   if (y <= -7 || y >= h || x <= -5 || x >= w)
     return;
-  for(c = 0; c < 7; c++) {
+
+  ch = x5x7_map_char_table(ch);
+    
+  for(c = 0; c < 7; c++) 
+  {
     if ((y + c) < 0 || (y + c) >= h)
       continue;
+      
     bits = x5x7_bits[(ch * 7) + c];
+    
     if (invert)
       bits = ~bits;
-    for (r = 0; r < 5; r++) {
-      if ((x+r) >= 0 && (x+r) < w && (0x8000 & bits)) 
+      
+    for (r = 0; r < 5; r++) 
+    {
+      if ( (x+r) >= 0 && (x+r) < w && (0x80 & bits) ) 
         spi_buffer[(y+c)*w + (x+r)] = fg;
+
       bits <<= 1;
     }
   }
 }
+
+
 
 void
 cell_drawstring_5x7(int w, int h, char *str, int x, int y, uint16_t fg)
@@ -1331,15 +1354,20 @@ cell_drawstring_5x7(int w, int h, char *str, int x, int y, uint16_t fg)
   }
 }
 
+
+
 void
 cell_drawstring_invert_5x7(int w, int h, char *str, int x, int y, uint16_t fg, int invert)
 {
-  while (*str) {
+  while (*str) 
+  {
     cell_drawchar_5x7(w, h, *str, x, y, fg, invert);
     x += 5;
     str++;
   }
 }
+
+
 
 static void
 cell_draw_marker_info(int m, int n, int w, int h)

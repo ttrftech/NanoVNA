@@ -62,6 +62,8 @@ extern float measured[2][101][2];
 #define TD_WINDOW_MINIMUM (0b01<<3)
 #define TD_WINDOW_MAXIMUM (0b10<<3)
 
+#define FFT_SIZE 256
+
 void cal_collect(int type);
 void cal_done(void);
 

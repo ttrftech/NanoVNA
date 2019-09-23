@@ -429,8 +429,8 @@ enter_dfu(void)
 
   // leave a last message 
   ili9341_fill(0, 0, 320, 240, 0);
-  ili9341_drawstring_5x7("DFU: Device Firmware Update Mode", x, y += 10, 0xffff, 0x0000);
-  ili9341_drawstring_5x7("To exit DFU mode, please reset device yourself.", x, y += 10, 0xffff, 0x0000);
+  ili9341_drawstring_8x8_var("DFU: Device Firmware Update Mode", x, y += 10, 0xffff, 0x0000);
+  ili9341_drawstring_8x8_var("To exit DFU mode, please reset device yourself.", x, y += 10, 0xffff, 0x0000);
 
   // see __early_init in ./NANOVNA_STM32_F072/board.c
   *((unsigned long *)BOOT_FROM_SYTEM_MEMORY_MAGIC_ADDRESS) = BOOT_FROM_SYTEM_MEMORY_MAGIC;

@@ -1369,29 +1369,133 @@ cell_drawstring_invert_5x7(int w, int h, char *str, int x, int y, uint16_t fg, i
 
 
 
+unsigned char
+cell_drawchar_8x8(int w, int h, uint8_t ch, int x, int y, uint16_t fg, uint8_t var, int invert)
+{
+  uint8_t bits, charlen = 8;
+  int cline, r;
+  
+  if (y <= -8 || y >= h || x <= -8 || x >= w)
+    return 0;
+
+  ch = x8x8_map_char_table(ch);
+
+  for (cline = 0; cline < 8; cline++) 
+  {
+    if ((y + cline) < 0 || (y + cline) >= h)
+      continue;
+      
+    bits = x8x8_bits[ch][cline];
+    
+    if (invert)
+      bits = ~bits;
+
+    if ( var != FALSE )
+    {
+      charlen = x8x8_len[ch];
+    }
+
+    for (r = 0; r < charlen; r++) 
+    {
+      if ( (x+r) >= 0 && (x+r) < w && (0x80 & bits) ) 
+        spi_buffer[(y+cline)*w + (x+r)] = fg;
+
+      bits <<= 1;
+    }
+  }
+
+  return x8x8_len[ch];
+}
+
+
+
+void
+cell_drawstring_8x8(int w, int h, char *str, int x, int y, uint16_t fg)
+{
+  while (*str) 
+  {
+    cell_drawchar_8x8(w, h, *str, x, y, fg, FALSE, FALSE);
+    x += 8;
+    str++;
+  }
+}
+
+
+
+void
+cell_drawstring_invert_8x8(int w, int h, char *str, int x, int y, uint16_t fg, int invert)
+{
+  while (*str) 
+  {
+    cell_drawchar_8x8(w, h, *str, x, y, fg, FALSE, invert);
+    x += 8;
+    str++;
+  }
+}
+
+
+
+void
+cell_drawstring_8x8_var(int w, int h, char *str, int x, int y, uint16_t fg)
+{
+  unsigned char clength = 0;
+
+  while (*str) 
+  {
+    clength = cell_drawchar_8x8(w, h, *str, x, y, fg, TRUE, FALSE);
+    x += clength;
+    str++;
+  }
+}
+
+
+
+void
+cell_drawstring_invert_8x8_var(int w, int h, char *str, int x, int y, uint16_t fg, int invert)
+{
+  unsigned char clength = 0;
+
+  while (*str) 
+  {
+    clength = cell_drawchar_8x8(w, h, *str, x, y, fg, TRUE, invert);
+    x += clength;
+    str++;
+  }
+}
+
+
+
 static void
 cell_draw_marker_info(int m, int n, int w, int h)
 {
   char buf[24];
   int t;
+  
   if (n != 0)
     return;
+  
   if (active_marker < 0)
     return;
+  
   int idx = markers[active_marker].index;
   int j = 0;
-  for (t = 0; t < TRACES_MAX; t++) {
+  
+  for (t = 0; t < TRACES_MAX; t++) 
+  {
     if (!trace[t].enabled)
       continue;
+      
     int xpos = 1 + (j%2)*146;
-    int ypos = 1 + (j/2)*7;
-    xpos -= m * CELLWIDTH -CELLOFFSETX;
+    int ypos = 1 + (j/2)*8;
+    xpos -= m * CELLWIDTH - CELLOFFSETX;
     ypos -= n * CELLHEIGHT;
-    chsnprintf(buf, sizeof buf, "CH%d", trace[t].channel);
+    chsnprintf(buf, sizeof buf, "CH%d:", trace[t].channel);
     cell_drawstring_invert_5x7(w, h, buf, xpos, ypos, config.trace_color[t], t == uistat.current_trace);
+
     xpos += 20;
     trace_get_info(t, buf, sizeof buf);
     cell_drawstring_5x7(w, h, buf, xpos, ypos, config.trace_color[t]);
+
     xpos += 64;
     trace_get_value_string(t, buf, sizeof buf, measured[trace[t].channel][idx], frequencies[idx]);
     cell_drawstring_5x7(w, h, buf, xpos, ypos, config.trace_color[t]);
@@ -1400,26 +1504,31 @@ cell_draw_marker_info(int m, int n, int w, int h)
 
   // draw marker frequency
   int xpos = 192;
-  int ypos = 1 + (j/2)*7;
+  int ypos = 1 + (j/2)*8;
   xpos -= m * CELLWIDTH -CELLOFFSETX;
   ypos -= n * CELLHEIGHT;
   chsnprintf(buf, sizeof buf, "%d:", active_marker + 1);
   cell_drawstring_5x7(w, h, buf, xpos, ypos, 0xffff);
   xpos += 16;
-  if ((domain_mode & DOMAIN_MODE) == DOMAIN_FREQ) {
-      frequency_string(buf, sizeof buf, frequencies[idx]);
-      cell_drawstring_5x7(w, h, buf, xpos, ypos, 0xffff);
-  } else {
-      chsnprintf(buf, sizeof buf, "%d ns %.1f m", (uint16_t)(time_of_index(idx) * 1e9), distance_of_index(idx));
-      cell_drawstring_5x7(w, h, buf, xpos, ypos, 0xffff);
+  
+  if ( (domain_mode & DOMAIN_MODE) == DOMAIN_FREQ )
+  {
+    frequency_string(buf, sizeof buf, frequencies[idx]);
+    cell_drawstring_5x7(w, h, buf, xpos, ypos, 0xffff);
+  } 
+  else 
+  {
+    chsnprintf(buf, sizeof buf, "%d ns %.1f m", (uint16_t)(time_of_index(idx) * 1e9), distance_of_index(idx));
+    cell_drawstring_5x7(w, h, buf, xpos, ypos, 0xffff);
   }
 
   // draw marker delta
-  if (previous_marker >= 0 && active_marker != previous_marker && markers[previous_marker].enabled) {
+  if ( previous_marker >= 0 && active_marker != previous_marker && markers[previous_marker].enabled )
+  {
     int idx0 = markers[previous_marker].index;
     xpos = 192;
     xpos -= m * CELLWIDTH -CELLOFFSETX;
-    ypos += 7;
+    ypos += 8;
     chsnprintf(buf, sizeof buf, "\001%d:", previous_marker+1);
     cell_drawstring_5x7(w, h, buf, xpos, ypos, 0xffff);
     xpos += 16;
@@ -1427,6 +1536,8 @@ cell_draw_marker_info(int m, int n, int w, int h)
     cell_drawstring_5x7(w, h, buf, xpos, ypos, 0xffff);
   }
 }
+
+
 
 void
 frequency_string(char *buf, size_t len, int32_t freq)

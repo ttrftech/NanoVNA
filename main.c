@@ -109,25 +109,25 @@ toggle_sweep(void)
 }
 
 float bessel0(float x) {
-	const float eps = 0.0001;
+  const float eps = 0.0001;
 
-	float ret = 0;
-	float term = 1;
-	float m = 0;
+  float ret = 0;
+  float term = 1;
+  float m = 0;
 
-	while (term  > eps * ret) {
-		ret += term;
-		++m;
-		term *= (x*x) / (4*m*m);
-	}
+  while (term  > eps * ret) {
+    ret += term;
+    ++m;
+    term *= (x*x) / (4*m*m);
+  }
 
-	return ret;
+  return ret;
 }
 
 float kaiser_window(float k, float n, float beta) {
-	if (beta == 0.0) return 1.0;
-	float r = (2 * k) / (n - 1) - 1;
-	return bessel0(beta * sqrt(1 - r * r)) / bessel0(beta);
+  if (beta == 0.0) return 1.0;
+  float r = (2 * k) / (n - 1) - 1;
+  return bessel0(beta * sqrt(1 - r * r)) / bessel0(beta);
 }
 
 static
@@ -1379,17 +1379,17 @@ const struct {
   uint16_t refpos;
   float scale_unit;
 } trace_info[] = {
-  { "LOGMAG", 7, 10 },
-  { "PHASE",  4, 90 },
-  { "DELAY",  4,  1 },
-  { "SMITH",  0,  1 },
-  { "POLAR",  0,  1 },
-  { "LINEAR", 0,  0.125 },
-  { "SWR",    0,  1 },
-  { "REAL",   4,  0.25 },
-  { "IMAG",   4,  0.25 },
-  { "R",      0, 100 },
-  { "X",      4, 100 }
+  { "LGMG", 7, 10 },
+  { "PHA", 4, 90 },
+  { "DEL", 4, 1 },
+  { "SMI", 0, 1 },
+  { "PLR", 0, 1 },
+  { "LIN", 0, 0.125 },
+  { "SWR", 0, 1 },
+  { "REAL", 4, 0.25 },
+  { "IMAG", 4, 0.25 },
+  { "R", 0, 100 },
+  { "X", 4, 100 }
 };
 
 const char * const trc_channel_name[] = {

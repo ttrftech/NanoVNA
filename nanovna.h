@@ -138,6 +138,8 @@ extern void tlv320aic3204_adc_filter_enable(int enable);
 #define HEIGHT 233
 
 #define CELLOFFSETX 5
+#define CELLOFFSETX_8x8 8
+
 #define AREA_WIDTH_NORMAL (WIDTH + CELLOFFSETX*2)
 
 extern int area_width;
@@ -147,17 +149,22 @@ extern int area_height;
 
 // font
 
-extern const uint8_t x5x7_bits [];
+extern const uint8_t x5x7_bits[];
+extern const uint8_t x8x8_bits[][8];
+extern const uint8_t x8x8_len[];
 extern const uint32_t numfont20x24[][24];
 
-#define S_PI    "\003"
-#define S_MICRO "\004"
-#define S_OHM   "\005"
-#define S_DEGREE "\006"
-#define S_LARROW "\001"
-#define S_RARROW "\002"
+#define S_DIAMOND "\001"
+#define S_MULTIL "\002"
+#define S_PI    "\005"
+#define S_MICRO "\006"
+#define S_OHM   "\007"
+#define S_DEGREE "\010"
+#define S_LARROW "\003"
+#define S_RARROW "\004"
 
 extern uint8_t x5x7_map_char_table(uint8_t ch);
+extern uint8_t x8x8_map_char_table(uint8_t ch);
 
 
 
@@ -275,6 +282,9 @@ void ili9341_drawchar_5x7(uint8_t ch, int x, int y, uint16_t fg, uint16_t bg);
 void ili9341_drawstring_5x7(const char *str, int x, int y, uint16_t fg, uint16_t bg);
 void ili9341_drawchar_size(uint8_t ch, int x, int y, uint16_t fg, uint16_t bg, uint8_t size);
 void ili9341_drawstring_size(const char *str, int x, int y, uint16_t fg, uint16_t bg, uint8_t size);
+unsigned char ili9341_drawchar_8x8(uint8_t ch, int x, int y, uint16_t fg, uint16_t bg);
+void ili9341_drawstring_8x8(const char *str, int x, int y, uint16_t fg, uint16_t bg);
+void ili9341_drawstring_8x8_var(const char *str, int x, int y, uint16_t fg, uint16_t bg);
 void ili9341_drawfont(uint8_t ch, const font_t *font, int x, int y, uint16_t fg, uint16_t bg);
 void ili9341_read_memory(int x, int y, int w, int h, int len, uint16_t* out);
 void ili9341_read_memory_continue(int len, uint16_t* out);

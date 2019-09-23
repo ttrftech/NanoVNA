@@ -21,12 +21,12 @@
 #include "hal.h"
 #include "nanovna.h"
 
-#define RESET_ASSERT	palClearPad(GPIOA, 15)
-#define RESET_NEGATE	palSetPad(GPIOA, 15)
-#define CS_LOW			palClearPad(GPIOB, 6)
-#define CS_HIGH			palSetPad(GPIOB, 6)
-#define DC_CMD			palClearPad(GPIOB, 7)
-#define DC_DATA			palSetPad(GPIOB, 7)
+#define RESET_ASSERT  palClearPad(GPIOA, 15)
+#define RESET_NEGATE  palSetPad(GPIOA, 15)
+#define CS_LOW      palClearPad(GPIOB, 6)
+#define CS_HIGH      palSetPad(GPIOB, 6)
+#define DC_CMD      palClearPad(GPIOB, 7)
+#define DC_DATA      palSetPad(GPIOB, 7)
 
 uint16_t spi_buffer[1024];
 
@@ -124,88 +124,88 @@ spi_init(void)
 void
 send_command(uint8_t cmd, int len, const uint8_t *data)
 {
-	CS_LOW;
-	DC_CMD;
+  CS_LOW;
+  DC_CMD;
     ssp_databit8();
-	ssp_senddata(cmd);
-	DC_DATA;
-	while (len-- > 0) {
+  ssp_senddata(cmd);
+  DC_DATA;
+  while (len-- > 0) {
       ssp_senddata(*data++);
-	}
-	//CS_HIGH;
+  }
+  //CS_HIGH;
 }
 
 void
 send_command16(uint8_t cmd, int data)
 {
-	CS_LOW;
-	DC_CMD;
+  CS_LOW;
+  DC_CMD;
     ssp_databit8();
-	ssp_senddata(cmd);
-	DC_DATA;
+  ssp_senddata(cmd);
+  DC_DATA;
     ssp_databit16();
-	ssp_senddata16(data);
-	CS_HIGH;
+  ssp_senddata16(data);
+  CS_HIGH;
 }
 
 const uint8_t ili9341_init_seq[] = {
-		// cmd, len, data...,
-		// Power control B
-		0xCF, 3, 0x00, 0x83, 0x30,
-		// Power on sequence control
-		0xED, 4, 0x64, 0x03, 0x12, 0x81,
-		//0xED, 4, 0x55, 0x01, 0x23, 0x01,
-		// Driver timing control A
-		0xE8, 3, 0x85, 0x01, 0x79,
-		//0xE8, 3, 0x84, 0x11, 0x7a,
-		// Power control A
-		0xCB, 5, 0x39, 0x2C, 0x00, 0x34, 0x02,
-		// Pump ratio control
-		0xF7, 1, 0x20,
-		// Driver timing control B
-		0xEA, 2, 0x00, 0x00,
-		// POWER_CONTROL_1
-		0xC0, 1, 0x26,
-		// POWER_CONTROL_2
-		0xC1, 1, 0x11,
-		// VCOM_CONTROL_1
-		0xC5, 2, 0x35, 0x3E,
-		// VCOM_CONTROL_2
-		0xC7, 1, 0xBE,
-		// MEMORY_ACCESS_CONTROL
-		//0x36, 1, 0x48, // portlait
-		0x36, 1, 0x28, // landscape
-		// COLMOD_PIXEL_FORMAT_SET : 16 bit pixel
-		0x3A, 1, 0x55,
-		// Frame Rate
-		0xB1, 2, 0x00, 0x1B,
-		// Gamma Function Disable
-		0xF2, 1, 0x08,
-		// gamma set for curve 01/2/04/08
-		0x26, 1, 0x01,
-		// positive gamma correction
-		0xE0, 15, 0x1F,  0x1A,  0x18,  0x0A,  0x0F,  0x06,  0x45,  0x87,  0x32,  0x0A,  0x07,  0x02,  0x07, 0x05,  0x00,
-		// negativ gamma correction
-		0xE1, 15, 0x00,  0x25,  0x27,  0x05,  0x10,  0x09,  0x3A,  0x78,  0x4D,  0x05,  0x18,  0x0D,  0x38, 0x3A,  0x1F,
+    // cmd, len, data...,
+    // Power control B
+    0xCF, 3, 0x00, 0x83, 0x30,
+    // Power on sequence control
+    0xED, 4, 0x64, 0x03, 0x12, 0x81,
+    //0xED, 4, 0x55, 0x01, 0x23, 0x01,
+    // Driver timing control A
+    0xE8, 3, 0x85, 0x01, 0x79,
+    //0xE8, 3, 0x84, 0x11, 0x7a,
+    // Power control A
+    0xCB, 5, 0x39, 0x2C, 0x00, 0x34, 0x02,
+    // Pump ratio control
+    0xF7, 1, 0x20,
+    // Driver timing control B
+    0xEA, 2, 0x00, 0x00,
+    // POWER_CONTROL_1
+    0xC0, 1, 0x26,
+    // POWER_CONTROL_2
+    0xC1, 1, 0x11,
+    // VCOM_CONTROL_1
+    0xC5, 2, 0x35, 0x3E,
+    // VCOM_CONTROL_2
+    0xC7, 1, 0xBE,
+    // MEMORY_ACCESS_CONTROL
+    //0x36, 1, 0x48, // portlait
+    0x36, 1, 0x28, // landscape
+    // COLMOD_PIXEL_FORMAT_SET : 16 bit pixel
+    0x3A, 1, 0x55,
+    // Frame Rate
+    0xB1, 2, 0x00, 0x1B,
+    // Gamma Function Disable
+    0xF2, 1, 0x08,
+    // gamma set for curve 01/2/04/08
+    0x26, 1, 0x01,
+    // positive gamma correction
+    0xE0, 15, 0x1F,  0x1A,  0x18,  0x0A,  0x0F,  0x06,  0x45,  0x87,  0x32,  0x0A,  0x07,  0x02,  0x07, 0x05,  0x00,
+    // negativ gamma correction
+    0xE1, 15, 0x00,  0x25,  0x27,  0x05,  0x10,  0x09,  0x3A,  0x78,  0x4D,  0x05,  0x18,  0x0D,  0x38, 0x3A,  0x1F,
 
-		// Column Address Set
-	    0x2A, 4, 0x00, 0x00, 0x01, 0x3f, // width 320
-	    // Page Address Set
-	    0x2B, 4, 0x00, 0x00, 0x00, 0xef, // height 240
+    // Column Address Set
+      0x2A, 4, 0x00, 0x00, 0x01, 0x3f, // width 320
+      // Page Address Set
+      0x2B, 4, 0x00, 0x00, 0x00, 0xef, // height 240
 
-		// entry mode
-		0xB7, 1, 0x06,
-		// display function control
-		0xB6, 4, 0x0A, 0x82, 0x27, 0x00,
+    // entry mode
+    0xB7, 1, 0x06,
+    // display function control
+    0xB6, 4, 0x0A, 0x82, 0x27, 0x00,
 
-		// control display
-		//0x53, 1, 0x0c,
-		// diaplay brightness
-		//0x51, 1, 0xff,
+    // control display
+    //0x53, 1, 0x0c,
+    // diaplay brightness
+    //0x51, 1, 0xff,
 
-		// sleep out
-		0x11, 0,
-		0 // sentinel
+    // sleep out
+    0x11, 0,
+    0 // sentinel
 };
 
 void
@@ -235,10 +235,10 @@ ili9341_init(void)
 
 void ili9341_pixel(int x, int y, int color)
 {
-	uint8_t xx[4] = { x >> 8, x, (x+1) >> 8, (x+1) };
-	uint8_t yy[4] = { y >> 8, y, (y+1) >> 8, (y+1) };
-	uint8_t cc[2] = { color >> 8, color };
-	send_command(0x2A, 4, xx);
+  uint8_t xx[4] = { x >> 8, x, (x+1) >> 8, (x+1) };
+  uint8_t yy[4] = { y >> 8, y, (y+1) >> 8, (y+1) };
+  uint8_t cc[2] = { color >> 8, color };
+  send_command(0x2A, 4, xx);
     send_command(0x2B, 4, yy);
     send_command(0x2C, 2, cc);
     //send_command16(0x2C, color);
@@ -248,10 +248,10 @@ void ili9341_pixel(int x, int y, int color)
 
 void ili9341_fill(int x, int y, int w, int h, int color)
 {
-	uint8_t xx[4] = { x >> 8, x, (x+w-1) >> 8, (x+w-1) };
-	uint8_t yy[4] = { y >> 8, y, (y+h-1) >> 8, (y+h-1) };
+  uint8_t xx[4] = { x >> 8, x, (x+w-1) >> 8, (x+w-1) };
+  uint8_t yy[4] = { y >> 8, y, (y+h-1) >> 8, (y+h-1) };
     int len = w * h;
-	send_command(0x2A, 4, xx);
+  send_command(0x2A, 4, xx);
     send_command(0x2B, 4, yy);
     send_command(0x2C, 0, NULL);
     while (len-- > 0) 
@@ -261,26 +261,26 @@ void ili9341_fill(int x, int y, int w, int h, int color)
 #if 0
 void ili9341_bulk(int x, int y, int w, int h)
 {
-	uint8_t xx[4] = { x >> 8, x, (x+w-1) >> 8, (x+w-1) };
-	uint8_t yy[4] = { y >> 8, y, (y+h-1) >> 8, (y+h-1) };
-	uint16_t *buf = spi_buffer;
+  uint8_t xx[4] = { x >> 8, x, (x+w-1) >> 8, (x+w-1) };
+  uint8_t yy[4] = { y >> 8, y, (y+h-1) >> 8, (y+h-1) };
+  uint16_t *buf = spi_buffer;
     int len = w * h;
-	send_command(0x2A, 4, xx);
-	send_command(0x2B, 4, yy);
-	send_command(0x2C, 0, NULL);
+  send_command(0x2A, 4, xx);
+  send_command(0x2B, 4, yy);
+  send_command(0x2C, 0, NULL);
     while (len-- > 0) 
       ssp_senddata16(*buf++);
 }
 #else
 void ili9341_bulk(int x, int y, int w, int h)
 {
-	uint8_t xx[4] = { x >> 8, x, (x+w-1) >> 8, (x+w-1) };
-	uint8_t yy[4] = { y >> 8, y, (y+h-1) >> 8, (y+h-1) };
+  uint8_t xx[4] = { x >> 8, x, (x+w-1) >> 8, (x+w-1) };
+  uint8_t yy[4] = { y >> 8, y, (y+h-1) >> 8, (y+h-1) };
     int len = w * h;
 
-	send_command(0x2A, 4, xx);
-	send_command(0x2B, 4, yy);
-	send_command(0x2C, 0, NULL);
+  send_command(0x2A, 4, xx);
+  send_command(0x2B, 4, yy);
+  send_command(0x2C, 0, NULL);
 
     dmaStreamSetMemory0(dmatx, spi_buffer);
     dmaStreamSetTransactionSize(dmatx, len);
@@ -407,6 +407,63 @@ ili9341_drawstring_size(const char *str, int x, int y, uint16_t fg, uint16_t bg,
   }
 }
 
+
+
+unsigned char
+ili9341_drawchar_8x8(uint8_t ch, int x, int y, uint16_t fg, uint16_t bg)
+{
+  uint16_t *buf = spi_buffer;
+  uint16_t bits;
+  int cline, r;
+
+  ch = x8x8_map_char_table(ch);
+
+  for(cline = 0; cline < 8; cline++) 
+  {
+    bits = x8x8_bits[ch][cline];
+
+    for (r = 7; r >= 0; r--) 
+    {
+      *buf++ = (0x80 & bits) ? fg : bg;
+      bits <<= 1;
+    }
+    //*buf++ = bg;
+  }
+  ili9341_bulk(x, y, 8, 8);
+
+  return x8x8_len[ch];
+}
+
+
+
+void
+ili9341_drawstring_8x8(const char *str, int x, int y, uint16_t fg, uint16_t bg)
+{
+  while (*str) 
+  {
+    (void)ili9341_drawchar_8x8(*str, x, y, fg, bg);
+    x += 8;
+    str++;
+  }
+}
+
+
+
+void
+ili9341_drawstring_8x8_var(const char *str, int x, int y, uint16_t fg, uint16_t bg)
+{
+  unsigned char clength = 0;
+  
+  while (*str) 
+  {
+    clength = ili9341_drawchar_8x8(*str, x, y, fg, bg);
+    x += clength;
+    str++;
+  }
+}
+
+
+
 #define SWAP(x,y) do { int z=x; x = y; y = z; } while(0)
 
 void
@@ -452,20 +509,20 @@ const font_t NF20x24 = { 20, 24, 1, 24, (const uint32_t *)numfont20x24 };
 void
 ili9341_drawfont(uint8_t ch, const font_t *font, int x, int y, uint16_t fg, uint16_t bg)
 {
-	uint16_t *buf = spi_buffer;
-	uint32_t bits;
-	const uint32_t *bitmap = &font->bitmap[font->slide * ch];
-	int c, r, j;
+  uint16_t *buf = spi_buffer;
+  uint32_t bits;
+  const uint32_t *bitmap = &font->bitmap[font->slide * ch];
+  int c, r, j;
 
-	for (c = 0; c < font->slide; c++) {
-		for (j = 0; j < font->scaley; j++) {
-			bits = bitmap[c];
-			for (r = 0; r < font->width; r++) {
-				*buf++ = (0x80000000UL & bits) ? fg : bg;
-				bits <<= 1;
-			}
-		}
-	}
+  for (c = 0; c < font->slide; c++) {
+    for (j = 0; j < font->scaley; j++) {
+      bits = bitmap[c];
+      for (r = 0; r < font->width; r++) {
+        *buf++ = (0x80000000UL & bits) ? fg : bg;
+        bits <<= 1;
+      }
+    }
+  }
     ili9341_bulk(x, y, font->width, font->height);
 }
 
@@ -503,7 +560,7 @@ ili9341_test(int mode)
 #endif
 #if 1
   case 3:
-	for (i = 0; i < 10; i++)
+  for (i = 0; i < 10; i++)
       ili9341_drawfont(i, &NF20x24, i*20, 120, colormap[i%6], 0x0000);
     break;
 #endif

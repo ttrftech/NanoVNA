@@ -404,6 +404,11 @@ show_version(void)
   ili9341_drawstring_5x7("Architecture: " PORT_ARCHITECTURE_NAME " Core Variant: " PORT_CORE_VARIANT_NAME, x, y += 10, 0xffff, 0x0000);
   ili9341_drawstring_5x7("Port Info: " PORT_INFO, x, y += 10, 0xffff, 0x0000);
   ili9341_drawstring_5x7("Platform: " PLATFORM_NAME, x, y += 10, 0xffff, 0x0000);
+  ili9341_drawstring_8x8("Hello world" S_PI S_MICRO S_OHM  S_DEGREE S_LARROW S_RARROW, x, y += 10, 0xffff, 0x0000);
+  ili9341_drawstring_8x8_var("Hello world" S_PI S_MICRO S_OHM  S_DEGREE S_LARROW S_RARROW, x, y += 10, 0xffff, 0x0000);
+  ili9341_drawstring_8x8_var("ABCDEFGHIJKL MNOPQRSTUVWXYZ" S_PI S_MICRO S_OHM  S_DEGREE S_LARROW S_RARROW, x, y += 10, 0xffff, 0x0000);
+  ili9341_drawstring_8x8_var("abcdefghijkl mnopqrstuvwxyz" S_PI S_MICRO S_OHM  S_DEGREE S_LARROW S_RARROW, x, y += 10, 0xffff, 0x0000);
+  ili9341_drawstring_8x8_var("0123456790" S_PI S_MICRO S_OHM  S_DEGREE S_LARROW S_RARROW, x, y += 10, 0xffff, 0x0000);
 
   while (true) {
     if (touch_check() == EVT_TOUCH_PRESSED)
@@ -877,10 +882,10 @@ const menuitem_t menu_save[] = {
 };
 
 const menuitem_t menu_cal[] = {
-  { MT_SUBMENU, "CALIBRATE", menu_calop },
+  { MT_SUBMENU, S_RARROW" CALIBR", menu_calop },
   { MT_SUBMENU, "SAVE", menu_save },
   { MT_CALLBACK, "RESET", menu_cal2_cb },
-  { MT_CALLBACK, "CORRECTION", menu_cal2_cb },
+  { MT_CALLBACK, "Correct.", menu_cal2_cb },
   { MT_CANCEL, S_LARROW" BACK", NULL },
   { MT_NONE, NULL, NULL } // sentinel
 };
@@ -899,8 +904,8 @@ const menuitem_t menu_format2[] = {
   { MT_CALLBACK, "LINEAR", menu_format2_cb },
   { MT_CALLBACK, "REAL", menu_format2_cb },
   { MT_CALLBACK, "IMAG", menu_format2_cb },
-  { MT_CALLBACK, "RESISTANCE", menu_format2_cb },
-  { MT_CALLBACK, "REACTANCE", menu_format2_cb },
+  { MT_CALLBACK, "RESIST.", menu_format2_cb },
+  { MT_CALLBACK, "REACT.", menu_format2_cb },
   { MT_CANCEL, S_LARROW" BACK", NULL },
   { MT_NONE, NULL, NULL } // sentinel
 };
@@ -919,17 +924,17 @@ const menuitem_t menu_format[] = {
 };
 
 const menuitem_t menu_scale[] = {
-  { MT_CALLBACK, "SCALE/DIV", menu_scale_cb },
-  { MT_CALLBACK, "\2REFERENCE\0POSITION", menu_scale_cb },
-  { MT_CALLBACK, "\2ELECTRICAL\0DELAY", menu_scale_cb },
+  { MT_CALLBACK, "Scle/Div", menu_scale_cb },
+  { MT_CALLBACK, "\2Rfrnce\0Position", menu_scale_cb },
+  { MT_CALLBACK, "\2Electr.\0Delay", menu_scale_cb },
   { MT_CANCEL, S_LARROW" BACK", NULL },
   { MT_NONE, NULL, NULL } // sentinel
 };
 
 
 const menuitem_t menu_channel[] = {
-  { MT_CALLBACK, "\2CH0\0REFLECT", menu_channel_cb },
-  { MT_CALLBACK, "\2CH1\0THROUGH", menu_channel_cb },
+  { MT_CALLBACK, "\2CH 0\0REFLECT", menu_channel_cb },
+  { MT_CALLBACK, "\2CH 1\0THROUGH", menu_channel_cb },
   { MT_CANCEL, S_LARROW" BACK", NULL },
   { MT_NONE, NULL, NULL } // sentinel
 };
@@ -943,12 +948,12 @@ const menuitem_t menu_transform_window[] = {
 };
 
 const menuitem_t menu_transform[] = {
-  { MT_CALLBACK, "\2TRANSFORM\0ON", menu_transform_cb },
-  { MT_CALLBACK, "\2LOW PASS\0IMPULSE", menu_transform_cb },
-  { MT_CALLBACK, "\2LOW PASS\0STEP", menu_transform_cb },
-  { MT_CALLBACK, "BANDPASS", menu_transform_cb },
+  { MT_CALLBACK, "\2TRANSFO\0ON", menu_transform_cb },
+  { MT_CALLBACK, "\2LOWPASS\0IMPULSE", menu_transform_cb },
+  { MT_CALLBACK, "\2LOWPASS\0STEP", menu_transform_cb },
+  { MT_CALLBACK, "BANDP.", menu_transform_cb },
   { MT_SUBMENU, "WINDOW", menu_transform_window },
-  { MT_CALLBACK, "\2VELOCITY\0FACTOR", menu_transform_cb },
+  { MT_CALLBACK, "\2Velocity\0FACTOR", menu_transform_cb },
   { MT_CANCEL, S_LARROW" BACK", NULL },
   { MT_NONE, NULL, NULL } // sentinel
 };
@@ -958,7 +963,7 @@ const menuitem_t menu_display[] = {
   { MT_SUBMENU, "FORMAT", menu_format },
   { MT_SUBMENU, "SCALE", menu_scale },
   { MT_SUBMENU, "CHANNEL", menu_channel },
-  { MT_SUBMENU, "TRANSFORM", menu_transform },
+  { MT_SUBMENU, "TRNSFRM", menu_transform },
   { MT_CANCEL, S_LARROW" BACK", NULL },
   { MT_NONE, NULL, NULL } // sentinel
 };
@@ -995,27 +1000,27 @@ const menuitem_t menu_marker[] = {
 };
 
 const menuitem_t menu_recall[] = {
-  { MT_CALLBACK, "RECALL 0", menu_recall_cb },
-  { MT_CALLBACK, "RECALL 1", menu_recall_cb },
-  { MT_CALLBACK, "RECALL 2", menu_recall_cb },
-  { MT_CALLBACK, "RECALL 3", menu_recall_cb },
-  { MT_CALLBACK, "RECALL 4", menu_recall_cb },
+  { MT_CALLBACK, "RECALL0", menu_recall_cb },
+  { MT_CALLBACK, "RECALL1", menu_recall_cb },
+  { MT_CALLBACK, "RECALL2", menu_recall_cb },
+  { MT_CALLBACK, "RECALL3", menu_recall_cb },
+  { MT_CALLBACK, "RECALL4", menu_recall_cb },
   { MT_CANCEL, S_LARROW" BACK", NULL },
   { MT_NONE, NULL, NULL } // sentinel
 };
 
 const menuitem_t menu_dfu[] = {
-  { MT_CALLBACK, "\2RESET AND\0ENTER DFU", menu_dfu_cb },
-  { MT_CANCEL, S_LARROW"CANCEL", NULL },
+  { MT_CALLBACK, "\2RESET+\0Ent DFU", menu_dfu_cb },
+  { MT_CANCEL, S_LARROW" BACK", NULL },
   { MT_NONE, NULL, NULL } // sentinel
 };
 
 const menuitem_t menu_config[] = {
-  { MT_CALLBACK, "TOUCH CAL", menu_config_cb },
-  { MT_CALLBACK, "TOUCH TEST", menu_config_cb },
+  { MT_CALLBACK, "\2TOUCH\0CAL", menu_config_cb },
+  { MT_CALLBACK, "\2TOUCH\0TEST", menu_config_cb },
   { MT_CALLBACK, "SAVE", menu_config_cb },
   { MT_CALLBACK, "VERSION", menu_config_cb },
-  { MT_SUBMENU, S_RARROW"DFU", menu_dfu },
+  { MT_SUBMENU, " " S_RARROW " DFU", menu_dfu },
   { MT_CANCEL, S_LARROW" BACK", NULL },
   { MT_NONE, NULL, NULL } // sentinel
 };
@@ -1341,29 +1346,40 @@ void
 draw_menu_buttons(const menuitem_t *menu)
 {
   int i = 0;
-  for (i = 0; i < 7; i++) {
+  for (i = 0; i < 7; i++) 
+  {
     const char *l1, *l2;
     if (menu[i].type == MT_NONE)
       break;
     if (menu[i].type == MT_BLANK) 
       continue;
+
     int y = 32*i;
+
     uint16_t bg = config.menu_normal_color;
     uint16_t fg = 0x0000;
+
     // focus only in MENU mode but not in KEYPAD mode
     if (ui_mode == UI_MENU && i == selection)
       bg = config.menu_active_color;
+
     ili9341_fill(320-60, y, 60, 30, bg);
     
     menu_item_modify_attribute(menu, i, &fg, &bg);
-    if (menu_is_multiline(menu[i].label, &l1, &l2)) {
-      ili9341_drawstring_5x7(l1, 320-54, y+8, fg, bg);
-      ili9341_drawstring_5x7(l2, 320-54, y+15, fg, bg);
-    } else {
-      ili9341_drawstring_5x7(menu[i].label, 320-54, y+12, fg, bg);
+
+    if (menu_is_multiline(menu[i].label, &l1, &l2)) 
+    {
+      ili9341_drawstring_8x8_var(l1, 320-57, y+7, fg, bg);
+      ili9341_drawstring_8x8_var(l2, 320-57, y+16, fg, bg);
+    } 
+    else 
+    {
+      ili9341_drawstring_8x8_var(menu[i].label, 320-57, y+12, fg, bg);
     }
   }
 }
+
+
 
 void
 menu_select_touch(int i)

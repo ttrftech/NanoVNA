@@ -675,6 +675,37 @@ bool sweep(bool break_on_operation)
   return true;
 }
 
+static void cmd_scan(BaseSequentialStream *chp, int argc, char *argv[])
+{
+  int32_t start, stop;
+  int16_t points = sweep_points;
+
+  if (argc != 2 && argc != 3) {
+    chprintf(chp, "usage: sweep {start(Hz)} {stop(Hz)} [points]\r\n");
+    return;
+  }
+
+  start = atoi(argv[0]);
+  stop = atoi(argv[1]);
+  if (start == 0 || stop == 0 || start > stop) {
+      chprintf(chp, "frequency range is invalid\r\n");
+      return;
+  }
+  if (argc == 3) {
+    points = atoi(argv[2]);
+    if (points <= 0 || points > sweep_points) {
+      chprintf(chp, "sweep points exceeds range\r\n");
+      return;
+    }
+  }
+
+  pause_sweep();
+  chMtxLock(&mutex);
+  set_frequencies(start, stop, points);
+  sweep(false);
+  chMtxUnlock(&mutex);
+}
+
 static void
 update_marker_index(void)
 {
@@ -1841,7 +1872,7 @@ static void cmd_vbat(BaseSequentialStream *chp, int argc, char *argv[])
   chprintf(chp, "%d mV\r\n", vbat);
 }
 
-static THD_WORKING_AREA(waThread2, /* cmd_* max stack size + alpha */442);
+static THD_WORKING_AREA(waThread2, /* cmd_* max stack size + alpha */640);
 
 static const ShellCommand commands[] =
 {
@@ -1864,7 +1895,7 @@ static const ShellCommand commands[] =
     { "power", cmd_power },
     { "sample", cmd_sample },
     //{ "gamma", cmd_gamma },
-    //{ "scan", cmd_scan },
+    { "scan", cmd_scan },
     { "sweep", cmd_sweep },
     { "test", cmd_test },
     { "touchcal", cmd_touchcal },

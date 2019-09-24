@@ -52,6 +52,8 @@ int32_t step = 1;
 int     count;
 int8_t drive_strength = DRIVE_STRENGTH_AUTO;
 int8_t frequency_updated = FALSE;
+int8_t dirty = FALSE;
+int8_t averaging = 0;
 int8_t sweep_enabled = TRUE;
 int8_t sweep_once = FALSE;
 int8_t cal_auto_interpolate = TRUE;
@@ -423,6 +425,10 @@ duplicate_buffer_to_dump(int16_t *p)
 }
 #endif
 
+
+volatile average_count=1;
+
+
 void i2s_end_callback(I2SDriver *i2sp, size_t offset, size_t n)
 {
 #if PORT_SUPPORTS_RT
@@ -643,21 +649,36 @@ ensure_edit_config(void)
 }
 
 
-static void cmd_scan(BaseSequentialStream *chp, int argc, char *argv[])
+static void cmd_averaging(BaseSequentialStream *chp, int argc, char *argv[])
 {
   (void)argc;
   (void)argv;
 
-  if (argc == 3 ) {
+  if (argc == 1 ) {
+    averaging = atoi(argv[0]);
+  } else
+    chprintf(chp, "usage: averaging [factor] \r\n");
+}
+  static void cmd_scan(BaseSequentialStream *chp, int argc, char *argv[])
+  {
+    (void)argc;
+    (void)argv;
+
+    if (argc == 4 ) {
+      average_count = atoi(argv[3]);
+      argc--;
+    }
+  if (argc == 3) {
     freq = atoi(argv[0]);
     step = atoi(argv[1]);
     count = atoi(argv[2]);
   } else {
-    chprintf(chp, "usage: scan start(Hz) step(Hz) points\r\n");
+    chprintf(chp, "usage: scan start(Hz) step(Hz) points [average]\r\n");
     return;
   }
   pause_sweep();
   chMtxLock(&mutex);
+  frequency_updated = TRUE; // to trigger dirty
   saved_chp = chp;
   sweep_once = TRUE;
   sweep_enabled = TRUE;
@@ -701,6 +722,8 @@ void sweep(void)
     chprintf(saved_chp, "start\r\n");
 
  rewind:
+  if (frequency_updated)
+    dirty = TRUE;
   frequency_updated = FALSE;
   //delay = 3;
   if (!sweep_once) {
@@ -757,6 +780,7 @@ void sweep(void)
       goto rewind;
     freq += step;
   }
+  dirty = FALSE;
   if (sweep_once)
     chprintf(saved_chp, "done\r\n");
   else
@@ -1943,6 +1967,7 @@ static const ShellCommand commands[] =
     { "sample", cmd_sample },
     //{ "gamma", cmd_gamma },
     { "scan", cmd_scan },
+    { "averaging", cmd_averaging},
     { "sweep", cmd_sweep },
     { "test", cmd_test },
     { "touchcal", cmd_touchcal },

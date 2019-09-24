@@ -43,6 +43,8 @@ int32_t acc_samp_s;
 int32_t acc_samp_c;
 int32_t acc_ref_s;
 int32_t acc_ref_c;
+extern int8_t dirty;
+extern int8_t averaging;
 
 void
 dsp_process(int16_t *capture, size_t length)
@@ -92,8 +94,13 @@ calculate_gamma(float gamma[2])
   //rr = sqrtf(rr) * 1e8;
   float ss = acc_samp_s;
   float sc = acc_samp_c;
-  gamma[0] =  (sc * rc + ss * rs) / rr;
-  gamma[1] =  (ss * rc - sc * rs) / rr;
+  if (dirty || (averaging == 0) ) {
+    gamma[0] =  (sc * rc + ss * rs) / rr;
+    gamma[1] =  (ss * rc - sc * rs) / rr;
+  } else {
+    gamma[0] =  ( gamma[0] * averaging + (sc * rc + ss * rs) / rr)/(averaging + 1);
+    gamma[1] =  ( gamma[1] * averaging + (ss * rc - sc * rs) / rr)/(averaging + 1);
+  }
 #elif 0
   gamma[0] =  acc_samp_s;
   gamma[1] =  acc_samp_c;

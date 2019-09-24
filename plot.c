@@ -703,12 +703,12 @@ trace_get_info(int t, char *buf, int len)
 }
 
 static float time_of_index(int idx) {
-   return 1.0 / (float)(frequencies[1] - frequencies[0]) / 128.0 * idx;
+   return 1.0 / (float)(frequencies[1] - frequencies[0]) / (float)FFT_SIZE * idx;
 }
 
 static float distance_of_index(int idx) {
 #define SPEED_OF_LIGHT 299792458
-   float distance = ((float)idx * (float)SPEED_OF_LIGHT) / ( (float)(frequencies[1] - frequencies[0]) * 128.0 * 2.0);
+   float distance = ((float)idx * (float)SPEED_OF_LIGHT) / ( (float)(frequencies[1] - frequencies[0]) * (float)FFT_SIZE * 2.0);
    return distance * (velocity_factor / 100.0);
 }
 

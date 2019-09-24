@@ -38,7 +38,7 @@ static void apply_error_term(void);
 static void apply_error_term_at(int i);
 static void cal_interpolate(int s);
 
-void sweep(void);
+bool sweep(bool break_on_operation);
 
 static MUTEX_DECL(mutex);
 
@@ -48,11 +48,9 @@ static MUTEX_DECL(mutex);
 int32_t frequency_offset = 5000;
 int32_t frequency = 10000000;
 int8_t drive_strength = DRIVE_STRENGTH_AUTO;
-int8_t frequency_updated = FALSE;
 int8_t sweep_enabled = TRUE;
 int8_t cal_auto_interpolate = TRUE;
 uint16_t redraw_request = 0; // contains REDRAW_XXX flags
-int8_t stop_the_world = FALSE;
 int16_t vbat = 0;
 
 
@@ -63,32 +61,37 @@ static THD_FUNCTION(Thread1, arg)
     chRegSetThreadName("sweep");
 
     while (1) {
-      if (stop_the_world) {
-          __WFI();
-          continue;
-      }
-
+      bool completed = false;
       if (sweep_enabled) {
         chMtxLock(&mutex);
-        sweep();
+        completed = sweep(true);
         chMtxUnlock(&mutex);
       } else {
         __WFI();
-        ui_process();
       }
 
-      if (vbat != -1) {
+      {
+        chMtxLock(&mutex);
+        ui_process();
+
+        if (vbat != -1) {
           adc_stop(ADC1);
           vbat = adc_vbat_read(ADC1);
           touch_start_watchdog();
           draw_battery_status();
+        }
+
+        /* calculate trace coordinates and plot only if scan completed */
+        if (completed) {
+          plot_into_index(measured);
+          redraw_request |= REDRAW_CELLS;
+        }
+
+        /* plot trace and other indications as raster */
+        draw_all(completed); // flush markmap only if scan completed to prevent remaining traces
+
+        chMtxUnlock(&mutex);
       }
-
-      /* calculate trace coordinates */
-      plot_into_index(measured);
-
-      /* plot trace as raster */
-      draw_all();
     }
 }
 
@@ -220,6 +223,7 @@ static void cmd_resume(BaseSequentialStream *chp, int argc, char *argv[])
     (void)argc;
     (void)argv;
     resume_sweep();
+    update_frequencies();
 }
 
 static void cmd_reset(BaseSequentialStream *chp, int argc, char *argv[])
@@ -461,13 +465,15 @@ static void cmd_data(BaseSequentialStream *chp, int argc, char *argv[])
   if (sel == 0 || sel == 1) {
     chMtxLock(&mutex);
     for (i = 0; i < sweep_points; i++) {
-      chprintf(chp, "%f %f\r\n", measured[sel][i][0], measured[sel][i][1]);
+      if (frequencies[i] != 0)
+        chprintf(chp, "%f %f\r\n", measured[sel][i][0], measured[sel][i][1]);
     }
     chMtxUnlock(&mutex);
   } else if (sel >= 2 && sel < 7) {
     chMtxLock(&mutex);
     for (i = 0; i < sweep_points; i++) {
-      chprintf(chp, "%f %f\r\n", cal_data[sel-2][i][0], cal_data[sel-2][i][1]);
+      if (frequencies[i] != 0)
+        chprintf(chp, "%f %f\r\n", cal_data[sel-2][i][0], cal_data[sel-2][i][1]);
     }
     chMtxUnlock(&mutex);
   } else {
@@ -505,10 +511,7 @@ static void cmd_capture(BaseSequentialStream *chp, int argc, char *argv[])
     (void)argc;
     (void)argv;
 
-    // pause sweep
-    stop_the_world = TRUE;
-
-    chThdSleepMilliseconds(1000);
+    chMtxLock(&mutex);
 
     // use uint16_t spi_buffer[1024] (defined in ili9341) for read buffer
     uint16_t *buf = &spi_buffer[0];
@@ -531,7 +534,7 @@ static void cmd_capture(BaseSequentialStream *chp, int argc, char *argv[])
     }
     //*/
 
-    stop_the_world = FALSE;
+    chMtxUnlock(&mutex);
 }
 
 #if 0
@@ -632,48 +635,13 @@ ensure_edit_config(void)
   cal_status = 0;
 }
 
-#if 0
-static void cmd_scan(BaseSequentialStream *chp, int argc, char *argv[])
-{
-  float gamma[2];
-  int i;
-  int32_t freq, step;
-  int delay;
-  (void)argc;
-  (void)argv;
-
-  pause_sweep();
-  chMtxLock(&mutex);
-
-  freq = frequency0;
-  step = (frequency1 - frequency0) / (sweep_points-1);
-  set_frequency(freq);
-  delay = 4;
-  for (i = 0; i < sweep_points; i++) {
-    freq = freq + step;
-    wait_dsp(delay);
-    delay = set_frequency(freq);
-    palClearPad(GPIOC, GPIOC_LED);
-    calculate_gamma(gamma);
-    palSetPad(GPIOC, GPIOC_LED);
-    chprintf(chp, "%d %d\r\n", gamma[0], gamma[1]);
-  }
-  chMtxUnlock(&mutex);
-}
-#endif
-
 // main loop for measurement
-void sweep(void)
+bool sweep(bool break_on_operation)
 {
   int i;
-  int delay;
-
- rewind:
-  frequency_updated = FALSE;
-  //delay = 3;
 
   for (i = 0; i < sweep_points; i++) {
-    delay = set_frequency(frequencies[i]);
+    int delay = set_frequency(frequencies[i]);
     tlv320aic3204_select_in3(); // CH0:REFLECT
     wait_dsp(delay);
 
@@ -698,15 +666,13 @@ void sweep(void)
     if (electrical_delay != 0)
       apply_edelay_at(i);
 
-    ui_process();
-    if (redraw_request)
-      break; // return to redraw screen asap.
-      
-    if (frequency_updated)
-      goto rewind;
+    // back to toplevel to handle ui operation
+    if (operation_requested && break_on_operation)
+      return false;
   }
 
   transform_domain();
+  return true;
 }
 
 static void
@@ -741,31 +707,36 @@ update_marker_index(void)
 }
 
 void
-update_frequencies(void)
+set_frequencies(uint32_t start, uint32_t stop, int16_t points)
 {
   int i;
-  int32_t span;
-  int32_t start;
+  uint32_t span = (stop - start) / 1000; /* prevents overflow because of maximum of int32_t(2.147e+9) */  
+  for (i = 0; i < points; i++)
+    frequencies[i] = start + span * i / (points - 1) * 1000;
+  for (; i < sweep_points; i++)
+    frequencies[i] = 0;
+}
+
+void
+update_frequencies(void)
+{
+  uint32_t start, stop;
   if (frequency1 > 0) {
     start = frequency0;
-    span = (frequency1 - frequency0)/100;
+    stop = frequency1;
   } else {
-    int center = frequency0;
-    span = -frequency1;
+    int32_t center = frequency0;
+    int32_t span = -frequency1;
     start = center - span/2;
-    span /= 100;
+    stop = center + span/2;
   }
 
-  for (i = 0; i < sweep_points; i++)
-    frequencies[i] = start + span * i / (sweep_points - 1) * 100;
-
+  set_frequencies(start, stop, sweep_points);
   update_marker_index();
   
-  frequency_updated = TRUE;
   // set grid layout
   update_grid();
 }
-
 
 void
 freq_mode_startstop(void)
@@ -1722,7 +1693,8 @@ static void cmd_frequencies(BaseSequentialStream *chp, int argc, char *argv[])
   (void)argc;
   (void)argv;
   for (i = 0; i < sweep_points; i++) {
-    chprintf(chp, "%d\r\n", frequencies[i]);
+    if (frequencies[i] != 0)
+      chprintf(chp, "%d\r\n", frequencies[i]);
   }
 }
 

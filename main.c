@@ -49,6 +49,7 @@ int32_t frequency_offset = 5000;
 int32_t frequency = 10000000;
 int8_t drive_strength = DRIVE_STRENGTH_AUTO;
 int8_t sweep_enabled = TRUE;
+int8_t sweep_once = FALSE;
 int8_t cal_auto_interpolate = TRUE;
 uint16_t redraw_request = 0; // contains REDRAW_XXX flags
 int16_t vbat = 0;
@@ -62,15 +63,16 @@ static THD_FUNCTION(Thread1, arg)
 
     while (1) {
       bool completed = false;
-      if (sweep_enabled) {
+      if (sweep_enabled || sweep_once) {
         chMtxLock(&mutex);
         completed = sweep(true);
+        sweep_once = FALSE;
         chMtxUnlock(&mutex);
       } else {
         __WFI();
       }
 
-      {
+      if (sweep_enabled) {
         chMtxLock(&mutex);
         ui_process();
 
@@ -702,8 +704,12 @@ static void cmd_scan(BaseSequentialStream *chp, int argc, char *argv[])
   pause_sweep();
   chMtxLock(&mutex);
   set_frequencies(start, stop, points);
-  sweep(false);
+  sweep_once = TRUE;
   chMtxUnlock(&mutex);
+
+  // wait finishing sweep
+  while (sweep_once)
+    chThdSleepMilliseconds(10);
 }
 
 static void
@@ -1872,7 +1878,7 @@ static void cmd_vbat(BaseSequentialStream *chp, int argc, char *argv[])
   chprintf(chp, "%d mV\r\n", vbat);
 }
 
-static THD_WORKING_AREA(waThread2, /* cmd_* max stack size + alpha */640);
+static THD_WORKING_AREA(waThread2, /* cmd_* max stack size + alpha */442);
 
 static const ShellCommand commands[] =
 {

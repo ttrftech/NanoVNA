@@ -1063,13 +1063,9 @@ eterm_calc_et(void)
 {
   int i;
   for (i = 0; i < sweep_points; i++) {
-    // Et = 1/(S21mt - Ex)(1 - Es)
-    float esr = 1 - cal_data[ETERM_ES][i][0];
-    float esi = -cal_data[ETERM_ES][i][1];
-    float s21mr = cal_data[CAL_THRU][i][0] - cal_data[CAL_ISOLN][i][0];
-    float s21mi = cal_data[CAL_THRU][i][1] - cal_data[CAL_ISOLN][i][1];
-    float etr = esr * s21mr - esi * s21mi;
-    float eti = esr * s21mi + esi * s21mr;
+    // Et = 1/(S21mt - Ex)
+    float etr = cal_data[CAL_THRU][i][0] - cal_data[CAL_ISOLN][i][0];
+    float eti = cal_data[CAL_THRU][i][1] - cal_data[CAL_ISOLN][i][1];
     float sq = etr*etr + eti*eti;
     float invr = etr / sq;
     float invi = -eti / sq;

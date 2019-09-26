@@ -38,6 +38,7 @@ static void apply_error_term(void);
 static void apply_error_term_at(int i);
 static void cal_interpolate(int s);
 
+void apply_edelay_at(int i);
 void sweep(void);
 
 static MUTEX_DECL(mutex);
@@ -580,41 +581,41 @@ float cal_data[5][101][2];
 #endif
 
 config_t config = {
-  /* magic */   CONFIG_MAGIC,
-  /* dac_value */ 1922,
-  /* grid_color */ 0x1084,
-  /* menu_normal_color */ 0xffff,
-  /* menu_active_color */ 0x7777,
-  /* trace_colors[4] */ { RGB565(0,255,255), RGB565(255,0,40), RGB565(0,0,255), RGB565(50,255,0) },
-  ///* touch_cal[4] */ { 620, 600, 160, 190 },
-  /* touch_cal[4] */ { 693, 605, 124, 171 },
-  /* default_loadcal */    0,
-  /* checksum */           0
+  .magic =              CONFIG_MAGIC,
+  .dac_value =          1922,
+  .grid_color =         0x1084,
+  .menu_normal_color =  0xffff,
+  .menu_active_color =  0x7777,
+  .trace_color = /*[4] */ { RGB565(0,255,255), RGB565(255,0,40), RGB565(0,0,255), RGB565(50,255,0) },
+  //.touch_cal = /*[4] */ { 620, 600, 160, 190 },
+  .touch_cal = /*[4] */ { 693, 605, 124, 171 },
+  .default_loadcal =    0,
+  .checksum =           0
 };
 
 properties_t current_props = {
-  /* magic */   CONFIG_MAGIC,
-  /* frequency0 */     50000, // start = 50kHz
-  /* frequency1 */ 900000000, // end = 900MHz
-  /* sweep_points */     101,
-  /* cal_status */         0,
-  /* frequencies */       {},
-  /* cal_data */          {},
-  /* electrical_delay */   0,
-  /* trace[4] */
+  .magic =      CONFIG_MAGIC,
+  ._frequency0 =       50000, // start = 50kHz
+  ._frequency1 =   900000000, // end = 900MHz
+  ._sweep_points =       101,
+  ._cal_status =           0,
+  //._frequencies =         {},
+  //._cal_data =            {},
+  ._electrical_delay =     0,
+  ._trace = /*[4] */
   {/*enable, type, channel, polar, scale, refpos*/
     { 1, TRC_LOGMAG, 0, 0, 1.0, 7.0 },
     { 1, TRC_LOGMAG, 1, 0, 1.0, 7.0 },
     { 1, TRC_SMITH,  0, 1, 1.0, 0.0 },
     { 1, TRC_PHASE,  1, 0, 1.0, 4.0 }
   },
-  /* markers[4] */ {
+  ._markers = /*[4] */ {
     { 1, 30, 0 }, { 0, 40, 0 }, { 0, 60, 0 }, { 0, 80, 0 }
   },
-  /* active_marker */      0,
-  /* domain_mode */        0,
-  /* velocity_factor */   70,
-  /* checksum */           0
+  ._active_marker =        0,
+  ._domain_mode =          0,
+  ._velocity_factor =     70,
+  .checksum =              0
 };
 properties_t *active_props = &current_props;
 
@@ -1912,9 +1913,9 @@ static const I2CConfig i2ccfg = {
 };
 
 static DACConfig dac1cfg1 = {
-  //init:         2047U,
-  init:         1922U,
-  datamode:     DAC_DHRM_12BIT_RIGHT
+  //.init =         2047U,
+  .init =         1922U,
+  .datamode =     DAC_DHRM_12BIT_RIGHT
 };
 
 int main(void)

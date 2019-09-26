@@ -69,7 +69,7 @@ static uint32_t
 checksum(const void *start, size_t len)
 {
   uint32_t *p = (uint32_t*)start;
-  uint32_t *tail = (uint32_t*)(start + len);
+  uint32_t *tail = (uint32_t*)((uint8_t*)start + len);
   uint32_t value = 0;
   while (p < tail)
     value ^= *p++;
@@ -148,8 +148,8 @@ caldata_save(int id)
   flash_unlock();
 
   /* erase flash pages */
-  void *p = dst;
-  void *tail = p + sizeof(properties_t);
+  uint8_t* p = (uint8_t*)dst;
+  uint8_t* tail = p + sizeof(properties_t);
   while (p < tail) {
     flash_erase_page((uint32_t)p);
     p += FLASH_PAGESIZE;
@@ -218,8 +218,8 @@ clear_all_config_prop_data(void)
   flash_unlock();
 
   /* erase flash pages */
-  void *p = (void*)save_config_area;
-  void *tail = p + save_config_prop_area_size;
+  uint8_t* p = (uint8_t*)save_config_area;
+  uint8_t* tail = p + save_config_prop_area_size;
   while (p < tail) {
     flash_erase_page((uint32_t)p);
     p += FLASH_PAGESIZE;

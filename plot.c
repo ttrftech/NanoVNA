@@ -818,11 +818,11 @@ void plot_into_index(float measured[2][101][2])
   markmap_all_markers();
 }
 
-const uint8_t INSIDE = 0b0000;
-const uint8_t LEFT   = 0b0001;
-const uint8_t RIGHT  = 0b0010;
-const uint8_t BOTTOM = 0b0100;
-const uint8_t TOP    = 0b1000;
+const uint8_t INSIDE = 0x00;
+const uint8_t LEFT   = 0x01;
+const uint8_t RIGHT  = 0x02;
+const uint8_t BOTTOM = 0x04;
+const uint8_t TOP    = 0x08;
 
 inline static uint8_t
 _compute_outcode(int w, int h, int x, int y)

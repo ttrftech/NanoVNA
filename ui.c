@@ -26,8 +26,8 @@
 
 
 uistat_t uistat = {
- digit: 6,
- current_trace: 0
+ .digit = 6,
+ .current_trace = 0
 };
 
 
@@ -51,9 +51,9 @@ uistat_t uistat = {
 #define BIT_DOWN1	1
 
 #define READ_PORT() palReadPort(GPIOA)
-#define BUTTON_MASK 0b1111
+#define BUTTON_MASK (0x0f)
 
-static uint16_t last_button = 0b0000;
+static uint16_t last_button = 0;
 static uint32_t last_button_down_ticks;
 static uint32_t last_button_repeat_ticks;
 static int8_t inhibit_until_release = FALSE;
@@ -75,11 +75,25 @@ uint8_t ui_mode = UI_NORMAL;
 uint8_t keypad_mode;
 int8_t selection = 0;
 
-typedef struct {
+typedef void (*menuaction_cb_t)(int item);
+
+typedef struct menuitem_t menuitem_t;
+
+struct menuitem_t {
   uint8_t type;
-  char *label;
-  const void *reference;
-} menuitem_t;
+  char* label;
+  union {
+    const menuaction_cb_t pFunc;
+    const menuitem_t* pMenu;
+  };
+};
+
+#define MENUITEM_SUB(text, pmenu) { .type=MT_SUBMENU, .label=text, .pMenu=pmenu }
+#define MENUITEM_FUNC(text, pfunc) { .type=MT_CALLBACK, .label=text, .pFunc=pfunc }
+#define MENUITEM_CLOSE { .type=MT_CLOSE, .label="CLOSE", .pMenu=NULL }
+#define MENUITEM_BACK { .type=MT_CANCEL, .label=S_LARROW" BACK", .pMenu=NULL }
+#define MENUITEM_END { .type=MT_NONE, .label=NULL, .pMenu=NULL } /* sentinel */
+
 
 int8_t last_touch_status = FALSE;
 int16_t last_touch_x;
@@ -115,6 +129,8 @@ void ui_process_keypad(void);
 static void ui_process_numeric(void);
 
 static void menu_push_submenu(const menuitem_t *submenu);
+
+void touch_position(int *x, int *y);
 
 
 
@@ -443,7 +459,6 @@ enum {
   MT_CLOSE
 };
 
-typedef void (*menuaction_cb_t)(int item);
 
 
 static void menu_move_back(void);
@@ -856,179 +871,179 @@ menu_marker_sel_cb(int item)
 }
 
 const menuitem_t menu_calop[] = {
-  { MT_CALLBACK, "OPEN", menu_calop_cb },
-  { MT_CALLBACK, "SHORT", menu_calop_cb },
-  { MT_CALLBACK, "LOAD", menu_calop_cb },
-  { MT_CALLBACK, "ISOLN", menu_calop_cb },
-  { MT_CALLBACK, "THRU", menu_calop_cb },
-  { MT_CALLBACK, "DONE", menu_caldone_cb },
-  { MT_CANCEL, S_LARROW" BACK", NULL },
-  { MT_NONE, NULL, NULL } // sentinel
+  MENUITEM_FUNC("OPEN",     menu_calop_cb),
+  MENUITEM_FUNC("SHORT",    menu_calop_cb),
+  MENUITEM_FUNC("LOAD",     menu_calop_cb),
+  MENUITEM_FUNC("ISOLN",    menu_calop_cb),
+  MENUITEM_FUNC("THRU",     menu_calop_cb),
+  MENUITEM_FUNC("DONE",     menu_caldone_cb),
+  MENUITEM_BACK,
+  MENUITEM_END
 };
 
 const menuitem_t menu_save[] = {
-  { MT_CALLBACK, "SAVE 0", menu_save_cb },
-  { MT_CALLBACK, "SAVE 1", menu_save_cb },
-  { MT_CALLBACK, "SAVE 2", menu_save_cb },
-  { MT_CALLBACK, "SAVE 3", menu_save_cb },
-  { MT_CALLBACK, "SAVE 4", menu_save_cb },
-  { MT_CANCEL, S_LARROW" BACK", NULL },
-  { MT_NONE, NULL, NULL } // sentinel
+  MENUITEM_FUNC("SAVE 0",   menu_save_cb),
+  MENUITEM_FUNC("SAVE 1",   menu_save_cb),
+  MENUITEM_FUNC("SAVE 2",   menu_save_cb),
+  MENUITEM_FUNC("SAVE 3",   menu_save_cb),
+  MENUITEM_FUNC("SAVE 4",   menu_save_cb),
+  MENUITEM_BACK,
+  MENUITEM_END
 };
 
 const menuitem_t menu_cal[] = {
-  { MT_SUBMENU, "CALIBRATE", menu_calop },
-  { MT_SUBMENU, "SAVE", menu_save },
-  { MT_CALLBACK, "RESET", menu_cal2_cb },
-  { MT_CALLBACK, "CORRECTION", menu_cal2_cb },
-  { MT_CANCEL, S_LARROW" BACK", NULL },
-  { MT_NONE, NULL, NULL } // sentinel
+  MENUITEM_SUB( "CALIBRATE",    menu_calop),
+  MENUITEM_SUB( "SAVE",         menu_save),
+  MENUITEM_FUNC("RESET",        menu_cal2_cb),
+  MENUITEM_FUNC("CORRECTION",   menu_cal2_cb),
+  MENUITEM_BACK,
+  MENUITEM_END
 };
 
 const menuitem_t menu_trace[] = {
-  { MT_CALLBACK, "TRACE 0", menu_trace_cb },
-  { MT_CALLBACK, "TRACE 1", menu_trace_cb },
-  { MT_CALLBACK, "TRACE 2", menu_trace_cb },
-  { MT_CALLBACK, "TRACE 3", menu_trace_cb },
-  { MT_CANCEL, S_LARROW" BACK", NULL },
-  { MT_NONE, NULL, NULL } // sentinel
+  MENUITEM_FUNC("TRACE 0",      menu_trace_cb),
+  MENUITEM_FUNC("TRACE 1",      menu_trace_cb),
+  MENUITEM_FUNC("TRACE 2",      menu_trace_cb),
+  MENUITEM_FUNC("TRACE 3",      menu_trace_cb),
+  MENUITEM_BACK,
+  MENUITEM_END
 };
 
 const menuitem_t menu_format2[] = {
-  { MT_CALLBACK, "POLAR", menu_format2_cb },
-  { MT_CALLBACK, "LINEAR", menu_format2_cb },
-  { MT_CALLBACK, "REAL", menu_format2_cb },
-  { MT_CALLBACK, "IMAG", menu_format2_cb },
-  { MT_CALLBACK, "RESISTANCE", menu_format2_cb },
-  { MT_CALLBACK, "REACTANCE", menu_format2_cb },
-  { MT_CANCEL, S_LARROW" BACK", NULL },
-  { MT_NONE, NULL, NULL } // sentinel
+  MENUITEM_FUNC("POLAR",        menu_format2_cb),
+  MENUITEM_FUNC("LINEAR",       menu_format2_cb),
+  MENUITEM_FUNC("REAL",         menu_format2_cb),
+  MENUITEM_FUNC("IMAG",         menu_format2_cb),
+  MENUITEM_FUNC("RESISTANCE",   menu_format2_cb),
+  MENUITEM_FUNC("REACTANCE",    menu_format2_cb),
+  MENUITEM_BACK,
+  MENUITEM_END
 };
 
 const menuitem_t menu_format[] = {
-  { MT_CALLBACK, "LOGMAG", menu_format_cb },
-  { MT_CALLBACK, "PHASE", menu_format_cb },
-  { MT_CALLBACK, "DELAY", menu_format_cb },
-  { MT_CALLBACK, "SMITH", menu_format_cb },
-  { MT_CALLBACK, "SWR", menu_format_cb },
-  { MT_SUBMENU, S_RARROW" MORE", menu_format2 },  
-  //{ MT_CALLBACK, "LINEAR", menu_format_cb },
-  //{ MT_CALLBACK, "SWR", menu_format_cb },
-  { MT_CANCEL, S_LARROW" BACK", NULL },
-  { MT_NONE, NULL, NULL } // sentinel
+  MENUITEM_FUNC("LOGMAG",       menu_format_cb),
+  MENUITEM_FUNC("PHASE",        menu_format_cb),
+  MENUITEM_FUNC("DELAY",        menu_format_cb),
+  MENUITEM_FUNC("SMITH",        menu_format_cb),
+  MENUITEM_FUNC("SWR",          menu_format_cb),
+  MENUITEM_SUB(S_RARROW" MORE", menu_format2),  
+  //MENUITEM_FUNC("LINEAR",     menu_format_cb),
+  //MENUITEM_FUNC("SWR",        menu_format_cb),
+  MENUITEM_BACK,
+  MENUITEM_END
 };
 
 const menuitem_t menu_scale[] = {
-  { MT_CALLBACK, "SCALE/DIV", menu_scale_cb },
-  { MT_CALLBACK, "\2REFERENCE\0POSITION", menu_scale_cb },
-  { MT_CALLBACK, "\2ELECTRICAL\0DELAY", menu_scale_cb },
-  { MT_CANCEL, S_LARROW" BACK", NULL },
-  { MT_NONE, NULL, NULL } // sentinel
+  MENUITEM_FUNC("SCALE/DIV",                menu_scale_cb),
+  MENUITEM_FUNC("\2REFERENCE\0POSITION",    menu_scale_cb),
+  MENUITEM_FUNC("\2ELECTRICAL\0DELAY",      menu_scale_cb),
+  MENUITEM_BACK,
+  MENUITEM_END
 };
 
 
 const menuitem_t menu_channel[] = {
-  { MT_CALLBACK, "\2CH0\0REFLECT", menu_channel_cb },
-  { MT_CALLBACK, "\2CH1\0THROUGH", menu_channel_cb },
-  { MT_CANCEL, S_LARROW" BACK", NULL },
-  { MT_NONE, NULL, NULL } // sentinel
+  MENUITEM_FUNC("\2CH0\0REFLECT",   menu_channel_cb),
+  MENUITEM_FUNC("\2CH1\0THROUGH",   menu_channel_cb),
+  MENUITEM_BACK,
+  MENUITEM_END
 };
 
 const menuitem_t menu_transform_window[] = {
-  { MT_CALLBACK, "MINIMUM", menu_transform_window_cb },
-  { MT_CALLBACK, "NORMAL", menu_transform_window_cb },
-  { MT_CALLBACK, "MAXIMUM", menu_transform_window_cb },
-  { MT_CANCEL, S_LARROW" BACK", NULL },
-  { MT_NONE, NULL, NULL } // sentinel
+  MENUITEM_FUNC("MINIMUM",      menu_transform_window_cb),
+  MENUITEM_FUNC("NORMAL",       menu_transform_window_cb),
+  MENUITEM_FUNC("MAXIMUM",      menu_transform_window_cb),
+  MENUITEM_BACK,
+  MENUITEM_END
 };
 
 const menuitem_t menu_transform[] = {
-  { MT_CALLBACK, "\2TRANSFORM\0ON", menu_transform_cb },
-  { MT_CALLBACK, "\2LOW PASS\0IMPULSE", menu_transform_cb },
-  { MT_CALLBACK, "\2LOW PASS\0STEP", menu_transform_cb },
-  { MT_CALLBACK, "BANDPASS", menu_transform_cb },
-  { MT_SUBMENU, "WINDOW", menu_transform_window },
-  { MT_CALLBACK, "\2VELOCITY\0FACTOR", menu_transform_cb },
-  { MT_CANCEL, S_LARROW" BACK", NULL },
-  { MT_NONE, NULL, NULL } // sentinel
+  MENUITEM_FUNC("\2TRANSFORM\0ON",      menu_transform_cb),
+  MENUITEM_FUNC("\2LOW PASS\0IMPULSE",  menu_transform_cb),
+  MENUITEM_FUNC("\2LOW PASS\0STEP",     menu_transform_cb),
+  MENUITEM_FUNC("BANDPASS",             menu_transform_cb),
+  MENUITEM_SUB( "WINDOW",               menu_transform_window),
+  MENUITEM_FUNC("\2VELOCITY\0FACTOR",   menu_transform_cb),
+  MENUITEM_BACK,
+  MENUITEM_END
 };
 
 const menuitem_t menu_display[] = {
-  { MT_SUBMENU, "TRACE", menu_trace },
-  { MT_SUBMENU, "FORMAT", menu_format },
-  { MT_SUBMENU, "SCALE", menu_scale },
-  { MT_SUBMENU, "CHANNEL", menu_channel },
-  { MT_SUBMENU, "TRANSFORM", menu_transform },
-  { MT_CANCEL, S_LARROW" BACK", NULL },
-  { MT_NONE, NULL, NULL } // sentinel
+  MENUITEM_SUB("TRACE", menu_trace),
+  MENUITEM_SUB("FORMAT", menu_format),
+  MENUITEM_SUB("SCALE", menu_scale),
+  MENUITEM_SUB("CHANNEL", menu_channel),
+  MENUITEM_SUB("TRANSFORM", menu_transform),
+  MENUITEM_BACK,
+  MENUITEM_END
 };
 
 const menuitem_t menu_stimulus[] = {
-  { MT_CALLBACK, "START", menu_stimulus_cb },
-  { MT_CALLBACK, "STOP", menu_stimulus_cb },
-  { MT_CALLBACK, "CENTER", menu_stimulus_cb },
-  { MT_CALLBACK, "SPAN", menu_stimulus_cb },
-  { MT_CALLBACK, "CW FREQ", menu_stimulus_cb },
-  { MT_CALLBACK, "\2PAUSE\0SWEEP", menu_stimulus_cb },
-  { MT_CANCEL, S_LARROW" BACK", NULL },
-  { MT_NONE, NULL, NULL } // sentinel
+  MENUITEM_FUNC("START",            menu_stimulus_cb),
+  MENUITEM_FUNC("STOP",             menu_stimulus_cb),
+  MENUITEM_FUNC("CENTER",           menu_stimulus_cb),
+  MENUITEM_FUNC("SPAN",             menu_stimulus_cb),
+  MENUITEM_FUNC("CW FREQ",          menu_stimulus_cb),
+  MENUITEM_FUNC("\2PAUSE\0SWEEP",   menu_stimulus_cb),
+  MENUITEM_BACK,
+  MENUITEM_END
 };
 
 const menuitem_t menu_marker_sel[] = {
-  { MT_CALLBACK, "MARKER 1", menu_marker_sel_cb },
-  { MT_CALLBACK, "MARKER 2", menu_marker_sel_cb },
-  { MT_CALLBACK, "MARKER 3", menu_marker_sel_cb },
-  { MT_CALLBACK, "MARKER 4", menu_marker_sel_cb },
-  { MT_CALLBACK, "ALL OFF", menu_marker_sel_cb },
-  { MT_CANCEL, S_LARROW" BACK", NULL },
-  { MT_NONE, NULL, NULL } // sentinel
+  MENUITEM_FUNC("MARKER 1",     menu_marker_sel_cb),
+  MENUITEM_FUNC("MARKER 2",     menu_marker_sel_cb),
+  MENUITEM_FUNC("MARKER 3",     menu_marker_sel_cb),
+  MENUITEM_FUNC("MARKER 4",     menu_marker_sel_cb),
+  MENUITEM_FUNC("ALL OFF",      menu_marker_sel_cb),
+  MENUITEM_BACK,
+  MENUITEM_END
 };
 
 const menuitem_t menu_marker[] = {
-  { MT_SUBMENU, "\2SELECT\0MARKER", menu_marker_sel },
-  { MT_CALLBACK, S_RARROW"START", menu_marker_op_cb },
-  { MT_CALLBACK, S_RARROW"STOP", menu_marker_op_cb },
-  { MT_CALLBACK, S_RARROW"CENTER", menu_marker_op_cb },
-  { MT_CALLBACK, S_RARROW"SPAN", menu_marker_op_cb },
-  { MT_CANCEL, S_LARROW" BACK", NULL },
-  { MT_NONE, NULL, NULL } // sentinel
+  MENUITEM_SUB( "\2SELECT\0MARKER",     menu_marker_sel),
+  MENUITEM_FUNC(S_RARROW"START",        menu_marker_op_cb),
+  MENUITEM_FUNC(S_RARROW"STOP",         menu_marker_op_cb),
+  MENUITEM_FUNC(S_RARROW"CENTER",       menu_marker_op_cb),
+  MENUITEM_FUNC(S_RARROW"SPAN",         menu_marker_op_cb),
+  MENUITEM_BACK,
+  MENUITEM_END
 };
 
 const menuitem_t menu_recall[] = {
-  { MT_CALLBACK, "RECALL 0", menu_recall_cb },
-  { MT_CALLBACK, "RECALL 1", menu_recall_cb },
-  { MT_CALLBACK, "RECALL 2", menu_recall_cb },
-  { MT_CALLBACK, "RECALL 3", menu_recall_cb },
-  { MT_CALLBACK, "RECALL 4", menu_recall_cb },
-  { MT_CANCEL, S_LARROW" BACK", NULL },
-  { MT_NONE, NULL, NULL } // sentinel
+  MENUITEM_FUNC("RECALL 0",         menu_recall_cb),
+  MENUITEM_FUNC("RECALL 1",         menu_recall_cb),
+  MENUITEM_FUNC("RECALL 2",         menu_recall_cb),
+  MENUITEM_FUNC("RECALL 3",         menu_recall_cb),
+  MENUITEM_FUNC("RECALL 4",         menu_recall_cb),
+  MENUITEM_BACK,
+  MENUITEM_END
 };
 
 const menuitem_t menu_dfu[] = {
-  { MT_CALLBACK, "\2RESET AND\0ENTER DFU", menu_dfu_cb },
-  { MT_CANCEL, S_LARROW"CANCEL", NULL },
-  { MT_NONE, NULL, NULL } // sentinel
+  MENUITEM_FUNC("\2RESET AND\0ENTER DFU", menu_dfu_cb),
+  MENUITEM_BACK,
+  MENUITEM_END
 };
 
 const menuitem_t menu_config[] = {
-  { MT_CALLBACK, "TOUCH CAL", menu_config_cb },
-  { MT_CALLBACK, "TOUCH TEST", menu_config_cb },
-  { MT_CALLBACK, "SAVE", menu_config_cb },
-  { MT_CALLBACK, "VERSION", menu_config_cb },
-  { MT_SUBMENU, S_RARROW"DFU", menu_dfu },
-  { MT_CANCEL, S_LARROW" BACK", NULL },
-  { MT_NONE, NULL, NULL } // sentinel
+  MENUITEM_FUNC("TOUCH CAL",    menu_config_cb),
+  MENUITEM_FUNC("TOUCH TEST",   menu_config_cb),
+  MENUITEM_FUNC("SAVE",         menu_config_cb),
+  MENUITEM_FUNC("VERSION",      menu_config_cb),
+  MENUITEM_SUB( S_RARROW"DFU",  menu_dfu),
+  MENUITEM_BACK,
+  MENUITEM_END
 };
 
 const menuitem_t menu_top[] = {
-  { MT_SUBMENU, "DISPLAY", menu_display },
-  { MT_SUBMENU, "MARKER", menu_marker },
-  { MT_SUBMENU, "STIMULUS", menu_stimulus },
-  { MT_SUBMENU, "CAL", menu_cal },
-  { MT_SUBMENU, "RECALL", menu_recall },
-  { MT_SUBMENU, "CONFIG", menu_config },
-  { MT_CLOSE, "CLOSE", NULL },
-  { MT_NONE, NULL, NULL } // sentinel
+  MENUITEM_SUB("DISPLAY",   menu_display),
+  MENUITEM_SUB("MARKER",    menu_marker),
+  MENUITEM_SUB("STIMULUS",  menu_stimulus),
+  MENUITEM_SUB("CAL",       menu_cal),
+  MENUITEM_SUB("RECALL",    menu_recall),
+  MENUITEM_SUB("CONFIG",    menu_config),
+  MENUITEM_CLOSE,
+  MENUITEM_END
 };
 
 #define MENU_STACK_DEPTH_MAX 4
@@ -1097,7 +1112,7 @@ void menu_invoke(int item)
     break;
 
   case MT_CALLBACK: {
-    menuaction_cb_t cb = (menuaction_cb_t)menu->reference;
+    menuaction_cb_t cb = menu->pFunc;
     if (cb == NULL)
       return;
     (*cb)(item);
@@ -1105,7 +1120,7 @@ void menu_invoke(int item)
   }
 
   case MT_SUBMENU:
-    menu_push_submenu((const menuitem_t*)menu->reference);
+    menu_push_submenu(menu->pMenu);
     break;
   }
 }

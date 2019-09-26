@@ -50,17 +50,17 @@ extern float measured[2][101][2];
 #define ETERM_ET 3 /* error term transmission tracking */
 #define ETERM_EX 4 /* error term isolation */
 
-#define DOMAIN_MODE (1<<0)
-#define DOMAIN_FREQ (0<<0)
-#define DOMAIN_TIME (1<<0)
-#define TD_FUNC (0b11<<1)
-#define TD_FUNC_BANDPASS (0b00<<1)
-#define TD_FUNC_LOWPASS_IMPULSE (0b01<<1)
-#define TD_FUNC_LOWPASS_STEP    (0b10<<1)
-#define TD_WINDOW (0b11<<3)
-#define TD_WINDOW_NORMAL (0b00<<3)
-#define TD_WINDOW_MINIMUM (0b01<<3)
-#define TD_WINDOW_MAXIMUM (0b10<<3)
+#define DOMAIN_MODE             (1<<0)
+#define DOMAIN_FREQ             (0<<0)
+#define DOMAIN_TIME             (1<<0)
+#define TD_FUNC                 (3<<1)
+#define TD_FUNC_BANDPASS        (0<<1)
+#define TD_FUNC_LOWPASS_IMPULSE (1<<1)
+#define TD_FUNC_LOWPASS_STEP    (2<<1)
+#define TD_WINDOW               (3<<3)
+#define TD_WINDOW_NORMAL        (0<<3)
+#define TD_WINDOW_MINIMUM       (1<<3)
+#define TD_WINDOW_MAXIMUM       (2<<3)
 
 #define FFT_SIZE 256
 

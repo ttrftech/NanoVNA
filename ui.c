@@ -21,6 +21,7 @@
 #include "ch.h"
 #include "hal.h"
 #include "nanovna.h"
+#include "chprintf.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -317,7 +318,7 @@ touch_cal_exec(void)
   ili9341_fill(0, 0, 320, 240, 0);
   ili9341_line(0, 0, 0, 32, 0xffff);
   ili9341_line(0, 0, 32, 0, 0xffff);
-  ili9341_drawstring_5x7("TOUCH UPPER LEFT", 10, 10, 0xffff, 0x0000);
+  ili9341_drawstring_8x8_var("TOUCH UPPER LEFT", 10, 10, 0xffff, 0x0000);
 
   do {
     status = touch_check();
@@ -328,7 +329,7 @@ touch_cal_exec(void)
   ili9341_fill(0, 0, 320, 240, 0);
   ili9341_line(320-1, 240-1, 320-1, 240-32, 0xffff);
   ili9341_line(320-1, 240-1, 320-32, 240-1, 0xffff);
-  ili9341_drawstring_5x7("TOUCH LOWER RIGHT", 230, 220, 0xffff, 0x0000);
+  ili9341_drawstring_8x8_var("TOUCH LOWER RIGHT", 200, 220, 0xffff, 0x0000);
 
   do {
     status = touch_check();
@@ -345,6 +346,17 @@ touch_cal_exec(void)
   touch_start_watchdog();
 }
 
+
+
+void
+touch_position(int *x, int *y)
+{
+  *x = (last_touch_x - config.touch_cal[0]) * 16 / config.touch_cal[2];
+  *y = (last_touch_y - config.touch_cal[1]) * 16 / config.touch_cal[3];
+}
+
+
+
 void
 touch_draw_test(void)
 {
@@ -355,7 +367,7 @@ touch_draw_test(void)
   adc_stop(ADC1);
 
   ili9341_fill(0, 0, 320, 240, 0);
-  ili9341_drawstring_5x7("TOUCH TEST: DRAG PANEL", OFFSETX, 233, 0xffff, 0x0000);
+  ili9341_drawstring_8x8_var("TOUCH TEST: DRAG PANEL", OFFSETX, 232, 0xffff, 0x0000);
 
   do {
     status = touch_check();
@@ -375,13 +387,6 @@ touch_draw_test(void)
 }
 
 
-void
-touch_position(int *x, int *y)
-{
-  *x = (last_touch_x - config.touch_cal[0]) * 16 / config.touch_cal[2];
-  *y = (last_touch_y - config.touch_cal[1]) * 16 / config.touch_cal[3];
-}
-
 
 void
 show_version(void)
@@ -394,21 +399,19 @@ show_version(void)
   ili9341_drawstring_size(BOARD_NAME, x, y, 0xffff, 0x0000, 4);
   y += 25;
 
-  ili9341_drawstring_5x7("2016-2019 Copyright @edy555", x, y += 10, 0xffff, 0x0000);
-  ili9341_drawstring_5x7("Licensed under GPL. See: https://github.com/ttrftech/NanoVNA", x, y += 10, 0xffff, 0x0000);
-  ili9341_drawstring_5x7("Version: " VERSION, x, y += 10, 0xffff, 0x0000);
-  ili9341_drawstring_5x7("Build Time: " __DATE__ " - " __TIME__, x, y += 10, 0xffff, 0x0000);
+  ili9341_drawstring_8x8_var("2016-2019 Copyright @edy555", x, y += 10, 0xffff, 0x0000);
+  ili9341_drawstring_8x8_var("Licensed under GPL.", x, y += 10, 0xffff, 0x0000);
+  ili9341_drawstring_8x8_var("  see: https://github.com/ttrftech/NanoVNA", x, y += 10, 0xffff, 0x0000);
+  ili9341_drawstring_8x8_var("Version: " VERSION, x, y += 10, 0xffff, 0x0000);
+  ili9341_drawstring_8x8_var("Build Time: " __DATE__ " - " __TIME__, x, y += 10, 0xffff, 0x0000);
   y += 5;
-  ili9341_drawstring_5x7("Kernel: " CH_KERNEL_VERSION, x, y += 10, 0xffff, 0x0000);
-  ili9341_drawstring_5x7("Compiler: " PORT_COMPILER_NAME, x, y += 10, 0xffff, 0x0000);
-  ili9341_drawstring_5x7("Architecture: " PORT_ARCHITECTURE_NAME " Core Variant: " PORT_CORE_VARIANT_NAME, x, y += 10, 0xffff, 0x0000);
-  ili9341_drawstring_5x7("Port Info: " PORT_INFO, x, y += 10, 0xffff, 0x0000);
-  ili9341_drawstring_5x7("Platform: " PLATFORM_NAME, x, y += 10, 0xffff, 0x0000);
-  ili9341_drawstring_8x8("Hello world" S_PI S_MICRO S_OHM  S_DEGREE S_LARROW S_RARROW, x, y += 10, 0xffff, 0x0000);
-  ili9341_drawstring_8x8_var("Hello world" S_PI S_MICRO S_OHM  S_DEGREE S_LARROW S_RARROW, x, y += 10, 0xffff, 0x0000);
-  ili9341_drawstring_8x8_var("ABCDEFGHIJKL MNOPQRSTUVWXYZ" S_PI S_MICRO S_OHM  S_DEGREE S_LARROW S_RARROW, x, y += 10, 0xffff, 0x0000);
-  ili9341_drawstring_8x8_var("abcdefghijkl mnopqrstuvwxyz" S_PI S_MICRO S_OHM  S_DEGREE S_LARROW S_RARROW, x, y += 10, 0xffff, 0x0000);
-  ili9341_drawstring_8x8_var("0123456790" S_PI S_MICRO S_OHM  S_DEGREE S_LARROW S_RARROW, x, y += 10, 0xffff, 0x0000);
+  ili9341_drawstring_8x8_var("Kernel: " CH_KERNEL_VERSION, x, y += 10, 0xffff, 0x0000);
+  ili9341_drawstring_8x8_var("Compiler: " PORT_COMPILER_NAME, x, y += 10, 0xffff, 0x0000);
+  ili9341_drawstring_8x8_var("Architecture: " PORT_ARCHITECTURE_NAME " Core Variant: " PORT_CORE_VARIANT_NAME, x, y += 10, 0xffff, 0x0000);
+  ili9341_drawstring_8x8_var("Port Info: " PORT_INFO, x, y += 10, 0xffff, 0x0000);
+  y += 5;
+  ili9341_drawstring_8x8_var("Platform: ", x, y += 10, 0xffff, 0x0000);
+  ili9341_drawstring_8x8_var(PLATFORM_NAME, x, y += 10, 0xffff, 0x0000);
 
   while (true) {
     if (touch_check() == EVT_TOUCH_PRESSED)
@@ -425,11 +428,15 @@ enter_dfu(void)
 {
   adc_stop(ADC1);
 
-  int x = 5, y = 5;
+  int x = 100, y = 20;
 
   // leave a last message 
   ili9341_fill(0, 0, 320, 240, 0);
-  ili9341_drawstring_8x8_var("DFU: Device Firmware Update Mode", x, y += 10, 0xffff, 0x0000);
+  ili9341_drawstring_size("DFU", x+30, y, 0xffff, 0x0000, 4);
+  x = 5;
+  y += 50;
+
+  ili9341_drawstring_8x8_var("Device Firmware Update Mode", x, y += 10, 0xffff, 0x0000);
   ili9341_drawstring_8x8_var("To exit DFU mode, please reset device yourself.", x, y += 10, 0xffff, 0x0000);
 
   // see __early_init in ./NANOVNA_STM32_F072/board.c
@@ -980,10 +987,10 @@ const menuitem_t menu_stimulus[] = {
 };
 
 const menuitem_t menu_marker_sel[] = {
-  { MT_CALLBACK, "MARKER 1", menu_marker_sel_cb },
-  { MT_CALLBACK, "MARKER 2", menu_marker_sel_cb },
-  { MT_CALLBACK, "MARKER 3", menu_marker_sel_cb },
-  { MT_CALLBACK, "MARKER 4", menu_marker_sel_cb },
+  { MT_CALLBACK, "MARKER1", menu_marker_sel_cb },
+  { MT_CALLBACK, "MARKER2", menu_marker_sel_cb },
+  { MT_CALLBACK, "MARKER3", menu_marker_sel_cb },
+  { MT_CALLBACK, "MARKER4", menu_marker_sel_cb },
   { MT_CALLBACK, "ALL OFF", menu_marker_sel_cb },
   { MT_CANCEL, S_LARROW" BACK", NULL },
   { MT_NONE, NULL, NULL } // sentinel

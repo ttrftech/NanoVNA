@@ -140,7 +140,6 @@ extern void tlv320aic3204_adc_filter_enable(int enable);
 #define HEIGHT 233
 
 #define CELLOFFSETX 5
-#define CELLOFFSETX_8x8 8
 
 #define AREA_WIDTH_NORMAL (WIDTH + CELLOFFSETX*2)
 
@@ -250,6 +249,7 @@ void force_set_markmap(void);
 void draw_all_cells(void);
 
 void draw_cal_status(void);
+void draw_frequencies(void);
 
 void markmap_all_markers(void);
 

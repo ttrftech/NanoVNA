@@ -744,7 +744,7 @@ clear_markmap(void)
   memset(markmap[current_mappage], 0, sizeof markmap[current_mappage]);
 }
 
-void inline
+inline void
 force_set_markmap(void)
 {
   memset(markmap[current_mappage], 0xff, sizeof markmap[current_mappage]);
@@ -1065,26 +1065,36 @@ search_nearest_index(int x, int y, int t)
   return min_i;
 }
 
+
+
 void
 cell_draw_markers(int m, int n, int w, int h)
 {
   int x0 = m * CELLWIDTH;
   int y0 = n * CELLHEIGHT;
   int t, i;
-  for (i = 0; i < 4; i++) {
+  for (i = 0; i < 4; i++) 
+  {
     if (!markers[i].enabled)
       continue;
-    for (t = 0; t < TRACES_MAX; t++) {
+      
+    for (t = 0; t < TRACES_MAX; t++) 
+    {
       if (!trace[t].enabled)
         continue;
+        
       uint32_t index = trace_index[t][markers[i].index];
       int x = CELL_X(index) - x0;
       int y = CELL_Y(index) - y0;
+      
       if (x > -6 && x < w+6 && y >= 0 && y < h+12)
         draw_marker(w, h, x, y, config.trace_color[t], '1' + i);
+        
     }
   }
 }
+
+
 
 void
 markmap_marker(int marker)
@@ -1143,13 +1153,16 @@ draw_cell(int m, int n)
 
   if (x0off + w > area_width)
     w = area_width - x0off;
+
   if (y0 + h > area_height)
     h = area_height - y0;
+
   if (w <= 0 || h <= 0)
     return;
 
   uint16_t grid_mode = 0;
-  for (t = 0; t < TRACES_MAX; t++) {
+  for (t = 0; t < TRACES_MAX; t++) 
+  {
     if (!trace[t].enabled)
       continue;
 
@@ -1165,24 +1178,35 @@ draw_cell(int m, int n)
 
   PULSE;
   /* draw grid */
-  if (grid_mode & GRID_RECTANGULAR) {
-    for (x = 0; x < w; x++) {
+  if (grid_mode & GRID_RECTANGULAR) 
+  {
+    for (x = 0; x < w; x++) 
+    {
       uint16_t c = rectangular_grid_x(x+x0off);
       for (y = 0; y < h; y++)
         spi_buffer[y * w + x] = c;
     }
-    for (y = 0; y < h; y++) {
+    
+    for (y = 0; y < h; y++) 
+    {
       uint16_t c = rectangular_grid_y(y+y0);
       for (x = 0; x < w; x++)
+      {
         if (x+x0off >= 0 && x+x0off <= WIDTH)
           spi_buffer[y * w + x] |= c;
+      }
     }
-  } else {
+  } 
+  else 
+  {
     memset(spi_buffer, 0, sizeof spi_buffer);
   }
   if (grid_mode & (GRID_SMITH|GRID_ADMIT|GRID_POLAR)) {
-    for (y = 0; y < h; y++) {
-      for (x = 0; x < w; x++) {
+  
+    for (y = 0; y < h; y++) 
+    {
+      for (x = 0; x < w; x++) 
+      {
         uint16_t c = 0;
         if (grid_mode & GRID_SMITH)
           c = smith_grid(x+x0off, y+y0);
@@ -1375,8 +1399,8 @@ cell_drawchar_8x8(int w, int h, uint8_t ch, int x, int y, uint16_t fg, uint8_t v
   uint8_t bits, charlen = 8;
   int cline, r;
   
-  if (y <= -8 || y >= h || x <= -8 || x >= w)
-    return 0;
+//  if (y <= -8 || y >= h || x <= -8 || x >= w)
+//    return 0;
 
   ch = x8x8_map_char_table(ch);
 
@@ -1503,12 +1527,12 @@ cell_draw_marker_info(int m, int n, int w, int h)
   }    
 
   // draw marker frequency
-  int xpos = 192;
+  int xpos = 165;
   int ypos = 1 + (j/2)*8;
-  xpos -= m * CELLWIDTH -CELLOFFSETX;
+  xpos -= m * CELLWIDTH - CELLOFFSETX;
   ypos -= n * CELLHEIGHT;
   chsnprintf(buf, sizeof buf, "%d:", active_marker + 1);
-  cell_drawstring_5x7(w, h, buf, xpos, ypos, 0xffff);
+  cell_drawstring_8x8_var(w, h, buf, xpos, ypos, 0xffff);
   xpos += 16;
   
   if ( (domain_mode & DOMAIN_MODE) == DOMAIN_FREQ )
@@ -1527,14 +1551,15 @@ cell_draw_marker_info(int m, int n, int w, int h)
   {
     int idx0 = markers[previous_marker].index;
     xpos = 192;
-    xpos -= m * CELLWIDTH -CELLOFFSETX;
-    ypos += 8;
+    xpos -= m * CELLWIDTH - CELLOFFSETX;
+    ypos += 7;
     chsnprintf(buf, sizeof buf, "\001%d:", previous_marker+1);
     cell_drawstring_5x7(w, h, buf, xpos, ypos, 0xffff);
     xpos += 16;
     frequency_string(buf, sizeof buf, frequencies[idx] - frequencies[idx0]);
     cell_drawstring_5x7(w, h, buf, xpos, ypos, 0xffff);
   }
+
 }
 
 
@@ -1561,93 +1586,119 @@ frequency_string(char *buf, size_t len, int32_t freq)
   }
 }
 
+
+
 void
 draw_frequencies(void)
 {
   char buf[24];
-  if ((domain_mode & DOMAIN_MODE) == DOMAIN_FREQ) {
-      if (frequency1 > 0) {
-        int start = frequency0;
-        int stop = frequency1;
-        strcpy(buf, "START ");
-        frequency_string(buf+6, 24-6, start);
-        strcat(buf, "    ");
-        ili9341_drawstring_5x7(buf, OFFSETX, 233, 0xffff, 0x0000);
-        strcpy(buf, "STOP ");
-        frequency_string(buf+5, 24-5, stop);
-        strcat(buf, "    ");
-        ili9341_drawstring_5x7(buf, 205, 233, 0xffff, 0x0000);
-      } else if (frequency1 < 0) {
-        int fcenter = frequency0;
-        int fspan = -frequency1;
-        strcpy(buf, "CENTER ");
-        frequency_string(buf+7, 24-7, fcenter);
-        strcat(buf, "    ");
-        ili9341_drawstring_5x7(buf, OFFSETX, 233, 0xffff, 0x0000);
-        strcpy(buf, "SPAN ");
-        frequency_string(buf+5, 24-5, fspan);
-        strcat(buf, "    ");
-        ili9341_drawstring_5x7(buf, 205, 233, 0xffff, 0x0000);
-      } else {
-        int fcenter = frequency0;
-        chsnprintf(buf, 24, "CW %d.%03d %03d MHz    ",
-                   (int)(fcenter / 1000000),
-                   (int)((fcenter / 1000) % 1000),
-                   (int)(fcenter % 1000));
-        ili9341_drawstring_5x7(buf, OFFSETX, 233, 0xffff, 0x0000);
-        chsnprintf(buf, 24, "                             ");
-        ili9341_drawstring_5x7(buf, 205, 233, 0xffff, 0x0000);
-      }
-  } else {
-      strcpy(buf, "START 0s        ");
-      ili9341_drawstring_5x7(buf, OFFSETX, 233, 0xffff, 0x0000);
-
+  if ((domain_mode & DOMAIN_MODE) == DOMAIN_FREQ) 
+  {
+    if (frequency1 > 0) 
+    {
+      int start = frequency0;
+      int stop = frequency1;
+      strcpy(buf, "START ");
+      frequency_string(buf+6, 24-6, start);
+      strcat(buf, "    ");
+      ili9341_drawstring_8x8_var(buf, OFFSETX, 233, 0xffff, 0x0000);
       strcpy(buf, "STOP ");
-      chsnprintf(buf+5, 24-5, "%d ns", (uint16_t)(time_of_index(101) * 1e9));
-      strcat(buf, "          ");
-      ili9341_drawstring_5x7(buf, 205, 233, 0xffff, 0x0000);
+      frequency_string(buf+5, 24-5, stop);
+      strcat(buf, "    ");
+      ili9341_drawstring_8x8_var(buf, 165, 233, 0xffff, 0x0000);
+    } 
+    else if (frequency1 < 0) 
+    {
+      int fcenter = frequency0;
+      int fspan = -frequency1;
+      strcpy(buf, "CENTER ");
+      frequency_string(buf+7, 24-7, fcenter);
+      strcat(buf, "    ");
+      ili9341_drawstring_8x8_var(buf, OFFSETX, 233, 0xffff, 0x0000);
+      strcpy(buf, "SPAN ");
+      frequency_string(buf+5, 24-5, fspan);
+      strcat(buf, "    ");
+      ili9341_drawstring_8x8_var(buf, 170, 233, 0xffff, 0x0000);
+    } 
+    else 
+    {
+      int fcenter = frequency0;
+      chsnprintf(buf, 24, "CW %d.%03d %03d MHz    ",
+                 (int)(fcenter / 1000000),
+                 (int)((fcenter / 1000) % 1000),
+                 (int)(fcenter % 1000));
+      ili9341_drawstring_8x8_var(buf, OFFSETX, 233, 0xffff, 0x0000);
+      chsnprintf(buf, 24, "                             ");
+      ili9341_drawstring_8x8_var(buf, 165, 233, 0xffff, 0x0000);
+    }
+  } 
+  else 
+  {
+    strcpy(buf, "START 0s        ");
+    ili9341_drawstring_8x8_var(buf, OFFSETX, 233, 0xffff, 0x0000);
+
+    strcpy(buf, "STOP ");
+    chsnprintf(buf+5, 24-5, "%d ns", (uint16_t)(time_of_index(101) * 1e9));
+    strcat(buf, "          ");
+    ili9341_drawstring_8x8_var(buf, 165, 233, 0xffff, 0x0000);
   }
 }
+
+
 
 void
 draw_cal_status(void)
 {
   int x = 0;
   int y = 100;
-#define YSTEP 7
-  ili9341_fill(0, y, 10, 6*YSTEP, 0x0000);
-  if (cal_status & CALSTAT_APPLY) {
-    char c[3] = "C0";
-    c[1] += lastsaveid;
+#define YSTEP 12
+  ili9341_fill(0, y, 10, 8*YSTEP, 0x0000);
+  if (cal_status & CALSTAT_APPLY) 
+  {
+    char ch = 'C';
+    char ch2 = '0' + lastsaveid;
+    
     if (cal_status & CALSTAT_INTERPOLATED)
-      c[0] = 'c';
+      ch = 'c';
     else if (active_props == &current_props)
-      c[1] = '*';
-    ili9341_drawstring_5x7(c, x, y, 0xffff, 0x0000);
+      ch2 = '*';
+
+    ili9341_drawchar_8x8(ch, x, y, 0xffff, 0x0000);
+    y += 8;
+    ili9341_drawchar_8x8(ch2, x+1, y, 0xffff, 0x0000);
     y += YSTEP;
   }
 
-  if (cal_status & CALSTAT_ED) {
-    ili9341_drawstring_5x7("D", x, y, 0xffff, 0x0000);
+
+  if (cal_status & CALSTAT_ED) 
+  {
+    ili9341_drawstring_8x8("D", x, y, 0xffff, 0x0000);
     y += YSTEP;
   }
-  if (cal_status & CALSTAT_ER) {
-    ili9341_drawstring_5x7("R", x, y, 0xffff, 0x0000);
+  if (cal_status & CALSTAT_ER) 
+  {
+    ili9341_drawstring_8x8("R", x, y, 0xffff, 0x0000);
     y += YSTEP;
   }
-  if (cal_status & CALSTAT_ES) {
-    ili9341_drawstring_5x7("S", x, y, 0xffff, 0x0000);
+  if (cal_status & CALSTAT_ES) 
+  {
+    ili9341_drawstring_8x8("S", x, y, 0xffff, 0x0000);
     y += YSTEP;
   }
-  if (cal_status & CALSTAT_ET) {
-    ili9341_drawstring_5x7("T", x, y, 0xffff, 0x0000);
+  if (cal_status & CALSTAT_ET) 
+  {
+    ili9341_drawstring_8x8("T", x, y, 0xffff, 0x0000);
     y += YSTEP;
   }
-  if (cal_status & CALSTAT_EX) {
-    ili9341_drawstring_5x7("X", x, y, 0xffff, 0x0000);
+  if (cal_status & CALSTAT_EX) 
+  {
+    ili9341_drawstring_8x8("X", x, y, 0xffff, 0x0000);
     y += YSTEP;
   }
+
 }
+
+
 
 void
 draw_battery_status(void)

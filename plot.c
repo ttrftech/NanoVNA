@@ -89,7 +89,7 @@ void update_grid(void)
   grid_width = (WIDTH-1) * (fgrid / 100) / (fspan / 1000);
 
   force_set_markmap();
-  draw_frequencies();
+  redraw_request |= REDRAW_FREQUENCY;
 }
 
 int
@@ -1289,15 +1289,24 @@ draw_all_cells(void)
     for (n = 0; n < (area_height+CELLHEIGHT-1) / CELLHEIGHT; n++) {
       if (is_mapmarked(m, n))
         draw_cell(m, n);
-      //ui_process();
-      //if (operation_requested)
-      //  return;
     }
 
   // keep current map for update
   swap_markmap();
   // clear map for next plotting
   clear_markmap();
+}
+
+void
+draw_all(void)
+{
+  draw_all_cells();
+
+  if (redraw_request & REDRAW_FREQUENCY)
+    draw_frequencies();
+  if (redraw_request & REDRAW_CAL_STATUS)
+    draw_cal_status();
+  redraw_request = 0;
 }
 
 void
@@ -1320,7 +1329,7 @@ request_to_draw_cells_behind_menu(void)
   for (m = 7; m <= 9; m++)
     for (n = 0; n < 8; n++)
       mark_map(m, n);
-  redraw_requested = TRUE;
+  redraw_request |= REDRAW_CELLS;
 }
 
 void
@@ -1330,7 +1339,7 @@ request_to_draw_cells_behind_numeric_input(void)
   for (m = 0; m <= 9; m++)
     for (n = 6; n < 8; n++)
       mark_map(m, n);
-  redraw_requested = TRUE;
+  redraw_request |= REDRAW_CELLS;
 }
 
 
@@ -1774,7 +1783,7 @@ void
 request_to_redraw_grid(void)
 {
   force_set_markmap();
-  redraw_requested = TRUE;
+  redraw_request |= REDRAW_CELLS;
 }
 
 void
@@ -1784,14 +1793,6 @@ redraw_frame(void)
   draw_frequencies();
   draw_cal_status();
 }
-
-/*void
-redraw_all(void)
-{
-  redraw();
-  force_set_markmap();
-  draw_all_cells();
-  }*/
 
 void
 plot_init(void)

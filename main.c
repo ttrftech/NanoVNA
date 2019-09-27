@@ -51,9 +51,10 @@ int8_t drive_strength = DRIVE_STRENGTH_AUTO;
 int8_t frequency_updated = FALSE;
 int8_t sweep_enabled = TRUE;
 int8_t cal_auto_interpolate = TRUE;
-int8_t redraw_requested = FALSE;
+uint16_t redraw_request = 0; // contains REDRAW_XXX flags
 int8_t stop_the_world = FALSE;
 int16_t vbat = 0;
+
 
 static THD_WORKING_AREA(waThread1, 640);
 static THD_FUNCTION(Thread1, arg)
@@ -85,8 +86,9 @@ static THD_FUNCTION(Thread1, arg)
 
       /* calculate trace coordinates */
       plot_into_index(measured);
+
       /* plot trace as raster */
-      draw_all_cells();
+      draw_all();
     }
 }
 
@@ -642,6 +644,7 @@ static void cmd_scan(BaseSequentialStream *chp, int argc, char *argv[])
 
   pause_sweep();
   chMtxLock(&mutex);
+
   freq = frequency0;
   step = (frequency1 - frequency0) / (sweep_points-1);
   set_frequency(freq);
@@ -695,9 +698,8 @@ void sweep(void)
     if (electrical_delay != 0)
       apply_edelay_at(i);
 
-    redraw_requested = FALSE;
     ui_process();
-    if (redraw_requested)
+    if (redraw_request)
       break; // return to redraw screen asap.
       
     if (frequency_updated)
@@ -1061,13 +1063,9 @@ eterm_calc_et(void)
 {
   int i;
   for (i = 0; i < sweep_points; i++) {
-    // Et = 1/(S21mt - Ex)(1 - Es)
-    float esr = 1 - cal_data[ETERM_ES][i][0];
-    float esi = -cal_data[ETERM_ES][i][1];
-    float s21mr = cal_data[CAL_THRU][i][0] - cal_data[CAL_ISOLN][i][0];
-    float s21mi = cal_data[CAL_THRU][i][1] - cal_data[CAL_ISOLN][i][1];
-    float etr = esr * s21mr - esi * s21mi;
-    float eti = esr * s21mi + esi * s21mr;
+    // Et = 1/(S21mt - Ex)
+    float etr = cal_data[CAL_THRU][i][0] - cal_data[CAL_ISOLN][i][0];
+    float eti = cal_data[CAL_THRU][i][1] - cal_data[CAL_ISOLN][i][1];
     float sq = etr*etr + eti*eti;
     float invr = etr / sq;
     float invi = -eti / sq;
@@ -1189,6 +1187,7 @@ cal_collect(int type)
     break;
   }
   chMtxUnlock(&mutex);
+  redraw_request |= REDRAW_CAL_STATUS;
 }
 
 void
@@ -1223,6 +1222,7 @@ cal_done(void)
   }
 
   cal_status |= CALSTAT_APPLY;
+  redraw_request |= REDRAW_CAL_STATUS;
 }
 
 void
@@ -1308,19 +1308,18 @@ static void cmd_cal(BaseSequentialStream *chp, int argc, char *argv[])
     cal_collect(CAL_ISOLN);
   } else if (strcmp(cmd, "done") == 0) {
     cal_done();
-    draw_cal_status();
     return;
   } else if (strcmp(cmd, "on") == 0) {
     cal_status |= CALSTAT_APPLY;
-    draw_cal_status();
+    redraw_request |= REDRAW_CAL_STATUS;
     return;
   } else if (strcmp(cmd, "off") == 0) {
     cal_status &= ~CALSTAT_APPLY;
-    draw_cal_status();
+    redraw_request |= REDRAW_CAL_STATUS;
     return;
   } else if (strcmp(cmd, "reset") == 0) {
     cal_status = 0;
-    draw_cal_status();
+    redraw_request |= REDRAW_CAL_STATUS;
     return;
   } else if (strcmp(cmd, "data") == 0) {
     chprintf(chp, "%f %f\r\n", cal_data[CAL_LOAD][0][0], cal_data[CAL_LOAD][0][1]);
@@ -1334,7 +1333,7 @@ static void cmd_cal(BaseSequentialStream *chp, int argc, char *argv[])
     if (argc > 1)
       s = atoi(argv[1]);
     cal_interpolate(s);
-    draw_cal_status();
+    redraw_request |= REDRAW_CAL_STATUS;
     return;
   } else {
     chprintf(chp, "usage: cal [load|open|short|thru|isoln|done|reset|on|off|in]\r\n");
@@ -1353,7 +1352,7 @@ static void cmd_save(BaseSequentialStream *chp, int argc, char *argv[])
   if (id < 0 || id >= SAVEAREA_MAX)
     goto usage;
   caldata_save(id);
-  draw_cal_status();
+  redraw_request |= REDRAW_CAL_STATUS;
   return;
 
  usage:
@@ -1375,7 +1374,7 @@ static void cmd_recall(BaseSequentialStream *chp, int argc, char *argv[])
   if (caldata_recall(id) == 0) {
     // success
     update_frequencies();
-    draw_cal_status();
+    redraw_request |= REDRAW_CAL_STATUS;
   }
   chMtxUnlock(&mutex);
   resume_sweep();
@@ -1638,6 +1637,7 @@ static void cmd_marker(BaseSequentialStream *chp, int argc, char *argv[])
     active_marker = -1;
     for (t = 0; t < 4; t++)
       markers[t].enabled = FALSE;
+    redraw_request |= REDRAW_MARKER;
     return;
   }
 
@@ -1647,7 +1647,9 @@ static void cmd_marker(BaseSequentialStream *chp, int argc, char *argv[])
   if (argc == 1) {
     chprintf(chp, "%d %d %d\r\n", t+1, markers[t].index, frequency);
     active_marker = t;
+    // select active marker
     markers[t].enabled = TRUE;
+    redraw_request |= REDRAW_MARKER;
     return;
   }
   if (argc > 1) {
@@ -1655,15 +1657,19 @@ static void cmd_marker(BaseSequentialStream *chp, int argc, char *argv[])
       markers[t].enabled = FALSE;
       if (active_marker == t)
         active_marker = -1;
+      redraw_request |= REDRAW_MARKER;
     } else if (strcmp(argv[1], "on") == 0) {
       markers[t].enabled = TRUE;
       active_marker = t;
+      redraw_request |= REDRAW_MARKER;
     } else {
+      // select active marker and move to index
       markers[t].enabled = TRUE;
       int index = atoi(argv[1]);
       markers[t].index = index;
       markers[t].frequency = frequencies[index];
       active_marker = t;
+      redraw_request |= REDRAW_MARKER;
     }
   }
   return;

@@ -36,6 +36,8 @@
 
 static void apply_error_term(void);
 static void apply_error_term_at(int i);
+static void apply_edelay_at(int i);
+
 static void cal_interpolate(int s);
 
 void sweep(void);
@@ -141,7 +143,7 @@ transform_domain(void)
   // and calculate ifft for time domain
   float* tmp = (float*)spi_buffer;
 
-  uint8_t window_size, offset;
+  uint8_t window_size = 0, offset = 0;
   uint8_t is_lowpass = FALSE;
   switch (domain_mode & TD_FUNC) {
       case TD_FUNC_BANDPASS:
@@ -1137,7 +1139,7 @@ void apply_error_term_at(int i)
     measured[1][i][1] = s21ai;
 }
 
-void apply_edelay_at(int i)
+static void apply_edelay_at(int i)
 {
   float w = 2 * M_PI * electrical_delay * frequencies[i] * 1E-12;
   float s = sin(w);

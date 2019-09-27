@@ -5,6 +5,19 @@ import pylab as pl
 import scipy.signal as signal
 import time
 import struct
+import os
+from serial.tools import list_ports
+
+VID = 0x0483 #1155
+PID = 0x5740 #22336
+
+# Get nanovna device automatically
+def getport() -> str:
+    device_list = list_ports.comports()
+    for device in device_list:
+        if device.vid == VID and device.pid == PID:
+            return device.device
+    raise OSError("device not found")
 
 REF_LEVEL = (1<<9)
 
@@ -353,7 +366,7 @@ if __name__ == '__main__':
                       help="capture current display to FILE", metavar="FILE")
     (opt, args) = parser.parse_args()
 
-    nv = NanoVNA(opt.device or '/dev/cu.usbmodem401')
+    nv = NanoVNA(opt.device or getport())
 
     if opt.capture:
         print("capturing...")

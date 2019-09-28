@@ -229,7 +229,7 @@ flash: build/ch.bin
 	dfu-util -d 0483:df11 -a 0 -s 0x08000000:leave -D build/ch.bin
 
 dfu:
-	printf "reset dfu\r" >/dev/cu.usbmodem401
+	-@printf "reset dfu\r" >/dev/cu.usbmodem401
 
 TAGS: Makefile
 	@etags *.[ch] NANOVNA_STM32_F072/*.[ch] $(shell find ChibiOS/os/hal/ports/STM32/STM32F0xx ChibiOS/os -name \*.\[ch\] -print) 

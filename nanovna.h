@@ -246,7 +246,7 @@ void redraw_marker(int marker, int update_info);
 void trace_get_info(int t, char *buf, int len);
 void plot_into_index(float measured[2][101][2]);
 void force_set_markmap(void);
-void draw_all(void);
+void draw_all(bool flush);
 
 void draw_cal_status(void);
 void draw_frequencies(void);

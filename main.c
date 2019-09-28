@@ -825,6 +825,7 @@ void
 set_sweep_frequency(int type, float frequency)
 {
   int32_t freq = frequency;
+  int cal_applied = cal_status & CALSTAT_APPLY;
   switch (type) {
   case ST_START:
     freq_mode_startstop();
@@ -904,7 +905,7 @@ set_sweep_frequency(int type, float frequency)
     break;
   }
 
-  if (cal_auto_interpolate && (cal_status & CALSTAT_APPLY))
+  if (cal_auto_interpolate && cal_applied)
     cal_interpolate(lastsaveid);
 }
 

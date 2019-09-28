@@ -834,15 +834,38 @@ menu_marker_op_cb(int item)
   //redraw_all();
 }
 
+void 
+active_marker_select(int item)
+{
+  if (item == -1) {
+    active_marker = previous_marker;
+    previous_marker = -1;
+    if (active_marker == -1) {
+      choose_active_marker();
+    }
+  } else {
+    if (previous_marker != active_marker)
+      previous_marker = active_marker;
+    active_marker = item;
+  }
+}
+
 static void
 menu_marker_sel_cb(int item)
 {
   if (item >= 0 && item < 4) {
-    // enable specified marker
-    markers[item].enabled = TRUE;
-    if (previous_marker != active_marker)
-      previous_marker = active_marker;
-    active_marker = item;
+    if (markers[item].enabled) {
+      if (item == active_marker) {
+        // disable if active trace is selected
+        markers[item].enabled = FALSE;
+        active_marker_select(-1);
+      } else {
+        active_marker_select(item);
+      }
+    } else {
+      markers[item].enabled = TRUE;
+      active_marker_select(item);
+    }
   } else if (item == 4) { /* all off */
       markers[0].enabled = FALSE;
       markers[1].enabled = FALSE;
@@ -851,10 +874,8 @@ menu_marker_sel_cb(int item)
       previous_marker = -1;
       active_marker = -1;      
   }
-  if (active_marker >= 0)
-    redraw_marker(active_marker, TRUE);
+  redraw_marker(active_marker, TRUE);
   draw_menu();
-  //ui_mode_normal();
 }
 
 const menuitem_t menu_calop[] = {

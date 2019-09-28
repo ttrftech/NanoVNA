@@ -224,8 +224,13 @@ static void cmd_resume(BaseSequentialStream *chp, int argc, char *argv[])
     (void)chp;
     (void)argc;
     (void)argv;
-    resume_sweep();
+
+    // restore frequencies array and cal
     update_frequencies();
+    if (cal_auto_interpolate && (cal_status & CALSTAT_APPLY))
+      cal_interpolate(lastsaveid);
+
+    resume_sweep();
 }
 
 static void cmd_reset(BaseSequentialStream *chp, int argc, char *argv[])
@@ -704,6 +709,9 @@ static void cmd_scan(BaseSequentialStream *chp, int argc, char *argv[])
   pause_sweep();
   chMtxLock(&mutex);
   set_frequencies(start, stop, points);
+  if (cal_auto_interpolate && (cal_status & CALSTAT_APPLY))
+    cal_interpolate(lastsaveid);
+
   sweep_once = TRUE;
   chMtxUnlock(&mutex);
 
@@ -808,7 +816,6 @@ void
 set_sweep_frequency(int type, float frequency)
 {
   int32_t freq = frequency;
-  bool cal_applied = cal_status & CALSTAT_APPLY;
   switch (type) {
   case ST_START:
     freq_mode_startstop();
@@ -888,7 +895,7 @@ set_sweep_frequency(int type, float frequency)
     break;
   }
 
-  if (cal_auto_interpolate && cal_applied)
+  if (cal_auto_interpolate && (cal_status & CALSTAT_APPLY))
     cal_interpolate(lastsaveid);
 }
 

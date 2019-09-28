@@ -1408,6 +1408,7 @@ cell_drawchar_8x8(int w, int h, uint8_t ch, int x, int y, uint16_t fg, uint8_t v
   uint8_t bits, charlen = 8;
   int cline, r;
   
+// fixme  
 //  if (y <= -8 || y >= h || x <= -8 || x >= w)
 //    return 0;
 
@@ -1674,7 +1675,7 @@ draw_cal_status(void)
 
     ili9341_drawchar_8x8(ch, x, y, 0xffff, 0x0000);
     y += 8;
-    ili9341_drawchar_8x8(ch2, x+1, y, 0xffff, 0x0000);
+    ili9341_drawchar_8x8(ch2, x, y, 0xffff, 0x0000);
     y += YSTEP;
   }
 

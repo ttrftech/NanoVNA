@@ -9,3 +9,9 @@ python
 *.ipynb
 TAGS
 .emacs-dirvars
+iar/Debug
+iar/Release
+iar/settings
+*.dep
+*.ewd
+*.ewt

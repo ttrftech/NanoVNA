@@ -78,10 +78,12 @@ static THD_FUNCTION(Thread1, arg)
         __WFI();
       }
 
+      chMtxLock(&mutex);
+      ui_process();
+      chMtxUnlock(&mutex);
+
       if (sweep_enabled) {
         chMtxLock(&mutex);
-        ui_process();
-
         if (vbat != -1) {
           adc_stop(ADC1);
           vbat = adc_vbat_read(ADC1);
@@ -762,9 +764,10 @@ update_marker_index(void)
 static void set_frequencies(uint32_t start, uint32_t stop, int16_t points)
 {
   int i;
-  uint32_t span = (stop - start) / 1000; /* prevents overflow because of maximum of int32_t(2.147e+9) */  
+  float span = stop - start;
   for (i = 0; i < points; i++)
-    frequencies[i] = start + span * i / (points - 1) * 1000;
+    frequencies[i] = start + i * span / (float)(points - 1);
+  // disable at out of sweep range
   for (; i < sweep_points; i++)
     frequencies[i] = 0;
 }

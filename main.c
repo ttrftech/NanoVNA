@@ -40,6 +40,10 @@ static void apply_edelay_at(int i);
 
 static void cal_interpolate(int s);
 
+static void set_frequencies(uint32_t start, uint32_t stop, int16_t points);
+static void update_frequencies(void);
+
+
 bool sweep(bool break_on_operation);
 
 static MUTEX_DECL(mutex);
@@ -753,8 +757,9 @@ update_marker_index(void)
   }
 }
 
-void
-set_frequencies(uint32_t start, uint32_t stop, int16_t points)
+
+
+static void set_frequencies(uint32_t start, uint32_t stop, int16_t points)
 {
   int i;
   uint32_t span = (stop - start) / 1000; /* prevents overflow because of maximum of int32_t(2.147e+9) */  
@@ -763,6 +768,8 @@ set_frequencies(uint32_t start, uint32_t stop, int16_t points)
   for (; i < sweep_points; i++)
     frequencies[i] = 0;
 }
+
+
 
 void
 update_frequencies(void)

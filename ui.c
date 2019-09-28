@@ -587,15 +587,17 @@ menu_trace_cb(int item)
   if (item < 0 || item >= 4)
     return;
   if (trace[item].enabled) {
-    trace[item].enabled = FALSE;
-    choose_active_trace();
+    if (item == uistat.current_trace) {
+      // disable if active trace is selected
+      trace[item].enabled = FALSE;
+      choose_active_trace();
+    } else {
+      // make active selected trace
+      uistat.current_trace = item;
+    }
   } else {
     trace[item].enabled = TRUE;
     uistat.current_trace = item;
-    //menu_move_back();
-    //request_to_redraw_grid();
-    //ui_mode_normal();
-    //redraw_all();
   }
   request_to_redraw_grid();
   draw_menu();

@@ -914,8 +914,7 @@ static void cmd_sweep(BaseSequentialStream *chp, int argc, char *argv[])
     chprintf(chp, "%d %d %d\r\n", frequency0, frequency1, sweep_points);
     return;
   } else if (argc > 3) {
-    chprintf(chp, "usage: sweep {start(Hz)} [stop] [points]\r\n");
-    return;
+    goto usage;
   }
   if (argc >= 2) {
     if (strcmp(argv[0], "start") == 0) {
@@ -943,12 +942,18 @@ static void cmd_sweep(BaseSequentialStream *chp, int argc, char *argv[])
 
   if (argc >= 1) {
     int32_t value = atoi(argv[0]);
+    if (value == 0)
+      goto usage;
     set_sweep_frequency(ST_START, value);
   }
   if (argc >= 2) {
     int32_t value = atoi(argv[1]);
     set_sweep_frequency(ST_STOP, value);
   }
+  return;
+usage:
+  chprintf(chp, "usage: sweep {start(Hz)} [stop(Hz)]\r\n");
+  chprintf(chp, "\tsweep {start|stop|center|span|cw} {freq(Hz)}\r\n");
 }
 
 

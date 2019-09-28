@@ -74,10 +74,8 @@ static THD_FUNCTION(Thread1, arg)
 
       chMtxLock(&mutex);
       ui_process();
-      chMtxUnlock(&mutex);
 
       if (sweep_enabled) {
-        chMtxLock(&mutex);
         if (vbat != -1) {
           adc_stop(ADC1);
           vbat = adc_vbat_read(ADC1);
@@ -90,12 +88,11 @@ static THD_FUNCTION(Thread1, arg)
           plot_into_index(measured);
           redraw_request |= REDRAW_CELLS;
         }
-
-        /* plot trace and other indications as raster */
-        draw_all(completed); // flush markmap only if scan completed to prevent remaining traces
-
-        chMtxUnlock(&mutex);
       }
+
+      /* plot trace and other indications as raster */
+      draw_all(completed); // flush markmap only if scan completed to prevent remaining traces
+      chMtxUnlock(&mutex);
     }
 }
 

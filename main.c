@@ -72,10 +72,12 @@ static THD_FUNCTION(Thread1, arg)
         __WFI();
       }
 
+      chMtxLock(&mutex);
+      ui_process();
+      chMtxUnlock(&mutex);
+
       if (sweep_enabled) {
         chMtxLock(&mutex);
-        ui_process();
-
         if (vbat != -1) {
           adc_stop(ADC1);
           vbat = adc_vbat_read(ADC1);

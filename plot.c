@@ -1248,7 +1248,7 @@ draw_cell(int m, int n)
 }
 
 void
-draw_all_cells(void)
+draw_all_cells(bool flush_markmap)
 {
   int m, n;
   for (m = 0; m < (area_width+CELLWIDTH-1) / CELLWIDTH; m++)
@@ -1257,17 +1257,19 @@ draw_all_cells(void)
         draw_cell(m, n);
     }
 
-  // keep current map for update
-  swap_markmap();
-  // clear map for next plotting
-  clear_markmap();
+  if (flush_markmap) {
+    // keep current map for update
+    swap_markmap();
+    // clear map for next plotting
+    clear_markmap();
+  }
 }
 
 void
-draw_all(void)
+draw_all(bool flush)
 {
-  draw_all_cells();
-
+  if (redraw_request & REDRAW_CELLS)
+    draw_all_cells(flush);
   if (redraw_request & REDRAW_FREQUENCY)
     draw_frequencies();
   if (redraw_request & REDRAW_CAL_STATUS)
@@ -1285,7 +1287,7 @@ redraw_marker(int marker, int update_info)
   if (update_info)
     markmap[current_mappage][0] = 0xffff;
 
-  draw_all_cells();
+  draw_all_cells(TRUE);
 }
 
 void

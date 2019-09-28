@@ -3,9 +3,7 @@ import serial
 import numpy as np
 import pylab as pl
 import scipy.signal as signal
-import time
 import struct
-import os
 from serial.tools import list_ports
 
 VID = 0x0483 #1155
@@ -44,7 +42,7 @@ class NanoVNA:
     def frequencies(self):
         return self._frequencies
 
-    def set_sweep(self, start = 1e6, stop = 900e6, points = None):
+    def set_frequencies(self, start = 1e6, stop = 900e6, points = None):
         if points:
             self.points = points
         self._frequencies = np.linspace(start, stop, self.points)
@@ -62,6 +60,12 @@ class NanoVNA:
         self.open()
         self.serial.write(cmd.encode())
         self.serial.readline() # discard empty line
+
+    def set_sweep(self, start, stop):
+        if start is not None:
+            self.send_command("sweep start %d\r" % start)
+        if stop is not None:
+            self.send_command("sweep stop %d\r" % stop)
 
     def set_frequency(self, freq):
         if freq is not None:
@@ -141,19 +145,6 @@ class NanoVNA:
         d = data.strip().split(' ')
         return (int(d[0])+int(d[1])*1.j)/REF_LEVEL
 
-    def fetch_scan(self, port = None):
-        self.set_port(port)
-        self.send_command("scan\r")
-        data = self.fetch_data()
-        x = []
-        for line in data.split('\n'):
-            if line:
-                x.append([int(d) for d in line.strip().split(' ')])
-        x = np.array(x)
-        freqs = x[:,0]
-        gammas = x[:,1]+x[:,2]*1j
-        return gammas / REF_LEVEL, freqs
-
     def reflect_coeff_from_rawwave(self, freq = None):
         ref, samp = self.fetch_rawwave(freq)
         if self.filter:
@@ -175,7 +166,7 @@ class NanoVNA:
     def pause(self):
         self.send_command("pause\r")
     
-    def scan(self, port = None):
+    def scan_gamma0(self, port = None):
         self.set_port(port)
         return np.vectorize(self.gamma)(self.frequencies)
 
@@ -202,6 +193,29 @@ class NanoVNA:
                 x.append(float(line))
         self._frequencies = np.array(x)
 
+    def send_scan(self, start = 1e6, stop = 900e6, points = None):
+        if points:
+            self.send_command("scan %d %d %d\r"%(start, stop, points))
+        else:
+            self.send_command("scan %d %d\r"%(start, stop))
+
+    def scan(self):
+        segment_length = 101
+        array0 = []
+        array1 = []
+        freqs = self._frequencies
+        while len(freqs) > 0:
+            seg_start = freqs[0]
+            seg_stop = freqs[segment_length-1] if len(freqs) >= segment_length else freqs[-1]
+            length = segment_length if len(freqs) >= segment_length else len(freqs)
+            #print((seg_start, seg_stop, length))
+            self.send_scan(seg_start, seg_stop, length)
+            array0.extend(self.data(0))
+            array1.extend(self.data(1))
+            freqs = freqs[segment_length:]
+        self.resume()
+        return (array0, array1)
+    
     def capture(self):
         from PIL import Image
         self.send_command("capture\r")
@@ -344,6 +358,15 @@ if __name__ == '__main__':
     parser.add_option("-c", "--scan", dest="scan",
                       action="store_true", default=False,
                       help="scan by script", metavar="SCAN")
+    parser.add_option("-S", "--start", dest="start",
+                      type="float", default=1e6,
+                      help="start frequency", metavar="START")
+    parser.add_option("-E", "--stop", dest="stop",
+                      type="float", default=900e6,
+                      help="stop frequency", metavar="STOP")
+    parser.add_option("-N", "--points", dest="points",
+                      type="int", default=101,
+                      help="scan points", metavar="POINTS")
     parser.add_option("-P", "--port", type="int", dest="port",
                       help="port", metavar="PORT")
     parser.add_option("-d", "--dev", dest="device",
@@ -354,7 +377,7 @@ if __name__ == '__main__':
                       help="gain (0-95)", metavar="GAIN")
     parser.add_option("-O", "--offset", type="int", dest="offset",
                       help="offset frequency", metavar="OFFSET")
-    parser.add_option("-S", "--strength", type="int", dest="strength",
+    parser.add_option("--strength", type="int", dest="strength",
                       help="drive strength(0-3)", metavar="STRENGTH")
     parser.add_option("-v", "--verbose",
                       action="store_true", dest="verbose", default=False,
@@ -392,14 +415,17 @@ if __name__ == '__main__':
             print(np.average(samp[0::2] * samp[1::2]))
         pl.show()
         exit(0)
+    if opt.start or opt.stop or opt.points:
+        nv.set_frequencies(opt.start, opt.stop, opt.points)
     plot = opt.phase or opt.plot or opt.vswr or opt.delay or opt.groupdelay or opt.smith or opt.unwrapphase or opt.polar or opt.tdr
     if plot:
-        if opt.scan:
+        p = int(opt.port) if opt.port else 0
+        if opt.scan or opt.points > 101:
             s = nv.scan()
+            s = s[p]
         else:
-            p = 0
-            if opt.port:
-                p = int(opt.port)
+            if opt.start or opt.stop:
+                nv.set_sweep(opt.start, opt.stop)
             s = nv.data(p)
     if opt.smith:
         nv.smith(s)

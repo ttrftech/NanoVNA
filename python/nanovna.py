@@ -141,19 +141,6 @@ class NanoVNA:
         d = data.strip().split(' ')
         return (int(d[0])+int(d[1])*1.j)/REF_LEVEL
 
-    def fetch_scan(self, port = None):
-        self.set_port(port)
-        self.send_command("scan\r")
-        data = self.fetch_data()
-        x = []
-        for line in data.split('\n'):
-            if line:
-                x.append([int(d) for d in line.strip().split(' ')])
-        x = np.array(x)
-        freqs = x[:,0]
-        gammas = x[:,1]+x[:,2]*1j
-        return gammas / REF_LEVEL, freqs
-
     def reflect_coeff_from_rawwave(self, freq = None):
         ref, samp = self.fetch_rawwave(freq)
         if self.filter:
@@ -201,6 +188,30 @@ class NanoVNA:
             if line:
                 x.append(float(line))
         self._frequencies = np.array(x)
+
+    def send_scan(self, start = 1e6, stop = 900e6, points = None):
+        if points:
+            self.send_command("scan %d %d %d\r"%(start, stop, points))
+        else:
+            self.send_command("scan %d %d\r"%(start, stop))
+
+    def scan_multisegment(self, start = 1e6, stop = 900e6, points = 201):
+        segment_length = 101
+        array0 = []
+        array1 = []
+        freqs = np.linspace(start, stop, points)
+        self._frequencies = freqs
+        while len(freqs) > 1:
+            seg_start = freqs[0]
+            seg_stop = freqs[segment_length-1] if len(freqs) >= segment_length else freqs[-1]
+            length = segment_length if len(freqs) >= segment_length else len(freqs)
+            #print((seg_start, seg_stop, length))
+            self.send_scan(seg_start, seg_stop, length)
+            array0.extend(self.data(0))
+            array1.extend(self.data(1))
+            freqs = freqs[segment_length:]
+        self.resume()
+        return (array0, array1)
 
     def capture(self):
         from PIL import Image
@@ -395,7 +406,9 @@ if __name__ == '__main__':
     plot = opt.phase or opt.plot or opt.vswr or opt.delay or opt.groupdelay or opt.smith or opt.unwrapphase or opt.polar or opt.tdr
     if plot:
         if opt.scan:
-            s = nv.scan()
+            #s = nv.scan()
+            s = nv.scan_multisegment()
+            s = s[0]
         else:
             p = 0
             if opt.port:

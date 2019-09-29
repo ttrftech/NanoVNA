@@ -44,6 +44,7 @@ static MUTEX_DECL(mutex);
 
 #define DRIVE_STRENGTH_AUTO (-1)
 #define FREQ_HARMONICS 300000000
+#define HARMONICS_MODE(f) (uint8_t)((f + FREQ_HARMONICS) / (FREQ_HARMONICS * 2))
 
 int32_t frequency_offset = 5000;
 int32_t frequency = 10000000;
@@ -1274,9 +1275,33 @@ cal_interpolate(int s)
   j = 0;
   for (; i < sweep_points; i++) {
     uint32_t f = frequencies[i];
+    uint8_t h = HARMONICS_MODE(f);
 
     for (; j < sweep_points-1; j++) {
+      if (HARMONICS_MODE(src->_frequencies[j]) != h) {
+          // skip difference mode
+          continue;
+      }
+
+      if (f < src->_frequencies[j]) {
+        // found same harmonic mode but f is smaller than src
+        for (eterm = 0; eterm < 5; eterm++) {
+          cal_data[eterm][i][0] = src->_cal_data[eterm][j][0];
+          cal_data[eterm][i][1] = src->_cal_data[eterm][j][1];
+        }
+        break;
+      } else
       if (src->_frequencies[j] <= f && f < src->_frequencies[j+1]) {
+        if (HARMONICS_MODE(src->_frequencies[j+1]) != h) {
+            // In the case of different harmonic modes, it cannot be interpolated.
+            // just fill last same harmonic mode.
+            for (eterm = 0; eterm < 5; eterm++) {
+              cal_data[eterm][i][0] = src->_cal_data[eterm][j][0];
+              cal_data[eterm][i][1] = src->_cal_data[eterm][j][1];
+            }
+            break;
+        }
+
         // found f between freqs at j and j+1
         float k1 = (float)(f - src->_frequencies[j])
                         / (src->_frequencies[j+1] - src->_frequencies[j]);

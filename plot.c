@@ -942,11 +942,15 @@ search_index_range_x(int x, uint32_t index[101], int *i0, int *i1)
     i = (head + tail) / 2;
     if (x == CELL_X0(index[i]))
       break;
-
-    if (x < CELL_X0(index[i]))
-      tail = i+1;
-    else
+    else if (x < CELL_X0(index[i])) {
+      if (tail == i+1)
+        break;
+      tail = i+1;      
+    } else {
+      if (head == i)
+        break;
       head = i;
+    }
   }
 
   if (x != CELL_X0(index[i]))

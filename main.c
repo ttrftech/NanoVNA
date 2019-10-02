@@ -66,7 +66,6 @@ static THD_FUNCTION(Thread1, arg)
 
     while (1) {
       bool completed = false;
-
       if (sweep_enabled || sweep_once) {
         chMtxLock(&mutex);
         completed = sweep(true);
@@ -75,6 +74,7 @@ static THD_FUNCTION(Thread1, arg)
       } else {
         __WFI();
       }
+
       chMtxLock(&mutex);
       ui_process();
 
@@ -92,6 +92,7 @@ static THD_FUNCTION(Thread1, arg)
           redraw_request |= REDRAW_CELLS;
         }
       }
+
       /* plot trace as raster */
       draw_all(completed); // flush markmap only if scan completed to prevent remaining traces
       chMtxUnlock(&mutex);
@@ -178,7 +179,6 @@ transform_domain(void)
 
   for (int ch = 0; ch < 2; ch++) {
       memcpy(tmp, measured[ch], sizeof(measured[0]));
-
       for (int i = 0; i < 101; i++) {
           float w = kaiser_window(i+offset, window_size, beta);
           tmp[i*2+0] *= w;
@@ -187,7 +187,6 @@ transform_domain(void)
       for (int i = 101; i < FFT_SIZE; i++) {
           tmp[i*2+0] = 0.0;
           tmp[i*2+1] = 0.0;
-
       }
       if (is_lowpass) {
           for (int i = 1; i < 101; i++) {
@@ -199,7 +198,6 @@ transform_domain(void)
       fft256_inverse((float(*)[2])tmp);
       memcpy(measured[ch], tmp, sizeof(measured[0]));
       for (int i = 0; i < 101; i++) {
-
           measured[ch][i][0] /= (float)FFT_SIZE;
           if (is_lowpass) {
               measured[ch][i][1] = 0.0;
@@ -654,10 +652,6 @@ bool sweep(bool break_on_operation)
   float gamma0[2],gamma1[2];
   float *rg;
 
-  if (sweep_once)
-    chprintf(saved_chp, "start\r\n");
-
-  frequency_updated = FALSE;
   //delay = 3;
   if (!sweep_once) {
     count = sweep_points;
@@ -691,9 +685,9 @@ bool sweep(bool break_on_operation)
     /* calculate transmission coeficient */
     (*sample_func)(rg);
 
-    if (sweep_once)
-      chprintf(saved_chp, "%d %f %f %f %f\r\n", freq, gamma0[0], gamma0[1], gamma1[0], gamma1[1]);
-
+    if (sweep_once) {
+      chprintf(saved_chp, "%d %f %f %f %f\r\n", freq, 10.0 * gamma0[0], 10.0 * gamma0[1], 3.0 * gamma1[0],3.0 * gamma1[1]);
+    }
     // blink LED while scanning
     palSetPad(GPIOC, GPIOC_LED);
 
@@ -709,9 +703,7 @@ bool sweep(bool break_on_operation)
 		return false;
     freq += step;
   }
-  if (sweep_once)
-    chprintf(saved_chp, "done\r\n");
-  else
+  if (!sweep_once)
     transform_domain();
   return true;
 }
@@ -720,7 +712,7 @@ static void cmd_scan(BaseSequentialStream *chp, int argc, char *argv[])
 {
 
   if (argc != 2 && argc != 3) {
-    chprintf(chp, "usage: sweep {start(Hz)} {step(Hz)} [points]\r\n");
+    chprintf(chp, "usage: scan {start(Hz)} {step(Hz)} [points]\r\n");
     return;
   }
 

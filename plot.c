@@ -601,6 +601,15 @@ gamma2imp(char *buf, int len, const float coeff[2], uint32_t frequency)
   float zi = 2*coeff[1] * d;
   int n;
 
+#if 1
+  n = string_value_with_prefix(buf, len, zr, '\0');
+  if(zi<0)
+    buf[n++]='-';
+  else
+    buf[n++]='+';
+  buf[n++]='j';
+  string_value_with_prefix(buf+n, len-n, fabs(zi), S_OHM[0]);
+#else
   n = string_value_with_prefix(buf, len, zr, S_OHM[0]);
   buf[n++] = ' ';
 
@@ -611,6 +620,7 @@ gamma2imp(char *buf, int len, const float coeff[2], uint32_t frequency)
     float l = zi / (PI2 * frequency);
     string_value_with_prefix(buf+n, len-n, l, 'H');
   }
+#endif
 }
 
 static void

@@ -391,8 +391,9 @@ show_version(void)
   adc_stop(ADC1);
   ili9341_fill(0, 0, 320, 240, 0);
 
-  ili9341_drawstring_size(BOARD_NAME, x, y, 0xffff, 0x0000, 4);
-  y += 25;
+  ili9341_drawstring_size(USER_CALL, x, y, 0xf800, 0x0000, 3);
+  ili9341_drawstring_size(BOARD_NAME, x, y += 25, 0xf800, 0x0000, 5);
+  y += 35;
 
   ili9341_drawstring_5x7("2016-2019 Copyright @edy555", x, y += 10, 0xffff, 0x0000);
   ili9341_drawstring_5x7("Licensed under GPL. See: https://github.com/ttrftech/NanoVNA", x, y += 10, 0xffff, 0x0000);

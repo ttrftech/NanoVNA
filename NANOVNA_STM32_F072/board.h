@@ -26,7 +26,7 @@
  */
 #define BOARD_NANOVNA_STM32_F072
 #define BOARD_NAME              "NanoVNA"
-#define USER_CALL		        "DV2JBs"
+#define USER_CALL  "My"  /* add your name here */
 /*
  * Board frequencies.
  */

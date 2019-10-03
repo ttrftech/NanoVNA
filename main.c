@@ -544,7 +544,6 @@ static void cmd_capture(BaseSequentialStream *chp, int argc, char *argv[])
         }
         len -= PART;
     }
-    //*/
 
     chMtxUnlock(&mutex);
 }
@@ -602,9 +601,9 @@ config_t config = {
   /* grid_color */ 0x1084,
   /* menu_normal_color */ 0xffff,
   /* menu_active_color */ 0x7777,
-  /* trace_colors[4] */ { RGB565(0,255,255), RGB565(255,0,40), RGB565(0,0,255), RGB565(50,255,0) },
-  ///* touch_cal[4] */ { 620, 600, 160, 190 },
-  /* touch_cal[4] */ { 693, 605, 124, 171 },
+  /* trace_color[4] */ { RGB_565(255,255,0), RGB_565(0,40,255), RGB_565(0,255,0), RGB_565(255,200,20) },
+  /* trace_colors[4] */ // { RGB565(0,255,255), RGB565(255,0,40), RGB565(0,0,255), RGB565(50,255,0) },
+  /* touch_cal[4] */ { 411, 592, 151, 189 },
   /* default_loadcal */    0,
   /* checksum */           0
 };
@@ -1421,17 +1420,17 @@ const struct {
   uint16_t refpos;
   float scale_unit;
 } trace_info[] = {
-  { "LGMG", 7, 10 },
+  { "LMG", 7, 10 },
   { "PHA", 4, 90 },
   { "DEL", 4, 1 },
   { "SMI", 0, 1 },
-  { "PLR", 0, 1 },
+  { "POL", 0, 1 },
   { "LIN", 0, 0.125 },
   { "SWR", 0, 1 },
   { "REAL", 4, 0.25 },
   { "IMAG", 4, 0.25 },
-  { "R", 0, 100 },
-  { "X", 4, 100 }
+  { "RES", 0, 100 },
+  { "REA", 4, 100 }
 };
 
 const char * const trc_channel_name[] = {

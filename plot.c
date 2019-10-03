@@ -641,15 +641,15 @@ trace_get_value_string(int t, char *buf, int len, float coeff[2], uint32_t frequ
     if (v == -INFINITY)
       chsnprintf(buf, len, "-INF dB");
     else
-      chsnprintf(buf, len, "%.2fdB", v);
+      chsnprintf(buf, len, "%.1fdB", v);
     break;
   case TRC_PHASE:
     v = phase(coeff);
-    chsnprintf(buf, len, "%.2f" S_DEGREE, v);
+    chsnprintf(buf, len, "%.1f" S_DEGREE, v);
     break;
   case TRC_LINEAR:
     v = linear(coeff);
-    chsnprintf(buf, len, "%.2f", v);
+    chsnprintf(buf, len, "%.1f", v);
     break;
   case TRC_SWR:
     v = swr(coeff);
@@ -672,34 +672,42 @@ trace_get_value_string(int t, char *buf, int len, float coeff[2], uint32_t frequ
     break;
   //case TRC_ADMIT:
   case TRC_POLAR:
-    chsnprintf(buf, len, "%.2f %.2fj", coeff[0], coeff[1]);
+    chsnprintf(buf, len, "%.1f %.1fj", coeff[0], coeff[1]);
     break;
   }
 }
 
-void
-trace_get_info(int t, char *buf, int len)
+
+
+uint16_t
+trace_get_info(int t, char *buf, uint16_t len)
 {
   const char *type = get_trace_typename(t);
-  int n;
-  switch (trace[t].type) {
+  uint16_t n = 0;
+  
+  switch ( trace[t].type )
+  {
   case TRC_LOGMAG:
-    chsnprintf(buf, len, "%s %ddB/", type, (int)get_trace_scale(t));
+    n = chsnprintf(buf, len, "%s %ddB/", type, (int)get_trace_scale(t));
     break;
   case TRC_PHASE:
-    chsnprintf(buf, len, "%s %d" S_DEGREE "/", type, (int)get_trace_scale(t));
+    n = chsnprintf(buf, len, "%s %d" S_DEGREE "/", type, (int)get_trace_scale(t));
     break;
   case TRC_SMITH:
   //case TRC_ADMIT:
   case TRC_POLAR:
-    chsnprintf(buf, len, "%s %.1fFS", type, get_trace_scale(t));
+    n = chsnprintf(buf, len, "%s %.1fFS", type, get_trace_scale(t));
     break;
   default:
     n = chsnprintf(buf, len, "%s ", type);
     string_value_with_prefix(buf+n, len-n, get_trace_scale(t), '/');
     break;
   }
+
+  return n;
 }
+
+
 
 static float time_of_index(int idx) {
    return 1.0 / (float)(frequencies[1] - frequencies[0]) / (float)FFT_SIZE * idx;
@@ -1205,7 +1213,9 @@ draw_cell(int m, int n)
   {
     memset(spi_buffer, 0, sizeof spi_buffer);
   }
-  if (grid_mode & (GRID_SMITH|GRID_ADMIT|GRID_POLAR)) {
+  
+  if (grid_mode & (GRID_SMITH|GRID_ADMIT|GRID_POLAR)) 
+  {
   
     for (y = 0; y < h; y++) 
     {
@@ -1227,18 +1237,21 @@ draw_cell(int m, int n)
 
 #if 1
   /* draw rectanglar plot */
-  for (t = 0; t < TRACES_MAX; t++) {
+  for (t = 0; t < TRACES_MAX; t++) 
+  {
     if (!trace[t].enabled)
       continue;
     if (trace[t].type == TRC_SMITH || trace[t].type == TRC_POLAR)
       continue;
     
-    if (search_index_range_x(x0, trace_index[t], &i0, &i1)) {
+    if (search_index_range_x(x0, trace_index[t], &i0, &i1)) 
+    {
       if (i0 > 0)
         i0--;
       if (i1 < 101-1)
         i1++;
-      for (i = i0; i < i1; i++) {
+      for (i = i0; i < i1; i++) 
+      {
         int x1 = CELL_X(trace_index[t][i]);
         int x2 = CELL_X(trace_index[t][i+1]);
         int y1 = CELL_Y(trace_index[t][i]);
@@ -1251,14 +1264,16 @@ draw_cell(int m, int n)
 #endif
 #if 1
   /* draw polar plot */
-  for (t = 0; t < TRACES_MAX; t++) {
+  for (t = 0; t < TRACES_MAX; t++) 
+  {
     int c = config.trace_color[t];
     if (!trace[t].enabled)
       continue;
     if (trace[t].type != TRC_SMITH && trace[t].type != TRC_POLAR)
       continue;
 
-    for (i = 1; i < sweep_points; i++) {
+    for (i = 1; i < sweep_points; i++) 
+    {
       //uint32_t index = trace_index[t][i];
       //uint32_t pindex = trace_index[t][i-1];
       //if (!CELL_P(index, x0, y0) && !CELL_P(pindex, x0, y0))
@@ -1408,17 +1423,29 @@ cell_drawstring_invert_5x7(int w, int h, char *str, int x, int y, uint16_t fg, i
 
 
 
-unsigned char
-cell_drawchar_8x8(int w, int h, uint8_t ch, int x, int y, uint16_t fg, uint8_t var, int invert)
+uint16_t
+cell_drawchar_8x8(int w, int h, uint8_t ch, int x, int y, uint16_t fg, uint8_t var, uint8_t invert)
 {
-  uint8_t bits, charlen = 8;
+  uint8_t bits;
+  uint16_t charwidthpx = 8;
   int cline, r;
   
 // fixme  
 //  if (y <= -8 || y >= h || x <= -8 || x >= w)
 //    return 0;
 
+
   ch = x8x8_map_char_table(ch);
+
+  if ( var != FALSE )
+  {
+    charwidthpx = x8x8_len[ch];
+  }
+
+
+//  if (y <= -8 || y >= h  || x >= w ) // fixme x <= -(charlen) || x >= w)
+//    return 0;
+
 
   for (cline = 0; cline < 8; cline++) 
   {
@@ -1430,12 +1457,8 @@ cell_drawchar_8x8(int w, int h, uint8_t ch, int x, int y, uint16_t fg, uint8_t v
     if (invert)
       bits = ~bits;
 
-    if ( var != FALSE )
-    {
-      charlen = x8x8_len[ch];
-    }
 
-    for (r = 0; r < charlen; r++) 
+    for (r = 0; r < charwidthpx; r++) 
     {
       if ( (x+r) >= 0 && (x+r) < w && (0x80 & bits) ) 
         spi_buffer[(y+cline)*w + (x+r)] = fg;
@@ -1444,63 +1467,44 @@ cell_drawchar_8x8(int w, int h, uint8_t ch, int x, int y, uint16_t fg, uint8_t v
     }
   }
 
-  return x8x8_len[ch];
+  return charwidthpx;
 }
 
 
 
-void
-cell_drawstring_8x8(int w, int h, char *str, int x, int y, uint16_t fg)
+uint16_t
+cell_drawstring_8x8(int w, int h, char *str, int x, int y, uint16_t fg, uint8_t invert)
 {
+  uint16_t strwidthpx = 0;
+
   while (*str) 
   {
-    cell_drawchar_8x8(w, h, *str, x, y, fg, FALSE, FALSE);
+    strwidthpx += cell_drawchar_8x8(w, h, *str, x, y, fg, FALSE, invert);
     x += 8;
     str++;
   }
+
+  return strwidthpx;
 }
 
 
 
-void
-cell_drawstring_invert_8x8(int w, int h, char *str, int x, int y, uint16_t fg, int invert)
-{
-  while (*str) 
-  {
-    cell_drawchar_8x8(w, h, *str, x, y, fg, FALSE, invert);
-    x += 8;
-    str++;
-  }
-}
-
-
-
-void
-cell_drawstring_8x8_var(int w, int h, char *str, int x, int y, uint16_t fg)
+uint16_t
+cell_drawstring_8x8_var(int w, int h, char *str, int x, int y, uint16_t fg, uint8_t invert)
 {
   unsigned char clength = 0;
-
-  while (*str) 
-  {
-    clength = cell_drawchar_8x8(w, h, *str, x, y, fg, TRUE, FALSE);
-    x += clength;
-    str++;
-  }
-}
-
-
-
-void
-cell_drawstring_invert_8x8_var(int w, int h, char *str, int x, int y, uint16_t fg, int invert)
-{
-  unsigned char clength = 0;
+  uint16_t strwidthpx = 0;
 
   while (*str) 
   {
     clength = cell_drawchar_8x8(w, h, *str, x, y, fg, TRUE, invert);
     x += clength;
+    strwidthpx += clength;
     str++;
   }
+  
+  return strwidthpx;
+
 }
 
 
@@ -1510,6 +1514,7 @@ cell_draw_marker_info(int m, int n, int w, int h)
 {
   char buf[24];
   int t;
+  uint16_t slen, strwidthpx = 0;
   
   if (n != 0)
     return;
@@ -1525,55 +1530,58 @@ cell_draw_marker_info(int m, int n, int w, int h)
     if (!trace[t].enabled)
       continue;
       
-    int xpos = 1 + (j%2)*146;
+    int xpos = 1 + (j%2)*160;
     int ypos = 1 + (j/2)*8;
     xpos -= m * CELLWIDTH - CELLOFFSETX;
     ypos -= n * CELLHEIGHT;
-    chsnprintf(buf, sizeof buf, "CH%d:", trace[t].channel);
-    cell_drawstring_invert_5x7(w, h, buf, xpos, ypos, config.trace_color[t], t == uistat.current_trace);
 
-    xpos += 20;
-    trace_get_info(t, buf, sizeof buf);
-    cell_drawstring_5x7(w, h, buf, xpos, ypos, config.trace_color[t]);
+    chsnprintf(buf, sizeof buf, "C%d:", trace[t].channel);
+    strwidthpx = cell_drawstring_8x8_var(w, h, buf, xpos, ypos, config.trace_color[t], t == uistat.current_trace);
 
-    xpos += 64;
-    trace_get_value_string(t, buf, sizeof buf, measured[trace[t].channel][idx], frequencies[idx]);
-    cell_drawstring_5x7(w, h, buf, xpos, ypos, config.trace_color[t]);
+    xpos += strwidthpx + 4;
+
+    slen = trace_get_info(t, buf, sizeof buf);
+    trace_get_value_string(t, buf+slen, (sizeof(buf))-slen, measured[trace[t].channel][idx], frequencies[idx]);
+
+    cell_drawstring_8x8_var(w, h, buf, xpos, ypos, config.trace_color[t], FALSE);
     j++;
   }    
 
   // draw marker frequency
-  int xpos = 165;
+  int xpos = 160;
   int ypos = 1 + (j/2)*8;
   xpos -= m * CELLWIDTH - CELLOFFSETX;
   ypos -= n * CELLHEIGHT;
+
   chsnprintf(buf, sizeof buf, "%d:", active_marker + 1);
-  cell_drawstring_8x8_var(w, h, buf, xpos, ypos, 0xffff);
-  xpos += 16;
+  strwidthpx = cell_drawstring_8x8_var(w, h, buf, xpos, ypos, 0xffff, FALSE);
+  xpos += strwidthpx + 4;
   
   if ( (domain_mode & DOMAIN_MODE) == DOMAIN_FREQ )
   {
     frequency_string(buf, sizeof buf, frequencies[idx]);
-    cell_drawstring_5x7(w, h, buf, xpos, ypos, 0xffff);
+    cell_drawstring_8x8_var(w, h, buf, xpos, ypos, 0xffff, FALSE);
   } 
   else 
   {
     chsnprintf(buf, sizeof buf, "%d ns %.1f m", (uint16_t)(time_of_index(idx) * 1e9), distance_of_index(idx));
-    cell_drawstring_5x7(w, h, buf, xpos, ypos, 0xffff);
+    cell_drawstring_8x8_var(w, h, buf, xpos, ypos, 0xffff, FALSE);
   }
 
   // draw marker delta
   if ( previous_marker >= 0 && active_marker != previous_marker && markers[previous_marker].enabled )
   {
     int idx0 = markers[previous_marker].index;
-    xpos = 192;
+    xpos = 160;
     xpos -= m * CELLWIDTH - CELLOFFSETX;
-    ypos += 7;
+    ypos += 8;
+
     chsnprintf(buf, sizeof buf, "\001%d:", previous_marker+1);
-    cell_drawstring_5x7(w, h, buf, xpos, ypos, 0xffff);
-    xpos += 16;
+    strwidthpx = cell_drawstring_8x8(w, h, buf, xpos, ypos, 0xffff, FALSE);
+    xpos += strwidthpx + 4;
+
     frequency_string(buf, sizeof buf, frequencies[idx] - frequencies[idx0]);
-    cell_drawstring_5x7(w, h, buf, xpos, ypos, 0xffff);
+    cell_drawstring_8x8_var(w, h, buf, xpos, ypos, 0xffff, FALSE);
   }
 
 }

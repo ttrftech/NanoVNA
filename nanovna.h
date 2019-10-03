@@ -243,7 +243,7 @@ void redraw_frame(void);
 void request_to_draw_cells_behind_menu(void);
 void request_to_draw_cells_behind_numeric_input(void);
 void redraw_marker(int marker, int update_info);
-void trace_get_info(int t, char *buf, int len);
+uint16_t trace_get_info(int t, char *buf, uint16_t len);
 void plot_into_index(float measured[2][101][2]);
 void force_set_markmap(void);
 void draw_all(bool flush);
@@ -269,6 +269,7 @@ extern int16_t vbat;
  * ili9341.c
  */
 #define RGB565(b,r,g)     ( (((b)<<8)&0xfc00) | (((r)<<2)&0x03e0) | (((g)>>3)&0x001f) )
+#define RGB_565(r, g, b)     ( (((b)<<8)&0xfc00) | (((r)<<2)&0x03e0) | (((g)>>3)&0x001f) )
 
 typedef struct {
 	uint16_t width;

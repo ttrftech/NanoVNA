@@ -329,7 +329,7 @@ touch_cal_exec(void)
   ili9341_fill(0, 0, 320, 240, 0);
   ili9341_line(320-1, 240-1, 320-1, 240-32, 0xffff);
   ili9341_line(320-1, 240-1, 320-32, 240-1, 0xffff);
-  ili9341_drawstring_8x8_var("TOUCH LOWER RIGHT", 200, 220, 0xffff, 0x0000);
+  ili9341_drawstring_8x8_var("TOUCH LOWER RIGHT", 190, 220, 0xffff, 0x0000);
 
   do {
     status = touch_check();

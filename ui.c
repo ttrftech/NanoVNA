@@ -1262,7 +1262,7 @@ void
 draw_numeric_area_frame(void)
 {
   ili9341_fill(0, 208, 320, 32, 0xffff);
-  ili9341_drawstring_5x7(keypad_mode_label[keypad_mode], 10, 220, 0x0000, 0xffff);
+  ili9341_drawstring_8x8_var(keypad_mode_label[keypad_mode], 10, 220, 0x0000, 0xffff);
   ili9341_drawfont(KP_KEYPAD, &NF20x24, 300, 216, 0x0000, 0xffff);
 }
 

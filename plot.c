@@ -700,7 +700,7 @@ trace_get_info(int t, char *buf, uint16_t len)
     break;
   default:
     n = chsnprintf(buf, len, "%s ", type);
-    string_value_with_prefix(buf+n, len-n, get_trace_scale(t), '/');
+    n += string_value_with_prefix(buf+n, len-n, get_trace_scale(t), '/');
     break;
   }
 
@@ -1516,7 +1516,7 @@ cell_draw_marker_info(int m, int n, int w, int h)
   int t;
   uint16_t slen, strwidthpx = 0;
   
-  if (n != 0)
+  if (n > 1)
     return;
   
   if (active_marker < 0)
@@ -1542,8 +1542,8 @@ cell_draw_marker_info(int m, int n, int w, int h)
 
     slen = trace_get_info(t, buf, sizeof buf);
     trace_get_value_string(t, buf+slen, (sizeof(buf))-slen, measured[trace[t].channel][idx], frequencies[idx]);
-
     cell_drawstring_8x8_var(w, h, buf, xpos, ypos, config.trace_color[t], FALSE);
+
     j++;
   }    
 
@@ -1576,9 +1576,12 @@ cell_draw_marker_info(int m, int n, int w, int h)
     xpos -= m * CELLWIDTH - CELLOFFSETX;
     ypos += 8;
 
-    chsnprintf(buf, sizeof buf, "\001%d:", previous_marker+1);
+    chsnprintf(buf, sizeof buf, "%s%d:", S_DIAMOND, previous_marker+1);
     strwidthpx = cell_drawstring_8x8(w, h, buf, xpos, ypos, 0xffff, FALSE);
     xpos += strwidthpx + 4;
+
+
+
 
     frequency_string(buf, sizeof buf, frequencies[idx] - frequencies[idx0]);
     cell_drawstring_8x8_var(w, h, buf, xpos, ypos, 0xffff, FALSE);
@@ -1603,7 +1606,7 @@ frequency_string(char *buf, size_t len, int32_t freq)
              (int)(freq / 1000),
              (int)(freq % 1000));
   } else {
-    chsnprintf(buf, len, "%d.%03d %03d MHz",
+    chsnprintf(buf, len, "%d.%03d%03d MHz",
              (int)(freq / 1000000),
              (int)((freq / 1000) % 1000),
              (int)(freq % 1000));

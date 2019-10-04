@@ -287,8 +287,6 @@ void ili9341_init(void);
 void ili9341_test(int mode);
 void ili9341_bulk(int x, int y, int w, int h);
 void ili9341_fill(int x, int y, int w, int h, int color);
-void ili9341_drawchar_5x7(uint8_t ch, int x, int y, uint16_t fg, uint16_t bg);
-void ili9341_drawstring_5x7(const char *str, int x, int y, uint16_t fg, uint16_t bg);
 void ili9341_drawchar_size(uint8_t ch, int x, int y, uint16_t fg, uint16_t bg, uint8_t size);
 void ili9341_drawstring_size(const char *str, int x, int y, uint16_t fg, uint16_t bg, uint8_t size);
 unsigned char ili9341_drawchar_8x8(uint8_t ch, int x, int y, uint16_t fg, uint16_t bg);

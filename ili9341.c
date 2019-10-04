@@ -337,41 +337,6 @@ ili9341_read_memory_continue(int len, uint16_t* out)
 
 
 void
-ili9341_drawchar_5x7(uint8_t ch, int x, int y, uint16_t fg, uint16_t bg)
-{
-  uint16_t *buf = spi_buffer;
-  uint8_t bits;
-  int c, r;
-
-  ch = x5x7_map_char_table(ch);
-
-  for(c = 0; c < 7; c++) 
-  {
-    bits = x5x7_bits[(ch * 7) + c];
-    for (r = 0; r < 5; r++) 
-    {
-      *buf++ = (0x80 & bits) ? fg : bg;
-      bits <<= 1;
-    }
-  }
-  ili9341_bulk(x, y, 5, 7);
-}
-
-
-
-void
-ili9341_drawstring_5x7(const char *str, int x, int y, uint16_t fg, uint16_t bg)
-{
-  while (*str) {
-    ili9341_drawchar_5x7(*str, x, y, fg, bg);
-    x += 5;
-    str++;
-  }
-}
-
-
-
-void
 ili9341_drawchar_size(uint8_t ch, int x, int y, uint16_t fg, uint16_t bg, uint8_t size)
 {
   uint16_t *buf = spi_buffer;

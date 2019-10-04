@@ -440,6 +440,46 @@ float phase(float *v)
   return 2 * atan2f(v[1], v[0]) / M_PI * 90;
 }
 
+
+static inline float unwrap(float a0)
+{
+    if (a0 < -M_PI)
+        a0 += 2 * M_PI;
+    if (a0 > M_PI)
+        a0 -= 2 * M_PI;
+    return a0;
+}
+
+/*
+ * calculate group_delay = -deltaAngle(gamma) / (deltaf * 360)
+ */ 
+float group_delay(float v[101][2], uint32_t* f, int count, int i)
+{
+  float a0, a1, a2;
+  float delay;
+  // handle first and last points by accepting assymetry
+  if (i == 0)
+  {
+     a1 = atan2f(v[i][1], v[i][0]);
+     a2 = atan2f(v[i+1][1], v[i+1][0]);
+     delay = -unwrap(a2 - a1) / ((f[i+1] - f[i]) * 2 * M_PI);
+  } 
+  else if (i == count-1)
+  {
+     a0 = atan2f(v[i-1][1], v[i-1][0]);
+     a1 = atan2f(v[i][1], v[i][0]);
+     delay = -unwrap(a1 - a0) / ((f[i] - f[i-1]) * 2 * M_PI);
+  }
+  else
+  {
+     a0 = atan2f(v[i-1][1], v[i-1][0]);
+     a1 = atan2f(v[i][1], v[i][0]);
+     a2 = atan2f(v[i+1][1], v[i+1][0]);
+     delay = -(unwrap(a1-a0)/(f[i]-f[i-1]) + unwrap(a2-a1)/(f[i+1]-f[i])) / (2 * 2 * M_PI);
+  }
+  return delay * 1000000000.0;  // to nanosecond
+}
+
 /*
  * calculate abs(gamma)
  */
@@ -489,8 +529,9 @@ cartesian_scale(float re, float im, int *xp, int *yp, float scale)
 }
 
 
-uint32_t
-trace_into_index(int x, int t, int i, float coeff[2])
+uint32_t trace_into_index(
+    int x, int t, int i, 
+    float coeff[101][2], uint32_t freq[101], int point_count)
 {
   int y = 0;
   float v = 0;
@@ -498,33 +539,36 @@ trace_into_index(int x, int t, int i, float coeff[2])
   float scale = 1 / get_trace_scale(t);
   switch (trace[t].type) {
   case TRC_LOGMAG:
-    v = refpos - logmag(coeff) * scale;
+    v = refpos - logmag(coeff[i]) * scale;
     break;
   case TRC_PHASE:
-    v = refpos - phase(coeff) * scale;
+    v = refpos - phase(coeff[i]) * scale;
+    break;
+  case TRC_DELAY:
+    v = refpos - group_delay(coeff, freq, point_count, i) * scale;
     break;
   case TRC_LINEAR:
-    v = refpos + linear(coeff) * scale;
+    v = refpos + linear(coeff[i]) * scale;
     break;
   case TRC_SWR:
-    v = refpos+ (1 - swr(coeff)) * scale;
+    v = refpos+ (1 - swr(coeff[i])) * scale;
     break;
   case TRC_REAL:
-    v = refpos - coeff[0] * scale;
+    v = refpos - coeff[i][0] * scale;
     break;
   case TRC_IMAG:
-    v = refpos - coeff[1] * scale;
+    v = refpos - coeff[i][1] * scale;
     break;
   case TRC_R:
-    v = refpos - resitance(coeff) * scale;
+    v = refpos - resitance(coeff[i]) * scale;
     break;
   case TRC_X:
-    v = refpos - reactance(coeff) * scale;
+    v = refpos - reactance(coeff[i]) * scale;
     break;
   case TRC_SMITH:
   //case TRC_ADMIT:
   case TRC_POLAR:
-    cartesian_scale(coeff[0], coeff[1], &x, &y, scale);
+    cartesian_scale(coeff[i][0], coeff[i][1], &x, &y, scale);
     return INDEX(x +CELLOFFSETX, y, i);
     break;
   }
@@ -631,48 +675,53 @@ gamma2reactance(char *buf, int len, const float coeff[2], uint32_t frequency)
   string_value_with_prefix(buf, len, zi, S_OHM[0]);
 }
 
-static void
-trace_get_value_string(int t, char *buf, int len, float coeff[2], uint32_t frequency)
+static void trace_get_value_string(
+    int t, char *buf, int len,
+    int i, float coeff[101][2], uint32_t freq[101], int point_count)
 {
   float v;
   switch (trace[t].type) {
   case TRC_LOGMAG:
-    v = logmag(coeff);
+    v = logmag(coeff[i]);
     if (v == -INFINITY)
       chsnprintf(buf, len, "-INF dB");
     else
       chsnprintf(buf, len, "%.2fdB", v);
     break;
   case TRC_PHASE:
-    v = phase(coeff);
-    chsnprintf(buf, len, "%.2f" S_DEGREE, v);
+    v = phase(coeff[i]);
+    chsnprintf(buf, len, "%.3f" S_DEGREE, v);
+    break;
+  case TRC_DELAY:
+    v = group_delay(coeff, freq, point_count, i);
+    chsnprintf(buf, len, "%.3f ns", v);
     break;
   case TRC_LINEAR:
-    v = linear(coeff);
-    chsnprintf(buf, len, "%.2f", v);
+    v = linear(coeff[i]);
+    chsnprintf(buf, len, "%.3f", v);
     break;
   case TRC_SWR:
-    v = swr(coeff);
+    v = swr(coeff[i]);
     chsnprintf(buf, len, "%.2f", v);
     break;
   case TRC_SMITH:
-    gamma2imp(buf, len, coeff, frequency);
+    gamma2imp(buf, len, coeff[i], freq[i]);
     break;
   case TRC_REAL:
-    chsnprintf(buf, len, "%.2f", coeff[0]);
+    chsnprintf(buf, len, "%.3f", coeff[i][0]);
     break;
   case TRC_IMAG:
-    chsnprintf(buf, len, "%.2fj", coeff[1]);
+    chsnprintf(buf, len, "%.3fj", coeff[i][1]);
     break;
   case TRC_R:
-    gamma2resistance(buf, len, coeff, frequency);
+    gamma2resistance(buf, len, coeff[i], freq[i]);
     break;
   case TRC_X:
-    gamma2reactance(buf, len, coeff, frequency);
+    gamma2reactance(buf, len, coeff[i], freq[i]);
     break;
   //case TRC_ADMIT:
   case TRC_POLAR:
-    chsnprintf(buf, len, "%.2f %.2fj", coeff[0], coeff[1]);
+    chsnprintf(buf, len, "%.3f %.3fj", coeff[i][0], coeff[i][1]);
     break;
   }
 }
@@ -805,7 +854,8 @@ void plot_into_index(float measured[2][101][2])
       if (!trace[t].enabled)
         continue;
       int n = trace[t].channel;
-      trace_index[t][i] = trace_into_index(x, t, i, measured[n][i]);
+      trace_index[t][i] = trace_into_index(x, t, i,
+                                           measured[n], frequencies, sweep_points);
     }
   }
 #if 0
@@ -1380,7 +1430,8 @@ cell_draw_marker_info(int m, int n, int w, int h)
     trace_get_info(t, buf, sizeof buf);
     cell_drawstring_5x7(w, h, buf, xpos, ypos, config.trace_color[t]);
     xpos += 64;
-    trace_get_value_string(t, buf, sizeof buf, measured[trace[t].channel][idx], frequencies[idx]);
+    trace_get_value_string(t, buf, sizeof buf,
+                           idx, measured[trace[t].channel], frequencies, 101);
     cell_drawstring_5x7(w, h, buf, xpos, ypos, config.trace_color[t]);
     j++;
   }    

@@ -1418,7 +1418,7 @@ const struct {
 } trace_info[] = {
   { "LOGMAG", 7, 10 },
   { "PHASE",  4, 90 },
-  { "DELAY",  4,  1 },
+  { "GD",     4,  5 },
   { "SMITH",  0,  1 },
   { "POLAR",  0,  1 },
   { "LINEAR", 0,  0.125 },

@@ -1753,6 +1753,61 @@ static void cmd_frequencies(BaseSequentialStream *chp, int argc, char *argv[])
   }
 }
 
+static void
+set_domain_mode(int mode) // accept DOMAIN_FREQ or DOMAIN_TIME
+{
+  if (mode != (domain_mode & DOMAIN_MODE)) {
+    domain_mode = (domain_mode & ~DOMAIN_MODE) | (mode & DOMAIN_MODE);
+    redraw_request |= REDRAW_FREQUENCY;
+  }
+}
+
+static void
+set_timedomain_func(int func) // accept TD_FUNC_LOWPASS_IMPULSE, TD_FUNC_LOWPASS_STEP or TD_FUNC_BANDPASS
+{
+  domain_mode = (domain_mode & ~TD_FUNC) | (func & TD_FUNC);
+}
+
+static void
+set_timedomain_window(int func) // accept TD_WINDOW_MINIMUM/TD_WINDOW_NORMAL/TD_WINDOW_MAXIMUM
+{
+  domain_mode = (domain_mode & ~TD_WINDOW) | (func & TD_WINDOW);
+}
+
+static void cmd_transform(BaseSequentialStream *chp, int argc, char *argv[])
+{
+  int i;
+  if (argc == 0) {
+    goto usage;
+  }
+
+  for (i = 0; i < argc; i++) {
+    char *cmd = argv[i];
+    if (strcmp(cmd, "on") == 0) {
+      set_domain_mode(DOMAIN_TIME);
+    } else if (strcmp(cmd, "off") == 0) {
+      set_domain_mode(DOMAIN_FREQ);
+    } else if (strcmp(cmd, "impulse") == 0) {
+      set_timedomain_func(TD_FUNC_LOWPASS_IMPULSE);
+    } else if (strcmp(cmd, "step") == 0) {
+      set_timedomain_func(TD_FUNC_LOWPASS_STEP);
+    } else if (strcmp(cmd, "bandpass") == 0) {
+      set_timedomain_func(TD_FUNC_BANDPASS);
+    } else if (strcmp(cmd, "minimum") == 0) {
+      set_timedomain_window(TD_WINDOW_MINIMUM);
+    } else if (strcmp(cmd, "normal") == 0) {
+      set_timedomain_window(TD_WINDOW_NORMAL);
+    } else if (strcmp(cmd, "maximum") == 0) {
+      set_timedomain_window(TD_WINDOW_MAXIMUM);
+    } else {
+      goto usage;
+    }
+  }
+  return;
+
+usage:
+  chprintf(chp, "usage: transform {on|off|impulse|step|bandpass|minimum|normal|maximum} [...]\r\n");
+}
 
 static void cmd_test(BaseSequentialStream *chp, int argc, char *argv[])
 {
@@ -1934,6 +1989,7 @@ static const ShellCommand commands[] =
     { "edelay", cmd_edelay },
     { "capture", cmd_capture },
     { "vbat", cmd_vbat },
+    { "transform", cmd_transform },
     { NULL, NULL }
 };
 

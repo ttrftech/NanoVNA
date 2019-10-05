@@ -430,14 +430,14 @@ enter_dfu(void)
 {
   adc_stop(ADC1);
 
-  int x = 100, y = 20;
+  int x = 110, y = 20;
 
   // leave a last message 
   ili9341_fill(0, 0, 320, 240, 0);
-  ili9341_drawstring_size("DFU", x+30, y, 0xffff, 0x0000, 4);
+  ili9341_drawstring_size("DFU", x, y, 0xffff, 0x0000, 4);
+
   x = 5;
   y += 50;
-
   ili9341_drawstring_8x8_var("Device Firmware Update Mode", x, y += 10, 0xffff, 0x0000);
   ili9341_drawstring_8x8_var("To exit DFU mode, please reset device yourself.", x, y += 10, 0xffff, 0x0000);
 

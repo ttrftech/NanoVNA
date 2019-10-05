@@ -336,28 +336,30 @@ ili9341_read_memory_continue(int len, uint16_t* out)
 
 
 
-void
+unsigned char
 ili9341_drawchar_size(uint8_t ch, int x, int y, uint16_t fg, uint16_t bg, uint8_t size)
 {
   uint16_t *buf = spi_buffer;
   uint8_t bits;
-  int c, r;
+  int cline, ccol;
 
-  ch = x5x7_map_char_table(ch);
+  ch = x8x8_map_char_table(ch);
   
-  for(c = 0; c < 7*size; c++) 
+  for(cline = 0; cline < 8*size; cline++) 
   {
-    bits = x5x7_bits[(ch * 7) + (c / size)];
-    for (r = 0; r < 5*size; r++) 
+    bits = x8x8_bits[ch][cline/size];
+    for (ccol = 0; ccol < x8x8_len[ch]*size; ccol++) 
     {
       *buf++ = (0x80 & bits) ? fg : bg;
-      if (r % size == (size-1)) 
+      if (ccol % size == (size-1)) 
       {
           bits <<= 1;
       }
     }
   }
-  ili9341_bulk(x, y, 5*size, 7*size);
+  ili9341_bulk(x, y, x8x8_len[ch]*size, 8*size);
+  
+  return x8x8_len[ch]*size;
 }
 
 
@@ -365,9 +367,12 @@ ili9341_drawchar_size(uint8_t ch, int x, int y, uint16_t fg, uint16_t bg, uint8_
 void
 ili9341_drawstring_size(const char *str, int x, int y, uint16_t fg, uint16_t bg, uint8_t size)
 {
-  while (*str) {
-    ili9341_drawchar_size(*str, x, y, fg, bg, size);
-    x += 5 * size;
+  unsigned char clength = 0;
+ 
+  while (*str) 
+  {
+    clength = ili9341_drawchar_size(*str, x, y, fg, bg, size);
+    x += clength;
     str++;
   }
 }

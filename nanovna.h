@@ -150,7 +150,6 @@ extern int area_height;
 
 // font
 
-extern const uint8_t x5x7_bits[];
 extern const uint8_t x8x8_bits[][8];
 extern const uint8_t x8x8_len[];
 extern const uint32_t numfont20x24[][24];
@@ -164,7 +163,6 @@ extern const uint32_t numfont20x24[][24];
 #define S_LARROW "\003"
 #define S_RARROW "\004"
 
-extern uint8_t x5x7_map_char_table(uint8_t ch);
 extern uint8_t x8x8_map_char_table(uint8_t ch);
 
 
@@ -287,7 +285,7 @@ void ili9341_init(void);
 void ili9341_test(int mode);
 void ili9341_bulk(int x, int y, int w, int h);
 void ili9341_fill(int x, int y, int w, int h, int color);
-void ili9341_drawchar_size(uint8_t ch, int x, int y, uint16_t fg, uint16_t bg, uint8_t size);
+unsigned char ili9341_drawchar_size(uint8_t ch, int x, int y, uint16_t fg, uint16_t bg, uint8_t size);
 void ili9341_drawstring_size(const char *str, int x, int y, uint16_t fg, uint16_t bg, uint8_t size);
 unsigned char ili9341_drawchar_8x8(uint8_t ch, int x, int y, uint16_t fg, uint16_t bg);
 void ili9341_drawstring_8x8(const char *str, int x, int y, uint16_t fg, uint16_t bg);

@@ -1022,24 +1022,31 @@ draw_marker(int w, int h, int x, int y, int c, int ch)
 {
   int i, j;
 
-  ch = x5x7_map_char_table(ch);
+  ch = x8x8_map_char_table(ch);
 
-  for (j = 10; j >= 0; j--) 
+  for ( j = 12; j >= 0; j-- )
   {
     int j0 = j / 2;
-    for (i = -j0; i <= j0; i++) 
+    for ( i = -j0; i <= j0; i++ )
     {
       int x0 = x + i;
       int y0 = y - j;
       int cc = c;
-      if ( j <= 9 && j > 2 && i >= -1 && i <= 3 ) 
+      
+      if ( (4 < j) && (j <= 11) && (-4 <= i) && (i <= 3) )
       {
-        uint8_t bits = x5x7_bits[(ch * 7) + (9-j)];
-        if ( bits & (0x80>>(i+1)) )
+        uint8_t bits = x8x8_bits[ch][11-j];
+        
+        if ( bits & (0x80>>(i+3)) )
+        {
           cc = 0;
+        }
       }
+      
       if (y0 >= 0 && y0 < h && x0 >= 0 && x0 < w)
+      {
         spi_buffer[y0*w+x0] = cc;
+      }
     }
   }
 }
@@ -1365,6 +1372,7 @@ request_to_draw_cells_behind_numeric_input(void)
 
 
 
+#if 0
 void
 cell_drawchar_5x7(int w, int h, uint8_t ch, int x, int y, uint16_t fg, int invert)
 {
@@ -1395,32 +1403,7 @@ cell_drawchar_5x7(int w, int h, uint8_t ch, int x, int y, uint16_t fg, int inver
     }
   }
 }
-
-
-
-void
-cell_drawstring_5x7(int w, int h, char *str, int x, int y, uint16_t fg)
-{
-  while (*str) {
-    cell_drawchar_5x7(w, h, *str, x, y, fg, FALSE);
-    x += 5;
-    str++;
-  }
-}
-
-
-
-void
-cell_drawstring_invert_5x7(int w, int h, char *str, int x, int y, uint16_t fg, int invert)
-{
-  while (*str) 
-  {
-    cell_drawchar_5x7(w, h, *str, x, y, fg, invert);
-    x += 5;
-    str++;
-  }
-}
-
+#endif
 
 
 uint16_t

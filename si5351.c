@@ -18,6 +18,7 @@
  * Boston, MA 02110-1301, USA.
  */
 #include "hal.h"
+#include "nanovna.h"
 #include "si5351.h"
 
 #define SI5351_I2C_ADDR   	(0x60<<1)
@@ -335,10 +336,10 @@ int si5351_set_frequency_with_offset(int freq, int offset, uint8_t drive_strengt
   int delay = 3;
   uint32_t ofreq = freq + offset;
   uint32_t rdiv = SI5351_R_DIV_1;
-  if (freq > 900000000) {
+  if (freq >= config.harmonic_freq_threshold * 3) {
     freq /= 5;
     ofreq /= 7;
-  } else if (freq > 300000000) {
+  } else if (freq >= config.harmonic_freq_threshold) {
     freq /= 3;
     ofreq /= 5;
   }

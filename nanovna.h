@@ -71,7 +71,7 @@ enum {
   ST_START, ST_STOP, ST_CENTER, ST_SPAN, ST_CW
 };
 
-void set_sweep_frequency(int type, float frequency);
+void set_sweep_frequency(int type, uint32_t frequency);
 uint32_t get_sweep_frequency(int type);
 
 float my_atof(const char *p);
@@ -195,6 +195,7 @@ typedef struct {
   uint16_t trace_color[TRACES_MAX];
   int16_t touch_cal[4];
   int8_t default_loadcal;
+  int32_t harmonic_freq_threshold;
   int32_t checksum;
 } config_t;
 

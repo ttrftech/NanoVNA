@@ -827,16 +827,15 @@ freq_mode_centerspan(void)
 #define STOP_MAX 1500000000
 
 void
-set_sweep_frequency(int type, float frequency)
+set_sweep_frequency(int type, uint32_t freq)
 {
-  int32_t freq = frequency;
   int cal_applied = cal_status & CALSTAT_APPLY;
   switch (type) {
   case ST_START:
     freq_mode_startstop();
-    if (frequency < START_MIN)
+    if (freq < START_MIN)
       freq = START_MIN;
-    if (frequency > STOP_MAX)
+    if (freq > STOP_MAX)
       freq = STOP_MAX;
     if (frequency0 != freq) {
       ensure_edit_config();
@@ -849,9 +848,9 @@ set_sweep_frequency(int type, float frequency)
     break;
   case ST_STOP:
     freq_mode_startstop();
-    if (frequency > STOP_MAX)
+    if (freq > STOP_MAX)
       freq = STOP_MAX;
-    if (frequency < START_MIN)
+    if (freq < START_MIN)
       freq = START_MIN;
     if (frequency1 != freq) {
       ensure_edit_config();
@@ -903,7 +902,7 @@ set_sweep_frequency(int type, float frequency)
     freq_mode_centerspan();
     if (frequency0 != freq || frequency1 != 0) {
       ensure_edit_config();
-      frequency0 = frequency;
+      frequency0 = freq;
       frequency1 = 0;
       update_frequencies();
     }

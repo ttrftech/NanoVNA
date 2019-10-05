@@ -257,36 +257,35 @@ static void cmd_reset(BaseSequentialStream *chp, int argc, char *argv[])
       ;
 }
 
+const int8_t gain_table[] = {
+  0,  // 0 ~ 300MHz
+  40, // 300 ~ 600MHz
+  50, // 600 ~ 900MHz
+  75, // 900 ~ 1200MHz
+  85, // 1200 ~ 1400MHz
+  95  // 1400MHz ~
+};
+
+static int
+adjust_gain(int newfreq)
+{
+  int delay = 0;
+  int new_order = newfreq / FREQ_HARMONICS;
+  int old_order = frequency / FREQ_HARMONICS;
+  if (new_order != old_order) {
+    tlv320aic3204_set_gain(gain_table[new_order], gain_table[new_order]);
+    delay += 10;
+  }
+  return delay;
+}
+
 int set_frequency(int freq)
 {
     int delay = 0;
     if (frequency == freq)
       return delay;
 
-    if (freq > 1400000000 && frequency <= 1400000000) {
-      tlv320aic3204_set_gain(95, 95);
-      delay += 10;
-    } else
-    if (freq > 1200000000 && frequency <= 1200000000) {
-      tlv320aic3204_set_gain(85, 85);
-      delay += 10;
-    } else
-    if (freq > 900000000 && frequency <= 900000000) {
-      tlv320aic3204_set_gain(75, 75);
-      delay += 10;
-    } else
-    if (freq > 600000000 && frequency <= 600000000) {
-      tlv320aic3204_set_gain(50, 50);
-      delay += 10;
-    } else
-    if (freq > FREQ_HARMONICS && frequency <= FREQ_HARMONICS) {
-      tlv320aic3204_set_gain(40, 40);
-      delay += 10;
-    } else
-    if (freq <= FREQ_HARMONICS && frequency > FREQ_HARMONICS) {
-      tlv320aic3204_set_gain(0, 0);
-      delay += 10;
-    }
+    delay += adjust_gain(freq);
 
     int8_t ds = drive_strength;
     if (ds == DRIVE_STRENGTH_AUTO) {

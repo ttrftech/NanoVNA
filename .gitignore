@@ -12,6 +12,7 @@ TAGS
 iar/Debug
 iar/Release
 iar/settings
+iar/githash.h
 *.dep
 *.ewd
 *.ewt

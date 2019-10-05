@@ -217,7 +217,6 @@
                     <name>CCDefines</name>
                     <state>ARM_MATH_CM0</state>
                     <state>M_PI=3.14159265358979323846</state>
-                    <state>VERSION="test"</state>
                 </option>
                 <option>
                     <name>CCPreprocFile</name>
@@ -334,7 +333,7 @@
                 </option>
                 <option>
                     <name>PreInclude</name>
-                    <state></state>
+                    <state>$PROJ_DIR$\githash.h</state>
                 </option>
                 <option>
                     <name>CompilerMisraOverride</name>
@@ -1264,7 +1263,6 @@
                     <state>NDEBUG</state>
                     <state>ARM_MATH_CM0</state>
                     <state>M_PI=3.14159265358979323846</state>
-                    <state>VERSION="test"</state>
                 </option>
                 <option>
                     <name>CCPreprocFile</name>
@@ -1381,7 +1379,7 @@
                 </option>
                 <option>
                     <name>PreInclude</name>
-                    <state></state>
+                    <state>$PROJ_DIR$\githash.h</state>
                 </option>
                 <option>
                     <name>CompilerMisraOverride</name>
@@ -1437,7 +1435,7 @@
                 <option>
                     <name>CCOptStrategy</name>
                     <version>0</version>
-                    <state>0</state>
+                    <state>2</state>
                 </option>
                 <option>
                     <name>CCOptLevelSlave</name>
@@ -1500,7 +1498,7 @@
                 <option>
                     <name>CCOptStrategySlave</name>
                     <version>0</version>
-                    <state>0</state>
+                    <state>2</state>
                 </option>
                 <option>
                     <name>CCGuardCalls</name>
@@ -2343,6 +2341,9 @@
             </file>
             <file>
                 <name>$PROJ_DIR$\..\fft.h</name>
+            </file>
+            <file>
+                <name>$PROJ_DIR$\githash.h</name>
             </file>
             <file>
                 <name>$PROJ_DIR$\..\halconf.h</name>

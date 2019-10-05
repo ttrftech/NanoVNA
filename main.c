@@ -66,6 +66,10 @@ static THD_FUNCTION(Thread1, arg)
     chRegSetThreadName("sweep");
 
     while (1) {
+      // disable led and wait for voltage stabilization
+      palClearPad(GPIOC, GPIOC_LED);
+      chThdSleepMilliseconds(10);
+      
       bool completed = false;
       if (sweep_enabled || sweep_once) {
         chMtxLock(&mutex);
@@ -75,6 +79,9 @@ static THD_FUNCTION(Thread1, arg)
       } else {
         __WFI();
       }
+
+      // enable led
+      palSetPad(GPIOC, GPIOC_LED);
 
       chMtxLock(&mutex);
       ui_process();
@@ -655,9 +662,6 @@ bool sweep(bool break_on_operation)
     tlv320aic3204_select_in3(); // CH0:REFLECT
     wait_dsp(delay);
 
-    // blink LED while scanning
-    palClearPad(GPIOC, GPIOC_LED);
-
     /* calculate reflection coeficient */
     (*sample_func)(measured[0][i]);
 
@@ -666,9 +670,6 @@ bool sweep(bool break_on_operation)
 
     /* calculate transmission coeficient */
     (*sample_func)(measured[1][i]);
-
-    // blink LED while scanning
-    palSetPad(GPIOC, GPIOC_LED);
 
     if (cal_status & CALSTAT_APPLY)
       apply_error_term_at(i);

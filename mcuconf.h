@@ -117,7 +117,8 @@
 #define STM32_I2C_BUSY_TIMEOUT              50
 #define STM32_I2C_I2C1_IRQ_PRIORITY         3
 #define STM32_I2C_I2C2_IRQ_PRIORITY         3
-#define STM32_I2C_USE_DMA                   TRUE
+// note: for unknown reason I2C read operation doesn't works with USE_DMA=TRUE
+#define STM32_I2C_USE_DMA                   FALSE
 #define STM32_I2C_I2C1_DMA_PRIORITY         1
 #define STM32_I2C_I2C2_DMA_PRIORITY         1
 #define STM32_I2C_I2C1_RX_DMA_STREAM        STM32_DMA_STREAM_ID(1, 3)

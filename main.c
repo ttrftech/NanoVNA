@@ -43,8 +43,8 @@ bool sweep(bool break_on_operation);
 static MUTEX_DECL(mutex);
 
 #define DRIVE_STRENGTH_AUTO (-1)
-//#define FREQ_HARMONICS 300000000
 #define FREQ_HARMONICS (config.harmonic_freq_threshold)
+#define IS_HARMONIC_MODE(f) ((f) > FREQ_HARMONICS)
 
 int32_t frequency_offset = 5000;
 int32_t frequency = 10000000;
@@ -1292,6 +1292,13 @@ cal_interpolate(int s)
         // found f between freqs at j and j+1
         float k1 = (float)(f - src->_frequencies[j])
                         / (src->_frequencies[j+1] - src->_frequencies[j]);
+        
+        // avoid glitch between freqs in different harmonics mode
+        if (IS_HARMONIC_MODE(src->_frequencies[j]) != IS_HARMONIC_MODE(src->_frequencies[j+1])) {
+          // assume f[j] < f[j+1]
+          k1 = IS_HARMONIC_MODE(f) ? 1.0 : 0.0;
+        }
+
         float k0 = 1.0 - k1;
         for (eterm = 0; eterm < 5; eterm++) {
           cal_data[eterm][i][0] = src->_cal_data[eterm][j][0] * k0 + src->_cal_data[eterm][j+1][0] * k1;

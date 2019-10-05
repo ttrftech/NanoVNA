@@ -269,23 +269,23 @@ static void cmd_reset(BaseSequentialStream *chp, int argc, char *argv[])
       ;
 }
 
-const int8_t gain_table[] = {
-  0,  // 0 ~ 300MHz
-  40, // 300 ~ 600MHz
-  50, // 600 ~ 900MHz
-  75, // 900 ~ 1200MHz
-  85, // 1200 ~ 1400MHz
-  95  // 1400MHz ~
+// {gainLeft, gainRight}
+const int8_t gain_table[][2] = {
+    {  0,  0 },     // 1st: 0 ~ 300MHz
+    { 43, 40 },     // 2nd: 300 ~ 600MHz
+    { 53, 50 },     // 3rd: 600 ~ 900MHz
+    { 75, 72 },     // 4th: 900 ~ 1200MHz
+    { 83, 80 },     // 5th: 1200 ~ 1400MHz
+    { 93, 90 },     // 6th: 1400MHz ~
 };
 
-static int
-adjust_gain(int newfreq)
+static int adjust_gain(int newfreq)
 {
   int delay = 0;
   int new_order = newfreq / FREQ_HARMONICS;
   int old_order = frequency / FREQ_HARMONICS;
   if (new_order != old_order) {
-    tlv320aic3204_set_gain(gain_table[new_order], gain_table[new_order]);
+    tlv320aic3204_set_gain(gain_table[new_order][0], gain_table[new_order][1]);
     delay += 10;
   }
   return delay;

@@ -463,13 +463,13 @@ void i2s_end_callback(I2SDriver *i2sp, size_t offset, size_t n)
 }
 
 static const I2SConfig i2sconfig = {
-  NULL, // TX Buffer
-  rx_buffer, // RX Buffer
-  AUDIO_BUFFER_LEN * 2,
-  NULL, // tx callback
-  i2s_end_callback, // rx callback
-  0, // i2scfgr
-  2 // i2spr
+  .tx_buffer    = NULL,                 // TX Buffer
+  .rx_buffer    = rx_buffer,            // RX Buffer
+  .size         = AUDIO_BUFFER_LEN * 2,
+  .tx_end_cb    = NULL,                 // tx callback
+  .rx_end_cb    = i2s_end_callback,     // rx callback
+  .i2scfgr      = 0,                    // i2scfgr
+  .i2spr        = 2                     // i2spr
 };
 
 static void cmd_data(BaseSequentialStream *chp, int argc, char *argv[])
@@ -1992,14 +1992,14 @@ static const ShellCommand commands[] =
 
 static const ShellConfig shell_cfg1 =
 {
-    (BaseSequentialStream *)&SDU1,
-    commands
+    .sc_channel  = (BaseSequentialStream *)&SDU1,
+    .sc_commands = commands
 };
 
 static const I2CConfig i2ccfg = {
-  0x00300506, //voodoo magic 400kHz @ HSI 8MHz
-  0,
-  0
+  .timingr  = 0x00300506, //voodoo magic 400kHz @ HSI 8MHz
+  .cr1      = 0,
+  .cr2      = 0
 };
 
 static DACConfig dac1cfg1 = {

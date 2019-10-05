@@ -34,9 +34,11 @@
 
 #define ENABLED_DUMP
 
-static void apply_error_term(void);
 static void apply_error_term_at(int i);
+static void apply_edelay_at(int i);
 static void cal_interpolate(int s);
+void update_frequencies(void);
+void set_frequencies(uint32_t start, uint32_t stop, int16_t points);
 
 bool sweep(bool break_on_operation);
 
@@ -47,7 +49,7 @@ static MUTEX_DECL(mutex);
 #define IS_HARMONIC_MODE(f) ((f) > FREQ_HARMONICS)
 
 int32_t frequency_offset = 5000;
-int32_t frequency = 10000000;
+uint32_t frequency = 10000000;
 int8_t drive_strength = DRIVE_STRENGTH_AUTO;
 int8_t sweep_enabled = TRUE;
 int8_t sweep_once = FALSE;
@@ -146,7 +148,7 @@ transform_domain(void)
   // and calculate ifft for time domain
   float* tmp = (float*)spi_buffer;
 
-  uint8_t window_size, offset;
+  uint8_t window_size = 101, offset = 0;
   uint8_t is_lowpass = FALSE;
   switch (domain_mode & TD_FUNC) {
       case TD_FUNC_BANDPASS:
@@ -280,7 +282,7 @@ adjust_gain(int newfreq)
   return delay;
 }
 
-int set_frequency(int freq)
+int set_frequency(uint32_t freq)
 {
     int delay = 0;
     if (frequency == freq)
@@ -827,7 +829,7 @@ freq_mode_centerspan(void)
 #define STOP_MAX 1500000000
 
 void
-set_sweep_frequency(int type, uint32_t freq)
+set_sweep_frequency(int type, int32_t freq)
 {
   int cal_applied = cal_status & CALSTAT_APPLY;
   switch (type) {
@@ -1110,6 +1112,7 @@ eterm_calc_et(void)
   cal_status |= CALSTAT_ET;
 }
 
+#if 0
 void apply_error_term(void)
 {
   int i;
@@ -1141,6 +1144,7 @@ void apply_error_term(void)
     measured[1][i][1] = s21ai;
   }
 }
+#endif
 
 void apply_error_term_at(int i)
 {
@@ -1171,7 +1175,7 @@ void apply_error_term_at(int i)
     measured[1][i][1] = s21ai;
 }
 
-void apply_edelay_at(int i)
+static void apply_edelay_at(int i)
 {
   float w = 2 * M_PI * electrical_delay * frequencies[i] * 1E-12;
   float s = sin(w);
@@ -2127,5 +2131,6 @@ void HardFault_Handler(void)
 
 void hard_fault_handler_c(uint32_t* sp)
 {
+  (void)sp;
   while (true) {}
 }

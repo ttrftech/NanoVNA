@@ -195,6 +195,7 @@ typedef struct {
   uint16_t trace_color[TRACES_MAX];
   int16_t touch_cal[4];
   int8_t default_loadcal;
+  int32_t harmonic_freq_threshold;
   int32_t checksum;
 } config_t;
 

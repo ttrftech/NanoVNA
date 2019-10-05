@@ -43,7 +43,8 @@ bool sweep(bool break_on_operation);
 static MUTEX_DECL(mutex);
 
 #define DRIVE_STRENGTH_AUTO (-1)
-#define FREQ_HARMONICS 300000000
+//#define FREQ_HARMONICS 300000000
+#define FREQ_HARMONICS (config.harmonic_freq_threshold)
 
 int32_t frequency_offset = 5000;
 int32_t frequency = 10000000;
@@ -354,6 +355,18 @@ static void cmd_dac(BaseSequentialStream *chp, int argc, char *argv[])
     dacPutChannelX(&DACD2, 0, value);
 }
 
+static void cmd_threshold(BaseSequentialStream *chp, int argc, char *argv[])
+{
+    int value;
+    if (argc != 1) {
+        chprintf(chp, "usage: threshold {frequency in harmonic mode}\r\n");
+        chprintf(chp, "current: %d\r\n", config.harmonic_freq_threshold);
+        return;
+    }
+    value = atoi(argv[0]);
+    config.harmonic_freq_threshold = value;
+}
+
 static void cmd_saveconfig(BaseSequentialStream *chp, int argc, char *argv[])
 {
   (void)argc;
@@ -590,16 +603,16 @@ float cal_data[5][101][2];
 #endif
 
 config_t config = {
-  /* magic */   CONFIG_MAGIC,
-  /* dac_value */ 1922,
-  /* grid_color */ 0x1084,
-  /* menu_normal_color */ 0xffff,
-  /* menu_active_color */ 0x7777,
-  /* trace_colors[4] */ { RGB565(0,255,255), RGB565(255,0,40), RGB565(0,0,255), RGB565(50,255,0) },
-  ///* touch_cal[4] */ { 620, 600, 160, 190 },
-  /* touch_cal[4] */ { 693, 605, 124, 171 },
-  /* default_loadcal */    0,
-  /* checksum */           0
+  .magic =             CONFIG_MAGIC,
+  .dac_value =         1922,
+  .grid_color =        0x1084,
+  .menu_normal_color = 0xffff,
+  .menu_active_color = 0x7777,
+  .trace_color =       { RGB565(0,255,255), RGB565(255,0,40), RGB565(0,0,255), RGB565(50,255,0) },
+  .touch_cal =         { 693, 605, 124, 171 },  //{ 620, 600, 160, 190 },
+  .default_loadcal =   0,
+  .harmonic_freq_threshold = 300000000,
+  .checksum =          0
 };
 
 properties_t current_props = {
@@ -1981,6 +1994,7 @@ static const ShellCommand commands[] =
     { "capture", cmd_capture },
     { "vbat", cmd_vbat },
     { "transform", cmd_transform },
+    { "threshold", cmd_threshold },
     { NULL, NULL }
 };
 

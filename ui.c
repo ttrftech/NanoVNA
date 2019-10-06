@@ -20,6 +20,7 @@
 
 #include "ch.h"
 #include "hal.h"
+#include "chprintf.h"
 #include "nanovna.h"
 #include "chprintf.h"
 #include <stdlib.h>

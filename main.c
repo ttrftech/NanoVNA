@@ -37,9 +37,6 @@
 static void apply_error_term_at(int i);
 static void apply_edelay_at(int i);
 static void cal_interpolate(int s);
-void update_frequencies(void);
-void set_frequencies(uint32_t start, uint32_t stop, int16_t points);
-
 static void set_frequencies(uint32_t start, uint32_t stop, int16_t points);
 static void update_frequencies(void);
 
@@ -608,17 +605,17 @@ float cal_data[5][101][2];
 #endif
 
 config_t config = {
-  /* magic */   CONFIG_MAGIC,
-  /* dac_value */ 1922,
-  /* grid_color */ 0x1084,
-  /* menu_normal_color */ 0xffff,
-  /* menu_active_color */ 0x7777,
-  /* trace_color[4] */ { RGB_565(255,255,0), RGB_565(0,40,255), RGB_565(0,255,0), RGB_565(255,200,20) },
-  /* trace_colors[4] */ // { RGB565(0,255,255), RGB565(255,0,40), RGB565(0,0,255), RGB565(50,255,0) },
-  /* touch_cal[4] */ { 411, 592, 151, 189 },
-  /* default_loadcal */    0,
-  /* harmonic_freq_threshold */ 300000000,
-  /* checksum */           0
+  .magic =             CONFIG_MAGIC,
+  .dac_value =         1922,
+  .grid_color =        0x1084,
+  .menu_normal_color = 0xffff,
+  .menu_active_color = 0x7777,
+  /* .trace_color =       { RGB565(0,255,255), RGB565(255,0,40), RGB565(0,0,255), RGB565(50,255,0) }, */
+  .trace_color = { RGB_565(255,255,0), RGB_565(0,40,255), RGB_565(0,255,0), RGB_565(255,200,20) },
+  .touch_cal =         { 411, 592, 151, 189 },  //{ 620, 600, 160, 190 },
+  .default_loadcal =   0,
+  .harmonic_freq_threshold = 300000000,
+  .checksum =          0
 };
 
 properties_t current_props = {

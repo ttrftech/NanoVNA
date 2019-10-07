@@ -793,6 +793,8 @@ update_frequencies(void)
   }
 
   set_frequencies(start, stop, sweep_points);
+  operation_requested = OP_FREQCHANGE;
+  
   update_marker_index();
   
   // set grid layout

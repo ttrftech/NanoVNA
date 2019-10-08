@@ -65,13 +65,15 @@ static THD_FUNCTION(Thread1, arg)
     chRegSetThreadName("sweep");
 
     while (1) {
-      // disable led and wait for voltage stabilization
-      palClearPad(GPIOC, GPIOC_LED);
-      chThdSleepMilliseconds(10);
       
       bool completed = false;
       if (sweep_enabled || sweep_once) {
         chMtxLock(&mutex);
+
+        // disable led and wait for voltage stabilization
+        palClearPad(GPIOC, GPIOC_LED);
+        chThdSleepMilliseconds(10);
+
         completed = sweep(true);
         sweep_once = FALSE;
         chMtxUnlock(&mutex);
@@ -79,10 +81,11 @@ static THD_FUNCTION(Thread1, arg)
         __WFI();
       }
 
+      chMtxLock(&mutex);
+
       // enable led
       palSetPad(GPIOC, GPIOC_LED);
 
-      chMtxLock(&mutex);
       ui_process();
 
       if (sweep_enabled) {

@@ -702,6 +702,103 @@ bool sweep(bool break_on_operation)
   return true;
 }
 
+//#define __SCANRAW_CMD__
+
+#ifdef __SCANRAW_CMD__
+#include <stdio.h>
+
+static void measure_gamma_avg(int channel, uint32_t freq, uint32_t avg_count, float* gamma) {
+    int delay = set_frequency(freq);
+    delay = delay < 3 ? 3 : delay;
+    delay = delay > 8 ? 8 : delay;
+    
+    if (channel == 0)
+        tlv320aic3204_select_in3(); // CH0:REFLECT
+    else
+        tlv320aic3204_select_in1(); // CH1:TRANSMISSION
+    wait_dsp(delay);
+    
+    gamma[0] = 0.0;
+    gamma[1] = 0.0;
+    float gamma_acc[2] = { 0, 0 };
+    for (int j = 0; j < avg_count; j++) {
+            
+        wait_dsp(1);
+        /* calculate reflection/transmission coeficient */
+        (*sample_func)(gamma);
+
+        if (avg_count == 1) break;
+        gamma_acc[0] += gamma[0];
+        gamma_acc[1] += gamma[1];
+    }
+    if (avg_count > 1) {
+        gamma[0] = gamma_acc[0] / avg_count;
+        gamma[1] = gamma_acc[1] / avg_count;
+    }
+}
+
+static void cmd_scanraw(BaseSequentialStream *chp, int argc, char *argv[])
+{
+    int32_t chan, freq, step, count, avg_count;
+    if (argc != 4 && argc != 5) {
+        chprintf(chp, "usage: scanraw {channel(0|1)} {start(Hz)} {stEp(Hz)} {count} [average]\r\n");
+        return;
+    }
+    chan = atoi(argv[0]);
+    freq = atoi(argv[1]);
+    step = atoi(argv[2]);
+    count = atoi(argv[3]);
+    avg_count = 1;
+    if (argc == 5)
+        avg_count = atoi(argv[4]);
+    if (chan < 0 || chan > 1) {
+        chprintf(chp, "invalid channel\r\n");
+        return;
+    }
+    if (freq < 0 || step == 0 || (freq+step*count) < 0) {
+        chprintf(chp, "frequency range is invalid\r\n");
+        return;
+    }
+    if (avg_count < 1 || avg_count > 1000) {
+        chprintf(chp, "average out of range [1..1000]\r\n");
+        return;
+    }
+
+    chMtxLock(&mutex);
+    
+    // disable led and wait for voltage stabilization
+    palClearPad(GPIOC, GPIOC_LED);
+    chThdSleepMilliseconds(10);
+
+    for (int i = 0; i < count; i++, freq += step) {
+
+        float gamma[2];
+        measure_gamma_avg(chan, freq, avg_count, gamma);
+
+        // print floating point losslessly: float="%.9g", double="%.17g"
+        //
+        // [chprintf doesn't support proper float formatting]
+        //chprintf(chp, "%d\t%.9g\t%.9g\r\n", 
+        //    freq, gamma[0], gamma[1]);
+        
+        char tmpbuf[20];
+        int leng;
+        leng = snprintf(tmpbuf, sizeof(tmpbuf), "%.9g", gamma[0]);
+        for (int j=0; j < leng; j++) {
+            streamPut(chp, (uint8_t)tmpbuf[j]); 
+        }
+        streamPut(chp, (uint8_t)'\t'); 
+        leng = snprintf(tmpbuf, sizeof(tmpbuf), "%.9g", gamma[1]);
+        for (int j=0; j < leng; j++) {
+            streamPut(chp, (uint8_t)tmpbuf[j]); 
+        }
+        streamPut(chp, (uint8_t)'\r'); 
+        streamPut(chp, (uint8_t)'\n'); 
+    }
+    chMtxUnlock(&mutex);
+}
+#endif //__SCANRAW_CMD__
+
 static void cmd_scan(BaseSequentialStream *chp, int argc, char *argv[])
 {
   int32_t start, stop;
@@ -1974,7 +2071,11 @@ static void cmd_vbat(BaseSequentialStream *chp, int argc, char *argv[])
   chprintf(chp, "%d mV\r\n", vbat);
 }
 
+#ifdef __SCANRAW_CMD__
+static THD_WORKING_AREA(waThread2, /* cmd_* max stack size + alpha */502 + 16);
+#else
 static THD_WORKING_AREA(waThread2, /* cmd_* max stack size + alpha */442);
+#endif // __SCANRAW_CMD__
 
 static const ShellCommand commands[] =
 {
@@ -1998,6 +2099,9 @@ static const ShellCommand commands[] =
     { "sample", cmd_sample },
     //{ "gamma", cmd_gamma },
     { "scan", cmd_scan },
+#ifdef __SCANRAW_CMD__
+    { "scanraw", cmd_scanraw },
+#endif // __SCANRAW_CMD__
     { "sweep", cmd_sweep },
     { "test", cmd_test },
     { "touchcal", cmd_touchcal },

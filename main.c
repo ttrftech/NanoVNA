@@ -830,7 +830,7 @@ freq_mode_centerspan(void)
 }
 
 
-#define START_MIN 50000
+#define START_MIN 10000
 //#define STOP_MAX 900000000
 #define STOP_MAX 1500000000
 

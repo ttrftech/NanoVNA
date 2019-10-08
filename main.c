@@ -286,12 +286,7 @@ adjust_gain(int newfreq)
 
 int set_frequency(uint32_t freq)
 {
-    int delay = 0;
-    if (frequency == freq)
-      return delay;
-
-    delay += adjust_gain(freq);
-
+    int delay = adjust_gain(freq);
     int8_t ds = drive_strength;
     if (ds == DRIVE_STRENGTH_AUTO) {
       ds = freq > FREQ_HARMONICS ? SI5351_CLK_DRIVE_STRENGTH_8MA : SI5351_CLK_DRIVE_STRENGTH_2MA;

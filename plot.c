@@ -1422,6 +1422,23 @@ cell_draw_marker_info(int m, int n, int w, int h)
     j++;
   }    
 
+  if (electrical_delay != 0) {
+    // draw electrical delay
+    int xpos = 21;
+    int ypos = 1 + (j/2)*7;
+    xpos -= m * CELLWIDTH -CELLOFFSETX;
+    ypos -= n * CELLHEIGHT;
+    chsnprintf(buf, sizeof buf, "Edelay");
+    cell_drawstring_5x7(w, h, buf, xpos, ypos, 0xffff);
+    xpos += 7 * 5;
+    int n = string_value_with_prefix(buf, sizeof buf, electrical_delay * 1e-12, 's');
+    cell_drawstring_5x7(w, h, buf, xpos, ypos, 0xffff);
+    xpos += n * 5 + 5;
+    float light_speed_ps = 299792458e-12; //(m/ps)
+    string_value_with_prefix(buf, sizeof buf, electrical_delay * light_speed_ps * velocity_factor / 100.0, 'm');
+    cell_drawstring_5x7(w, h, buf, xpos, ypos, 0xffff);
+  }
+
   // draw marker frequency
   int xpos = 192;
   int ypos = 1 + (j/2)*7;

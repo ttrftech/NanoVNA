@@ -68,7 +68,7 @@ enum {
 };
 
 enum {
-  KM_START, KM_STOP, KM_CENTER, KM_SPAN, KM_CW, KM_SCALE, KM_REFPOS, KM_EDELAY, KM_VELOCITY_FACTOR
+  KM_START, KM_STOP, KM_CENTER, KM_SPAN, KM_CW, KM_SCALE, KM_REFPOS, KM_EDELAY, KM_VELOCITY_FACTOR, KM_SCALEDELAY
 };
 
 uint8_t ui_mode = UI_NORMAL;
@@ -742,12 +742,16 @@ static void
 menu_scale_cb(int item)
 {
   int status;
+  int km = KM_SCALE + item;
+  if (km == KM_SCALE && trace[uistat.current_trace].type == TRC_DELAY) {
+    km = KM_SCALEDELAY;
+  }
   status = btn_wait_release();
   if (status & EVT_BUTTON_DOWN_LONG) {
-    ui_mode_numeric(KM_SCALE + item);
+    ui_mode_numeric(km);
     ui_process_numeric();
   } else {
-    ui_mode_keypad(KM_SCALE + item);
+    ui_mode_keypad(km);
     ui_process_keypad();
   }
 }
@@ -1221,13 +1225,14 @@ const keypads_t * const keypads_mode_tbl[] = {
   keypads_freq, // span
   keypads_freq, // cw freq
   keypads_scale, // scale
-  keypads_scale, // respos
+  keypads_scale, // refpos
   keypads_time, // electrical delay
-  keypads_scale // velocity factor
+  keypads_scale, // velocity factor
+  keypads_time // scale of delay
 };
 
 const char * const keypad_mode_label[] = {
-  "START", "STOP", "CENTER", "SPAN", "CW FREQ", "SCALE", "REFPOS", "EDELAY", "VELOCITY%"
+  "START", "STOP", "CENTER", "SPAN", "CW FREQ", "SCALE", "REFPOS", "EDELAY", "VELOCITY%", "DELAY"
 };
 
 void
@@ -1487,6 +1492,9 @@ fetch_numeric_target(void)
   case KM_VELOCITY_FACTOR:
     uistat.value = velocity_factor;
     break;
+  case KM_SCALEDELAY:
+    uistat.value = get_trace_scale(uistat.current_trace) * 1e12;
+    break;
   }
   
   {
@@ -1705,6 +1713,9 @@ keypad_click(int key)
       break;
     case KM_VELOCITY_FACTOR:
       velocity_factor = value;
+      break;
+    case KM_SCALEDELAY:
+      set_trace_scale(uistat.current_trace, value * 1e-12); // pico second
       break;
     }
 

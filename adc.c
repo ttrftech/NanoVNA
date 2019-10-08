@@ -91,7 +91,7 @@ int16_t adc_vbat_read(ADC_TypeDef *adc)
 	vbat = adc_single_read(adc, ADC_CHSELR_CHSEL18);
 	ADC->CCR &= ~(ADC_CCR_VREFEN | ADC_CCR_VBATEN);
 
-	uint16_t vbat_raw = (ADC_FULL_SCALE * VREFINT_CAL * vbat * 2 / (vrefint * ((1<<12)-1)));
+	uint32_t vbat_raw = (uint32_t)(ADC_FULL_SCALE * VREFINT_CAL * vbat * 2 / (vrefint * ((1<<12)-1)));
 	if (vbat_raw < 100) {
 		// maybe D2 is not installed
 		return -1;

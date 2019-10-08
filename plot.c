@@ -853,8 +853,9 @@ void plot_into_index(float measured[2][101][2])
       if (!trace[t].enabled)
         continue;
       int n = trace[t].channel;
-      trace_index[t][i] = trace_into_index(x, t, i,
-                                           measured[n], frequencies, sweep_points);
+      trace_index[t][i] = trace_into_index(
+        x, t, i,
+        measured[n], frequencies, sweep_points);
     }
   }
 #if 0
@@ -1429,8 +1430,9 @@ cell_draw_marker_info(int m, int n, int w, int h)
     trace_get_info(t, buf, sizeof buf);
     cell_drawstring_5x7(w, h, buf, xpos, ypos, config.trace_color[t]);
     xpos += 64;
-    trace_get_value_string(t, buf, sizeof buf,
-                           idx, measured[trace[t].channel], frequencies, 101);
+    trace_get_value_string(
+        t, buf, sizeof buf,
+        idx, measured[trace[t].channel], frequencies, sweep_points);
     cell_drawstring_5x7(w, h, buf, xpos, ypos, config.trace_color[t]);
     j++;
   }    

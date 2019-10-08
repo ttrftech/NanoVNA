@@ -1054,7 +1054,6 @@ const menuitem_t menu_top[] = {
   { MT_SUBMENU, "CAL", menu_cal },
   { MT_SUBMENU, "RECALL", menu_recall },
   { MT_SUBMENU, "CONFIG", menu_config },
-  { MT_CLOSE, "CLOSE", NULL },
   { MT_NONE, NULL, NULL } // sentinel
 };
 
@@ -1655,13 +1654,16 @@ ui_process_menu(void)
       menu_invoke(selection);
     } else {
       do {
-        if (status & EVT_UP
-            && menu_stack[menu_current_level][selection+1].type != MT_NONE) {
+        if (status & EVT_UP) {
+          // close menu if next item is sentinel
+          if (menu_stack[menu_current_level][selection+1].type == MT_NONE)
+            goto menuclose;
           selection++;
           draw_menu();
         }
-        if (status & EVT_DOWN
-            && selection > 0) {
+        if (status & EVT_DOWN) {
+          if (selection == 0)
+            goto menuclose;
           selection--;
           draw_menu();
         }
@@ -1669,6 +1671,10 @@ ui_process_menu(void)
       } while (status != 0);
     }
   }
+  return;
+
+menuclose:
+  ui_mode_normal();
 }
 
 static int

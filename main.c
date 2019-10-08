@@ -270,6 +270,8 @@ const int8_t gain_table[] = {
   95  // 1400MHz ~
 };
 
+#define DELAY_GAIN_CHANGE 10
+
 static int
 adjust_gain(int newfreq)
 {
@@ -278,19 +280,14 @@ adjust_gain(int newfreq)
   int old_order = frequency / FREQ_HARMONICS;
   if (new_order != old_order) {
     tlv320aic3204_set_gain(gain_table[new_order], gain_table[new_order]);
-    delay += 10;
+    delay += DELAY_GAIN_CHANGE;
   }
   return delay;
 }
 
 int set_frequency(uint32_t freq)
 {
-    int delay = 0;
-    if (frequency == freq)
-      return delay;
-
-    delay += adjust_gain(freq);
-
+    int delay = adjust_gain(freq);
     int8_t ds = drive_strength;
     if (ds == DRIVE_STRENGTH_AUTO) {
       ds = freq > FREQ_HARMONICS ? SI5351_CLK_DRIVE_STRENGTH_8MA : SI5351_CLK_DRIVE_STRENGTH_2MA;
@@ -656,6 +653,8 @@ ensure_edit_config(void)
   cal_status = 0;
 }
 
+#define DELAY_CHANNEL_CHANGE 1
+
 // main loop for measurement
 bool sweep(bool break_on_operation)
 {
@@ -673,7 +672,7 @@ bool sweep(bool break_on_operation)
     (*sample_func)(measured[0][i]);
 
     tlv320aic3204_select_in1(); // CH1:TRANSMISSION
-    wait_dsp(delay);
+    wait_dsp(delay + DELAY_CHANNEL_CHANGE);
 
     /* calculate transmission coeficient */
     (*sample_func)(measured[1][i]);
@@ -797,6 +796,8 @@ update_frequencies(void)
   }
 
   set_frequencies(start, stop, sweep_points);
+  operation_requested = OP_FREQCHANGE;
+  
   update_marker_index();
   
   // set grid layout
@@ -1440,7 +1441,7 @@ const struct {
 } trace_info[] = {
   { "LMG", 7, 10 },
   { "PHA", 4, 90 },
-  { "DEL", 4, 1 },
+  { "DEL", 4, 1e-9 },
   { "SMI", 0, 1 },
   { "POL", 0, 1 },
   { "LIN", 0, 0.125 },

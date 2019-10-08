@@ -86,6 +86,9 @@ extern int8_t sweep_enabled;
 extern void ui_init(void);
 extern void ui_process(void);
 
+enum { OP_NONE = 0, OP_LEVER, OP_TOUCH, OP_FREQCHANGE };
+extern uint8_t operation_requested;
+
 /*
  * dsp.c
  */

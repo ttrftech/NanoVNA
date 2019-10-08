@@ -33,6 +33,8 @@
 #include <math.h>
 
 #define ENABLED_DUMP
+//#define __SCANRAW_CMD__
+
 
 static void apply_error_term_at(int i);
 static void apply_edelay_at(int i);
@@ -701,8 +703,6 @@ bool sweep(bool break_on_operation)
   transform_domain();
   return true;
 }
-
-//#define __SCANRAW_CMD__
 
 #ifdef __SCANRAW_CMD__
 #include <stdio.h>
@@ -1542,7 +1542,7 @@ const struct {
 } trace_info[] = {
   { "LOGMAG", 7, 10 },
   { "PHASE",  4, 90 },
-  { "GD",     4,  5 },
+  { "DELAY",  4,  1e-9 },
   { "SMITH",  0,  1 },
   { "POLAR",  0,  1 },
   { "LINEAR", 0,  0.125 },

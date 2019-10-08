@@ -439,44 +439,29 @@ float phase(float *v)
   return 2 * atan2f(v[1], v[0]) / M_PI * 90;
 }
 
-
-static inline float unwrap(float a0)
-{
-    if (a0 < -M_PI)
-        a0 += 2 * M_PI;
-    if (a0 > M_PI)
-        a0 -= 2 * M_PI;
-    return a0;
-}
-
 /*
  * calculate group_delay = -deltaAngle(gamma) / (deltaf * 360)
  */ 
-float group_delay(float v[101][2], uint32_t* f, int count, int i)
+float group_delay(float gamma[101][2], uint32_t* freq, int count, int index)
 {
-  float a0, a1, a2;
-  float delay;
-  // handle first and last points by accepting assymetry
-  if (i == 0)
-  {
-     a1 = atan2f(v[i][1], v[i][0]);
-     a2 = atan2f(v[i+1][1], v[i+1][0]);
-     delay = -unwrap(a2 - a1) / ((f[i+1] - f[i]) * 2 * M_PI);
-  } 
-  else if (i == count-1)
-  {
-     a0 = atan2f(v[i-1][1], v[i-1][0]);
-     a1 = atan2f(v[i][1], v[i][0]);
-     delay = -unwrap(a1 - a0) / ((f[i] - f[i-1]) * 2 * M_PI);
-  }
-  else
-  {
-     a0 = atan2f(v[i-1][1], v[i-1][0]);
-     a1 = atan2f(v[i][1], v[i][0]);
-     a2 = atan2f(v[i+1][1], v[i+1][0]);
-     delay = -(unwrap(a1-a0)/(f[i]-f[i-1]) + unwrap(a2-a1)/(f[i+1]-f[i])) / (2 * 2 * M_PI);
-  }
-  return delay * 1000000000.0;  // to nanosecond
+    float *v, *w;
+    float deltaf;
+    if (index == count-1) {
+        deltaf = freq[index] - freq[index-1];
+        v = gamma[index-1];
+        w = gamma[index];
+    }
+    else {
+        deltaf = freq[index+1] - freq[index];
+        v = gamma[index];
+        w = gamma[index+1];
+    }
+    // w = w[0]/w[1]
+    // v = v[0]/v[1]
+    // atan(w)-atan(v) = atan((w-v)/(1+wv))
+    float r = w[0]*v[1] - w[1]*v[0];
+    float i = w[0]*v[0] + w[1]*v[1];
+    return atan2f(r, i) / (2 * M_PI * deltaf);
 }
 
 /*
@@ -693,7 +678,7 @@ static void trace_get_value_string(
     break;
   case TRC_DELAY:
     v = group_delay(coeff, freq, point_count, i);
-    chsnprintf(buf, len, "%.3f ns", v);
+    string_value_with_prefix(buf, len, v, 's');
     break;
   case TRC_LINEAR:
     v = linear(coeff[i]);

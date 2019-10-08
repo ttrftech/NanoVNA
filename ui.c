@@ -20,6 +20,7 @@
 
 #include "ch.h"
 #include "hal.h"
+#include "chprintf.h"
 #include "nanovna.h"
 #include <stdlib.h>
 #include <string.h>
@@ -58,7 +59,6 @@ static uint32_t last_button_down_ticks;
 static uint32_t last_button_repeat_ticks;
 static int8_t inhibit_until_release = FALSE;
 
-enum { OP_NONE = 0, OP_LEVER, OP_TOUCH };
 uint8_t operation_requested = OP_NONE;
 
 int8_t previous_marker = -1;

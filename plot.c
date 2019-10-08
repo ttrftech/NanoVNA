@@ -8,7 +8,6 @@
 #define SWAP(x,y) do { int z=x; x = y; y = z; } while(0)
 
 static void cell_draw_marker_info(int m, int n, int w, int h);
-void draw_frequencies(void);
 void frequency_string(char *buf, size_t len, int32_t freq);
 void markmap_all_markers(void);
 
@@ -658,7 +657,7 @@ gamma2imp(char *buf, int len, const float coeff[2], uint32_t frequency)
 }
 
 static void
-gamma2resistance(char *buf, int len, const float coeff[2], uint32_t frequency)
+gamma2resistance(char *buf, int len, const float coeff[2])
 {
   float z0 = 50;
   float d = z0 / ((1-coeff[0])*(1-coeff[0])+coeff[1]*coeff[1]);
@@ -667,7 +666,7 @@ gamma2resistance(char *buf, int len, const float coeff[2], uint32_t frequency)
 }
 
 static void
-gamma2reactance(char *buf, int len, const float coeff[2], uint32_t frequency)
+gamma2reactance(char *buf, int len, const float coeff[2])
 {
   float z0 = 50;
   float d = z0 / ((1-coeff[0])*(1-coeff[0])+coeff[1]*coeff[1]);
@@ -714,10 +713,10 @@ static void trace_get_value_string(
     chsnprintf(buf, len, "%.3fj", coeff[i][1]);
     break;
   case TRC_R:
-    gamma2resistance(buf, len, coeff[i], freq[i]);
+    gamma2resistance(buf, len, coeff[i]);
     break;
   case TRC_X:
-    gamma2reactance(buf, len, coeff[i], freq[i]);
+    gamma2reactance(buf, len, coeff[i]);
     break;
   //case TRC_ADMIT:
   case TRC_POLAR:
@@ -793,7 +792,7 @@ clear_markmap(void)
   memset(markmap[current_mappage], 0, sizeof markmap[current_mappage]);
 }
 
-void inline
+inline void
 force_set_markmap(void)
 {
   memset(markmap[current_mappage], 0xff, sizeof markmap[current_mappage]);

@@ -88,7 +88,7 @@ struct menuitem_t {
   };
 };
 
-#define MENUITEM_SUB(text, pmenu) { .type=MT_SUBMENU, .label=text, .pMenu=pmenu }
+#define MENUITEM_MENU(text, pmenu) { .type=MT_SUBMENU, .label=text, .pMenu=pmenu }
 #define MENUITEM_FUNC(text, pfunc) { .type=MT_CALLBACK, .label=text, .pFunc=pfunc }
 #define MENUITEM_CLOSE { .type=MT_CLOSE, .label="CLOSE", .pMenu=NULL }
 #define MENUITEM_BACK { .type=MT_CANCEL, .label=S_LARROW" BACK", .pMenu=NULL }
@@ -915,8 +915,8 @@ const menuitem_t menu_save[] = {
 };
 
 const menuitem_t menu_cal[] = {
-  MENUITEM_SUB( "CALIBRATE",    menu_calop),
-  MENUITEM_SUB( "SAVE",         menu_save),
+  MENUITEM_MENU("CALIBRATE",    menu_calop),
+  MENUITEM_MENU("SAVE",         menu_save),
   MENUITEM_FUNC("RESET",        menu_cal2_cb),
   MENUITEM_FUNC("CORRECTION",   menu_cal2_cb),
   MENUITEM_BACK,
@@ -949,7 +949,7 @@ const menuitem_t menu_format[] = {
   MENUITEM_FUNC("DELAY",        menu_format_cb),
   MENUITEM_FUNC("SMITH",        menu_format_cb),
   MENUITEM_FUNC("SWR",          menu_format_cb),
-  MENUITEM_SUB(S_RARROW" MORE", menu_format2),  
+  MENUITEM_MENU(S_RARROW" MORE", menu_format2),  
   //MENUITEM_FUNC("LINEAR",     menu_format_cb),
   //MENUITEM_FUNC("SWR",        menu_format_cb),
   MENUITEM_BACK,
@@ -985,18 +985,18 @@ const menuitem_t menu_transform[] = {
   MENUITEM_FUNC("\2LOW PASS\0IMPULSE",  menu_transform_cb),
   MENUITEM_FUNC("\2LOW PASS\0STEP",     menu_transform_cb),
   MENUITEM_FUNC("BANDPASS",             menu_transform_cb),
-  MENUITEM_SUB( "WINDOW",               menu_transform_window),
+  MENUITEM_MENU("WINDOW",               menu_transform_window),
   MENUITEM_FUNC("\2VELOCITY\0FACTOR",   menu_transform_cb),
   MENUITEM_BACK,
   MENUITEM_END
 };
 
 const menuitem_t menu_display[] = {
-  MENUITEM_SUB("TRACE", menu_trace),
-  MENUITEM_SUB("FORMAT", menu_format),
-  MENUITEM_SUB("SCALE", menu_scale),
-  MENUITEM_SUB("CHANNEL", menu_channel),
-  MENUITEM_SUB("TRANSFORM", menu_transform),
+  MENUITEM_MENU("TRACE", menu_trace),
+  MENUITEM_MENU("FORMAT", menu_format),
+  MENUITEM_MENU("SCALE", menu_scale),
+  MENUITEM_MENU("CHANNEL", menu_channel),
+  MENUITEM_MENU("TRANSFORM", menu_transform),
   MENUITEM_BACK,
   MENUITEM_END
 };
@@ -1023,7 +1023,7 @@ const menuitem_t menu_marker_sel[] = {
 };
 
 const menuitem_t menu_marker[] = {
-  MENUITEM_SUB( "\2SELECT\0MARKER",     menu_marker_sel),
+  MENUITEM_MENU("\2SELECT\0MARKER",     menu_marker_sel),
   MENUITEM_FUNC(S_RARROW"START",        menu_marker_op_cb),
   MENUITEM_FUNC(S_RARROW"STOP",         menu_marker_op_cb),
   MENUITEM_FUNC(S_RARROW"CENTER",       menu_marker_op_cb),
@@ -1053,18 +1053,18 @@ const menuitem_t menu_config[] = {
   MENUITEM_FUNC("TOUCH TEST",   menu_config_cb),
   MENUITEM_FUNC("SAVE",         menu_config_cb),
   MENUITEM_FUNC("VERSION",      menu_config_cb),
-  MENUITEM_SUB( S_RARROW"DFU",  menu_dfu),
+  MENUITEM_MENU(S_RARROW"DFU",  menu_dfu),
   MENUITEM_BACK,
   MENUITEM_END
 };
 
 const menuitem_t menu_top[] = {
-  MENUITEM_SUB("DISPLAY",   menu_display),
-  MENUITEM_SUB("MARKER",    menu_marker),
-  MENUITEM_SUB("STIMULUS",  menu_stimulus),
-  MENUITEM_SUB("CAL",       menu_cal),
-  MENUITEM_SUB("RECALL",    menu_recall),
-  MENUITEM_SUB("CONFIG",    menu_config),
+  MENUITEM_MENU("DISPLAY",   menu_display),
+  MENUITEM_MENU("MARKER",    menu_marker),
+  MENUITEM_MENU("STIMULUS",  menu_stimulus),
+  MENUITEM_MENU("CAL",       menu_cal),
+  MENUITEM_MENU("RECALL",    menu_recall),
+  MENUITEM_MENU("CONFIG",    menu_config),
   MENUITEM_CLOSE,
   MENUITEM_END
 };

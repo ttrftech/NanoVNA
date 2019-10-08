@@ -672,6 +672,9 @@ bool sweep(bool break_on_operation)
 
   for (i = 0; i < sweep_points; i++) {
     int delay = set_frequency(frequencies[i]);
+    delay = delay < 3 ? 3 : delay;
+    delay = delay > 8 ? 8 : delay;
+    
     tlv320aic3204_select_in3(); // CH0:REFLECT
     wait_dsp(delay);
 

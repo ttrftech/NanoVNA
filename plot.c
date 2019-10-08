@@ -713,17 +713,10 @@ static void trace_get_value_string(
     chsnprintf(buf, len, "%.3fj", coeff[i][1]);
     break;
   case TRC_R:
-<<<<<<< HEAD
     gamma2resistance(buf, len, coeff[i]);
     break;
   case TRC_X:
     gamma2reactance(buf, len, coeff[i]);
-=======
-    gamma2resistance(buf, len, coeff);
-    break;
-  case TRC_X:
-    gamma2reactance(buf, len, coeff);
->>>>>>> 3fc17e18f900c6bb31fb1e72bab345adf576c15c
     break;
   //case TRC_ADMIT:
   case TRC_POLAR:

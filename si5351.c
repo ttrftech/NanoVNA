@@ -330,12 +330,7 @@ int current_band = -1;
  * CLK2: fixed 8MHz
  */
 #define CLK2_FREQUENCY 8000000L
-<<<<<<< HEAD
 int si5351_set_frequency_with_offset(uint32_t freq, int offset, uint8_t drive_strength)
-=======
-int
-si5351_set_frequency_with_offset(uint32_t freq, int offset, uint8_t drive_strength)
->>>>>>> 3fc17e18f900c6bb31fb1e72bab345adf576c15c
 {
   int band;
   int delay = 3;

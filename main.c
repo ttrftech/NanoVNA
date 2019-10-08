@@ -39,13 +39,6 @@ static void apply_edelay_at(int i);
 static void cal_interpolate(int s);
 void update_frequencies(void);
 void set_frequencies(uint32_t start, uint32_t stop, int16_t points);
-<<<<<<< HEAD
-
-void apply_edelay_at(int i);
-void set_frequencies(uint32_t start, uint32_t stop, int16_t points);
-void update_frequencies(void);
-=======
->>>>>>> 3fc17e18f900c6bb31fb1e72bab345adf576c15c
 
 bool sweep(bool break_on_operation);
 

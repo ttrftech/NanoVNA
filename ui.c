@@ -1148,11 +1148,10 @@ void menu_invoke(int item)
 #define KP_BS 16
 #define KP_INF 17
 #define KP_DB 18
-#define KP_SPK 19
-#define KP_ANT 20
-#define KP_KEYPAD 21
-#define KP_N 22
-#define KP_P 23
+#define KP_PLUSMINUS 19
+#define KP_KEYPAD 20
+#define KP_N 21
+#define KP_P 22
 
 typedef struct {
   uint16_t x, y;
@@ -1211,8 +1210,9 @@ const keypads_t keypads_time[] = {
   { KP_X(0), KP_Y(0), 7 },
   { KP_X(1), KP_Y(0), 8 },
   { KP_X(2), KP_Y(0), 9 },
-  { KP_X(3), KP_Y(2), KP_N },
-  { KP_X(3), KP_Y(3), KP_P },
+  { KP_X(3), KP_Y(1), KP_N },
+  { KP_X(3), KP_Y(2), KP_P },
+  { KP_X(3), KP_Y(3), KP_MINUS },
   { KP_X(2), KP_Y(3), KP_BS },
   { 0, 0, -1 }
 };
@@ -1736,6 +1736,9 @@ keypad_click(int key)
     // append period if there are no period
     if (kp_index == j)
       kp_buf[kp_index++] = '.';
+  } else if (c == KP_MINUS) {
+    if (kp_index == 0)
+      kp_buf[kp_index++] = '-';
   } else if (c == KP_BS) {
     if (kp_index == 0) {
       return KP_CANCEL;

@@ -56,6 +56,7 @@ int8_t sweep_once = FALSE;
 int8_t cal_auto_interpolate = TRUE;
 uint16_t redraw_request = 0; // contains REDRAW_XXX flags
 int16_t vbat = 0;
+uint8_t avg = 1;
 
 
 static THD_WORKING_AREA(waThread1, 640);
@@ -657,24 +658,53 @@ ensure_edit_config(void)
 // main loop for measurement
 bool sweep(bool break_on_operation)
 {
-  int i;
+  int i, j;
+  float tmp[2];
 
   for (i = 0; i < sweep_points; i++) {
     int delay = set_frequency(frequencies[i]);
     tlv320aic3204_select_in3(); // CH0:REFLECT
-    wait_dsp(delay);
+    wait_dsp(delay-1);
 
     // blink LED while scanning
     palClearPad(GPIOC, GPIOC_LED);
 
     /* calculate reflection coeficient */
-    (*sample_func)(measured[0][i]);
+    if (avg > 1) {
+        measured[0][i][0] = 0.0;
+        measured[0][i][1] = 0.0;
+        for (j = 0; j < avg; j++) {
+            wait_dsp(1);
+            (*sample_func)(tmp);
+            measured[0][i][0] += tmp[0];
+            measured[0][i][1] += tmp[1];
+        }
+        measured[0][i][0] /= avg;
+        measured[0][i][1] /= avg;
+    } else {
+        wait_dsp(1);
+        (*sample_func)(measured[0][i]);
+    }
 
     tlv320aic3204_select_in1(); // CH1:TRANSMISSION
-    wait_dsp(delay + DELAY_CHANNEL_CHANGE);
+    wait_dsp(delay + DELAY_CHANNEL_CHANGE - 1);
 
     /* calculate transmission coeficient */
-    (*sample_func)(measured[1][i]);
+    if (avg > 1) {
+        measured[1][i][0] = 0.0;
+        measured[1][i][1] = 0.0;
+        for (j = 0; j < avg; j++) {
+            wait_dsp(1);
+            (*sample_func)(tmp);
+            measured[1][i][0] += tmp[0];
+            measured[1][i][1] += tmp[1];
+        }
+        measured[1][i][0] /= avg;
+        measured[1][i][1] /= avg;
+    } else {
+        wait_dsp(1);
+        (*sample_func)(measured[1][i]);
+    }
 
     // blink LED while scanning
     palSetPad(GPIOC, GPIOC_LED);

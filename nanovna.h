@@ -258,6 +258,7 @@ extern uint16_t redraw_request;
 #define REDRAW_MARKER     (1<<3)
 
 extern int16_t vbat;
+extern uint8_t avg;
 
 /*
  * ili9341.c

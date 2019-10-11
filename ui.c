@@ -68,7 +68,7 @@ enum {
 };
 
 enum {
-  KM_START, KM_STOP, KM_CENTER, KM_SPAN, KM_CW, KM_SCALE, KM_REFPOS, KM_EDELAY, KM_VELOCITY_FACTOR, KM_SCALEDELAY
+  KM_START, KM_STOP, KM_CENTER, KM_SPAN, KM_CW, KM_SCALE, KM_REFPOS, KM_EDELAY, KM_VELOCITY_FACTOR, KM_SCALEDELAY, KM_AVG
 };
 
 uint8_t ui_mode = UI_NORMAL;
@@ -726,6 +726,22 @@ menu_transform_cb(int item)
   }
 }
 
+static void
+menu_avg_cb(void)
+{
+    int status;
+
+    status = btn_wait_release();
+    if (status & EVT_BUTTON_DOWN_LONG) {
+      ui_mode_numeric(KM_AVG);
+      ui_process_numeric();
+    } else {
+      ui_mode_keypad(KM_AVG);
+      ui_process_keypad();
+    }
+    ui_mode_normal();
+}
+
 static void 
 choose_active_marker(void)
 {
@@ -986,6 +1002,7 @@ const menuitem_t menu_display[] = {
   { MT_SUBMENU, "SCALE", menu_scale },
   { MT_SUBMENU, "CHANNEL", menu_channel },
   { MT_SUBMENU, "TRANSFORM", menu_transform },
+  { MT_CALLBACK, "AVG", menu_avg_cb },
   { MT_CANCEL, S_LARROW" BACK", NULL },
   { MT_NONE, NULL, NULL } // sentinel
 };
@@ -1227,11 +1244,12 @@ const keypads_t * const keypads_mode_tbl[] = {
   keypads_scale, // refpos
   keypads_time, // electrical delay
   keypads_scale, // velocity factor
-  keypads_time // scale of delay
+  keypads_time, // scale of delay
+  keypads_scale // avg
 };
 
 const char * const keypad_mode_label[] = {
-  "START", "STOP", "CENTER", "SPAN", "CW FREQ", "SCALE", "REFPOS", "EDELAY", "VELOCITY%", "DELAY"
+  "START", "STOP", "CENTER", "SPAN", "CW FREQ", "SCALE", "REFPOS", "EDELAY", "VELOCITY%", "DELAY", "AVG"
 };
 
 void
@@ -1494,6 +1512,9 @@ fetch_numeric_target(void)
   case KM_SCALEDELAY:
     uistat.value = get_trace_scale(uistat.current_trace) * 1e12;
     break;
+  case KM_AVG:
+    uistat.value = avg;
+    break;
   }
   
   {
@@ -1723,6 +1744,8 @@ keypad_click(int key)
     case KM_SCALEDELAY:
       set_trace_scale(uistat.current_trace, value * 1e-12); // pico second
       break;
+    case KM_AVG:
+      avg = value;
     }
 
     return KP_DONE;

@@ -1563,21 +1563,21 @@ cell_draw_marker_info(int m, int n, int w, int h)
   if (electrical_delay != 0) {
     // draw electrical delay
     
-    // fixme: adapt positions for 8px font
-    
-    int xpos = 21;
+    int xpos = 1;
     int ypos = 1 + (j/2)*8;
+    uint16_t slen = 0;
+    
     xpos -= m * CELLWIDTH -CELLOFFSETX;
     ypos -= n * CELLHEIGHT;
-    chsnprintf(buf, sizeof buf, "Edelay");
-    cell_drawstring_8x8(w, h, buf, xpos, ypos, 0xffff, FALSE);
-    xpos += 8 * 8;
-    int n = string_value_with_prefix(buf, sizeof buf, electrical_delay * 1e-12, 's');
-    cell_drawstring_8x8(w, h, buf, xpos, ypos, 0xffff, FALSE);
-    xpos += n * 8 + 8;
+    chsnprintf(buf, sizeof buf, "Edelay ");
+    slen = cell_drawstring_8x8_var(w, h, buf, xpos, ypos, 0xffff, FALSE);
+    xpos += slen;
+    string_value_with_prefix(buf, sizeof buf, electrical_delay * 1e-12, 's');
+    slen = cell_drawstring_8x8_var(w, h, buf, xpos, ypos, 0xffff, FALSE);
+    xpos += slen + 8;
     float light_speed_ps = 299792458e-12; //(m/ps)
     string_value_with_prefix(buf, sizeof buf, electrical_delay * light_speed_ps * velocity_factor / 100.0, 'm');
-    cell_drawstring_8x8(w, h, buf, xpos, ypos, 0xffff, FALSE);
+    cell_drawstring_8x8_var(w, h, buf, xpos, ypos, 0xffff, FALSE);
   }
 
   // draw marker frequency

@@ -93,6 +93,10 @@ Hardware design material is disclosed to prevent bad quality clone. Please let m
 * [Block Diagram](/doc/nanovna-blockdiagram.png)
 * Kit available from https://ttrf.tk/kit/nanovna
 
+## Authorized Distributor
+
+* [Nooelec](https://www.nooelec.com/store/nanovna-bundle.html)
+
 ## Credit
 
 * [@edy555](https://github.com/edy555)

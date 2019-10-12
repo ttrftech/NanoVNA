@@ -767,10 +767,10 @@ void
 set_frequencies(uint32_t start, uint32_t stop, int16_t points)
 {
   int i;
-  float span = stop - start;
+  uint32_t span = stop - start;
   for (i = 0; i < points; i++) {
-    float offset = i * span / (float)(points - 1);
-    frequencies[i] = start + (uint32_t)offset;
+	  uint32_t offset = i * (span / (points - 1));
+    frequencies[i] = start + offset;
   }
   // disable at out of sweep range
   for (; i < sweep_points; i++)

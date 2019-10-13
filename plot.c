@@ -768,6 +768,7 @@ static inline void
 markmap_upperarea(void)
 {
   markmap[current_mappage][0] |= 0xffff;
+  markmap[current_mappage][1] |= 0xffff;
 }
 
 static inline void
@@ -1375,8 +1376,10 @@ redraw_marker(int marker, int update_info)
 
   // mark cells on marker info
   if (update_info)
+  {
     markmap[current_mappage][0] = 0xffff;
-
+    markmap[current_mappage][1] = 0xffff;
+  }
   draw_all_cells(TRUE);
 }
 
@@ -1400,40 +1403,6 @@ request_to_draw_cells_behind_numeric_input(void)
   redraw_request |= REDRAW_CELLS;
 }
 
-
-
-#if 0
-void
-cell_drawchar_5x7(int w, int h, uint8_t ch, int x, int y, uint16_t fg, int invert)
-{
-  uint8_t bits;
-  int c, r;
-  
-  if (y <= -7 || y >= h || x <= -5 || x >= w)
-    return;
-
-  ch = x5x7_map_char_table(ch);
-    
-  for(c = 0; c < 7; c++) 
-  {
-    if ((y + c) < 0 || (y + c) >= h)
-      continue;
-      
-    bits = x5x7_bits[(ch * 7) + c];
-    
-    if (invert)
-      bits = ~bits;
-      
-    for (r = 0; r < 5; r++) 
-    {
-      if ( (x+r) >= 0 && (x+r) < w && (0x80 & bits) ) 
-        spi_buffer[(y+c)*w + (x+r)] = fg;
-
-      bits <<= 1;
-    }
-  }
-}
-#endif
 
 
 uint16_t
@@ -1523,6 +1492,8 @@ cell_draw_marker_info(int m, int n, int w, int h)
   char buf[24];
   int t;
   uint16_t slen, strwidthpx = 0;
+
+#define MARKER_Y_DELTA 10
   
   if (n > 1)
     return;
@@ -1538,8 +1509,8 @@ cell_draw_marker_info(int m, int n, int w, int h)
     if (!trace[t].enabled)
       continue;
       
-    int xpos = 1 + (j%2)*160;
-    int ypos = 1 + (j/2)*8;
+    int xpos = 1 + (j%2) * 160;
+    int ypos = 1 + (j/2) * MARKER_Y_DELTA;
     xpos -= m * CELLWIDTH - CELLOFFSETX;
     ypos -= n * CELLHEIGHT;
 
@@ -1560,10 +1531,10 @@ cell_draw_marker_info(int m, int n, int w, int h)
     // draw electrical delay
     
     int xpos = 1;
-    int ypos = 1 + (j/2)*8;
+    int ypos = 1 + (j/2) * MARKER_Y_DELTA;
     uint16_t slen = 0;
     
-    xpos -= m * CELLWIDTH -CELLOFFSETX;
+    xpos -= m * CELLWIDTH - CELLOFFSETX;
     ypos -= n * CELLHEIGHT;
     chsnprintf(buf, sizeof buf, "Edelay ");
     slen = cell_drawstring_8x8_var(w, h, buf, xpos, ypos, 0xffff, FALSE);
@@ -1578,7 +1549,7 @@ cell_draw_marker_info(int m, int n, int w, int h)
 
   // draw marker frequency
   int xpos = 160;
-  int ypos = 1 + (j/2)*8;
+  int ypos = 1 + (j/2) * MARKER_Y_DELTA;
   xpos -= m * CELLWIDTH - CELLOFFSETX;
   ypos -= n * CELLHEIGHT;
 
@@ -1598,12 +1569,12 @@ cell_draw_marker_info(int m, int n, int w, int h)
   }
 
   // draw marker delta
-  if ( previous_marker >= 0 && active_marker != previous_marker && markers[previous_marker].enabled )
+  if ( (previous_marker >= 0) && (active_marker != previous_marker) && (markers[previous_marker].enabled) )
   {
     int idx0 = markers[previous_marker].index;
     xpos = 160;
     xpos -= m * CELLWIDTH - CELLOFFSETX;
-    ypos += 8;
+    ypos += MARKER_Y_DELTA;
 
     chsnprintf(buf, sizeof buf, "%s%d:", S_DIAMOND, previous_marker+1);
     strwidthpx = cell_drawstring_8x8(w, h, buf, xpos, ypos, 0xffff, FALSE);

@@ -1539,7 +1539,7 @@ cell_draw_marker_info(int m, int n, int w, int h)
       continue;
       
     int xpos = 1 + (j%2)*160;
-    int ypos = 1 + (j/2)*10;
+    int ypos = 1 + (j/2)*8;
     xpos -= m * CELLWIDTH - CELLOFFSETX;
     ypos -= n * CELLHEIGHT;
 
@@ -1560,7 +1560,7 @@ cell_draw_marker_info(int m, int n, int w, int h)
     // draw electrical delay
     
     int xpos = 1;
-    int ypos = 1 + (j/2)*10;
+    int ypos = 1 + (j/2)*8;
     uint16_t slen = 0;
     
     xpos -= m * CELLWIDTH -CELLOFFSETX;
@@ -1578,7 +1578,7 @@ cell_draw_marker_info(int m, int n, int w, int h)
 
   // draw marker frequency
   int xpos = 160;
-  int ypos = 1 + (j/2)*10;
+  int ypos = 1 + (j/2)*8;
   xpos -= m * CELLWIDTH - CELLOFFSETX;
   ypos -= n * CELLHEIGHT;
 
@@ -1603,14 +1603,11 @@ cell_draw_marker_info(int m, int n, int w, int h)
     int idx0 = markers[previous_marker].index;
     xpos = 160;
     xpos -= m * CELLWIDTH - CELLOFFSETX;
-    ypos += 10;
+    ypos += 8;
 
     chsnprintf(buf, sizeof buf, "%s%d:", S_DIAMOND, previous_marker+1);
     strwidthpx = cell_drawstring_8x8(w, h, buf, xpos, ypos, 0xffff, FALSE);
     xpos += strwidthpx + 4;
-
-
-
 
     frequency_string(buf, sizeof buf, frequencies[idx] - frequencies[idx0]);
     cell_drawstring_8x8_var(w, h, buf, xpos, ypos, 0xffff, FALSE);

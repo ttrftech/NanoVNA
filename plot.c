@@ -502,6 +502,20 @@ cartesian_scale(float re, float im, int *xp, int *yp, float scale)
   *yp = HEIGHT/2 - y;
 }
 
+static float
+groupdelay_from_array(int i, float array[101][2])
+{
+  if (i == 0) {
+    float deltaf = frequencies[1] - frequencies[0];
+    return groupdelay(array[0], array[1], deltaf);
+  } else if (i == 100) {
+    float deltaf = frequencies[i] - frequencies[i-1];
+    return groupdelay(array[i-1], array[i], deltaf);
+  } else {
+    float deltaf = frequencies[i+1] - frequencies[i-1];
+    return groupdelay(array[i-1], array[i+1], deltaf);
+  }
+}
 
 uint32_t
 trace_into_index(int x, int t, int i, float array[101][2])
@@ -519,16 +533,7 @@ trace_into_index(int x, int t, int i, float array[101][2])
     v = refpos - phase(coeff) * scale;
     break;
   case TRC_DELAY:
-    if (i == 0) {
-      float deltaf = frequencies[1] - frequencies[0];
-      v = refpos - groupdelay(array[0], array[1], deltaf) * scale;
-    } else if (i == 100) {
-      float deltaf = frequencies[i] - frequencies[i-1];
-      v = refpos - groupdelay(array[i-1], array[i], deltaf) * scale;
-    } else {
-      float deltaf = frequencies[i+1] - frequencies[i-1];
-      v = refpos - groupdelay(array[i-1], array[i+1], deltaf) * scale;
-    }
+    v = refpos - groupdelay_from_array(i, array) * scale;
     break;
   case TRC_LINEAR:
     v = refpos + linear(coeff) * scale;
@@ -676,16 +681,7 @@ trace_get_value_string(int t, char *buf, int len, float array[101][2], int i)
     chsnprintf(buf, len, "%.2f" S_DEGREE, v);
     break;
   case TRC_DELAY:
-    if (i == 0) {
-      float deltaf = frequencies[1] - frequencies[0];
-      v = groupdelay(array[0], array[1], deltaf);
-    } else if (i == 100) {
-      float deltaf = frequencies[i] - frequencies[i-1];
-      v = groupdelay(array[i-1], array[i], deltaf);
-    } else {
-      float deltaf = frequencies[i+1] - frequencies[i-1];
-      v = groupdelay(array[i-1], array[i+1], deltaf);
-    }
+    v = groupdelay_from_array(i, array);
     string_value_with_prefix(buf, len, v, 's');
     break;
   case TRC_LINEAR:

@@ -26,21 +26,6 @@ int16_t samp_buf[SAMPLE_LEN];
 int16_t ref_buf[SAMPLE_LEN];
 #endif
 
-const int16_t sincos_tbl[48][2] = {
-  { 10533,  31029 }, { 27246,  18205 }, { 32698,  -2143 }, { 24636, -21605 },
-  {  6393, -32138 }, {-14493, -29389 }, {-29389, -14493 }, {-32138,   6393 },
-  {-21605,  24636 }, { -2143,  32698 }, { 18205,  27246 }, { 31029,  10533 },
-  { 31029, -10533 }, { 18205, -27246 }, { -2143, -32698 }, {-21605, -24636 },
-  {-32138,  -6393 }, {-29389,  14493 }, {-14493,  29389 }, {  6393,  32138 },
-  { 24636,  21605 }, { 32698,   2143 }, { 27246, -18205 }, { 10533, -31029 },
-  {-10533, -31029 }, {-27246, -18205 }, {-32698,   2143 }, {-24636,  21605 },
-  { -6393,  32138 }, { 14493,  29389 }, { 29389,  14493 }, { 32138,  -6393 },
-  { 21605, -24636 }, { 2143,  -32698 }, {-18205, -27246 }, {-31029, -10533 },
-  {-31029,  10533 }, {-18205,  27246 }, {  2143,  32698 }, { 21605,  24636 },
-  { 32138,   6393 }, { 29389, -14493 }, { 14493, -29389 }, { -6393, -32138 },
-  {-24636, -21605 }, {-32698,  -2143 }, {-27246,  18205 }, {-10533,  31029 }
-};
-
 float acc_samp_s;
 float acc_samp_c;
 float acc_ref_s;
@@ -57,27 +42,54 @@ dsp_process(int16_t *capture, size_t length)
   int32_t ref_s = 0;
   int32_t ref_c = 0;
 
-  for (i = 0; i < len; i++) {
-    uint32_t sr = *p++;
-    int16_t ref = sr & 0xffff;
-    int16_t smp = (sr>>16) & 0xffff;
+  // quadrature steps for if=12kHz on fs=48kHz
+  for (i = 0; i < len;) {
+    uint32_t sr;
+    int16_t ref, smp;
+
+    sr = *p++;
+    ref = sr & 0xffff;
+    smp = (sr>>16) & 0xffff;
 #ifdef ENABLED_DUMP
     ref_buf[i] = ref;
     samp_buf[i] = smp;
 #endif
-    int32_t s = sincos_tbl[i][0];
-    int32_t c = sincos_tbl[i][1];
-    samp_s += smp * s / 16;
-    samp_c += smp * c / 16;
-    ref_s += ref * s / 16;
-    ref_c += ref * c / 16;
-#if 0
-    uint32_t sc = *(uint32_t)&sincos_tbl[i];
-    samp_s = __SMLABB(sr, sc, samp_s);
-    samp_c = __SMLABT(sr, sc, samp_c);
-    ref_s = __SMLATB(sr, sc, ref_s);
-    ref_c = __SMLATT(sr, sc, ref_c);
+    i++;
+    samp_s += smp;
+    ref_s += ref;
+
+    sr = *p++;
+    ref = sr & 0xffff;
+    smp = (sr>>16) & 0xffff;
+#ifdef ENABLED_DUMP
+    ref_buf[i] = ref;
+    samp_buf[i] = smp;
 #endif
+    i++;
+    samp_c += smp;
+    ref_c += ref;
+
+    sr = *p++;
+    ref = sr & 0xffff;
+    smp = (sr>>16) & 0xffff;
+#ifdef ENABLED_DUMP
+    ref_buf[i] = ref;
+    samp_buf[i] = smp;
+#endif
+    i++;
+    samp_s -= smp;
+    ref_s -= ref;
+
+    sr = *p++;
+    ref = sr & 0xffff;
+    smp = (sr>>16) & 0xffff;
+#ifdef ENABLED_DUMP
+    ref_buf[i] = ref;
+    samp_buf[i] = smp;
+#endif
+    i++;
+    samp_c -= smp;
+    ref_c -= ref;
   }
   acc_samp_s += samp_s;
   acc_samp_c += samp_c;

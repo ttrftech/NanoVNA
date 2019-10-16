@@ -442,12 +442,9 @@ float phase(float *v)
 /*
  * calculate groupdelay
  */
-float groupdelay(float *v, float deltaf)
+float groupdelay(float *w, float *v, float deltaf)
 {
-  float *w = &v[2]; // point to next coeff
 #if 1
-  // w = w[0]/w[1]
-  // v = v[0]/v[1]
   // atan(w)-atan(v) = atan((w-v)/(1+wv))
   float r = w[0]*v[1] - w[1]*v[0];
   float i = w[0]*v[0] + w[1]*v[1];
@@ -507,10 +504,11 @@ cartesian_scale(float re, float im, int *xp, int *yp, float scale)
 
 
 uint32_t
-trace_into_index(int x, int t, int i, float coeff[2])
+trace_into_index(int x, int t, int i, float array[101][2])
 {
   int y = 0;
   float v = 0;
+  float *coeff = array[i];
   float refpos = 8 - get_trace_refpos(t);
   float scale = 1 / get_trace_scale(t);
   switch (trace[t].type) {
@@ -521,9 +519,15 @@ trace_into_index(int x, int t, int i, float coeff[2])
     v = refpos - phase(coeff) * scale;
     break;
   case TRC_DELAY:
-    if (i != 100) {
-      float deltaf = frequencies[i+1] - frequencies[i];
-      v = refpos - groupdelay(coeff, deltaf) * scale;
+    if (i == 0) {
+      float deltaf = frequencies[1] - frequencies[0];
+      v = refpos - groupdelay(array[0], array[1], deltaf) * scale;
+    } else if (i == 100) {
+      float deltaf = frequencies[i] - frequencies[i-1];
+      v = refpos - groupdelay(array[i-1], array[i], deltaf) * scale;
+    } else {
+      float deltaf = frequencies[i+1] - frequencies[i-1];
+      v = refpos - groupdelay(array[i-1], array[i+1], deltaf) * scale;
     }
     break;
   case TRC_LINEAR:
@@ -655,8 +659,9 @@ gamma2reactance(char *buf, int len, const float coeff[2])
 }
 
 static void
-trace_get_value_string(int t, char *buf, int len, float coeff[2], int i)
+trace_get_value_string(int t, char *buf, int len, float array[101][2], int i)
 {
+  float *coeff = array[i];
   float v;
   switch (trace[t].type) {
   case TRC_LOGMAG:
@@ -671,11 +676,17 @@ trace_get_value_string(int t, char *buf, int len, float coeff[2], int i)
     chsnprintf(buf, len, "%.2f" S_DEGREE, v);
     break;
   case TRC_DELAY:
-    {
-      float deltaf = frequencies[i+1] - frequencies[i];
-      v = groupdelay(coeff, deltaf);
-      string_value_with_prefix(buf, len, v, 's');
+    if (i == 0) {
+      float deltaf = frequencies[1] - frequencies[0];
+      v = groupdelay(array[0], array[1], deltaf);
+    } else if (i == 100) {
+      float deltaf = frequencies[i] - frequencies[i-1];
+      v = groupdelay(array[i-1], array[i], deltaf);
+    } else {
+      float deltaf = frequencies[i+1] - frequencies[i-1];
+      v = groupdelay(array[i-1], array[i+1], deltaf);
     }
+    string_value_with_prefix(buf, len, v, 's');
     break;
   case TRC_LINEAR:
     v = linear(coeff);
@@ -835,7 +846,7 @@ void plot_into_index(float measured[2][101][2])
       if (!trace[t].enabled)
         continue;
       int n = trace[t].channel;
-      trace_index[t][i] = trace_into_index(x, t, i, measured[n][i]);
+      trace_index[t][i] = trace_into_index(x, t, i, measured[n]);
     }
   }
 #if 0
@@ -1410,7 +1421,7 @@ cell_draw_marker_info(int m, int n, int w, int h)
     trace_get_info(t, buf, sizeof buf);
     cell_drawstring_5x7(w, h, buf, xpos, ypos, config.trace_color[t]);
     xpos += 64;
-    trace_get_value_string(t, buf, sizeof buf, measured[trace[t].channel][idx], idx);
+    trace_get_value_string(t, buf, sizeof buf, measured[trace[t].channel], idx);
     cell_drawstring_5x7(w, h, buf, xpos, ypos, config.trace_color[t]);
     j++;
   }    

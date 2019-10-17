@@ -1567,18 +1567,21 @@ cell_draw_marker_info(int m, int n, int w, int h)
   if ( (domain_mode & DOMAIN_MODE) == DOMAIN_FREQ )
   {
     frequency_string(buf, sizeof buf, frequencies[idx]);
-    cell_drawstring_8x8_var(w, h, buf, xpos, ypos, 0xffff, FALSE);
   } 
   else 
   {
-    chsnprintf(buf, sizeof buf, "%d ns %.1f m", (uint16_t)(time_of_index(idx) * 1e9), distance_of_index(idx));
-    cell_drawstring_8x8_var(w, h, buf, xpos, ypos, 0xffff, FALSE);
+    //chsnprintf(buf, sizeof buf, "%d ns %.1f m", (uint16_t)(time_of_index(idx) * 1e9), distance_of_index(idx));
+    int n = string_value_with_prefix(buf, sizeof buf, time_of_index(idx), 's');
+    buf[n++] = ' ';
+    string_value_with_prefix(&buf[n], sizeof buf-n, distance_of_index(idx), 'm');
   }
+  cell_drawstring_8x8_var(w, h, buf, xpos, ypos, 0xffff, FALSE);
 
   // draw marker delta
   if ( (previous_marker >= 0) && (active_marker != previous_marker) && (markers[previous_marker].enabled) )
   {
     int idx0 = markers[previous_marker].index;
+
     xpos = 160;
     xpos -= m * CELLWIDTH - CELLOFFSETX;
     ypos += MARKER_Y_DELTA;
@@ -1587,8 +1590,20 @@ cell_draw_marker_info(int m, int n, int w, int h)
     strwidthpx = cell_drawstring_8x8(w, h, buf, xpos, ypos, 0xffff, FALSE);
     xpos += strwidthpx + 4;
 
-    frequency_string(buf, sizeof buf, frequencies[idx] - frequencies[idx0]);
+    if ((domain_mode & DOMAIN_MODE) == DOMAIN_FREQ) 
+    {
+      frequency_string(buf, sizeof buf, frequencies[idx] - frequencies[idx0]);
+    } 
+    else 
+    {
+      //chsnprintf(buf, sizeof buf, "%d ns %.1f m", (uint16_t)(time_of_index(idx) * 1e9 - time_of_index(idx0) * 1e9),
+      //                                            distance_of_index(idx) - distance_of_index(idx0));
+      int n = string_value_with_prefix(buf, sizeof buf, time_of_index(idx) - time_of_index(idx0), 's');
+      buf[n++] = ' ';
+      string_value_with_prefix(&buf[n], sizeof buf - n, distance_of_index(idx) - distance_of_index(idx0), 'm');
+    }
     cell_drawstring_8x8_var(w, h, buf, xpos, ypos, 0xffff, FALSE);
+
   }
 
 }

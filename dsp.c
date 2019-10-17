@@ -36,14 +36,14 @@ dsp_process(int16_t *capture, size_t length)
 {
   uint32_t *p = (uint32_t*)capture;
   uint32_t len = length / 2;
-  uint32_t i;
+  uint32_t i, j;
   int32_t samp_s = 0;
   int32_t samp_c = 0;
   int32_t ref_s = 0;
   int32_t ref_c = 0;
 
   // quadrature steps for if=12kHz on fs=48kHz
-  for (i = 0; i < len;) {
+  for (i = 0, j = 0; i < len && j < 12; j++) {
     uint32_t sr;
     int16_t ref, smp;
 

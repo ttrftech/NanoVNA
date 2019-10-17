@@ -36,7 +36,6 @@ class NanoVNA:
         self.filter = None # bandpassfilter_5khz
         self._frequencies = None
         self.points = 101
-        self.set_sweep(1e6, 900e6)
         
     @property
     def frequencies(self):
@@ -228,10 +227,12 @@ class NanoVNA:
 
     def logmag(self, x):
         pl.grid(True)
+        pl.xlim(self.frequencies[0], self.frequencies[-1])
         pl.plot(self.frequencies, 20*np.log10(np.abs(x)))
 
     def linmag(self, x):
         pl.grid(True)
+        pl.xlim(self.frequencies[0], self.frequencies[-1])
         pl.plot(self.frequencies, np.abs(x))
 
     def phase(self, x, unwrap=False):
@@ -241,21 +242,25 @@ class NanoVNA:
             a = np.unwrap(a)
         else:
             pl.ylim((-180,180))
+        pl.xlim(self.frequencies[0], self.frequencies[-1])
         pl.plot(self.frequencies, np.rad2deg(a))
 
     def delay(self, x):
         pl.grid(True)
         delay = -np.unwrap(np.angle(x))/ (2*np.pi*np.array(self.frequencies))
+        pl.xlim(self.frequencies[0], self.frequencies[-1])
         pl.plot(self.frequencies, delay)
 
     def groupdelay(self, x):
         pl.grid(True)
         gd = np.convolve(np.unwrap(np.angle(x)), [1,-1], mode='same')
+        pl.xlim(self.frequencies[0], self.frequencies[-1])
         pl.plot(self.frequencies, gd)
 
     def vswr(self, x):
         pl.grid(True)
         vswr = (1+np.abs(x))/(1-np.abs(x))
+        pl.xlim(self.frequencies[0], self.frequencies[-1])
         pl.plot(self.frequencies, vswr)
 
     def polar(self, x):
@@ -426,7 +431,9 @@ if __name__ == '__main__':
         else:
             if opt.start or opt.stop:
                 nv.set_sweep(opt.start, opt.stop)
+            nv.fetch_frequencies()
             s = nv.data(p)
+            nv.fetch_frequencies()
     if opt.smith:
         nv.smith(s)
     if opt.polar:

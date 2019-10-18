@@ -18,7 +18,7 @@ standalone with lcd display, portable device with battery. This
 project aim to provide an RF gadget but useful instrument for
 enthusiast.
 
-This repository contains source of NanoVNA firmware.
+This repository contains source of NanoVNA firmware with a more readable font than the original.
 
 ## Prepare ARM Cross Tools
 

@@ -7,7 +7,8 @@ NanoVNA - Very tiny handheld Vector Network Analyzer
 [release]: https://github.com/ttrftech/NanoVNA/releases
 
 <div align="center">
-<img src="/doc/nanovna_screen.jpg" width="480px">
+<p><img src="/doc/nanovna.jpg" width="380px">
+    <img src="/doc/nanovna_screen.jpg" width="380px"></p>
 </div>
 
 # About
@@ -44,7 +45,7 @@ Download arm cross tools from [here](https://developer.arm.com/tools-and-softwar
 
 Fetch source and submodule.
 
-    $ git clone https://github.com/ttrftech/NanoVNA.git
+    $ git clone https://github.com/reald/NanoVNA.git
     $ cd NanoVNA
     $ git submodule update --init --recursive
 

@@ -7,7 +7,7 @@ NanoVNA - Very tiny handheld Vector Network Analyzer
 [release]: https://github.com/ttrftech/NanoVNA/releases
 
 <div align="center">
-<img src="/doc/nanovna.jpg" width="480px">
+<img src="/doc/nanovna_screen.jpg" width="480px">
 </div>
 
 # About

@@ -338,12 +338,12 @@ void
 ili9341_drawchar_5x7(uint8_t ch, int x, int y, uint16_t fg, uint16_t bg)
 {
   uint16_t *buf = spi_buffer;
-  uint16_t bits;
+  uint8_t bits;
   int c, r;
   for(c = 0; c < 7; c++) {
     bits = x5x7_bits[(ch * 7) + c];
     for (r = 0; r < 5; r++) {
-      *buf++ = (0x8000 & bits) ? fg : bg;
+      *buf++ = (0x80 & bits) ? fg : bg;
       bits <<= 1;
     }
   }
@@ -364,12 +364,12 @@ void
 ili9341_drawchar_size(uint8_t ch, int x, int y, uint16_t fg, uint16_t bg, uint8_t size)
 {
   uint16_t *buf = spi_buffer;
-  uint16_t bits;
+  uint8_t bits;
   int c, r;
   for(c = 0; c < 7*size; c++) {
     bits = x5x7_bits[(ch * 7) + (c / size)];
     for (r = 0; r < 5*size; r++) {
-      *buf++ = (0x8000 & bits) ? fg : bg;
+      *buf++ = (0x80 & bits) ? fg : bg;
       if (r % size == (size-1)) {
           bits <<= 1;
       }

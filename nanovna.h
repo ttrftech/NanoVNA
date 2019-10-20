@@ -152,7 +152,7 @@ extern int area_height;
 
 // font
 
-extern const uint16_t x5x7_bits [];
+extern const uint8_t x5x7_bits [];
 extern const uint32_t numfont20x24[][24];
 
 #define S_PI    "\034"

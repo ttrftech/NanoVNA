@@ -661,7 +661,7 @@ bool sweep(bool break_on_operation)
 
   for (i = 0; i < sweep_points; i++) {
     int delay = set_frequency(frequencies[i]);
-    tlv320aic3204_select_in3(); // CH0:REFLECT
+    tlv320aic3204_select(0); // CH0:REFLECT
     wait_dsp(delay);
 
     // blink LED while scanning
@@ -670,7 +670,7 @@ bool sweep(bool break_on_operation)
     /* calculate reflection coeficient */
     (*sample_func)(measured[0][i]);
 
-    tlv320aic3204_select_in1(); // CH1:TRANSMISSION
+    tlv320aic3204_select(1); // CH1:TRANSMISSION
     wait_dsp(delay + DELAY_CHANNEL_CHANGE);
 
     /* calculate transmission coeficient */
@@ -1904,10 +1904,7 @@ static void cmd_port(BaseSequentialStream *chp, int argc, char *argv[])
     return;
   }
   port = atoi(argv[0]);
-  if (port)
-    tlv320aic3204_select_in1();
-  else
-    tlv320aic3204_select_in3(); // default
+  tlv320aic3204_select(port);
 }
 
 static void cmd_stat(BaseSequentialStream *chp, int argc, char *argv[])

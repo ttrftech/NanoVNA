@@ -32,7 +32,7 @@
 #include <ctype.h>
 #include <math.h>
 
-#define ENABLED_DUMP
+//#define ENABLED_DUMP
 
 static void apply_error_term_at(int i);
 static void apply_edelay_at(int i);

@@ -20,6 +20,9 @@ enthusiast.
 
 This repository contains source of NanoVNA firmware with a more readable font than the original.
 
+## Binary releases
+From time to time there are binary releases so you don´t have to compile the firmware by yourself. See https://github.com/reald/NanoVNA/releases
+
 ## Prepare ARM Cross Tools
 
 **UPDATE**: Recent gcc version works to build NanoVNA, no need old version.

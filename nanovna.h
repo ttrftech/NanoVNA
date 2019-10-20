@@ -153,7 +153,7 @@ extern int area_height;
 // font
 
 extern const uint8_t x5x7_bits [];
-extern const uint32_t numfont20x24[][24];
+extern const uint8_t numfont20x22[][22 * 3];
 
 #define S_PI    "\034"
 #define S_MICRO "\035"
@@ -269,10 +269,10 @@ typedef struct {
 	uint16_t height;
 	uint16_t scaley;
 	uint16_t slide;
-	const uint32_t *bitmap;
+	const uint8_t *bitmap;
 } font_t;
 
-extern const font_t NF20x24;
+extern const font_t NF20x22;
 
 extern uint16_t spi_buffer[1024];
 

@@ -1243,7 +1243,7 @@ draw_keypad(void)
     if (i == selection)
       bg = config.menu_active_color;
     ili9341_fill(keypads[i].x, keypads[i].y, 44, 44, bg);
-    ili9341_drawfont(keypads[i].c, &NF20x24, keypads[i].x+12, keypads[i].y+10, 0x0000, bg);
+    ili9341_drawfont(keypads[i].c, &NF20x22, keypads[i].x+12, keypads[i].y+10, 0x0000, bg);
     i++;
   }
 }
@@ -1253,7 +1253,7 @@ draw_numeric_area_frame(void)
 {
   ili9341_fill(0, 208, 320, 32, 0xffff);
   ili9341_drawstring_5x7(keypad_mode_label[keypad_mode], 10, 220, 0x0000, 0xffff);
-  ili9341_drawfont(KP_KEYPAD, &NF20x24, 300, 216, 0x0000, 0xffff);
+  ili9341_drawfont(KP_KEYPAD, &NF20x22, 300, 216, 0x0000, 0xffff);
 }
 
 void
@@ -1284,9 +1284,9 @@ draw_numeric_input(const char *buf)
     }
 
     if (c >= 0)
-      ili9341_drawfont(c, &NF20x24, x, 208+4, fg, bg);
+      ili9341_drawfont(c, &NF20x22, x, 208+4, fg, bg);
     else if (focused)
-      ili9341_drawfont(0, &NF20x24, x, 208+4, fg, bg);
+      ili9341_drawfont(0, &NF20x22, x, 208+4, fg, bg);
     else
       ili9341_fill(x, 208+4, 20, 24, bg);
       

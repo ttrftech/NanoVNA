@@ -2,3 +2,4 @@ matplotlib
 scipy
 scikit-rf
 pillow
+pyserial

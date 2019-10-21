@@ -652,7 +652,7 @@ ensure_edit_config(void)
   cal_status = 0;
 }
 
-#define DELAY_CHANNEL_CHANGE 1
+#define DELAY_CHANNEL_CHANGE 3
 
 // main loop for measurement
 bool sweep(bool break_on_operation)
@@ -671,7 +671,7 @@ bool sweep(bool break_on_operation)
     (*sample_func)(measured[0][i]);
 
     tlv320aic3204_select(1); // CH1:TRANSMISSION
-    wait_dsp(delay + DELAY_CHANNEL_CHANGE);
+    wait_dsp(DELAY_CHANNEL_CHANGE);
 
     /* calculate transmission coeficient */
     (*sample_func)(measured[1][i]);

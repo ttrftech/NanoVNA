@@ -296,7 +296,7 @@ si5351_set_frequency(int channel, int freq, uint8_t drive_strength)
 
 int current_band = -1;
 
-#define DELAY_NORMAL 2
+#define DELAY_NORMAL 3
 #define DELAY_BANDCHANGE 1
 #define DELAY_LOWBAND 1
 

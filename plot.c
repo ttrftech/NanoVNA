@@ -442,7 +442,7 @@ float phase(float *v)
 /*
  * calculate groupdelay
  */
-float groupdelay(float *w, float *v, float deltaf)
+float groupdelay(float *v, float *w, float deltaf)
 {
 #if 1
   // atan(w)-atan(v) = atan((w-v)/(1+wv))
@@ -1440,7 +1440,6 @@ cell_drawchar_8x8(int w, int h, uint8_t ch, int x, int y, uint16_t fg, uint8_t v
     
     if (invert)
       bits = ~bits;
-
 
     for (r = 0; r < charwidthpx; r++) 
     {

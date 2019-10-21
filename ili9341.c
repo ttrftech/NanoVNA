@@ -341,6 +341,7 @@ ili9341_drawchar_size(uint8_t ch, int x, int y, uint16_t fg, uint16_t bg, uint8_
 {
   uint16_t *buf = spi_buffer;
   uint8_t bits;
+
   int cline, ccol;
 
   ch = x8x8_map_char_table(ch);
@@ -472,28 +473,33 @@ ili9341_line(int x0, int y0, int x1, int y1, uint16_t fg)
 }
 
 
-const font_t NF20x24 = { 20, 24, 1, 24, (const uint32_t *)numfont20x24 };
-//const font_t NF32x24 = { 32, 24, 1, 24, (const uint32_t *)numfont32x24 };
-//const font_t NF32x48 = { 32, 48, 2, 24, (const uint32_t *)numfont32x24 };
+const font_t NF20x22 = { 20, 22, 1, 3*22, (const uint8_t *)numfont20x22 };
 
 void
 ili9341_drawfont(uint8_t ch, const font_t *font, int x, int y, uint16_t fg, uint16_t bg)
 {
   uint16_t *buf = spi_buffer;
-  uint32_t bits;
-  const uint32_t *bitmap = &font->bitmap[font->slide * ch];
-  int c, r, j;
+  const uint8_t *bitmap = &font->bitmap[font->slide * ch];
+  int c, r;
 
-  for (c = 0; c < font->slide; c++) {
-    for (j = 0; j < font->scaley; j++) {
-      bits = bitmap[c];
-      for (r = 0; r < font->width; r++) {
-        *buf++ = (0x80000000UL & bits) ? fg : bg;
-        bits <<= 1;
+  for (c = 0; c < font->height; c++) 
+  {
+    uint8_t bits = *bitmap++;
+    uint8_t m = 0x80;
+    for (r = 0; r < font->width; r++) 
+    {
+      *buf++ = (bits & m) ? fg : bg;
+      m >>= 1;
+
+      if (m == 0) 
+      {
+        bits = *bitmap++;
+        m = 0x80;
       }
     }
   }
-    ili9341_bulk(x, y, font->width, font->height);
+  
+  ili9341_bulk(x, y, font->width, font->height);
 }
 
 #if 0
@@ -530,8 +536,8 @@ ili9341_test(int mode)
 #endif
 #if 1
   case 3:
-  for (i = 0; i < 10; i++)
-      ili9341_drawfont(i, &NF20x24, i*20, 120, colormap[i%6], 0x0000);
+    for (i = 0; i < 10; i++)
+      ili9341_drawfont(i, &NF20x22, i*20, 120, colormap[i%6], 0x0000);
     break;
 #endif
 #if 0

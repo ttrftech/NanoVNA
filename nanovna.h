@@ -100,8 +100,10 @@ extern int16_t rx_buffer[];
 #define STATE_LEN 32
 #define SAMPLE_LEN 48
 
+#ifdef ENABLED_DUMP
 extern int16_t ref_buf[];
 extern int16_t samp_buf[];
+#endif
 
 void dsp_process(int16_t *src, size_t len);
 void reset_dsp_accumerator(void);

@@ -442,7 +442,7 @@ float phase(float *v)
 /*
  * calculate groupdelay
  */
-float groupdelay(float *w, float *v, float deltaf)
+float groupdelay(float *v, float *w, float deltaf)
 {
 #if 1
   // atan(w)-atan(v) = atan((w-v)/(1+wv))

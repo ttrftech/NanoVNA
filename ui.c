@@ -34,23 +34,23 @@ uistat_t uistat = {
 
 
 
-#define NO_EVENT					0
-#define EVT_BUTTON_SINGLE_CLICK		0x01
-#define EVT_BUTTON_DOUBLE_CLICK		0x02
-#define EVT_BUTTON_DOWN_LONG		0x04
-#define EVT_UP					0x10
-#define EVT_DOWN				0x20
-#define EVT_REPEAT				0x40
+#define NO_EVENT          0
+#define EVT_BUTTON_SINGLE_CLICK    0x01
+#define EVT_BUTTON_DOUBLE_CLICK    0x02
+#define EVT_BUTTON_DOWN_LONG    0x04
+#define EVT_UP          0x10
+#define EVT_DOWN        0x20
+#define EVT_REPEAT        0x40
 
-#define BUTTON_DOWN_LONG_TICKS		5000  /* 1sec */
-#define BUTTON_DOUBLE_TICKS			5000   /* 500ms */
-#define BUTTON_REPEAT_TICKS			1000   /* 100ms */
-#define BUTTON_DEBOUNCE_TICKS		200
+#define BUTTON_DOWN_LONG_TICKS    5000  /* 1sec */
+#define BUTTON_DOUBLE_TICKS      5000   /* 500ms */
+#define BUTTON_REPEAT_TICKS      1000   /* 100ms */
+#define BUTTON_DEBOUNCE_TICKS    200
 
 /* lever switch assignment */
-#define BIT_UP1 	3
-#define BIT_PUSH	2
-#define BIT_DOWN1	1
+#define BIT_UP1   3
+#define BIT_PUSH  2
+#define BIT_DOWN1  1
 
 #define READ_PORT() palReadPort(GPIOA)
 #define BUTTON_MASK 0b1111
@@ -122,10 +122,10 @@ static void menu_push_submenu(const menuitem_t *submenu);
 static int btn_check(void)
 {
     int cur_button = READ_PORT() & BUTTON_MASK;
-	int changed = last_button ^ cur_button;
-	int status = 0;
+  int changed = last_button ^ cur_button;
+  int status = 0;
     uint32_t ticks = chVTGetSystemTime();
-	if (changed & (1<<BIT_PUSH)) {
+  if (changed & (1<<BIT_PUSH)) {
       if (ticks - last_button_down_ticks >= BUTTON_DEBOUNCE_TICKS) {
         if (cur_button & (1<<BIT_PUSH)) {
           // button released
@@ -137,7 +137,7 @@ static int btn_check(void)
         }
         last_button_down_ticks = ticks;
       }
-	}
+  }
 
     if (changed & (1<<BIT_UP1)) {
       if ((cur_button & (1<<BIT_UP1))
@@ -155,7 +155,7 @@ static int btn_check(void)
     }
     last_button = cur_button;
 
-	return status;
+  return status;
 }
 
 static int btn_wait_release(void)
@@ -402,8 +402,9 @@ show_version(void)
   y += 25;
 
   ili9341_drawstring_8x8_var("2016-2019 Copyright @edy555", x, y += 10, 0xffff, 0x0000);
+  ili9341_drawstring_8x8_var("Variant with lager fonts by DL9CAT", x, y += 10, 0xffff, 0x0000);
   ili9341_drawstring_8x8_var("Licensed under GPL.", x, y += 10, 0xffff, 0x0000);
-  ili9341_drawstring_8x8_var("  see: https://github.com/ttrftech/NanoVNA", x, y += 10, 0xffff, 0x0000);
+  ili9341_drawstring_8x8_var("  see: https://github.com/reald/NanoVNA", x, y += 10, 0xffff, 0x0000);
   ili9341_drawstring_8x8_var("Version: " VERSION, x, y += 10, 0xffff, 0x0000);
   ili9341_drawstring_8x8_var("Build Time: " __DATE__ " - " __TIME__, x, y += 10, 0xffff, 0x0000);
   y += 5;

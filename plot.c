@@ -1073,6 +1073,94 @@ marker_position(int m, int t, int *x, int *y)
   *y = CELL_Y(index);
 }
 
+static int greater(int x, int y) { return x > y; }
+static int lesser(int x, int y) { return x < y; }
+
+static int (*compare)(int x, int y) = lesser;
+
+
+int
+marker_search(int mode)
+{
+  int i;
+  int found = 0;
+
+  if (mode == 0)
+    compare = greater;
+  else
+    compare = lesser;
+    
+  if (uistat.current_trace == -1)
+    return -1;
+
+  int value = CELL_Y(trace_index[uistat.current_trace][0]);
+  for (i = 0; i < 101; i++) {
+    uint32_t index = trace_index[uistat.current_trace][i];
+    if ((*compare)(value, CELL_Y(index))) {
+      value = CELL_Y(index);
+      found = i;
+    }
+  }
+
+  return found;
+}
+
+int
+marker_search_left(int from)
+{
+  int i;
+  int found = -1;
+
+  if (uistat.current_trace == -1)
+    return -1;
+
+  int value = CELL_Y(trace_index[uistat.current_trace][from]);
+  for (i = from - 1; i >= 0; i--) {
+    uint32_t index = trace_index[uistat.current_trace][i];
+    if ((*compare)(value, CELL_Y(index)))
+      break;
+    value = CELL_Y(index);
+  }
+
+  for (; i >= 0; i--) {
+    uint32_t index = trace_index[uistat.current_trace][i];
+    if ((*compare)(CELL_Y(index), value)) {
+      break;
+    }
+    found = i;
+    value = CELL_Y(index);
+  }
+  return found;
+}
+
+int
+marker_search_right(int from)
+{
+  int i;
+  int found = -1;
+
+  if (uistat.current_trace == -1)
+    return -1;
+
+  int value = CELL_Y(trace_index[uistat.current_trace][from]);
+  for (i = from + 1; i < 101; i++) {
+    uint32_t index = trace_index[uistat.current_trace][i];
+    if ((*compare)(value, CELL_Y(index)))
+      break;
+    value = CELL_Y(index);
+  }
+
+  for (; i < 101; i++) {
+    uint32_t index = trace_index[uistat.current_trace][i];
+    if ((*compare)(CELL_Y(index), value)) {
+      break;
+    }
+    found = i;
+    value = CELL_Y(index);
+  }
+  return found;
+}
+
 int
 search_nearest_index(int x, int y, int t)
 {

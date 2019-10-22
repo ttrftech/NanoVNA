@@ -392,9 +392,15 @@ if __name__ == '__main__':
                       help="apply IF filter on raw wave plot")
     parser.add_option("-C", "--capture", dest="capture",
                       help="capture current display to FILE", metavar="FILE")
+    parser.add_option("-e", dest="command", action="append",
+                      help="send raw command", metavar="COMMAND")
     (opt, args) = parser.parse_args()
 
     nv = NanoVNA(opt.device or getport())
+
+    if opt.command:
+        for c in opt.command:
+            nv.send_command(c + "\r")
 
     if opt.capture:
         print("capturing...")

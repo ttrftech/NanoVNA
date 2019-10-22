@@ -107,7 +107,7 @@ circle_inout(int x, int y, int r)
 #define P_CENTER_Y 116
 #define P_RADIUS 116
 
-int
+static int
 polar_grid(int x, int y)
 {
   int c = config.grid_color;
@@ -209,6 +209,7 @@ smith_grid(int x, int y)
   return 0;
 }
 
+#if 0
 int
 smith_grid2(int x, int y, float scale)
 {
@@ -291,7 +292,7 @@ smith_grid2(int x, int y, float scale)
   if (d == 0) return c;
   return 0;
 }
-
+#endif
 
 const int cirs[][4] = {
   { 0, 58/2, 58/2, 0 },    // Constant Reactance Circle: 2j : R/2 = 58
@@ -363,7 +364,7 @@ rectangular_grid(int x, int y)
 }
 #endif
 
-int
+static int
 rectangular_grid_x(int x)
 {
   int c = config.grid_color;
@@ -376,7 +377,7 @@ rectangular_grid_x(int x)
   return 0;
 }
 
-int
+static int
 rectangular_grid_y(int y)
 {
   int c = config.grid_color;
@@ -880,7 +881,7 @@ _compute_outcode(int w, int h, int x, int y)
     return code;
 }
 
-void
+static void
 cell_drawline(int w, int h, int x0, int y0, int x1, int y1, int c)
 {
   uint8_t outcode0 = _compute_outcode(w, h, x0, y0);
@@ -967,7 +968,7 @@ search_index_range(int x, int y, uint32_t index[101], int *i0, int *i1)
   return TRUE;
 }
 
-int
+static int
 search_index_range_x(int x, uint32_t index[101], int *i0, int *i1)
 {
   int i, j;

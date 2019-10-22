@@ -605,7 +605,7 @@ string_value_with_prefix(char *buf, int len, float val, char unit)
   }
 
   if (val < 10) {
-    n = chsnprintf(buf, len, "%.2f", val);
+    n = chsnprintf(buf, len, "%.1f", val);
   } else if (val < 100) {
     n = chsnprintf(buf, len, "%.1f", val);
   } else {
@@ -1526,7 +1526,11 @@ cell_draw_marker_info(int m, int n, int w, int h)
     xpos += strwidthpx + 4;
 
     slen = trace_get_info(t, buf, sizeof buf);
+    buf[slen] = ' ';
+    slen++;
+    
     trace_get_value_string(t, buf+slen, (sizeof(buf))-slen, measured[trace[t].channel], idx);
+    
     cell_drawstring_8x8_var(w, h, buf, xpos, ypos, config.trace_color[t], FALSE);
 
     j++;

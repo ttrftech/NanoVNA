@@ -87,11 +87,9 @@ There are seveal numbers of great companion PC tools from third-party.
 * [TAPR VNAR4](https://groups.io/g/nanovna-users/files/NanoVNA%20PC%20Software/TAPR%20VNA) supports NanoVNA by erikkaashoek
 * see [python](/python/README.md) directory to use NanoVNA with Python and Jupyter Notebook.
 
+## Documentation
 
-## Note
-
-Hardware design material is disclosed to prevent bad quality clone. Please let me know if you would have your own unit.
-
+* [NanoVNA User Guide](https://cho45.github.io/NanoVNA-manual/) [(google translate)](https://translate.google.com/translate?sl=ja&tl=en&u=https%3A%2F%2Fcho45.github.io%2FNanoVNA-manual%2F) by cho45
 
 ## Reference
 
@@ -99,6 +97,10 @@ Hardware design material is disclosed to prevent bad quality clone. Please let m
 * [PCB Photo](/doc/nanovna-pcb-photo.jpg)
 * [Block Diagram](/doc/nanovna-blockdiagram.png)
 * Kit available from https://ttrf.tk/kit/nanovna
+
+## Note
+
+Hardware design material is disclosed to prevent bad quality clone. Please let me know if you would have your own unit.
 
 ## Authorized Distributor
 

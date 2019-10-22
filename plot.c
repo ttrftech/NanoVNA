@@ -91,7 +91,7 @@ void update_grid(void)
   redraw_request |= REDRAW_FREQUENCY;
 }
 
-int
+static inline int
 circle_inout(int x, int y, int r)
 {
   int d = x*x + y*y - r*r;

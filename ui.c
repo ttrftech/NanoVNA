@@ -568,9 +568,8 @@ menu_config_cb(int item)
       {
         biginfo_enabled = FALSE;
       }
-      redraw_frame();
-      request_to_redraw_grid();
-      draw_menu();
+      menu_move_back();
+      ui_mode_normal();
       break;
   }
 }

@@ -121,7 +121,7 @@ static void menu_push_submenu(const menuitem_t *submenu);
 
 static int btn_check(void)
 {
-    int cur_button = READ_PORT() & BUTTON_MASK;
+  int cur_button = READ_PORT() & BUTTON_MASK;
   int changed = last_button ^ cur_button;
   int status = 0;
     uint32_t ticks = chVTGetSystemTime();
@@ -402,7 +402,7 @@ show_version(void)
   y += 25;
 
   ili9341_drawstring_8x8_var("2016-2019 Copyright @edy555", x, y += 10, 0xffff, 0x0000);
-  ili9341_drawstring_8x8_var("Variant with lager fonts by DL9CAT", x, y += 10, 0xffff, 0x0000);
+  ili9341_drawstring_8x8_var("Variant with lager fonts by DL9CAT. =^..^=", x, y += 10, 0xffff, 0x0000);
   ili9341_drawstring_8x8_var("Licensed under GPL.", x, y += 10, 0xffff, 0x0000);
   ili9341_drawstring_8x8_var("  see: https://github.com/reald/NanoVNA", x, y += 10, 0xffff, 0x0000);
   ili9341_drawstring_8x8_var("Version: " VERSION, x, y += 10, 0xffff, 0x0000);
@@ -558,6 +558,20 @@ menu_config_cb(int item)
       redraw_frame();
       request_to_redraw_grid();
       draw_menu();
+      break;
+  case 4:
+      if ( biginfo_enabled == FALSE )
+      {
+        biginfo_enabled = TRUE;
+      }
+      else
+      {
+        biginfo_enabled = FALSE;
+      }
+      redraw_frame();
+      request_to_redraw_grid();
+      draw_menu();
+      break;
   }
 }
 
@@ -1057,6 +1071,7 @@ const menuitem_t menu_config[] = {
   { MT_CALLBACK, "\2TOUCH\0TEST", menu_config_cb },
   { MT_CALLBACK, "SAVE", menu_config_cb },
   { MT_CALLBACK, "VERSION", menu_config_cb },
+  { MT_CALLBACK, "INFO CH0", menu_config_cb },
   { MT_SUBMENU, " " S_RARROW " DFU", menu_dfu },
   { MT_CANCEL, S_LARROW" BACK", NULL },
   { MT_NONE, NULL, NULL } // sentinel

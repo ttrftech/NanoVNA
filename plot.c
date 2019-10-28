@@ -1288,16 +1288,17 @@ draw_cell(int m, int n)
 
 
   /* draw large ch0 infos */
-  int cxpos = 15, cypos = 50;
-  cxpos -= m * CELLWIDTH - CELLOFFSETX;
-  cypos -= n * CELLHEIGHT;
-  
   
   
   if ( (biginfo_enabled != FALSE) && (active_marker >= 0) )
   {
     float *coeff = measured[0][ markers[active_marker].index ];
     float v;
+    int cxpos = 2, cypos = 50;
+
+    cxpos -= m * CELLWIDTH - CELLOFFSETX;
+    cypos -= n * CELLHEIGHT;
+
     v = swr(coeff);
       
     chsnprintf(buf, sizeof(buf), "CH0 Marker %d:", active_marker + 1);

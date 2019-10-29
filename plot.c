@@ -10,8 +10,16 @@
 static void cell_draw_marker_info(int m, int n, int w, int h);
 void frequency_string(char *buf, size_t len, int32_t freq);
 void markmap_all_markers(void);
-uint16_t cell_drawstring_8x8_var(int w, int h, char *str, int x, int y, uint16_t fg, uint8_t invert);
-uint16_t cell_drawstring_size(int w, int h, const char *str, int x, int y, uint16_t fg, uint16_t bg, uint8_t size);
+
+uint16_t cell_drawchar(int w, int h, uint8_t ch, int x, int y, uint16_t fg, uint16_t bg, uint8_t size, uint8_t var, uint8_t invert);
+uint16_t cell_drawstring(int w, int h, const char *str, int x, int y, uint16_t fg, uint16_t bg, uint8_t size, int8_t var, uint8_t invert);
+#define cell_drawchar_size(w, h, ch, x, y, fg, bg, size)      cell_drawchar(w, h, ch, x, y, fg, bg, size, 1, 0)
+#define cell_drawchar_8x8(w, h, ch, x, y, fg, var, invert)    cell_drawchar(w, h, ch, x, y, fg, 0x0000, 1, var, invert)
+#define cell_drawstring_8x8(w, h, str, x, y, fg, invert)      cell_drawstring(w, h, str, x, y, fg, 0x0000, 1, FALSE, FALSE)
+#define cell_drawstring_8x8_var(w, h, str, x, y, fg, invert)  cell_drawstring(w, h, str, x, y, fg, 0x0000, 1, TRUE, FALSE)
+#define cell_drawstring_size(w, h, str, x, y, fg, bg, size)   cell_drawstring(w, h, str, x, y, fg, bg, size, TRUE, FALSE)
+#define ili9341_drawchar_size(ch, x, y, fg, bg, size)  ili9341_drawchar(ch, x, y, fg, bg, size, TRUE, FALSE)
+#define ili9341_drawchar_8x8(ch, x, y, fg, bg)         ili9341_drawchar(ch, x, y, fg, bg, 1, TRUE, FALSE)
 
 void request_to_draw_cells_behind_biginfo(void);
 
@@ -1452,7 +1460,6 @@ request_to_draw_cells_behind_numeric_input(void)
 
 
 
-
 void
 request_to_draw_cells_behind_biginfo(void)
 {
@@ -1466,62 +1473,21 @@ request_to_draw_cells_behind_biginfo(void)
 
 
 uint16_t
-cell_drawchar_8x8(int w, int h, uint8_t ch, int x, int y, uint16_t fg, uint8_t var, uint8_t invert)
+cell_drawchar(int w, int h, uint8_t ch, int x, int y, uint16_t fg, uint16_t bg, uint8_t size, uint8_t var, uint8_t invert)
 {
   uint8_t bits;
-  uint16_t charwidthpx = 8;
-  int cline, r;
+  uint16_t charwidthpx = 8 * size;
+  uint8_t cline, ccol;
 
   ch = x8x8_map_char_table(ch);
 
   if ( var != FALSE )
   {
-    charwidthpx = x8x8_len[ch];
+    charwidthpx = x8x8_len[ch] * size;
   }
-
-  
-  if ( y <= -8 || y >= h || x <= -(charwidthpx) || x >= w )
-    return charwidthpx;
-
-
-  for (cline = 0; cline < 8; cline++) 
-  {
-    if ((y + cline) < 0 || (y + cline) >= h)
-      continue;
-      
-    bits = x8x8_bits[ch][cline];
-    
-    if (invert)
-      bits = ~bits;
-
-    for (r = 0; r < charwidthpx; r++) 
-    {
-      if ( (x+r) >= 0 && (x+r) < w && (0x80 & bits) ) 
-        spi_buffer[(y+cline)*w + (x+r)] = fg;
-
-      bits <<= 1;
-    }
-  }
-
-  return charwidthpx;
-}
-
-
-
-uint16_t
-cell_drawchar_size(int w, int h, uint8_t ch, int x, int y, uint16_t fg, uint16_t bg, uint8_t size)
-{
-  uint8_t bits;
-  uint16_t charwidthpx;
-  uint8_t cline, ccol;
-
-  ch = x8x8_map_char_table(ch);
-
-  charwidthpx = x8x8_len[ch] * size;
   
   if ( y <= -(8*size) || y >= h || x <= -(charwidthpx) || x >= w )
     return charwidthpx;
-
 
   for (cline = 0; cline < (8*size); cline++) 
   {
@@ -1529,6 +1495,10 @@ cell_drawchar_size(int w, int h, uint8_t ch, int x, int y, uint16_t fg, uint16_t
       continue;
       
     bits = x8x8_bits[ch][cline/size];
+    
+    if (invert)
+      bits = ~bits;
+    
     for (ccol = 0; ccol < charwidthpx; ccol++)     
     {
       if ( (x+ccol) >= 0 && (x+ccol) < w ) 
@@ -1545,51 +1515,15 @@ cell_drawchar_size(int w, int h, uint8_t ch, int x, int y, uint16_t fg, uint16_t
 
 
 uint16_t
-cell_drawstring_8x8(int w, int h, char *str, int x, int y, uint16_t fg, uint8_t invert)
-{
-  uint16_t strwidthpx = 0;
-
-  while (*str) 
-  {
-    strwidthpx += cell_drawchar_8x8(w, h, *str, x, y, fg, FALSE, invert);
-    x += 8;
-    str++;
-  }
-
-  return strwidthpx;
-}
-
-
-
-uint16_t
-cell_drawstring_8x8_var(int w, int h, char *str, int x, int y, uint16_t fg, uint8_t invert)
-{
-  unsigned char clength = 0;
-  uint16_t strwidthpx = 0;
-
-  while (*str) 
-  {
-    clength = cell_drawchar_8x8(w, h, *str, x, y, fg, TRUE, invert);
-    x += clength;
-    strwidthpx += clength;
-    str++;
-  }
-  
-  return strwidthpx;
-
-}
-
-
-
-uint16_t
-cell_drawstring_size(int w, int h, const char *str, int x, int y, uint16_t fg, uint16_t bg, uint8_t size)
+cell_drawstring(int w, int h, const char *str, int x, int y, uint16_t fg, uint16_t bg, uint8_t size, int8_t var, uint8_t invert)
 {
   unsigned char clength = 0;
   uint16_t strwidthpx = 0;
  
   while (*str) 
   {
-    clength = cell_drawchar_size(w, h, *str, x, y, fg, bg, size);
+    clength = cell_drawchar(w, h, *str, x, y, fg, bg, size, var, invert);
+
     x += clength;
     strwidthpx += clength;
     str++;

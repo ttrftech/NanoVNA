@@ -277,11 +277,12 @@ void ili9341_init(void);
 void ili9341_test(int mode);
 void ili9341_bulk(int x, int y, int w, int h);
 void ili9341_fill(int x, int y, int w, int h, int color);
-unsigned char ili9341_drawchar_size(uint8_t ch, int x, int y, uint16_t fg, uint16_t bg, uint8_t size);
-void ili9341_drawstring_size(const char *str, int x, int y, uint16_t fg, uint16_t bg, uint8_t size);
-unsigned char ili9341_drawchar_8x8(uint8_t ch, int x, int y, uint16_t fg, uint16_t bg);
-void ili9341_drawstring_8x8(const char *str, int x, int y, uint16_t fg, uint16_t bg);
-void ili9341_drawstring_8x8_var(const char *str, int x, int y, uint16_t fg, uint16_t bg);
+
+unsigned char ili9341_drawchar(uint8_t ch, int x, int y, uint16_t fg, uint16_t bg, uint8_t size, uint8_t var, uint8_t invert);
+void ili9341_drawstring(const char *str, int x, int y, uint16_t fg, uint16_t bg, uint8_t size, uint8_t var, uint8_t invert);
+#define ili9341_drawstring_size(str, x, y, fg, bg, size)  ili9341_drawstring(str, x, y, fg, bg, size, TRUE, FALSE)
+#define ili9341_drawstring_8x8(str, x, y, fg, bg)         ili9341_drawstring(str, x, y, fg, bg, 1, FALSE, FALSE)
+#define ili9341_drawstring_8x8_var(str, x, y, fg, bg)     ili9341_drawstring(str, x, y, fg, bg, 1, TRUE, FALSE)
 void ili9341_drawfont(uint8_t ch, const font_t *font, int x, int y, uint16_t fg, uint16_t bg);
 void ili9341_read_memory(int x, int y, int w, int h, int len, uint16_t* out);
 void ili9341_read_memory_continue(int len, uint16_t* out);

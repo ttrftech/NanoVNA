@@ -337,19 +337,28 @@ ili9341_read_memory_continue(int len, uint16_t* out)
 
 
 unsigned char
-ili9341_drawchar_size(uint8_t ch, int x, int y, uint16_t fg, uint16_t bg, uint8_t size)
+ili9341_drawchar(uint8_t ch, int x, int y, uint16_t fg, uint16_t bg, uint8_t size, uint8_t var, uint8_t invert)
 {
   uint16_t *buf = spi_buffer;
+  uint16_t charwidthpx = 8 * size;
   uint8_t bits;
-
   int cline, ccol;
 
   ch = x8x8_map_char_table(ch);
+
+  if ( var != FALSE )
+  {
+    charwidthpx = x8x8_len[ch] * size;
+  }
   
   for(cline = 0; cline < 8*size; cline++) 
   {
     bits = x8x8_bits[ch][cline/size];
-    for (ccol = 0; ccol < x8x8_len[ch]*size; ccol++) 
+    
+    if (invert)
+      bits = ~bits;
+    
+    for (ccol = 0; ccol < charwidthpx; ccol++) 
     {
       *buf++ = (0x80 & bits) ? fg : bg;
       if (ccol % size == (size-1)) 
@@ -358,76 +367,21 @@ ili9341_drawchar_size(uint8_t ch, int x, int y, uint16_t fg, uint16_t bg, uint8_
       }
     }
   }
-  ili9341_bulk(x, y, x8x8_len[ch]*size, 8*size);
+  ili9341_bulk(x, y, charwidthpx, 8*size);
   
-  return x8x8_len[ch]*size;
+  return charwidthpx;
 }
 
 
 
 void
-ili9341_drawstring_size(const char *str, int x, int y, uint16_t fg, uint16_t bg, uint8_t size)
-{
-  unsigned char clength = 0;
- 
-  while (*str) 
-  {
-    clength = ili9341_drawchar_size(*str, x, y, fg, bg, size);
-    x += clength;
-    str++;
-  }
-}
-
-
-
-unsigned char
-ili9341_drawchar_8x8(uint8_t ch, int x, int y, uint16_t fg, uint16_t bg)
-{
-  uint16_t *buf = spi_buffer;
-  uint16_t bits;
-  int cline, r;
-
-  ch = x8x8_map_char_table(ch);
-
-  for(cline = 0; cline < 8; cline++) 
-  {
-    bits = x8x8_bits[ch][cline];
-
-    for (r = 7; r >= 0; r--) 
-    {
-      *buf++ = (0x80 & bits) ? fg : bg;
-      bits <<= 1;
-    }
-    //*buf++ = bg;
-  }
-  ili9341_bulk(x, y, 8, 8);
-
-  return x8x8_len[ch];
-}
-
-
-
-void
-ili9341_drawstring_8x8(const char *str, int x, int y, uint16_t fg, uint16_t bg)
-{
-  while (*str) 
-  {
-    (void)ili9341_drawchar_8x8(*str, x, y, fg, bg);
-    x += 8;
-    str++;
-  }
-}
-
-
-
-void
-ili9341_drawstring_8x8_var(const char *str, int x, int y, uint16_t fg, uint16_t bg)
+ili9341_drawstring(const char *str, int x, int y, uint16_t fg, uint16_t bg, uint8_t size, uint8_t var, uint8_t invert)
 {
   unsigned char clength = 0;
   
   while (*str) 
   {
-    clength = ili9341_drawchar_8x8(*str, x, y, fg, bg);
+    clength = ili9341_drawchar(*str, x, y, fg, bg, size, var, invert);
     x += clength;
     str++;
   }

@@ -56,7 +56,7 @@ Just make in the directory.
 
 ### Build firmware using docker
 
-Using [this docker image](https://cloud.docker.com/u/edy555/repository/docker/edy555/arm-embedded) without installing arm toolchain.
+Using [this docker image](https://hub.docker.com/r/edy555/arm-embedded) and without installing arm toolchain, you can build the firmware.
 
     $ cd NanoVNA
     $ docker run -it --rm -v $(PWD):/work edy555/arm-embedded:8.2 make

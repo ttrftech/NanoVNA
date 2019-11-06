@@ -13,8 +13,6 @@ void markmap_all_markers(void);
 
 uint16_t cell_drawchar(int w, int h, uint8_t ch, int x, int y, uint16_t fg, uint16_t bg, uint8_t size, uint8_t var, uint8_t invert);
 uint16_t cell_drawstring(int w, int h, const char *str, int x, int y, uint16_t fg, uint16_t bg, uint8_t size, int8_t var, uint8_t invert);
-#define cell_drawchar_size(w, h, ch, x, y, fg, bg, size)      cell_drawchar(w, h, ch, x, y, fg, bg, size, 1, 0)
-#define cell_drawchar_8x8(w, h, ch, x, y, fg, var, invert)    cell_drawchar(w, h, ch, x, y, fg, 0x0000, 1, var, invert)
 #define cell_drawstring_8x8(w, h, str, x, y, fg, invert)      cell_drawstring(w, h, str, x, y, fg, 0x0000, 1, FALSE, FALSE)
 #define cell_drawstring_8x8_var(w, h, str, x, y, fg, invert)  cell_drawstring(w, h, str, x, y, fg, 0x0000, 1, TRUE, FALSE)
 #define cell_drawstring_size(w, h, str, x, y, fg, bg, size)   cell_drawstring(w, h, str, x, y, fg, bg, size, TRUE, FALSE)

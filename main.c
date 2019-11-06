@@ -612,6 +612,7 @@ config_t config = {
   .trace_color = { RGB_565(255,255,0), RGB_565(0,40,255), RGB_565(0,255,0), RGB_565(255,200,20) },
   .touch_cal =         { 411, 592, 151, 189 },  //{ 620, 600, 160, 190 },
   .default_loadcal =   0,
+  .biginfo_enabled = FALSE,
   .harmonic_freq_threshold = 300000000,
   .checksum =          0
 };
@@ -2079,6 +2080,9 @@ int main(void)
    * by the Reference Manual.
    */
   dacStart(&DACD2, &dac1cfg1);
+
+  /* restore big info screen status */
+  biginfo_enabled = config.biginfo_enabled;
 
   /* initial frequencies */
   update_frequencies();

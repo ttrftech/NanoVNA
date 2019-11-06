@@ -97,7 +97,7 @@ config_save(void)
   /* erase flash pages */
   flash_erase_page((uint32_t)dst);
 
-  /* write to flahs */
+  /* write to flash */
   while(count-- > 0) {
     flash_program_half_word((uint32_t)dst, *src++);
     dst++;

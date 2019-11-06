@@ -388,6 +388,7 @@ static void cmd_clearconfig(BaseSequentialStream *chp, int argc, char *argv[])
 
   clear_all_config_prop_data();
   chprintf(chp, "Config and all cal data cleared.\r\n");
+  chprintf(chp, "Do reset manually to take effect. Then do touch cal and save.\r\n");
 }
 
 static struct {

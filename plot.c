@@ -1380,11 +1380,7 @@ draw_cell(int m, int n)
   }
   PULSE;
 
-
-
   /* draw large ch0 infos */
-  
-  
   if ( (biginfo_enabled != FALSE) && (active_marker >= 0) )
   {
     float *coeff = measured[0][ markers[active_marker].index ];
@@ -1399,7 +1395,6 @@ draw_cell(int m, int n)
     chsnprintf(buf, sizeof(buf), "CH0 Marker %d:", active_marker + 1);
     cell_drawstring_size(w, h, buf, cxpos, cypos+=30, 0x0000, 0xffff, 3);
 
-
     chsnprintf(buf, sizeof(buf), "SWR 1:%.2f", v);
     cell_drawstring_size(w, h, buf, cxpos, cypos+=30, 0xffff, 0x000, 3);
 
@@ -1410,7 +1405,6 @@ draw_cell(int m, int n)
     cell_drawstring_size(w, h, buf, cxpos, cypos+=30, 0xffff, 0x0000, 3);
     
     request_to_draw_cells_behind_biginfo();
-
       
   }
 

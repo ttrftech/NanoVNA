@@ -19,7 +19,7 @@ def getport() -> str:
 REF_LEVEL = (1<<9)
 
 class NanoVNA:
-    def __init__(self, dev):
+    def __init__(self, dev = None):
         self.dev = dev or getport()
         self.serial = None
         self._frequencies = None
@@ -188,6 +188,8 @@ class NanoVNA:
         segment_length = 101
         array0 = []
         array1 = []
+        if self._frequencies is None:
+            self.fetch_frequencies()
         freqs = self._frequencies
         while len(freqs) > 0:
             seg_start = freqs[0]
@@ -367,6 +369,8 @@ if __name__ == '__main__':
                       help="capture current display to FILE", metavar="FILE")
     parser.add_option("-e", dest="command", action="append",
                       help="send raw command", metavar="COMMAND")
+    parser.add_option("-o", dest="save",
+                      help="write touch stone file", metavar="SAVE")
     (opt, args) = parser.parse_args()
 
     nv = NanoVNA(opt.device or getport())
@@ -398,7 +402,7 @@ if __name__ == '__main__':
     if opt.start or opt.stop or opt.points:
         nv.set_frequencies(opt.start, opt.stop, opt.points)
     plot = opt.phase or opt.plot or opt.vswr or opt.delay or opt.groupdelay or opt.smith or opt.unwrapphase or opt.polar or opt.tdr
-    if plot:
+    if plot or opt.save:
         p = int(opt.port) if opt.port else 0
         if opt.scan or opt.points > 101:
             s = nv.scan()
@@ -409,6 +413,9 @@ if __name__ == '__main__':
             nv.fetch_frequencies()
             s = nv.data(p)
             nv.fetch_frequencies()
+    if opt.save:
+        n = nv.skrf_network(s)
+        n.write_touchstone(opt.save)
     if opt.smith:
         nv.smith(s)
     if opt.polar:

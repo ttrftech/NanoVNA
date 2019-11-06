@@ -831,16 +831,16 @@ menu_marker_op_cb(int item)
     return; // no active marker
 
   switch (item) {
-  case 1: /* MARKER->START */
+  case 0: /* MARKER->START */
     set_sweep_frequency(ST_START, freq);
     break;
-  case 2: /* MARKER->STOP */
+  case 1: /* MARKER->STOP */
     set_sweep_frequency(ST_STOP, freq);
     break;
-  case 3: /* MARKER->CENTER */
+  case 2: /* MARKER->CENTER */
     set_sweep_frequency(ST_CENTER, freq);
     break;
-  case 4: /* MARKERS->SPAN */
+  case 3: /* MARKERS->SPAN */
     {
       if (previous_marker == active_marker)
         return;
@@ -864,6 +864,37 @@ menu_marker_op_cb(int item)
   ui_mode_normal();
   draw_cal_status();
   //redraw_all();
+}
+
+static void
+menu_marker_search_cb(int item)
+{
+  int i;
+  if (active_marker == -1)
+    return;
+
+  switch (item) {
+  case 0: /* maximum */
+  case 1: /* minimum */
+    i = marker_search(item);
+    if (i != -1)
+      markers[active_marker].index = i;
+    draw_menu();
+    break;
+  case 2: /* search Left */
+    i = marker_search_left(markers[active_marker].index);
+    if (i != -1)
+      markers[active_marker].index = i;
+    draw_menu();
+    break;
+  case 3: /* search right */
+    i = marker_search_right(markers[active_marker].index);
+    if (i != -1)
+      markers[active_marker].index = i;
+    draw_menu();
+    break;
+  }
+  redraw_marker(active_marker, TRUE);
 }
 
 void 
@@ -1039,12 +1070,30 @@ const menuitem_t menu_marker_sel[] = {
   { MT_NONE, NULL, NULL } // sentinel
 };
 
-const menuitem_t menu_marker[] = {
-  { MT_SUBMENU, "\2SELECT\0MARKER", menu_marker_sel },
+const menuitem_t menu_marker_ops[] = {
   { MT_CALLBACK, S_RARROW"START", menu_marker_op_cb },
   { MT_CALLBACK, S_RARROW"STOP", menu_marker_op_cb },
   { MT_CALLBACK, S_RARROW"CENTER", menu_marker_op_cb },
   { MT_CALLBACK, S_RARROW"SPAN", menu_marker_op_cb },
+  { MT_CANCEL, S_LARROW" BACK", NULL },
+  { MT_NONE, NULL, NULL } // sentinel
+};
+
+const menuitem_t menu_marker_search[] = {
+  //{ MT_CALLBACK, "OFF", menu_marker_search_cb },
+  { MT_CALLBACK, "MAXIMUM", menu_marker_search_cb },
+  { MT_CALLBACK, "MINIMUM", menu_marker_search_cb },
+  { MT_CALLBACK, "\2SEARCH\0" S_LARROW" LEFT", menu_marker_search_cb },
+  { MT_CALLBACK, "\2SEARCH\0" S_RARROW" RIGHT", menu_marker_search_cb },
+  //{ MT_CALLBACK, "TRACKING", menu_marker_search_cb },
+  { MT_CANCEL, S_LARROW" BACK", NULL },
+  { MT_NONE, NULL, NULL } // sentinel
+};
+
+const menuitem_t menu_marker[] = {
+  { MT_SUBMENU, "\2SELECT\0MARKER", menu_marker_sel },
+  { MT_SUBMENU, "SEARCH", menu_marker_search },
+  { MT_SUBMENU, "OPERATIONS", menu_marker_ops },
   { MT_CANCEL, S_LARROW" BACK", NULL },
   { MT_NONE, NULL, NULL } // sentinel
 };

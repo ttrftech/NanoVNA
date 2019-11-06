@@ -2,7 +2,6 @@
 import serial
 import numpy as np
 import pylab as pl
-import scipy.signal as signal
 import struct
 from serial.tools import list_ports
 
@@ -19,21 +18,10 @@ def getport() -> str:
 
 REF_LEVEL = (1<<9)
 
-# b, a = signal.ellip(4, 0.2, 100, (4700.0/24000, 5100.0/24000), 'bandpass')
-# def bandpassfilter_5khz(ref, samp):
-#     zi = signal.lfiltic(b, a, np.ones([0]))
-#     samp1,zi = signal.lfilter(b, a, samp, zi = zi)
-#     samp1,x = signal.lfilter(b, a, samp, zi = zi)
-#     zi = signal.lfiltic(b, a, np.ones([0]))
-#     ref1,zi = signal.lfilter(b, a, ref, zi = zi)
-#     ref1,x = signal.lfilter(b, a, ref, zi = zi)
-#     return ref1,samp1
-
 class NanoVNA:
-    def __init__(self, dev):
-        self.dev = dev
+    def __init__(self, dev = None):
+        self.dev = dev or getport()
         self.serial = None
-        self.filter = None # bandpassfilter_5khz
         self._frequencies = None
         self.points = 101
         
@@ -146,8 +134,6 @@ class NanoVNA:
 
     def reflect_coeff_from_rawwave(self, freq = None):
         ref, samp = self.fetch_rawwave(freq)
-        if self.filter:
-            ref, samp = self.filter(ref, samp)
         refh = signal.hilbert(ref)
         #x = np.correlate(refh, samp) / np.correlate(refh, refh)
         #return x[0]
@@ -202,6 +188,8 @@ class NanoVNA:
         segment_length = 101
         array0 = []
         array1 = []
+        if self._frequencies is None:
+            self.fetch_frequencies()
         freqs = self._frequencies
         while len(freqs) > 0:
             seg_start = freqs[0]
@@ -328,8 +316,6 @@ def plot_sample(ref, samp):
 if __name__ == '__main__':
     from optparse import OptionParser
     parser = OptionParser(usage="%prog: [options]")
-    parser.add_option("-f", "--file", dest="filename",
-                      help="read from FILE", metavar="FILE")
     parser.add_option("-r", "--raw", dest="rawwave",
                       type="int", default=None,
                       help="plot raw waveform", metavar="RAWWAVE")
@@ -376,25 +362,22 @@ if __name__ == '__main__':
                       help="port", metavar="PORT")
     parser.add_option("-d", "--dev", dest="device",
                       help="device node", metavar="DEV")
-    parser.add_option("-F", "--freqeucy", type="int", dest="freq",
-                      help="frequency", metavar="FREQ")
-    parser.add_option("-g", "--gain", type="int", dest="gain",
-                      help="gain (0-95)", metavar="GAIN")
-    parser.add_option("-O", "--offset", type="int", dest="offset",
-                      help="offset frequency", metavar="OFFSET")
-    parser.add_option("--strength", type="int", dest="strength",
-                      help="drive strength(0-3)", metavar="STRENGTH")
     parser.add_option("-v", "--verbose",
                       action="store_true", dest="verbose", default=False,
                       help="verbose output")
-    parser.add_option("-l", "--filter",
-                      action="store_true", dest="filter", default=False,
-                      help="apply IF filter on raw wave plot")
     parser.add_option("-C", "--capture", dest="capture",
                       help="capture current display to FILE", metavar="FILE")
+    parser.add_option("-e", dest="command", action="append",
+                      help="send raw command", metavar="COMMAND")
+    parser.add_option("-o", dest="save",
+                      help="write touch stone file", metavar="SAVE")
     (opt, args) = parser.parse_args()
 
     nv = NanoVNA(opt.device or getport())
+
+    if opt.command:
+        for c in opt.command:
+            nv.send_command(c + "\r")
 
     if opt.capture:
         print("capturing...")
@@ -402,11 +385,7 @@ if __name__ == '__main__':
         img.save(opt.capture)
         exit(0)
 
-    nv.set_frequency(opt.freq)
     nv.set_port(opt.port)
-    nv.set_gain(opt.gain)
-    nv.set_offset(opt.offset)
-    nv.set_strength(opt.strength)
     if opt.rawwave is not None:
         samp = nv.fetch_buffer(buffer = opt.rawwave)
         print(len(samp))
@@ -423,7 +402,7 @@ if __name__ == '__main__':
     if opt.start or opt.stop or opt.points:
         nv.set_frequencies(opt.start, opt.stop, opt.points)
     plot = opt.phase or opt.plot or opt.vswr or opt.delay or opt.groupdelay or opt.smith or opt.unwrapphase or opt.polar or opt.tdr
-    if plot:
+    if plot or opt.save:
         p = int(opt.port) if opt.port else 0
         if opt.scan or opt.points > 101:
             s = nv.scan()
@@ -434,6 +413,9 @@ if __name__ == '__main__':
             nv.fetch_frequencies()
             s = nv.data(p)
             nv.fetch_frequencies()
+    if opt.save:
+        n = nv.skrf_network(s)
+        n.write_touchstone(opt.save)
     if opt.smith:
         nv.smith(s)
     if opt.polar:

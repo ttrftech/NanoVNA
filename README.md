@@ -61,7 +61,7 @@ Just make in the directory.
 
 ### Build firmware using docker
 
-Using [this docker image](https://cloud.docker.com/u/edy555/repository/docker/edy555/arm-embedded) without installing arm toolchain.
+Using [this docker image](https://hub.docker.com/r/edy555/arm-embedded) and without installing arm toolchain, you can build the firmware.
 
     $ cd NanoVNA
     $ docker run -it --rm -v $(PWD):/work edy555/arm-embedded:8.2 make
@@ -81,15 +81,20 @@ Or simply use make.
 
     $ make flash
 
-## Control from PC
+## Companion Tools
 
-See [python directory](/python/README.md).
+There are seveal numbers of great companion PC tools from third-party.
 
+* [NanoVNASharp Windows software](https://drive.google.com/drive/folders/1IZEtx2YdqchaTO8Aa9QbhQ8g_Pr5iNhr) by hugen79
+* [NanoVNA WebSerial/WebUSB](https://github.com/cho45/NanoVNA-WebUSB-Client) by cho45
+* [Android NanoVNA app](https://play.google.com/store/apps/details?id=net.lowreal.nanovnawebapp) by cho45
+* [NanoVNASaver](https://github.com/mihtjel/nanovna-saver) by mihtjel
+* [TAPR VNAR4](https://groups.io/g/nanovna-users/files/NanoVNA%20PC%20Software/TAPR%20VNA) supports NanoVNA by erikkaashoek
+* see [python](/python/README.md) directory to use NanoVNA with Python and Jupyter Notebook.
 
-## Note
+## Documentation
 
-Hardware design material is disclosed to prevent bad quality clone. Please let me know if you would have your own unit.
-
+* [NanoVNA User Guide](https://cho45.github.io/NanoVNA-manual/) [(google translate)](https://translate.google.com/translate?sl=ja&tl=en&u=https%3A%2F%2Fcho45.github.io%2FNanoVNA-manual%2F) by cho45
 
 ## Reference
 
@@ -97,6 +102,10 @@ Hardware design material is disclosed to prevent bad quality clone. Please let m
 * [PCB Photo](/doc/nanovna-pcb-photo.jpg)
 * [Block Diagram](/doc/nanovna-blockdiagram.png)
 * Kit available from https://ttrf.tk/kit/nanovna
+
+## Note
+
+Hardware design material is disclosed to prevent bad quality clone. Please let me know if you would have your own unit.
 
 ## Authorized Distributor
 

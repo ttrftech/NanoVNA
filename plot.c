@@ -101,7 +101,7 @@ void update_grid(void)
   redraw_request |= REDRAW_FREQUENCY;
 }
 
-int
+static inline int
 circle_inout(int x, int y, int r)
 {
   int d = x*x + y*y - r*r;
@@ -117,7 +117,7 @@ circle_inout(int x, int y, int r)
 #define P_CENTER_Y 116
 #define P_RADIUS 116
 
-int
+static int
 polar_grid(int x, int y)
 {
   int c = config.grid_color;
@@ -219,6 +219,7 @@ smith_grid(int x, int y)
   return 0;
 }
 
+#if 0
 int
 smith_grid2(int x, int y, float scale)
 {
@@ -301,7 +302,7 @@ smith_grid2(int x, int y, float scale)
   if (d == 0) return c;
   return 0;
 }
-
+#endif
 
 const int cirs[][4] = {
   { 0, 58/2, 58/2, 0 },    // Constant Reactance Circle: 2j : R/2 = 58
@@ -373,7 +374,7 @@ rectangular_grid(int x, int y)
 }
 #endif
 
-int
+static int
 rectangular_grid_x(int x)
 {
   int c = config.grid_color;
@@ -386,7 +387,7 @@ rectangular_grid_x(int x)
   return 0;
 }
 
-int
+static int
 rectangular_grid_y(int y)
 {
   int c = config.grid_color;
@@ -899,7 +900,7 @@ _compute_outcode(int w, int h, int x, int y)
     return code;
 }
 
-void
+static void
 cell_drawline(int w, int h, int x0, int y0, int x1, int y1, int c)
 {
   uint8_t outcode0 = _compute_outcode(w, h, x0, y0);
@@ -986,7 +987,7 @@ search_index_range(int x, int y, uint32_t index[101], int *i0, int *i1)
   return TRUE;
 }
 
-int
+static int
 search_index_range_x(int x, uint32_t index[101], int *i0, int *i1)
 {
   int i, j;
@@ -1107,6 +1108,94 @@ marker_position(int m, int t, int *x, int *y)
   uint32_t index = trace_index[t][markers[m].index];
   *x = CELL_X(index);
   *y = CELL_Y(index);
+}
+
+static int greater(int x, int y) { return x > y; }
+static int lesser(int x, int y) { return x < y; }
+
+static int (*compare)(int x, int y) = lesser;
+
+
+int
+marker_search(int mode)
+{
+  int i;
+  int found = 0;
+
+  if (mode == 0)
+    compare = greater;
+  else
+    compare = lesser;
+    
+  if (uistat.current_trace == -1)
+    return -1;
+
+  int value = CELL_Y(trace_index[uistat.current_trace][0]);
+  for (i = 0; i < 101; i++) {
+    uint32_t index = trace_index[uistat.current_trace][i];
+    if ((*compare)(value, CELL_Y(index))) {
+      value = CELL_Y(index);
+      found = i;
+    }
+  }
+
+  return found;
+}
+
+int
+marker_search_left(int from)
+{
+  int i;
+  int found = -1;
+
+  if (uistat.current_trace == -1)
+    return -1;
+
+  int value = CELL_Y(trace_index[uistat.current_trace][from]);
+  for (i = from - 1; i >= 0; i--) {
+    uint32_t index = trace_index[uistat.current_trace][i];
+    if ((*compare)(value, CELL_Y(index)))
+      break;
+    value = CELL_Y(index);
+  }
+
+  for (; i >= 0; i--) {
+    uint32_t index = trace_index[uistat.current_trace][i];
+    if ((*compare)(CELL_Y(index), value)) {
+      break;
+    }
+    found = i;
+    value = CELL_Y(index);
+  }
+  return found;
+}
+
+int
+marker_search_right(int from)
+{
+  int i;
+  int found = -1;
+
+  if (uistat.current_trace == -1)
+    return -1;
+
+  int value = CELL_Y(trace_index[uistat.current_trace][from]);
+  for (i = from + 1; i < 101; i++) {
+    uint32_t index = trace_index[uistat.current_trace][i];
+    if ((*compare)(value, CELL_Y(index)))
+      break;
+    value = CELL_Y(index);
+  }
+
+  for (; i < 101; i++) {
+    uint32_t index = trace_index[uistat.current_trace][i];
+    if ((*compare)(CELL_Y(index), value)) {
+      break;
+    }
+    found = i;
+    value = CELL_Y(index);
+  }
+  return found;
 }
 
 int
@@ -1580,9 +1669,8 @@ cell_draw_marker_info(int m, int n, int w, int h)
   if (electrical_delay != 0) 
   {
     // draw electrical delay
-    
     int xpos = 1;
-    int ypos = 1 + (j/2) * MARKER_Y_DELTA;
+    int ypos = 1 + ((j+1)/2) * MARKER_Y_DELTA;
     uint16_t slen = 0;
     
     xpos -= m * CELLWIDTH - CELLOFFSETX;

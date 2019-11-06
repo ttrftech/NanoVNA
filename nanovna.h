@@ -100,8 +100,10 @@ extern int16_t rx_buffer[];
 #define STATE_LEN 32
 #define SAMPLE_LEN 48
 
+#ifdef ENABLED_DUMP
 extern int16_t ref_buf[];
 extern int16_t samp_buf[];
+#endif
 
 void dsp_process(int16_t *src, size_t len);
 void reset_dsp_accumerator(void);
@@ -245,6 +247,9 @@ void markmap_all_markers(void);
 
 void marker_position(int m, int t, int *x, int *y);
 int search_nearest_index(int x, int y, int t);
+int marker_search(int mode);
+int marker_search_left(int from);
+int marker_search_right(int from);
 
 extern uint16_t redraw_request;
 

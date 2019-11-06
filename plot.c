@@ -1514,7 +1514,7 @@ cell_draw_marker_info(int m, int n, int w, int h)
   if (electrical_delay != 0) {
     // draw electrical delay
     int xpos = 21;
-    int ypos = 1 + (j/2)*7;
+    int ypos = 1 + ((j+1)/2)*7;
     xpos -= m * CELLWIDTH -CELLOFFSETX;
     ypos -= n * CELLHEIGHT;
     chsnprintf(buf, sizeof buf, "Edelay");

@@ -834,6 +834,9 @@ void
 set_sweep_frequency(int type, int32_t freq)
 {
   int cal_applied = cal_status & CALSTAT_APPLY;
+  // negative value indicate overflow, do nothing
+  if (freq < 0)
+    return;
   switch (type) {
   case ST_START:
     freq_mode_startstop();

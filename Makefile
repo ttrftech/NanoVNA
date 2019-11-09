@@ -228,6 +228,10 @@ include $(RULESPATH)/rules.mk
 flash: build/ch.bin
 	dfu-util -d 0483:df11 -a 0 -s 0x08000000:leave -D build/ch.bin
 
+release: build/ch.bin
+	cd build; md5sum ch.* > md5.txt; sha256sum ch.* > sha256.txt
+	zip -j -r build/nanovna_$(VERSION).zip build/ch* build/sha256.txt build/md5.txt
+
 dfu:
 	-@printf "reset dfu\r" >/dev/cu.usbmodem401
 

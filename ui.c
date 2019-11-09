@@ -1673,6 +1673,7 @@ ui_process_normal(void)
     if (status & EVT_BUTTON_SINGLE_CLICK) {
       ui_mode_menu();
     } else {
+#if 0
       do {
         if (active_marker >= 0 && markers[active_marker].enabled) {
           if ((status & EVT_DOWN) && markers[active_marker].index > 0) {
@@ -1688,6 +1689,19 @@ ui_process_normal(void)
         }
         status = btn_wait_release();
       } while (status != 0);
+#else
+      if (active_marker >= 0) {
+        if (status & EVT_DOWN) {
+          int i = marker_search_left(markers[active_marker].index);
+          if (i != -1)
+            markers[active_marker].index = i;
+        } else if (status & EVT_UP) {
+          int i = marker_search_right(markers[active_marker].index);
+          if (i != -1)
+            markers[active_marker].index = i;
+        }
+      }
+#endif
       if (active_marker >= 0)
         redraw_marker(active_marker, TRUE);
     }

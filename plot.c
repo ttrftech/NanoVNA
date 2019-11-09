@@ -13,8 +13,8 @@ void markmap_all_markers(void);
 
 uint16_t cell_drawchar(int w, int h, uint8_t ch, int x, int y, uint16_t fg, uint16_t bg, uint8_t size, uint8_t var, uint8_t invert);
 uint16_t cell_drawstring(int w, int h, const char *str, int x, int y, uint16_t fg, uint16_t bg, uint8_t size, int8_t var, uint8_t invert);
-#define cell_drawstring_8x8(w, h, str, x, y, fg, invert)      cell_drawstring(w, h, str, x, y, fg, 0x0000, 1, FALSE, FALSE)
-#define cell_drawstring_8x8_var(w, h, str, x, y, fg, invert)  cell_drawstring(w, h, str, x, y, fg, 0x0000, 1, TRUE, FALSE)
+#define cell_drawstring_8x8(w, h, str, x, y, fg, invert)      cell_drawstring(w, h, str, x, y, fg, 0x0000, 1, FALSE, invert)
+#define cell_drawstring_8x8_var(w, h, str, x, y, fg, invert)  cell_drawstring(w, h, str, x, y, fg, 0x0000, 1, TRUE, invert)
 #define cell_drawstring_size(w, h, str, x, y, fg, bg, size)   cell_drawstring(w, h, str, x, y, fg, bg, size, TRUE, FALSE)
 #define ili9341_drawchar_size(ch, x, y, fg, bg, size)  ili9341_drawchar(ch, x, y, fg, bg, size, TRUE, FALSE)
 #define ili9341_drawchar_8x8(ch, x, y, fg, bg)         ili9341_drawchar(ch, x, y, fg, bg, 1, TRUE, FALSE)

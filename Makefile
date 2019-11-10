@@ -229,10 +229,10 @@ flash: build/ch.bin
 	dfu-util -d 0483:df11 -a 0 -s 0x08000000:leave -D build/ch.bin
 
 release: build/ch.hex build/ch.bin build/ch.dmp
-	cd build; md5sum ch.* > md5.txt; sha256sum ch.* > sha256.txt
 	dfu-tool convert dfuse ./build/ch.hex ./build/ch.dfu
 	dfu-tool set-product ./build/ch.dfu df11
 	dfu-tool set-vendor ./build/ch.dfu 0483
+	cd build; md5sum ch.* > md5.txt; sha256sum ch.* > sha256.txt
 	zip -j -r build/nanovna_$(VERSION).zip build/ch* build/sha256.txt build/md5.txt
 
 dfu:

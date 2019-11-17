@@ -839,6 +839,9 @@ void
 set_sweep_frequency(int type, int32_t freq)
 {
   int cal_applied = cal_status & CALSTAT_APPLY;
+  // negative value indicate overflow, do nothing
+  if (freq < 0)
+    return;
   switch (type) {
   case ST_START:
     freq_mode_startstop();
@@ -1781,6 +1784,7 @@ set_domain_mode(int mode) // accept DOMAIN_FREQ or DOMAIN_TIME
   if (mode != (domain_mode & DOMAIN_MODE)) {
     domain_mode = (domain_mode & ~DOMAIN_MODE) | (mode & DOMAIN_MODE);
     redraw_request |= REDRAW_FREQUENCY;
+    uistat.lever_mode = LM_MARKER;
   }
 }
 

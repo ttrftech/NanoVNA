@@ -268,11 +268,11 @@ extern int16_t vbat;
 #define RGB_565(r, g, b)     ( (((b)<<8)&0xfc00) | (((r)<<2)&0x03e0) | (((g)>>3)&0x001f) )
 
 typedef struct {
-	uint16_t width;
-	uint16_t height;
-	uint16_t scaley;
-	uint16_t slide;
-	const uint8_t *bitmap;
+  uint16_t width;
+  uint16_t height;
+  uint16_t scaley;
+  uint16_t slide;
+  const uint8_t *bitmap;
 } font_t;
 
 extern const font_t NF20x22;
@@ -285,7 +285,7 @@ void ili9341_bulk(int x, int y, int w, int h);
 void ili9341_fill(int x, int y, int w, int h, int color);
 
 unsigned char ili9341_drawchar(uint8_t ch, int x, int y, uint16_t fg, uint16_t bg, uint8_t size, uint8_t var, uint8_t invert);
-void ili9341_drawstring(const char *str, int x, int y, uint16_t fg, uint16_t bg, uint8_t size, uint8_t var, uint8_t invert);
+unsigned int ili9341_drawstring(const char *str, int x, int y, uint16_t fg, uint16_t bg, uint8_t size, uint8_t var, uint8_t invert);
 #define ili9341_drawstring_size(str, x, y, fg, bg, size)  ili9341_drawstring(str, x, y, fg, bg, size, TRUE, FALSE)
 #define ili9341_drawstring_8x8(str, x, y, fg, bg)         ili9341_drawstring(str, x, y, fg, bg, 1, FALSE, FALSE)
 #define ili9341_drawstring_8x8_var(str, x, y, fg, bg)     ili9341_drawstring(str, x, y, fg, bg, 1, TRUE, FALSE)
@@ -356,12 +356,18 @@ void clear_all_config_prop_data(void);
  * ui.c
  */
 
+// lever_mode
+enum {
+  LM_MARKER, LM_SEARCH, LM_CENTER, LM_SPAN
+};
+
 typedef struct {
   int8_t digit; /* 0~5 */
   int8_t digit_mode;
   int8_t current_trace; /* 0..3 */
   uint32_t value; // for editing at numeric input area
   uint32_t previous_value;
+  uint8_t lever_mode;
 } uistat_t;
 
 extern uistat_t uistat;
@@ -403,11 +409,11 @@ int16_t adc_vbat_read(ADC_TypeDef *adc);
 // convert vbat [mV] to battery indicator
 static inline uint8_t vbat2bati(int16_t vbat)
 {
-	if (vbat < 3200) return 0;
-	if (vbat < 3450) return 25;
-	if (vbat < 3700) return 50;
-	if (vbat < 4100) return 75;
-	return 100;
+  if (vbat < 3200) return 0;
+  if (vbat < 3450) return 25;
+  if (vbat < 3700) return 50;
+  if (vbat < 4100) return 75;
+    return 100;
 }
 
 /*EOF*/

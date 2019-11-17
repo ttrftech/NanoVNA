@@ -29,7 +29,8 @@
 
 uistat_t uistat = {
  digit: 6,
- current_trace: 0
+ current_trace: 0,
+ lever_mode: LM_MARKER
 };
 
 
@@ -727,6 +728,7 @@ menu_transform_cb(int item)
       } else {
           domain_mode = (domain_mode & ~DOMAIN_MODE) | DOMAIN_TIME;
       }
+      uistat.lever_mode = LM_MARKER;
       draw_frequencies();
       ui_mode_normal();
       break;
@@ -795,6 +797,7 @@ menu_stimulus_cb(int item)
   case 2: /* CENTER */
   case 3: /* SPAN */
   case 4: /* CW */
+    uistat.lever_mode = item == 3 ? LM_SPAN : LM_CENTER;
     status = btn_wait_release();
     if (status & EVT_BUTTON_DOWN_LONG) {
       ui_mode_numeric(item);
@@ -843,22 +846,22 @@ menu_marker_op_cb(int item)
     break;
   case 3: /* MARKERS->SPAN */
     {
-      if (previous_marker == active_marker)
-        return;
-      int32_t freq2 = get_marker_frequency(previous_marker);
-      if (freq2 < 0)
-        return;
-      if (freq > freq2) {
-        freq2 = freq;
-        freq = get_marker_frequency(previous_marker);
+      if (previous_marker == -1 || active_marker == previous_marker) {
+        int32_t center = get_sweep_frequency(ST_CENTER);
+        int32_t span = center - freq;
+        if (span < 0) span = -span;
+        set_sweep_frequency(ST_SPAN, span * 2);
+      } else {
+        int32_t freq2 = get_marker_frequency(previous_marker);
+        if (freq2 < 0)
+          return;
+        if (freq > freq2) {
+          freq2 = freq;
+          freq = get_marker_frequency(previous_marker);
+        }
+        set_sweep_frequency(ST_START, freq);
+        set_sweep_frequency(ST_STOP, freq2);
       }
-      set_sweep_frequency(ST_START, freq);
-      set_sweep_frequency(ST_STOP, freq2);
-#if 0
-      int32_t span = (freq - freq2) * 2;
-      if (span < 0) span = -span;
-      set_sweep_frequency(ST_SPAN, span);
-#endif
     }
     break;
   }
@@ -896,6 +899,7 @@ menu_marker_search_cb(int item)
     break;
   }
   redraw_marker(active_marker, TRUE);
+  uistat.lever_mode = LM_SEARCH;
 }
 
 void 
@@ -940,6 +944,7 @@ menu_marker_sel_cb(int item)
   }
   redraw_marker(active_marker, TRUE);
   draw_menu();
+  uistat.lever_mode = LM_MARKER;
 }
 
 const menuitem_t menu_calop[] = {
@@ -1707,6 +1712,92 @@ ui_mode_normal(void)
 }
 
 static void
+lever_move_marker(int status)
+{
+  do {
+    if (active_marker >= 0 && markers[active_marker].enabled) {
+      if ((status & EVT_DOWN) && markers[active_marker].index > 0) {
+        markers[active_marker].index--;
+        markers[active_marker].frequency = frequencies[markers[active_marker].index];
+        redraw_marker(active_marker, FALSE);
+      }
+      if ((status & EVT_UP) && markers[active_marker].index < 100) {
+        markers[active_marker].index++;
+        markers[active_marker].frequency = frequencies[markers[active_marker].index];
+        redraw_marker(active_marker, FALSE);
+      }
+    }
+    status = btn_wait_release();
+  } while (status != 0);
+  if (active_marker >= 0)
+    redraw_marker(active_marker, TRUE);
+}
+
+static void
+lever_search_marker(int status)
+{
+  if (active_marker >= 0) {
+    if (status & EVT_DOWN) {
+      int i = marker_search_left(markers[active_marker].index);
+      if (i != -1)
+        markers[active_marker].index = i;
+    } else if (status & EVT_UP) {
+      int i = marker_search_right(markers[active_marker].index);
+      if (i != -1)
+        markers[active_marker].index = i;
+    }
+    redraw_marker(active_marker, TRUE);
+  }
+}
+
+// ex. 10942 -> 10000
+//      6791 ->  5000
+//       341 ->   200
+static uint32_t
+step_round(uint32_t v)
+{
+  // decade step
+  uint32_t x = 1;
+  for (x = 1; x*10 < v; x *= 10)
+    ;
+  
+  // 1-2-5 step
+  if (x * 2 > v)
+    return x;
+  else if (x * 5 > v)
+    return x * 2;
+  else 
+    return x * 5;
+}
+
+static void
+lever_zoom_span(int status)
+{
+  uint32_t span = get_sweep_frequency(ST_SPAN);
+  if (status & EVT_UP) {
+    span = step_round(span - 1);
+    set_sweep_frequency(ST_SPAN, span);
+  } else if (status & EVT_DOWN) {
+    span = step_round(span + 1);
+    span = step_round(span * 3);
+    set_sweep_frequency(ST_SPAN, span);
+  }
+}
+
+static void
+lever_move_center(int status)
+{
+  uint32_t center = get_sweep_frequency(ST_CENTER);
+  uint32_t span = get_sweep_frequency(ST_SPAN);
+  span = step_round(span / 3);
+  if (status & EVT_UP) {
+    set_sweep_frequency(ST_CENTER, center + span);
+  } else if (status & EVT_DOWN) {
+    set_sweep_frequency(ST_CENTER, center - span);
+  }
+}
+
+static void
 ui_process_normal(void)
 {
   int status = btn_check();
@@ -1714,23 +1805,12 @@ ui_process_normal(void)
     if (status & EVT_BUTTON_SINGLE_CLICK) {
       ui_mode_menu();
     } else {
-      do {
-        if (active_marker >= 0 && markers[active_marker].enabled) {
-          if ((status & EVT_DOWN) && markers[active_marker].index > 0) {
-            markers[active_marker].index--;
-            markers[active_marker].frequency = frequencies[markers[active_marker].index];
-            redraw_marker(active_marker, FALSE);
-          }
-          if ((status & EVT_UP) && markers[active_marker].index < 100) {
-            markers[active_marker].index++;
-            markers[active_marker].frequency = frequencies[markers[active_marker].index];
-            redraw_marker(active_marker, FALSE);
-          }
-        }
-        status = btn_wait_release();
-      } while (status != 0);
-      if (active_marker >= 0)
-        redraw_marker(active_marker, TRUE);
+      switch (uistat.lever_mode) {
+      case LM_MARKER: lever_move_marker(status);   break;
+      case LM_SEARCH: lever_search_marker(status); break;
+      case LM_CENTER: lever_move_center(status);   break;
+      case LM_SPAN:   lever_zoom_span(status);     break;      
+      }
     }
   }
 }

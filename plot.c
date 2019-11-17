@@ -1687,7 +1687,8 @@ cell_draw_marker_info(int m, int n, int w, int h)
   ypos -= n * CELLHEIGHT;
 
   chsnprintf(buf, sizeof buf, "%d:", active_marker + 1);
-  strwidthpx = cell_drawstring_8x8_var(w, h, buf, xpos, ypos, 0xffff, FALSE);
+
+  strwidthpx = cell_drawstring_8x8_var(w, h, buf, xpos, ypos, 0xffff, uistat.lever_mode == LM_MARKER);
   xpos += strwidthpx + 4;
   
   if ( (domain_mode & DOMAIN_MODE) == DOMAIN_FREQ )
@@ -1764,12 +1765,14 @@ void
 draw_frequencies(void)
 {
   char buf[24];
+
   if ((domain_mode & DOMAIN_MODE) == DOMAIN_FREQ) 
   {
     if (frequency1 > 0) 
     {
       int start = frequency0;
       int stop = frequency1;
+
       strcpy(buf, "START ");
       frequency_string(buf+6, 24-6, start);
       strcat(buf, "    ");
@@ -1783,19 +1786,30 @@ draw_frequencies(void)
     {
       int fcenter = frequency0;
       int fspan = -frequency1;
-      strcpy(buf, "CENTER ");
-      frequency_string(buf+7, 24-7, fcenter);
+      int x = OFFSETX;
+      unsigned int strlenpx = 0;
+
+      strcpy(buf, "CENT");
+      strlenpx = ili9341_drawstring(buf, x, 233, 0xffff, 0x0000, 1, TRUE, uistat.lever_mode == LM_CENTER);
+      x += strlenpx;
+      strcpy(buf, " ");
+      frequency_string(buf+1, 24-1, fcenter);
       strcat(buf, "    ");
-      ili9341_drawstring_8x8_var(buf, OFFSETX, 233, 0xffff, 0x0000);
-      strcpy(buf, "SPAN ");
-      frequency_string(buf+5, 24-5, fspan);
+      ili9341_drawstring_8x8_var(buf, x, 233, 0xffff, 0x0000);
+
+      x = 165;
+      strcpy(buf, "SPAN");
+      strlenpx = ili9341_drawstring(buf, x, 233, 0xffff, 0x0000, 1, TRUE, uistat.lever_mode == LM_SPAN);
+      x += strlenpx;
+      strcpy(buf, " ");
+      frequency_string(buf+1, 24-1, fspan);
       strcat(buf, "    ");
-      ili9341_drawstring_8x8_var(buf, 170, 233, 0xffff, 0x0000);
+      ili9341_drawstring_8x8_var(buf, x, 233, 0xffff, 0x0000);
     } 
     else 
     {
       int fcenter = frequency0;
-      chsnprintf(buf, 24, "CW %d.%03d %03d MHz    ",
+      chsnprintf(buf, 24, "CW %d.%03d%03d MHz    ",
                  (int)(fcenter / 1000000),
                  (int)((fcenter / 1000) % 1000),
                  (int)(fcenter % 1000));
@@ -1806,12 +1820,12 @@ draw_frequencies(void)
   } 
   else 
   {
-    strcpy(buf, "START 0s        ");
+    strcpy(buf, "START 0s                      ");
     ili9341_drawstring_8x8_var(buf, OFFSETX, 233, 0xffff, 0x0000);
 
     strcpy(buf, "STOP ");
     chsnprintf(buf+5, 24-5, "%d ns", (uint16_t)(time_of_index(101) * 1e9));
-    strcat(buf, "          ");
+    strcat(buf, "                   ");
     ili9341_drawstring_8x8_var(buf, 165, 233, 0xffff, 0x0000);
   }
 }

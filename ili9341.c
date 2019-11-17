@@ -374,17 +374,21 @@ ili9341_drawchar(uint8_t ch, int x, int y, uint16_t fg, uint16_t bg, uint8_t siz
 
 
 
-void
+unsigned int
 ili9341_drawstring(const char *str, int x, int y, uint16_t fg, uint16_t bg, uint8_t size, uint8_t var, uint8_t invert)
 {
-  unsigned char clength = 0;
+  unsigned char clengthpx = 0;
+  unsigned int strwidthpx = 0;
   
   while (*str) 
   {
-    clength = ili9341_drawchar(*str, x, y, fg, bg, size, var, invert);
-    x += clength;
+    clengthpx = ili9341_drawchar(*str, x, y, fg, bg, size, var, invert);
+    x += clengthpx;
+    strwidthpx += clengthpx;
     str++;
   }
+  
+  return strwidthpx;
 }
 
 

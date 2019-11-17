@@ -28,7 +28,8 @@
 
 static uint16_t reverse_bits(uint16_t x, int n) {
 	uint16_t result = 0;
-	for (int i = 0; i < n; i++, x >>= 1)
+	int i;
+	for (i = 0; i < n; i++, x >>= 1)
 		result = (result << 1) | (x & 1U);
 	return result;
 }
@@ -43,8 +44,10 @@ static void fft256(float array[][2], const uint8_t dir) {
 
 	const uint8_t real =   dir & 1;
 	const uint8_t imag = ~real & 1;
+	uint16_t i;
+	uint16_t size;
 
-	for (uint16_t i = 0; i < n; i++) {
+	for (i = 0; i < n; i++) {
 		uint16_t j = reverse_bits(i, levels);
 		if (j > i) {
 			float temp = array[i][real];
@@ -57,11 +60,13 @@ static void fft256(float array[][2], const uint8_t dir) {
 	}
 
 	// Cooley-Tukey decimation-in-time radix-2 FFT
-	for (uint16_t size = 2; size <= n; size *= 2) {
+	for (size = 2; size <= n; size *= 2) {
 		uint16_t halfsize = size / 2;
 		uint16_t tablestep = n / size;
-		for (uint16_t i = 0; i < n; i += size) {
-			for (uint16_t j = i, k = 0; j < i + halfsize; j++, k += tablestep) {
+		uint16_t i;
+		for (i = 0; i < n; i += size) {
+			uint16_t j, k;
+			for (j = i, k = 0; j < i + halfsize; j++, k += tablestep) {
 				uint16_t l = j + halfsize;
 				float tpre =  array[l][real] * cos(2 * M_PI * k / 256) + array[l][imag] * sin(2 * M_PI * k / 256);
 				float tpim = -array[l][real] * sin(2 * M_PI * k / 256) + array[l][imag] * cos(2 * M_PI * k / 256);

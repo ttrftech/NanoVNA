@@ -699,6 +699,7 @@ menu_transform_cb(int item)
       } else {
           domain_mode = (domain_mode & ~DOMAIN_MODE) | DOMAIN_TIME;
       }
+      uistat.lever_mode = LM_MARKER;
       draw_frequencies();
       ui_mode_normal();
       break;

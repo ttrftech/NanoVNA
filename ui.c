@@ -28,7 +28,8 @@
 
 uistat_t uistat = {
  digit: 6,
- current_trace: 0
+ current_trace: 0,
+ lever_mode: LM_MARKER
 };
 
 
@@ -71,14 +72,9 @@ enum {
   KM_START, KM_STOP, KM_CENTER, KM_SPAN, KM_CW, KM_SCALE, KM_REFPOS, KM_EDELAY, KM_VELOCITY_FACTOR, KM_SCALEDELAY
 };
 
-enum {
-  LM_MARKER, LM_SEARCH, LM_CENTER, LM_SPAN
-};
-
 uint8_t ui_mode = UI_NORMAL;
 uint8_t keypad_mode;
 int8_t selection = 0;
-uint8_t lever_mode = LM_MARKER;
 
 typedef struct {
   uint8_t type;
@@ -771,6 +767,7 @@ menu_stimulus_cb(int item)
   case 2: /* CENTER */
   case 3: /* SPAN */
   case 4: /* CW */
+    uistat.lever_mode = item == 3 ? LM_SPAN : LM_CENTER;
     status = btn_wait_release();
     if (status & EVT_BUTTON_DOWN_LONG) {
       ui_mode_numeric(item);
@@ -779,7 +776,6 @@ menu_stimulus_cb(int item)
       ui_mode_keypad(item);
       ui_process_keypad();
     }
-    lever_mode = item == 3 ? LM_SPAN : LM_CENTER;
     break;
   case 5: /* PAUSE */
     toggle_sweep();
@@ -820,22 +816,22 @@ menu_marker_op_cb(int item)
     break;
   case 3: /* MARKERS->SPAN */
     {
-      if (previous_marker == active_marker)
-        return;
-      int32_t freq2 = get_marker_frequency(previous_marker);
-      if (freq2 < 0)
-        return;
-      if (freq > freq2) {
-        freq2 = freq;
-        freq = get_marker_frequency(previous_marker);
+      if (previous_marker == -1 || active_marker == previous_marker) {
+        int32_t center = get_sweep_frequency(ST_CENTER);
+        int32_t span = center - freq;
+        if (span < 0) span = -span;
+        set_sweep_frequency(ST_SPAN, span * 2);
+      } else {
+        int32_t freq2 = get_marker_frequency(previous_marker);
+        if (freq2 < 0)
+          return;
+        if (freq > freq2) {
+          freq2 = freq;
+          freq = get_marker_frequency(previous_marker);
+        }
+        set_sweep_frequency(ST_START, freq);
+        set_sweep_frequency(ST_STOP, freq2);
       }
-      set_sweep_frequency(ST_START, freq);
-      set_sweep_frequency(ST_STOP, freq2);
-#if 0
-      int32_t span = (freq - freq2) * 2;
-      if (span < 0) span = -span;
-      set_sweep_frequency(ST_SPAN, span);
-#endif
     }
     break;
   }
@@ -873,7 +869,7 @@ menu_marker_search_cb(int item)
     break;
   }
   redraw_marker(active_marker, TRUE);
-  lever_mode = LM_SEARCH;
+  uistat.lever_mode = LM_SEARCH;
 }
 
 void 
@@ -918,7 +914,7 @@ menu_marker_sel_cb(int item)
   }
   redraw_marker(active_marker, TRUE);
   draw_menu();
-  lever_mode = LM_MARKER;
+  uistat.lever_mode = LM_MARKER;
 }
 
 const menuitem_t menu_calop[] = {
@@ -1720,7 +1716,7 @@ step_round(uint32_t v)
 {
   // decade step
   uint32_t x = 1;
-  for (x = 1; x * 10 < v; x *= 10)
+  for (x = 1; x*10 < v; x *= 10)
     ;
   
   // 1-2-5 step
@@ -1735,13 +1731,12 @@ step_round(uint32_t v)
 static void
 lever_zoom_span(int status)
 {
+  uint32_t span = get_sweep_frequency(ST_SPAN);
   if (status & EVT_UP) {
-    uint32_t span = get_sweep_frequency(ST_SPAN);
     span = step_round(span - 1);
     set_sweep_frequency(ST_SPAN, span);
   } else if (status & EVT_DOWN) {
-    uint32_t span = get_sweep_frequency(ST_SPAN);
-    span = step_round(span);
+    span = step_round(span + 1);
     span = step_round(span * 3);
     set_sweep_frequency(ST_SPAN, span);
   }
@@ -1768,7 +1763,7 @@ ui_process_normal(void)
     if (status & EVT_BUTTON_SINGLE_CLICK) {
       ui_mode_menu();
     } else {
-      switch (lever_mode) {
+      switch (uistat.lever_mode) {
       case LM_MARKER: lever_move_marker(status);   break;
       case LM_SEARCH: lever_search_marker(status); break;
       case LM_CENTER: lever_move_center(status);   break;

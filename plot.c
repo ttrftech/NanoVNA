@@ -1535,7 +1535,7 @@ cell_draw_marker_info(int m, int n, int w, int h)
   ypos -= n * CELLHEIGHT;
   chsnprintf(buf, sizeof buf, "%d:", active_marker + 1);
   xpos += 5;
-  cell_drawstring_5x7(w, h, buf, xpos, ypos, 0xffff);
+  cell_drawstring_invert_5x7(w, h, buf, xpos, ypos, 0xffff, uistat.lever_mode == LM_MARKER);
   xpos += 14;
   if ((domain_mode & DOMAIN_MODE) == DOMAIN_FREQ) {
     frequency_string(buf, sizeof buf, frequencies[idx]);
@@ -1610,14 +1610,22 @@ draw_frequencies(void)
       } else if (frequency1 < 0) {
         int fcenter = frequency0;
         int fspan = -frequency1;
-        strcpy(buf, "CENTER ");
-        frequency_string(buf+7, 24-7, fcenter);
+        int x = OFFSETX;
+        strcpy(buf, "CENTER");
+        ili9341_drawstring_5x7_inv(buf, x, 233, 0xffff, 0x0000, uistat.lever_mode == LM_CENTER);
+        x += 5 * 6;
+        strcpy(buf, " ");
+        frequency_string(buf+1, 24-1, fcenter);
         strcat(buf, "    ");
-        ili9341_drawstring_5x7(buf, OFFSETX, 233, 0xffff, 0x0000);
-        strcpy(buf, "SPAN ");
-        frequency_string(buf+5, 24-5, fspan);
+        ili9341_drawstring_5x7(buf, x, 233, 0xffff, 0x0000);
+        x = 205;
+        strcpy(buf, "SPAN");
+        ili9341_drawstring_5x7_inv(buf, x, 233, 0xffff, 0x0000, uistat.lever_mode == LM_SPAN);
+        x += 5 * 4;
+        strcpy(buf, " ");
+        frequency_string(buf+1, 24-1, fspan);
         strcat(buf, "    ");
-        ili9341_drawstring_5x7(buf, 205, 233, 0xffff, 0x0000);
+        ili9341_drawstring_5x7(buf, x, 233, 0xffff, 0x0000);
       } else {
         int fcenter = frequency0;
         chsnprintf(buf, 24, "CW %d.%03d %03d MHz    ",

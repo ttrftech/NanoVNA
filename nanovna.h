@@ -274,6 +274,7 @@ void ili9341_bulk(int x, int y, int w, int h);
 void ili9341_fill(int x, int y, int w, int h, int color);
 void ili9341_drawchar_5x7(uint8_t ch, int x, int y, uint16_t fg, uint16_t bg);
 void ili9341_drawstring_5x7(const char *str, int x, int y, uint16_t fg, uint16_t bg);
+void ili9341_drawstring_5x7_inv(const char *str, int x, int y, uint16_t fg, uint16_t bg, bool inv);
 void ili9341_drawchar_size(uint8_t ch, int x, int y, uint16_t fg, uint16_t bg, uint8_t size);
 void ili9341_drawstring_size(const char *str, int x, int y, uint16_t fg, uint16_t bg, uint8_t size);
 void ili9341_drawfont(uint8_t ch, const font_t *font, int x, int y, uint16_t fg, uint16_t bg);
@@ -341,12 +342,18 @@ void clear_all_config_prop_data(void);
  * ui.c
  */
 
+// lever_mode
+enum {
+  LM_MARKER, LM_SEARCH, LM_CENTER, LM_SPAN
+};
+
 typedef struct {
   int8_t digit; /* 0~5 */
   int8_t digit_mode;
   int8_t current_trace; /* 0..3 */
   uint32_t value; // for editing at numeric input area
   uint32_t previous_value;
+  uint8_t lever_mode;
 } uistat_t;
 
 extern uistat_t uistat;

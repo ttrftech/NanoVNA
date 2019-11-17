@@ -361,6 +361,15 @@ ili9341_drawstring_5x7(const char *str, int x, int y, uint16_t fg, uint16_t bg)
 }
 
 void
+ili9341_drawstring_5x7_inv(const char *str, int x, int y, uint16_t fg, uint16_t bg, bool invert)
+{
+  if (invert)
+    ili9341_drawstring_5x7(str, x, y, bg, fg);
+  else
+    ili9341_drawstring_5x7(str, x, y, fg, bg);
+}
+
+void
 ili9341_drawchar_size(uint8_t ch, int x, int y, uint16_t fg, uint16_t bg, uint8_t size)
 {
   uint16_t *buf = spi_buffer;

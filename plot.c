@@ -503,7 +503,7 @@ cartesian_scale(float re, float im, int *xp, int *yp, float scale)
   *yp = HEIGHT/2 - y;
 }
 
-static float
+float
 groupdelay_from_array(int i, float array[101][2])
 {
   if (i == 0) {

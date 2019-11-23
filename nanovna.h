@@ -206,6 +206,7 @@ void draw_battery_status(void);
 
 void set_electrical_delay(float picoseconds);
 float get_electrical_delay(void);
+float groupdelay_from_array(int i, float array[101][2]);
 
 // marker
 

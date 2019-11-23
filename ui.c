@@ -818,11 +818,13 @@ menu_marker_op_cb(int item)
   case 3: /* MARKERS->SPAN */
     {
       if (previous_marker == -1 || active_marker == previous_marker) {
+        // if only 1 marker is active, keep center freq and make span the marker comes to the edge  
         int32_t center = get_sweep_frequency(ST_CENTER);
         int32_t span = center - freq;
         if (span < 0) span = -span;
         set_sweep_frequency(ST_SPAN, span * 2);
       } else {
+        // if 2 or more marker active, set start and stop freq to each marker
         int32_t freq2 = get_marker_frequency(previous_marker);
         if (freq2 < 0)
           return;
@@ -833,6 +835,13 @@ menu_marker_op_cb(int item)
         set_sweep_frequency(ST_START, freq);
         set_sweep_frequency(ST_STOP, freq2);
       }
+    }
+    break;
+  case 4: /* MARKERS->EDELAY */
+    { 
+      float (*array)[2] = measured[trace[uistat.current_trace].channel];
+      float v = groupdelay_from_array(markers[active_marker].index, array);
+      set_electrical_delay(electrical_delay + (v / 1e-12));
     }
     break;
   }
@@ -1052,6 +1061,7 @@ const menuitem_t menu_marker_ops[] = {
   { MT_CALLBACK, S_RARROW"STOP", menu_marker_op_cb },
   { MT_CALLBACK, S_RARROW"CENTER", menu_marker_op_cb },
   { MT_CALLBACK, S_RARROW"SPAN", menu_marker_op_cb },
+  { MT_CALLBACK, S_RARROW"EDELAY", menu_marker_op_cb },
   { MT_CANCEL, S_LARROW" BACK", NULL },
   { MT_NONE, NULL, NULL } // sentinel
 };

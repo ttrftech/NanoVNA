@@ -839,6 +839,8 @@ menu_marker_op_cb(int item)
     break;
   case 4: /* MARKERS->EDELAY */
     { 
+      if (uistat.current_trace == -1)
+        break;
       float (*array)[2] = measured[trace[uistat.current_trace].channel];
       float v = groupdelay_from_array(markers[active_marker].index, array);
       set_electrical_delay(electrical_delay + (v / 1e-12));

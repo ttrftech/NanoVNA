@@ -1191,7 +1191,7 @@ cell_draw_markers(int m, int n, int w, int h)
   int x0 = m * CELLWIDTH;
   int y0 = n * CELLHEIGHT;
   int t, i;
-  for (i = 0; i < 4; i++) {
+  for (i = 0; i < MARKERS_MAX; i++) {
     if (!markers[i].enabled)
       continue;
     for (t = 0; t < TRACES_MAX; t++) {
@@ -1239,7 +1239,7 @@ void
 markmap_all_markers(void)
 {
   int i;
-  for (i = 0; i < 4; i++) {
+  for (i = 0; i < MARKERS_MAX; i++) {
     if (!markers[i].enabled)
       continue;
     markmap_marker(i);
@@ -1493,24 +1493,48 @@ cell_draw_marker_info(int m, int n, int w, int h)
     return;
   int idx = markers[active_marker].index;
   int j = 0;
-  for (t = 0; t < TRACES_MAX; t++) {
-    if (!trace[t].enabled)
-      continue;
-    int xpos = 1 + (j%2)*146;
-    int ypos = 1 + (j/2)*7;
-    xpos -= m * CELLWIDTH -CELLOFFSETX;
-    ypos -= n * CELLHEIGHT;
-    chsnprintf(buf, sizeof buf, "CH%d", trace[t].channel);
-    cell_drawstring_invert_5x7(w, h, buf, xpos, ypos, config.trace_color[t], t == uistat.current_trace);
-    xpos += 20;
-    trace_get_info(t, buf, sizeof buf);
-    cell_drawstring_5x7(w, h, buf, xpos, ypos, config.trace_color[t]);
-    xpos += 64;
-    trace_get_value_string(t, buf, sizeof buf, measured[trace[t].channel], idx);
-    cell_drawstring_5x7(w, h, buf, xpos, ypos, config.trace_color[t]);
-    j++;
-  }    
-
+  if (active_marker != -1 && previous_marker != -1 && uistat.current_trace != -1) {
+    int t = uistat.current_trace;
+    int mk;
+    for (mk = 0; mk < MARKERS_MAX; mk++) {
+      if (!markers[mk].enabled)
+        continue;
+      int xpos = 1 + (j%2)*146;
+      int ypos = 1 + (j/2)*7;
+      xpos -= m * CELLWIDTH -CELLOFFSETX;
+      ypos -= n * CELLHEIGHT;
+      strcpy(buf, "MK1");
+      buf[2] += mk;
+      cell_drawstring_invert_5x7(w, h, buf, xpos, ypos, config.trace_color[t], mk == active_marker);
+      xpos += 20;
+      trace_get_info(t, buf, sizeof buf);
+      cell_drawstring_5x7(w, h, buf, xpos, ypos, config.trace_color[t]);
+      xpos += 64;
+      trace_get_value_string(t, buf, sizeof buf, measured[trace[t].channel], markers[mk].index);
+      cell_drawstring_5x7(w, h, buf, xpos, ypos, config.trace_color[t]);
+      j++;
+    }
+  } else {
+    for (t = 0; t < TRACES_MAX; t++) {
+      if (!trace[t].enabled)
+        continue;
+      int xpos = 1 + (j%2)*146;
+      int ypos = 1 + (j/2)*7;
+      xpos -= m * CELLWIDTH -CELLOFFSETX;
+      ypos -= n * CELLHEIGHT;
+      strcpy(buf, "CH0");
+      buf[2] += t;
+      chsnprintf(buf, sizeof buf, "CH%d", trace[t].channel);
+      cell_drawstring_invert_5x7(w, h, buf, xpos, ypos, config.trace_color[t], t == uistat.current_trace);
+      xpos += 20;
+      trace_get_info(t, buf, sizeof buf);
+      cell_drawstring_5x7(w, h, buf, xpos, ypos, config.trace_color[t]);
+      xpos += 64;
+      trace_get_value_string(t, buf, sizeof buf, measured[trace[t].channel], idx);
+      cell_drawstring_5x7(w, h, buf, xpos, ypos, config.trace_color[t]);
+      j++;
+    }
+  }
   if (electrical_delay != 0) {
     // draw electrical delay
     int xpos = 21;

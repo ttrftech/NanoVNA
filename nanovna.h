@@ -210,6 +210,8 @@ float groupdelay_from_array(int i, float array[101][2]);
 
 // marker
 
+#define MARKERS_MAX 4
+
 typedef struct {
   int8_t enabled;
   int16_t index;
@@ -300,7 +302,7 @@ typedef struct {
   float _electrical_delay; // picoseconds
   
   trace_t _trace[TRACES_MAX];
-  marker_t _markers[4];
+  marker_t _markers[MARKERS_MAX];
   int _active_marker;
   uint8_t _domain_mode; /* 0bxxxxxffm : where ff: TD_FUNC m: DOMAIN_MODE */
   uint8_t _velocity_factor; // %

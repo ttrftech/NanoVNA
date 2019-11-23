@@ -9,6 +9,7 @@
 
 static void cell_draw_marker_info(int m, int n, int w, int h);
 void frequency_string(char *buf, size_t len, int32_t freq);
+void frequency_string_short(char *buf, size_t len, int32_t freq);
 void markmap_all_markers(void);
 
 //#define GRID_COLOR 0x0863
@@ -1507,7 +1508,8 @@ cell_draw_marker_info(int m, int n, int w, int h)
       buf[2] += mk;
       cell_drawstring_invert_5x7(w, h, buf, xpos, ypos, config.trace_color[t], mk == active_marker);
       xpos += 20;
-      trace_get_info(t, buf, sizeof buf);
+      //trace_get_info(t, buf, sizeof buf);
+      frequency_string_short(buf, sizeof buf, frequencies[markers[mk].index]);
       cell_drawstring_5x7(w, h, buf, xpos, ypos, config.trace_color[t]);
       xpos += 64;
       trace_get_value_string(t, buf, sizeof buf, measured[trace[t].channel], markers[mk].index);
@@ -1612,6 +1614,27 @@ frequency_string(char *buf, size_t len, int32_t freq)
              (int)(freq / 1000000),
              (int)((freq / 1000) % 1000),
              (int)(freq % 1000));
+  }
+}
+
+void
+frequency_string_short(char *buf, size_t len, int32_t freq)
+{
+  if (freq < 0) {
+    freq = -freq;
+    *buf++ = '-';
+    len -= 1;
+  }
+  if (freq < 1000) {
+    chsnprintf(buf, len, "%d Hz", (int)freq);
+  } else if (freq < 1000000) {
+    chsnprintf(buf, len, "%d.%03d kHz",
+             (int)(freq / 1000),
+             (int)(freq % 1000));
+  } else {
+    chsnprintf(buf, len, "%d.%04d MHz",
+             (int)(freq / 1000000),
+             (int)((freq / 100) % 10000));
   }
 }
 

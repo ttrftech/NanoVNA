@@ -1902,6 +1902,58 @@ static void cmd_gain(BaseSequentialStream *chp, int argc, char *argv[])
   tlv320aic3204_set_gain(lvalue, rvalue);
 }
 
+static int atoh(char *str){
+  int x = *str++;
+  if(x == 0)   return 0;
+  if(x >  'f') return 0;
+  if(x >= 'a') x -= 'a' - 10;
+  if(x >  'F') return 0;
+  if(x >= 'A') x -= 'A' - 10;
+  if(x >= '0') x -= '0';
+  if(x >= 16)  x = 0;
+  int y = *str;
+  if(y == 0)   return x;
+  if(y >  'f') return x;
+  if(y >= 'a') y -= 'a' - 10;
+  if(y >  'F') return x;
+  if(y >= 'A') y -= 'A' - 10;
+  if(y >= '0') y -= '0';
+  if(y >= 16)  return x;
+  return ((x << 4) | y);
+}
+
+extern void tlv320aic3204_bulk_write(const uint8_t *buf, int len);
+extern int tlv320aic3204_read(uint8_t d0);
+  
+static void cmd_i2c(BaseSequentialStream *chp, int argc, char *argv[])
+{
+  int i;
+  /* 
+   *   If you use this command, you may need to stop scanning,
+   *  because of gain settings etc. during scanning.
+   */
+  
+  if (argc == 0) {
+    chprintf(chp, "usage: i2c reg val1 [val2 [val3 [val4]]]   (write)\r\n       i2c reg    (read)\r\n");
+    return;
+  }
+  if (argc == 1) {
+    int x = atoh(*argv++);
+    x = tlv320aic3204_read(x);
+    chprintf(chp, "0x%02x\r\n", x);
+    return;
+  }
+  if (argc < 6) {
+    uint8_t buf[6];
+    uint8_t* p = buf;
+    for(i = 0; i < argc; i++){
+      *p++ = atoh(*argv++);
+    }
+    tlv320aic3204_bulk_write(buf, argc);
+    return;
+  }
+}
+
 static void cmd_port(BaseSequentialStream *chp, int argc, char *argv[])
 {
   int port;
@@ -1990,6 +2042,7 @@ static const ShellCommand commands[] =
     { "port", cmd_port },
     { "stat", cmd_stat },
     { "gain", cmd_gain },
+    { "i2c", cmd_i2c },
     { "power", cmd_power },
     { "sample", cmd_sample },
     //{ "gamma", cmd_gamma },

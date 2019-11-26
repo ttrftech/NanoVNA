@@ -50,12 +50,15 @@ static const uint8_t conf_data_clk[] = {
   //2, 0x3c, 25, /* Set the DAC Mode to PRB_P25 */
   2, 0x1b, 0x0c, /* Set the BCLK,WCLK as output */    
   2, 0x1e, 0x80 + 28, /* Enable the BCLKN divider with value 28 */
-  2, 0x25, 0xee, /* DAC power up */
-
+#if 0
+  2, 0x25, 0xee, /* DAC power up */                   // read only. page0/reg0x3F for DAC power up.
+#endif
   2, 0x12, 0x82, /* Power up the NADC divider with value 2 */
   2, 0x13, 0x87, /* Power up the MADC divider with value 7 */
   2, 0x14, 0x80, /* Program the OSR of ADC to 128 */
   2, 0x3d, 0x01, /* Select ADC PRB_R1 */
+  2, 0x00, 0x08,
+  2, 0x01, 0x04, /* Enable ADC adaptive mode */
   0 // sentinel
 };
 
@@ -74,8 +77,8 @@ static const uint8_t conf_data_routing[] = {
   2, 0x36, 0x10, /* Route IN2R to LEFT_N with 10K */
   2, 0x37, 0x04, /* Route IN3R to RIGHT_P with 10K */
   2, 0x39, 0x04, /* Route IN3L to RIGHT_N with 10K */
-  2, 0x3b, 0, /* Unmute Left MICPGA, Gain selection of 32dB to make channel gain 0dB */
-  2, 0x3c, 0, /* Unmute Right MICPGA, Gain selection of 32dB to make channel gain 0dB */
+  2, 0x3b, 0, /* Unmute Left MICPGA, Gain selection of 47.5dB to make channel gain 0dB */
+  2, 0x3c, 0, /* Unmute Right MICPGA, Gain selection of 47.5dB to make channel gain 0dB */
   0 // sentinel
 };
 
@@ -86,8 +89,7 @@ const uint8_t conf_data_unmute[] = {
   0 // sentinel
 };
 
-static void
-tlv320aic3204_bulk_write(const uint8_t *buf, int len)
+void tlv320aic3204_bulk_write(const uint8_t *buf, int len)
 {
   int addr = AIC3204_ADDR;
   i2cAcquireBus(&I2CD1);
@@ -95,18 +97,16 @@ tlv320aic3204_bulk_write(const uint8_t *buf, int len)
   i2cReleaseBus(&I2CD1);
 }
 
-#if 0
-static int
-tlv320aic3204_read(uint8_t d0)
+int tlv320aic3204_read(uint8_t d0)
 {
   int addr = AIC3204_ADDR;
   uint8_t buf[] = { d0 };
   i2cAcquireBus(&I2CD1);
-  i2cMasterTransmitTimeout(&I2CD1, addr, buf, 1, buf, 1, 1000);
+  i2cMasterTransmitTimeout(&I2CD1, addr, buf, 1, NULL, 0, 1000);
+  i2cMasterReceiveTimeout(&I2CD1, addr, buf, 1, 1000);
   i2cReleaseBus(&I2CD1);
   return buf[0];
 }
-#endif
 
 static void
 tlv320aic3204_config(const uint8_t *data)

@@ -1608,7 +1608,7 @@ cell_draw_marker_info(int m, int n, int w, int h)
       xpos -= m * CELLWIDTH -CELLOFFSETX;
       ypos -= n * CELLHEIGHT;
       strcpy(buf, "CH0");
-      buf[2] += t;
+      buf[2] += trace[t].channel;
       //chsnprintf(buf, sizeof buf, "CH%d", trace[t].channel);
       cell_drawstring_invert_5x7(w, h, buf, xpos, ypos, config.trace_color[t], t == uistat.current_trace);
       xpos += 20;

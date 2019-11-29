@@ -9,7 +9,7 @@
 
 static void cell_draw_marker_info(int m, int n, int w, int h);
 void frequency_string(char *buf, size_t len, int32_t freq);
-void frequency_string_short(char *buf, size_t len, int32_t freq);
+void frequency_string_short(char *buf, size_t len, int32_t freq, char prefix);
 void markmap_all_markers(void);
 
 //#define GRID_COLOR 0x0863
@@ -702,6 +702,58 @@ trace_get_value_string(int t, char *buf, int len, float array[101][2], int i)
     break;
   case TRC_IMAG:
     chsnprintf(buf, len, "%.2fj", coeff[1]);
+    break;
+  case TRC_R:
+    gamma2resistance(buf, len, coeff);
+    break;
+  case TRC_X:
+    gamma2reactance(buf, len, coeff);
+    break;
+  //case TRC_ADMIT:
+  case TRC_POLAR:
+    chsnprintf(buf, len, "%.2f %.2fj", coeff[0], coeff[1]);
+    break;
+  }
+}
+
+static void
+trace_get_value_string_delta(int t, char *buf, int len, float array[101][2], int index, int index_ref)
+{
+  float *coeff = array[index];
+  float *coeff_ref = array[index_ref];
+  float v;
+  switch (trace[t].type) {
+  case TRC_LOGMAG:
+    v = logmag(coeff) - logmag(coeff_ref);
+    if (v == -INFINITY)
+      chsnprintf(buf, len, "\004-INF dB");
+    else
+      chsnprintf(buf, len, "\004%.2fdB", v);
+    break;
+  case TRC_PHASE:
+    v = phase(coeff) - phase(coeff_ref);
+    chsnprintf(buf, len, "\004%.2f" S_DEGREE, v);
+    break;
+  case TRC_DELAY:
+    v = groupdelay_from_array(index, array) - groupdelay_from_array(index_ref, array);
+    string_value_with_prefix(buf, len, v, 's');
+    break;
+  case TRC_LINEAR:
+    v = linear(coeff) - linear(coeff_ref);
+    chsnprintf(buf, len, "\004%.2f", v);
+    break;
+  case TRC_SWR:
+    v = swr(coeff) - swr(coeff_ref);
+    chsnprintf(buf, len, "\004%.2f", v);
+    break;
+  case TRC_SMITH:
+    gamma2imp(buf, len, coeff, frequencies[index]);
+    break;
+  case TRC_REAL:
+    chsnprintf(buf, len, "\004%.2f", coeff[0] - coeff_ref[0]);
+    break;
+  case TRC_IMAG:
+    chsnprintf(buf, len, "\004%.2fj", coeff[1] - coeff_ref[1]);
     break;
   case TRC_R:
     gamma2resistance(buf, len, coeff);
@@ -1509,10 +1561,19 @@ cell_draw_marker_info(int m, int n, int w, int h)
       cell_drawstring_invert_5x7(w, h, buf, xpos, ypos, config.trace_color[t], mk == active_marker);
       xpos += 20;
       //trace_get_info(t, buf, sizeof buf);
-      frequency_string_short(buf, sizeof buf, frequencies[markers[mk].index]);
+      int32_t freq = frequencies[markers[mk].index];
+      if (uistat.marker_delta && mk != active_marker) {
+        freq -= frequencies[markers[active_marker].index];
+        frequency_string_short(buf, sizeof buf, freq, '\004');
+      } else {
+        frequency_string_short(buf, sizeof buf, freq, 0);
+      }
       cell_drawstring_5x7(w, h, buf, xpos, ypos, config.trace_color[t]);
       xpos += 64;
-      trace_get_value_string(t, buf, sizeof buf, measured[trace[t].channel], markers[mk].index);
+      if (uistat.marker_delta && mk != active_marker)
+        trace_get_value_string_delta(t, buf, sizeof buf, measured[trace[t].channel], markers[mk].index, markers[active_marker].index);
+      else
+        trace_get_value_string(t, buf, sizeof buf, measured[trace[t].channel], markers[mk].index);
       cell_drawstring_5x7(w, h, buf, xpos, ypos, config.trace_color[t]);
       j++;
     }
@@ -1526,7 +1587,7 @@ cell_draw_marker_info(int m, int n, int w, int h)
       ypos -= n * CELLHEIGHT;
       strcpy(buf, "CH0");
       buf[2] += t;
-      chsnprintf(buf, sizeof buf, "CH%d", trace[t].channel);
+      //chsnprintf(buf, sizeof buf, "CH%d", trace[t].channel);
       cell_drawstring_invert_5x7(w, h, buf, xpos, ypos, config.trace_color[t], t == uistat.current_trace);
       xpos += 20;
       trace_get_info(t, buf, sizeof buf);
@@ -1579,7 +1640,7 @@ cell_draw_marker_info(int m, int n, int w, int h)
     xpos = 192;
     xpos -= m * CELLWIDTH -CELLOFFSETX;
     ypos += 7;
-    chsnprintf(buf, sizeof buf, "\001%d:", previous_marker+1);
+    chsnprintf(buf, sizeof buf, "\004%d:", previous_marker+1);
     cell_drawstring_5x7(w, h, buf, xpos, ypos, 0xffff);
     xpos += 19;
     if ((domain_mode & DOMAIN_MODE) == DOMAIN_FREQ) {
@@ -1618,8 +1679,13 @@ frequency_string(char *buf, size_t len, int32_t freq)
 }
 
 void
-frequency_string_short(char *buf, size_t len, int32_t freq)
+frequency_string_short(char *b, size_t len, int32_t freq, char prefix)
 {
+  char *buf = b;
+  if (prefix) {
+    *buf++ = prefix;
+    len -= 1;
+  }
   if (freq < 0) {
     freq = -freq;
     *buf++ = '-';
@@ -1628,13 +1694,14 @@ frequency_string_short(char *buf, size_t len, int32_t freq)
   if (freq < 1000) {
     chsnprintf(buf, len, "%d Hz", (int)freq);
   } else if (freq < 1000000) {
-    chsnprintf(buf, len, "%d.%03d kHz",
+    chsnprintf(buf, len, "%d.%03dkHz",
              (int)(freq / 1000),
              (int)(freq % 1000));
   } else {
-    chsnprintf(buf, len, "%d.%04d MHz",
+    chsnprintf(buf, len, "%d.%06d",
              (int)(freq / 1000000),
-             (int)((freq / 100) % 10000));
+             (int)(freq % 1000000));
+    strcpy(b+9, "MHz");
   }
 }
 

@@ -357,6 +357,7 @@ typedef struct {
   uint32_t value; // for editing at numeric input area
   uint32_t previous_value;
   uint8_t lever_mode;
+  bool marker_delta;
 } uistat_t;
 
 extern uistat_t uistat;

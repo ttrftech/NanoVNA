@@ -1577,6 +1577,28 @@ cell_draw_marker_info(int m, int n, int w, int h)
       cell_drawstring_5x7(w, h, buf, xpos, ypos, config.trace_color[t]);
       j++;
     }
+
+    // draw marker delta
+    if (!uistat.marker_delta && previous_marker >= 0 && active_marker != previous_marker && markers[previous_marker].enabled) {
+      int idx0 = markers[previous_marker].index;
+      int xpos = 192;
+      int ypos = 1 + (j/2)*7;
+      xpos -= m * CELLWIDTH -CELLOFFSETX;
+      ypos -= n * CELLHEIGHT;
+      chsnprintf(buf, sizeof buf, "\004%d:", previous_marker+1);
+      cell_drawstring_5x7(w, h, buf, xpos, ypos, 0xffff);
+      xpos += 19;
+      if ((domain_mode & DOMAIN_MODE) == DOMAIN_FREQ) {
+        frequency_string(buf, sizeof buf, frequencies[idx] - frequencies[idx0]);
+      } else {
+        //chsnprintf(buf, sizeof buf, "%d ns %.1f m", (uint16_t)(time_of_index(idx) * 1e9 - time_of_index(idx0) * 1e9),
+        //                                            distance_of_index(idx) - distance_of_index(idx0));
+        int n = string_value_with_prefix(buf, sizeof buf, time_of_index(idx) - time_of_index(idx0), 's');
+        buf[n++] = ' ';
+        string_value_with_prefix(&buf[n], sizeof buf - n, distance_of_index(idx) - distance_of_index(idx0), 'm');
+      }
+      cell_drawstring_5x7(w, h, buf, xpos, ypos, 0xffff);
+    }
   } else {
     for (t = 0; t < TRACES_MAX; t++) {
       if (!trace[t].enabled)
@@ -1597,7 +1619,27 @@ cell_draw_marker_info(int m, int n, int w, int h)
       cell_drawstring_5x7(w, h, buf, xpos, ypos, config.trace_color[t]);
       j++;
     }
+
+    // draw marker frequency
+    int xpos = 192;
+    int ypos = 1 + (j/2)*7;
+    xpos -= m * CELLWIDTH -CELLOFFSETX;
+    ypos -= n * CELLHEIGHT;
+    chsnprintf(buf, sizeof buf, "%d:", active_marker + 1);
+    xpos += 5;
+    cell_drawstring_invert_5x7(w, h, buf, xpos, ypos, 0xffff, uistat.lever_mode == LM_MARKER);
+    xpos += 14;
+    if ((domain_mode & DOMAIN_MODE) == DOMAIN_FREQ) {
+      frequency_string(buf, sizeof buf, frequencies[idx]);
+    } else {
+      //chsnprintf(buf, sizeof buf, "%d ns %.1f m", (uint16_t)(time_of_index(idx) * 1e9), distance_of_index(idx));
+      int n = string_value_with_prefix(buf, sizeof buf, time_of_index(idx), 's');
+      buf[n++] = ' ';
+      string_value_with_prefix(&buf[n], sizeof buf-n, distance_of_index(idx), 'm');
+    }
+    cell_drawstring_5x7(w, h, buf, xpos, ypos, 0xffff);
   }
+
   if (electrical_delay != 0) {
     // draw electrical delay
     int xpos = 21;
@@ -1612,46 +1654,6 @@ cell_draw_marker_info(int m, int n, int w, int h)
     xpos += n * 5 + 5;
     float light_speed_ps = 299792458e-12; //(m/ps)
     string_value_with_prefix(buf, sizeof buf, electrical_delay * light_speed_ps * velocity_factor / 100.0, 'm');
-    cell_drawstring_5x7(w, h, buf, xpos, ypos, 0xffff);
-  }
-
-  // draw marker frequency
-  int xpos = 192;
-  int ypos = 1 + (j/2)*7;
-  xpos -= m * CELLWIDTH -CELLOFFSETX;
-  ypos -= n * CELLHEIGHT;
-  chsnprintf(buf, sizeof buf, "%d:", active_marker + 1);
-  xpos += 5;
-  cell_drawstring_invert_5x7(w, h, buf, xpos, ypos, 0xffff, uistat.lever_mode == LM_MARKER);
-  xpos += 14;
-  if ((domain_mode & DOMAIN_MODE) == DOMAIN_FREQ) {
-    frequency_string(buf, sizeof buf, frequencies[idx]);
-  } else {
-    //chsnprintf(buf, sizeof buf, "%d ns %.1f m", (uint16_t)(time_of_index(idx) * 1e9), distance_of_index(idx));
-    int n = string_value_with_prefix(buf, sizeof buf, time_of_index(idx), 's');
-    buf[n++] = ' ';
-    string_value_with_prefix(&buf[n], sizeof buf-n, distance_of_index(idx), 'm');
-  }
-  cell_drawstring_5x7(w, h, buf, xpos, ypos, 0xffff);
-
-  // draw marker delta
-  if (previous_marker >= 0 && active_marker != previous_marker && markers[previous_marker].enabled) {
-    int idx0 = markers[previous_marker].index;
-    xpos = 192;
-    xpos -= m * CELLWIDTH -CELLOFFSETX;
-    ypos += 7;
-    chsnprintf(buf, sizeof buf, "\004%d:", previous_marker+1);
-    cell_drawstring_5x7(w, h, buf, xpos, ypos, 0xffff);
-    xpos += 19;
-    if ((domain_mode & DOMAIN_MODE) == DOMAIN_FREQ) {
-      frequency_string(buf, sizeof buf, frequencies[idx] - frequencies[idx0]);
-    } else {
-      //chsnprintf(buf, sizeof buf, "%d ns %.1f m", (uint16_t)(time_of_index(idx) * 1e9 - time_of_index(idx0) * 1e9),
-      //                                            distance_of_index(idx) - distance_of_index(idx0));
-      int n = string_value_with_prefix(buf, sizeof buf, time_of_index(idx) - time_of_index(idx0), 's');
-      buf[n++] = ' ';
-      string_value_with_prefix(&buf[n], sizeof buf - n, distance_of_index(idx) - distance_of_index(idx0), 'm');
-    }
     cell_drawstring_5x7(w, h, buf, xpos, ypos, 0xffff);
   }
 }

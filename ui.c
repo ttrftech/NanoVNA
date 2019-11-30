@@ -30,7 +30,8 @@
 uistat_t uistat = {
  digit: 6,
  current_trace: 0,
- lever_mode: LM_MARKER
+ lever_mode: LM_MARKER,
+ marker_delta: FALSE
 };
 
 
@@ -868,6 +869,8 @@ menu_marker_op_cb(int item)
     break;
   case 4: /* MARKERS->EDELAY */
     { 
+      if (uistat.current_trace == -1)
+        break;
       float (*array)[2] = measured[trace[uistat.current_trace].channel];
       float v = groupdelay_from_array(markers[active_marker].index, array);
       set_electrical_delay(electrical_delay + (v / 1e-12));
@@ -950,6 +953,8 @@ menu_marker_sel_cb(int item)
       markers[3].enabled = FALSE;
       previous_marker = -1;
       active_marker = -1;      
+  } else if (item == 5) { /* marker delta */
+    uistat.marker_delta = !uistat.marker_delta;
   }
   redraw_marker(active_marker, TRUE);
   draw_menu();
@@ -1081,6 +1086,7 @@ const menuitem_t menu_marker_sel[] = {
   { MT_CALLBACK, "MARKER3", menu_marker_sel_cb },
   { MT_CALLBACK, "MARKER4", menu_marker_sel_cb },
   { MT_CALLBACK, "ALL OFF", menu_marker_sel_cb },
+  { MT_CALLBACK, "DELTA", menu_marker_sel_cb },
   { MT_CANCEL, S_LARROW" BACK", NULL },
   { MT_NONE, NULL, NULL } // sentinel
 };
@@ -1413,10 +1419,17 @@ menu_item_modify_attribute(const menuitem_t *menu, int item,
   if (menu == menu_trace && item < 4) {
     if (trace[item].enabled)
       *bg = config.trace_color[item];
-  } else if (menu == menu_marker_sel && item < 4) {
-    if (markers[item].enabled) {
-      *bg = 0x0000;
-      *fg = 0xffff;
+  } else if (menu == menu_marker_sel) {
+    if (item < 4) {
+      if (markers[item].enabled) {
+        *bg = 0x0000;
+        *fg = 0xffff;
+      }
+    } else if (item == 5) {
+      if (uistat.marker_delta) {
+        *bg = 0x0000;
+        *fg = 0xffff;
+      }
     }   
   } else if (menu == menu_calop) {
     if ((item == 0 && (cal_status & CALSTAT_OPEN))

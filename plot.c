@@ -9,6 +9,7 @@
 
 static void cell_draw_marker_info(int m, int n, int w, int h);
 void frequency_string(char *buf, size_t len, int32_t freq);
+void frequency_string_short(char *buf, size_t len, int32_t freq, char prefix);
 void markmap_all_markers(void);
 
 uint16_t cell_drawchar(int w, int h, uint8_t ch, int x, int y, uint16_t fg, uint16_t bg, uint8_t size, uint8_t var, uint8_t invert);
@@ -437,7 +438,7 @@ draw_on_strut(int v0, int d, int color)
 /*
  * calculate log10(abs(gamma))
  */ 
-float logmag(float *v)
+float logmag(const float *v)
 {
   return log10f(v[0]*v[0] + v[1]*v[1]) * 10;
 }
@@ -445,7 +446,7 @@ float logmag(float *v)
 /*
  * calculate phase[-2:2] of coefficient
  */ 
-float phase(float *v)
+float phase(const float *v)
 {
   return 2 * atan2f(v[1], v[0]) / M_PI * 90;
 }
@@ -453,7 +454,7 @@ float phase(float *v)
 /*
  * calculate groupdelay
  */
-float groupdelay(float *v, float *w, float deltaf)
+float groupdelay(const float *v, const float *w, float deltaf)
 {
 #if 1
   // atan(w)-atan(v) = atan((w-v)/(1+wv))
@@ -468,7 +469,7 @@ float groupdelay(float *v, float *w, float deltaf)
 /*
  * calculate abs(gamma)
  */
-float linear(float *v)
+float linear(const float *v)
 {
   return - sqrtf(v[0]*v[0] + v[1]*v[1]);
 }
@@ -476,7 +477,7 @@ float linear(float *v)
 /*
  * calculate vswr; (1+gamma)/(1-gamma)
  */ 
-float swr(float *v)
+float swr(const float *v)
 {
   float x = sqrtf(v[0]*v[0] + v[1]*v[1]);
   if (x > 1)
@@ -484,14 +485,14 @@ float swr(float *v)
   return (1 + x)/(1 - x);
 }
 
-float resitance(float *v) {
+float resitance(const float *v) {
   float z0 = 50;
   float d = z0 / ((1-v[0])*(1-v[0])+v[1]*v[1]);
   float zr = ((1+v[0])*(1-v[0]) - v[1]*v[1]) * d;
   return zr;
 }
 
-float reactance(float *v) {
+float reactance(const float *v) {
   float z0 = 50;
   float d = z0 / ((1-v[0])*(1-v[0])+v[1]*v[1]);
   float zi = 2*v[1] * d;
@@ -581,10 +582,11 @@ static int
 string_value_with_prefix(char *buf, int len, float val, char unit)
 {
   char prefix;
-  int n;
+  int n = 0;
   if (val < 0) {
     val = -val;
-    *buf++ = '-';
+    *buf = '-';
+    n++;
     len--;
   }
   if (val < 1e-12) {
@@ -616,11 +618,11 @@ string_value_with_prefix(char *buf, int len, float val, char unit)
   }
 
   if (val < 10) {
-    n = chsnprintf(buf, len, "%.1f", val);
+    n += chsnprintf(&buf[n], len, "%.1f", val);
   } else if (val < 100) {
-    n = chsnprintf(buf, len, "%.1f", val);
+    n += chsnprintf(&buf[n], len, "%.1f", val);
   } else {
-    n = chsnprintf(buf, len, "%d", (int)val);
+    n += chsnprintf(&buf[n], len, "%d", (int)val);
   }
 
   if (prefix)
@@ -635,7 +637,7 @@ string_value_with_prefix(char *buf, int len, float val, char unit)
 #define PI2 6.283184
 
 static void
-gamma2imp(char *buf, int len, const float coeff[2], uint32_t frequency)
+format_smith_value(char *buf, int len, const float coeff[2], uint32_t frequency)
 {
   // z = (gamma+1)/(gamma-1) * z0
   float z0 = 50;
@@ -644,15 +646,44 @@ gamma2imp(char *buf, int len, const float coeff[2], uint32_t frequency)
   float zi = 2*coeff[1] * d;
   int n;
 
-  n = string_value_with_prefix(buf, len, zr, S_OHM[0]);
-  buf[n++] = ' ';
+  switch (uistat.marker_smith_format) {
+  case MS_LIN:
+    chsnprintf(buf, len, "%.2f %.1f" S_DEGREE, linear(coeff), phase(coeff));
+    break;
 
-  if (zi < 0) {
-    float c = -1 / (PI2 * frequency * zi);
-    string_value_with_prefix(buf+n, len-n, c, 'F');
-  } else {
-    float l = zi / (PI2 * frequency);
-    string_value_with_prefix(buf+n, len-n, l, 'H');
+  case MS_LOG: {
+      float v = logmag(coeff);
+      if (v == -INFINITY)
+        chsnprintf(buf, len, "-INF dB");
+      else
+        chsnprintf(buf, len, "%.1fdB %.1f" S_DEGREE, v, phase(coeff));
+    }
+    break;
+
+  case MS_REIM:
+    n = string_value_with_prefix(buf, len, coeff[0], '\0');
+    if (coeff[1] >= 0) buf[n++] = '+';
+    string_value_with_prefix(buf+n, len-n, coeff[1], 'j');
+    break;  
+
+  case MS_RX:
+    n = string_value_with_prefix(buf, len, zr, S_OHM[0]);
+    buf[n++] = ' ';
+    string_value_with_prefix(buf+n, len-n, zi, 'j');
+    break;
+
+  case MS_RLC:
+    n = string_value_with_prefix(buf, len, zr, S_OHM[0]);
+    buf[n++] = ' ';
+
+    if (zi < 0) {
+      float c = -1 / (PI2 * frequency * zi);
+      string_value_with_prefix(buf+n, len-n, c, 'F');
+    } else {
+      float l = zi / (PI2 * frequency);
+      string_value_with_prefix(buf+n, len-n, l, 'H');
+    }
+    break;
   }
 }
 
@@ -704,7 +735,7 @@ trace_get_value_string(int t, char *buf, int len, float array[101][2], int i)
     chsnprintf(buf, len, "%.2f", v);
     break;
   case TRC_SMITH:
-    gamma2imp(buf, len, coeff, frequencies[i]);
+    format_smith_value(buf, len, coeff, frequencies[i]);
     break;
   case TRC_REAL:
     chsnprintf(buf, len, "%.2f", coeff[0]);
@@ -725,7 +756,57 @@ trace_get_value_string(int t, char *buf, int len, float array[101][2], int i)
   }
 }
 
-
+static void
+trace_get_value_string_delta(int t, char *buf, int len, float array[101][2], int index, int index_ref)
+{
+  float *coeff = array[index];
+  float *coeff_ref = array[index_ref];
+  float v;
+  switch (trace[t].type) {
+  case TRC_LOGMAG:
+    v = logmag(coeff) - logmag(coeff_ref);
+    if (v == -INFINITY)
+      chsnprintf(buf, len, "\004-INF dB");
+    else
+      chsnprintf(buf, len, "\004%.2fdB", v);
+    break;
+  case TRC_PHASE:
+    v = phase(coeff) - phase(coeff_ref);
+    chsnprintf(buf, len, "\004%.2f" S_DEGREE, v);
+    break;
+  case TRC_DELAY:
+    v = groupdelay_from_array(index, array) - groupdelay_from_array(index_ref, array);
+    string_value_with_prefix(buf, len, v, 's');
+    break;
+  case TRC_LINEAR:
+    v = linear(coeff) - linear(coeff_ref);
+    chsnprintf(buf, len, "\004%.2f", v);
+    break;
+  case TRC_SWR:
+    v = swr(coeff) - swr(coeff_ref);
+    chsnprintf(buf, len, "\004%.2f", v);
+    break;
+  case TRC_SMITH:
+    format_smith_value(buf, len, coeff, frequencies[index]);
+    break;
+  case TRC_REAL:
+    chsnprintf(buf, len, "\004%.2f", coeff[0] - coeff_ref[0]);
+    break;
+  case TRC_IMAG:
+    chsnprintf(buf, len, "\004%.2fj", coeff[1] - coeff_ref[1]);
+    break;
+  case TRC_R:
+    gamma2resistance(buf, len, coeff);
+    break;
+  case TRC_X:
+    gamma2reactance(buf, len, coeff);
+    break;
+  //case TRC_ADMIT:
+  case TRC_POLAR:
+    chsnprintf(buf, len, "%.2f %.2fj", coeff[0], coeff[1]);
+    break;
+  }
+}
 
 uint16_t
 trace_get_info(int t, char *buf, uint16_t len)
@@ -1229,7 +1310,8 @@ cell_draw_markers(int m, int n, int w, int h)
   int x0 = m * CELLWIDTH;
   int y0 = n * CELLHEIGHT;
   int t, i;
-  for (i = 0; i < 4; i++) 
+
+  for (i = 0; i < MARKERS_MAX; i++) 
   {
     if (!markers[i].enabled)
       continue;
@@ -1285,7 +1367,7 @@ void
 markmap_all_markers(void)
 {
   int i;
-  for (i = 0; i < 4; i++) {
+  for (i = 0; i < MARKERS_MAX; i++) {
     if (!markers[i].enabled)
       continue;
     markmap_marker(i);
@@ -1401,7 +1483,7 @@ draw_cell(int m, int n)
     frequency_string(buf, sizeof(buf), frequencies[ markers[active_marker].index ]);
     cell_drawstring_size(w, h, buf, cxpos, cypos+=30, 0xffff, 0x0000, 3);
 
-    gamma2imp(buf, sizeof(buf), coeff, frequencies[ markers[active_marker].index ]);
+    format_smith_value(buf, sizeof(buf), coeff, frequencies[ markers[active_marker].index ]);
     cell_drawstring_size(w, h, buf, cxpos, cypos+=30, 0xffff, 0x0000, 3);
     
     request_to_draw_cells_behind_biginfo();
@@ -1633,32 +1715,134 @@ cell_draw_marker_info(int m, int n, int w, int h)
   
   int idx = markers[active_marker].index;
   int j = 0;
-  
-  for (t = 0; t < TRACES_MAX; t++) 
+
+  if (active_marker != -1 && previous_marker != -1 && uistat.current_trace != -1) 
   {
-    if (!trace[t].enabled)
-      continue;
+    int t = uistat.current_trace;
+    int mk;
+    for (mk = 0; mk < MARKERS_MAX; mk++) 
+    {
+      if (!markers[mk].enabled)
+        continue;
+      int xpos = 1 + (j%2) * 160;
+      int ypos = 1 + (j/2) * MARKER_Y_DELTA;
+      xpos -= m * CELLWIDTH -CELLOFFSETX;
+      ypos -= n * CELLHEIGHT;
+      strcpy(buf, "MK1");
+      buf[2] += mk;
+      strwidthpx = cell_drawstring(w, h, buf, xpos, ypos, config.trace_color[t], 0x0000, 1, TRUE, mk == active_marker);
+
+      xpos += strwidthpx + 4;
+      //trace_get_info(t, buf, sizeof buf);
+      int32_t freq = frequencies[markers[mk].index];
+      if (uistat.marker_delta && mk != active_marker) 
+      {
+        freq -= frequencies[markers[active_marker].index];
+        frequency_string_short(buf, sizeof buf, freq, '\004');
+      } 
+      else 
+      {
+        frequency_string_short(buf, sizeof buf, freq, 0);
+      }
+      strwidthpx = cell_drawstring(w, h, buf, xpos, ypos, config.trace_color[t], 0x0000, 1, TRUE, FALSE);
       
-    int xpos = 1 + (j%2) * 160;
+      xpos += strwidthpx + 4;
+      if (uistat.marker_delta && mk != active_marker)
+        trace_get_value_string_delta(t, buf, sizeof buf, measured[trace[t].channel], markers[mk].index, markers[active_marker].index);
+      else
+        trace_get_value_string(t, buf, sizeof buf, measured[trace[t].channel], markers[mk].index);
+      cell_drawstring(w, h, buf, xpos, ypos, config.trace_color[t], 0x0000, 1, TRUE, FALSE);
+
+      j++;
+    }
+
+    // draw marker delta
+    if (!uistat.marker_delta && previous_marker >= 0 && active_marker != previous_marker && markers[previous_marker].enabled) 
+    {
+      int idx0 = markers[previous_marker].index;
+      
+      int xpos = 160;
+      int ypos = 1 + (j/2) * MARKER_Y_DELTA;
+      xpos -= m * CELLWIDTH - CELLOFFSETX;
+      ypos += MARKER_Y_DELTA;
+
+      chsnprintf(buf, sizeof buf, "%s%d:", S_DIAMOND, previous_marker+1); // fixme: character #4?
+      strwidthpx = cell_drawstring_8x8(w, h, buf, xpos, ypos, 0xffff, FALSE);
+      xpos += strwidthpx + 4;      
+
+      if ((domain_mode & DOMAIN_MODE) == DOMAIN_FREQ) 
+      {
+        frequency_string(buf, sizeof buf, frequencies[idx] - frequencies[idx0]);
+      } 
+      else 
+      {
+        //chsnprintf(buf, sizeof buf, "%d ns %.1f m", (uint16_t)(time_of_index(idx) * 1e9 - time_of_index(idx0) * 1e9),
+        //                                            distance_of_index(idx) - distance_of_index(idx0));
+        int n = string_value_with_prefix(buf, sizeof buf, time_of_index(idx) - time_of_index(idx0), 's');
+        buf[n++] = ' ';
+        string_value_with_prefix(&buf[n], sizeof buf - n, distance_of_index(idx) - distance_of_index(idx0), 'm');
+      }
+      cell_drawstring_8x8_var(w, h, buf, xpos, ypos, 0xffff, FALSE);
+    }
+    
+  } 
+  else 
+  {
+    for (t = 0; t < TRACES_MAX; t++) 
+    {
+      if (!trace[t].enabled)
+        continue;
+
+      int xpos = 1 + (j%2) * 160;
+      int ypos = 1 + (j/2) * MARKER_Y_DELTA;
+      xpos -= m * CELLWIDTH - CELLOFFSETX;
+      ypos -= n * CELLHEIGHT;
+
+      chsnprintf(buf, sizeof buf, "C%d:", trace[t].channel);
+      strwidthpx = cell_drawstring_8x8_var(w, h, buf, xpos, ypos, config.trace_color[t], t == uistat.current_trace);
+
+      xpos += strwidthpx + 4;
+
+      slen = trace_get_info(t, buf, sizeof buf);
+      buf[slen] = ' ';
+      slen++;
+      trace_get_value_string(t, buf+slen, (sizeof(buf))-slen, measured[trace[t].channel], idx);
+     
+      cell_drawstring_8x8_var(w, h, buf, xpos, ypos, config.trace_color[t], FALSE);
+
+      j++;
+
+    }
+    
+      
+
+
+    // draw marker frequency
+    int xpos = 160;
     int ypos = 1 + (j/2) * MARKER_Y_DELTA;
     xpos -= m * CELLWIDTH - CELLOFFSETX;
     ypos -= n * CELLHEIGHT;
 
-    chsnprintf(buf, sizeof buf, "C%d:", trace[t].channel);
-    strwidthpx = cell_drawstring_8x8_var(w, h, buf, xpos, ypos, config.trace_color[t], t == uistat.current_trace);
+    chsnprintf(buf, sizeof buf, "%d:", active_marker + 1);
 
+    strwidthpx = cell_drawstring_8x8_var(w, h, buf, xpos, ypos, 0xffff, uistat.lever_mode == LM_MARKER);
     xpos += strwidthpx + 4;
+  
+    if ( (domain_mode & DOMAIN_MODE) == DOMAIN_FREQ )
+    {
+      frequency_string(buf, sizeof buf, frequencies[idx]);
+    } 
+    else 
+    {
+      //chsnprintf(buf, sizeof buf, "%d ns %.1f m", (uint16_t)(time_of_index(idx) * 1e9), distance_of_index(idx));
+      int n = string_value_with_prefix(buf, sizeof buf, time_of_index(idx), 's');
+      buf[n++] = ' ';
+      string_value_with_prefix(&buf[n], sizeof buf-n, distance_of_index(idx), 'm');
+    }
+    cell_drawstring_8x8_var(w, h, buf, xpos, ypos, 0xffff, FALSE);
 
-    slen = trace_get_info(t, buf, sizeof buf);
-    buf[slen] = ' ';
-    slen++;
-    
-    trace_get_value_string(t, buf+slen, (sizeof(buf))-slen, measured[trace[t].channel], idx);
-    
-    cell_drawstring_8x8_var(w, h, buf, xpos, ypos, config.trace_color[t], FALSE);
+  }
 
-    j++;
-  }    
 
   if (electrical_delay != 0) 
   {
@@ -1678,59 +1862,6 @@ cell_draw_marker_info(int m, int n, int w, int h)
     float light_speed_ps = 299792458e-12; //(m/ps)
     string_value_with_prefix(buf, sizeof buf, electrical_delay * light_speed_ps * velocity_factor / 100.0, 'm');
     cell_drawstring_8x8_var(w, h, buf, xpos, ypos, 0xffff, FALSE);
-  }
-
-  // draw marker frequency
-  int xpos = 160;
-  int ypos = 1 + (j/2) * MARKER_Y_DELTA;
-  xpos -= m * CELLWIDTH - CELLOFFSETX;
-  ypos -= n * CELLHEIGHT;
-
-  chsnprintf(buf, sizeof buf, "%d:", active_marker + 1);
-
-  strwidthpx = cell_drawstring_8x8_var(w, h, buf, xpos, ypos, 0xffff, uistat.lever_mode == LM_MARKER);
-  xpos += strwidthpx + 4;
-  
-  if ( (domain_mode & DOMAIN_MODE) == DOMAIN_FREQ )
-  {
-    frequency_string(buf, sizeof buf, frequencies[idx]);
-  } 
-  else 
-  {
-    //chsnprintf(buf, sizeof buf, "%d ns %.1f m", (uint16_t)(time_of_index(idx) * 1e9), distance_of_index(idx));
-    int n = string_value_with_prefix(buf, sizeof buf, time_of_index(idx), 's');
-    buf[n++] = ' ';
-    string_value_with_prefix(&buf[n], sizeof buf-n, distance_of_index(idx), 'm');
-  }
-  cell_drawstring_8x8_var(w, h, buf, xpos, ypos, 0xffff, FALSE);
-
-  // draw marker delta
-  if ( (previous_marker >= 0) && (active_marker != previous_marker) && (markers[previous_marker].enabled) )
-  {
-    int idx0 = markers[previous_marker].index;
-
-    xpos = 160;
-    xpos -= m * CELLWIDTH - CELLOFFSETX;
-    ypos += MARKER_Y_DELTA;
-
-    chsnprintf(buf, sizeof buf, "%s%d:", S_DIAMOND, previous_marker+1);
-    strwidthpx = cell_drawstring_8x8(w, h, buf, xpos, ypos, 0xffff, FALSE);
-    xpos += strwidthpx + 4;
-
-    if ((domain_mode & DOMAIN_MODE) == DOMAIN_FREQ) 
-    {
-      frequency_string(buf, sizeof buf, frequencies[idx] - frequencies[idx0]);
-    } 
-    else 
-    {
-      //chsnprintf(buf, sizeof buf, "%d ns %.1f m", (uint16_t)(time_of_index(idx) * 1e9 - time_of_index(idx0) * 1e9),
-      //                                            distance_of_index(idx) - distance_of_index(idx0));
-      int n = string_value_with_prefix(buf, sizeof buf, time_of_index(idx) - time_of_index(idx0), 's');
-      buf[n++] = ' ';
-      string_value_with_prefix(&buf[n], sizeof buf - n, distance_of_index(idx) - distance_of_index(idx0), 'm');
-    }
-    cell_drawstring_8x8_var(w, h, buf, xpos, ypos, 0xffff, FALSE);
-
   }
 
 }
@@ -1760,6 +1891,33 @@ frequency_string(char *buf, size_t len, int32_t freq)
 }
 
 
+
+void
+frequency_string_short(char *b, size_t len, int32_t freq, char prefix)
+{
+  char *buf = b;
+  if (prefix) {
+    *buf++ = prefix;
+    len -= 1;
+  }
+  if (freq < 0) {
+    freq = -freq;
+    *buf++ = '-';
+    len -= 1;
+  }
+  if (freq < 1000) {
+    chsnprintf(buf, len, "%d Hz", (int)freq);
+  } else if (freq < 1000000) {
+    chsnprintf(buf, len, "%d.%03dkHz",
+             (int)(freq / 1000),
+             (int)(freq % 1000));
+  } else {
+    chsnprintf(buf, len, "%d.%06d",
+             (int)(freq / 1000000),
+             (int)(freq % 1000000));
+    strcpy(b+9, "MHz");
+  }
+}
 
 void
 draw_frequencies(void)

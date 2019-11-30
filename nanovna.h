@@ -219,6 +219,8 @@ float groupdelay_from_array(int i, float array[101][2]);
 
 // marker
 
+#define MARKERS_MAX 4
+
 typedef struct {
   int8_t enabled;
   int16_t index;
@@ -312,7 +314,7 @@ typedef struct {
   float _electrical_delay; // picoseconds
   
   trace_t _trace[TRACES_MAX];
-  marker_t _markers[4];
+  marker_t _markers[MARKERS_MAX];
   int _active_marker;
   uint8_t _domain_mode; /* 0bxxxxxffm : where ff: TD_FUNC m: DOMAIN_MODE */
   uint8_t _velocity_factor; // %
@@ -362,6 +364,11 @@ enum {
   LM_MARKER, LM_SEARCH, LM_CENTER, LM_SPAN
 };
 
+// marker smith value format
+enum {
+  MS_LIN, MS_LOG, MS_REIM, MS_RX, MS_RLC
+};
+
 typedef struct {
   int8_t digit; /* 0~5 */
   int8_t digit_mode;
@@ -369,6 +376,8 @@ typedef struct {
   uint32_t value; // for editing at numeric input area
   uint32_t previous_value;
   uint8_t lever_mode;
+  bool marker_delta;
+  uint8_t marker_smith_format;
 } uistat_t;
 
 extern uistat_t uistat;

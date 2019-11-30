@@ -1604,7 +1604,7 @@ cell_draw_marker_info(int m, int n, int w, int h)
         trace_get_value_string_delta(t, buf, sizeof buf, measured[trace[t].channel], markers[mk].index, markers[active_marker].index);
       else
         trace_get_value_string(t, buf, sizeof buf, measured[trace[t].channel], markers[mk].index);
-      cell_drawstring_5x7(w, h, buf, xpos, ypos, config.trace_color[t]);
+      cell_drawstring_5x7(w, h, buf, xpos, ypos, 0xffff);
       j++;
     }
 
@@ -1646,7 +1646,7 @@ cell_draw_marker_info(int m, int n, int w, int h)
       cell_drawstring_5x7(w, h, buf, xpos, ypos, config.trace_color[t]);
       xpos += 64;
       trace_get_value_string(t, buf, sizeof buf, measured[trace[t].channel], idx);
-      cell_drawstring_5x7(w, h, buf, xpos, ypos, config.trace_color[t]);
+      cell_drawstring_5x7(w, h, buf, xpos, ypos, 0xffff);
       j++;
     }
 

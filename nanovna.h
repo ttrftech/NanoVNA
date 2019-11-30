@@ -350,6 +350,11 @@ enum {
   LM_MARKER, LM_SEARCH, LM_CENTER, LM_SPAN
 };
 
+// marker smith value format
+enum {
+  MS_LIN, MS_LOG, MS_REIM, MS_RX, MS_RLC
+};
+
 typedef struct {
   int8_t digit; /* 0~5 */
   int8_t digit_mode;
@@ -358,6 +363,7 @@ typedef struct {
   uint32_t previous_value;
   uint8_t lever_mode;
   bool marker_delta;
+  uint8_t marker_smith_format;
 } uistat_t;
 
 extern uistat_t uistat;

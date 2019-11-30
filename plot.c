@@ -428,7 +428,7 @@ draw_on_strut(int v0, int d, int color)
 /*
  * calculate log10(abs(gamma))
  */ 
-float logmag(float *v)
+float logmag(const float *v)
 {
   return log10f(v[0]*v[0] + v[1]*v[1]) * 10;
 }
@@ -436,7 +436,7 @@ float logmag(float *v)
 /*
  * calculate phase[-2:2] of coefficient
  */ 
-float phase(float *v)
+float phase(const float *v)
 {
   return 2 * atan2f(v[1], v[0]) / M_PI * 90;
 }
@@ -444,7 +444,7 @@ float phase(float *v)
 /*
  * calculate groupdelay
  */
-float groupdelay(float *v, float *w, float deltaf)
+float groupdelay(const float *v, const float *w, float deltaf)
 {
 #if 1
   // atan(w)-atan(v) = atan((w-v)/(1+wv))
@@ -459,7 +459,7 @@ float groupdelay(float *v, float *w, float deltaf)
 /*
  * calculate abs(gamma)
  */
-float linear(float *v)
+float linear(const float *v)
 {
   return - sqrtf(v[0]*v[0] + v[1]*v[1]);
 }
@@ -467,7 +467,7 @@ float linear(float *v)
 /*
  * calculate vswr; (1+gamma)/(1-gamma)
  */ 
-float swr(float *v)
+float swr(const float *v)
 {
   float x = sqrtf(v[0]*v[0] + v[1]*v[1]);
   if (x > 1)
@@ -475,14 +475,14 @@ float swr(float *v)
   return (1 + x)/(1 - x);
 }
 
-float resitance(float *v) {
+float resitance(const float *v) {
   float z0 = 50;
   float d = z0 / ((1-v[0])*(1-v[0])+v[1]*v[1]);
   float zr = ((1+v[0])*(1-v[0]) - v[1]*v[1]) * d;
   return zr;
 }
 
-float reactance(float *v) {
+float reactance(const float *v) {
   float z0 = 50;
   float d = z0 / ((1-v[0])*(1-v[0])+v[1]*v[1]);
   float zi = 2*v[1] * d;
@@ -572,10 +572,11 @@ static int
 string_value_with_prefix(char *buf, int len, float val, char unit)
 {
   char prefix;
-  int n;
+  int n = 0;
   if (val < 0) {
     val = -val;
-    *buf++ = '-';
+    *buf = '-';
+    n++;
     len--;
   }
   if (val < 1e-12) {
@@ -607,11 +608,11 @@ string_value_with_prefix(char *buf, int len, float val, char unit)
   }
 
   if (val < 10) {
-    n = chsnprintf(buf, len, "%.2f", val);
+    n += chsnprintf(&buf[n], len, "%.2f", val);
   } else if (val < 100) {
-    n = chsnprintf(buf, len, "%.1f", val);
+    n += chsnprintf(&buf[n], len, "%.1f", val);
   } else {
-    n = chsnprintf(buf, len, "%d", (int)val);
+    n += chsnprintf(&buf[n], len, "%d", (int)val);
   }
 
   if (prefix)
@@ -626,7 +627,7 @@ string_value_with_prefix(char *buf, int len, float val, char unit)
 #define PI2 6.283184
 
 static void
-gamma2imp(char *buf, int len, const float coeff[2], uint32_t frequency)
+format_smith_value(char *buf, int len, const float coeff[2], uint32_t frequency)
 {
   // z = (gamma+1)/(gamma-1) * z0
   float z0 = 50;
@@ -635,15 +636,44 @@ gamma2imp(char *buf, int len, const float coeff[2], uint32_t frequency)
   float zi = 2*coeff[1] * d;
   int n;
 
-  n = string_value_with_prefix(buf, len, zr, S_OHM[0]);
-  buf[n++] = ' ';
+  switch (uistat.marker_smith_format) {
+  case MS_LIN:
+    chsnprintf(buf, len, "%.2f %.1f" S_DEGREE, linear(coeff), phase(coeff));
+    break;
 
-  if (zi < 0) {
-    float c = -1 / (PI2 * frequency * zi);
-    string_value_with_prefix(buf+n, len-n, c, 'F');
-  } else {
-    float l = zi / (PI2 * frequency);
-    string_value_with_prefix(buf+n, len-n, l, 'H');
+  case MS_LOG: {
+      float v = logmag(coeff);
+      if (v == -INFINITY)
+        chsnprintf(buf, len, "-INF dB");
+      else
+        chsnprintf(buf, len, "%.1fdB %.1f" S_DEGREE, v, phase(coeff));
+    }
+    break;
+
+  case MS_REIM:
+    n = string_value_with_prefix(buf, len, coeff[0], '\0');
+    if (coeff[1] >= 0) buf[n++] = '+';
+    string_value_with_prefix(buf+n, len-n, coeff[1], 'j');
+    break;  
+
+  case MS_RX:
+    n = string_value_with_prefix(buf, len, zr, S_OHM[0]);
+    buf[n++] = ' ';
+    string_value_with_prefix(buf+n, len-n, zi, 'j');
+    break;
+
+  case MS_RLC:
+    n = string_value_with_prefix(buf, len, zr, S_OHM[0]);
+    buf[n++] = ' ';
+
+    if (zi < 0) {
+      float c = -1 / (PI2 * frequency * zi);
+      string_value_with_prefix(buf+n, len-n, c, 'F');
+    } else {
+      float l = zi / (PI2 * frequency);
+      string_value_with_prefix(buf+n, len-n, l, 'H');
+    }
+    break;
   }
 }
 
@@ -695,7 +725,7 @@ trace_get_value_string(int t, char *buf, int len, float array[101][2], int i)
     chsnprintf(buf, len, "%.2f", v);
     break;
   case TRC_SMITH:
-    gamma2imp(buf, len, coeff, frequencies[i]);
+    format_smith_value(buf, len, coeff, frequencies[i]);
     break;
   case TRC_REAL:
     chsnprintf(buf, len, "%.2f", coeff[0]);
@@ -747,7 +777,7 @@ trace_get_value_string_delta(int t, char *buf, int len, float array[101][2], int
     chsnprintf(buf, len, "\004%.2f", v);
     break;
   case TRC_SMITH:
-    gamma2imp(buf, len, coeff, frequencies[index]);
+    format_smith_value(buf, len, coeff, frequencies[index]);
     break;
   case TRC_REAL:
     chsnprintf(buf, len, "\004%.2f", coeff[0] - coeff_ref[0]);

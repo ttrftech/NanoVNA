@@ -146,7 +146,7 @@ extern const uint8_t x8x8_bits[][8];
 extern const uint8_t x8x8_len[];
 extern const uint8_t numfont20x22[][22 * 3];
 
-#define S_DIAMOND "\001"
+#define S_DELTA "\001" 
 #define S_MULTIL "\002"
 #define S_PI    "\005"
 #define S_MICRO "\006"
@@ -154,6 +154,7 @@ extern const uint8_t numfont20x22[][22 * 3];
 #define S_DEGREE "\010"
 #define S_LARROW "\003"
 #define S_RARROW "\004"
+#define C_DELTA '\001'
 
 extern uint8_t x8x8_map_char_table(uint8_t ch);
 

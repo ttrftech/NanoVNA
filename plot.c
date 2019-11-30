@@ -766,13 +766,13 @@ trace_get_value_string_delta(int t, char *buf, int len, float array[101][2], int
   case TRC_LOGMAG:
     v = logmag(coeff) - logmag(coeff_ref);
     if (v == -INFINITY)
-      chsnprintf(buf, len, "\004-INF dB");
+      chsnprintf(buf, len, S_DELTA "-INF dB");
     else
-      chsnprintf(buf, len, "\004%.2fdB", v);
+      chsnprintf(buf, len, S_DELTA "%.2fdB", v);
     break;
   case TRC_PHASE:
     v = phase(coeff) - phase(coeff_ref);
-    chsnprintf(buf, len, "\004%.2f" S_DEGREE, v);
+    chsnprintf(buf, len, S_DELTA "%.2f" S_DEGREE, v);
     break;
   case TRC_DELAY:
     v = groupdelay_from_array(index, array) - groupdelay_from_array(index_ref, array);
@@ -780,20 +780,20 @@ trace_get_value_string_delta(int t, char *buf, int len, float array[101][2], int
     break;
   case TRC_LINEAR:
     v = linear(coeff) - linear(coeff_ref);
-    chsnprintf(buf, len, "\004%.2f", v);
+    chsnprintf(buf, len, S_DELTA "%.2f", v);
     break;
   case TRC_SWR:
     v = swr(coeff) - swr(coeff_ref);
-    chsnprintf(buf, len, "\004%.2f", v);
+    chsnprintf(buf, len, S_DELTA "%.2f", v);
     break;
   case TRC_SMITH:
     format_smith_value(buf, len, coeff, frequencies[index]);
     break;
   case TRC_REAL:
-    chsnprintf(buf, len, "\004%.2f", coeff[0] - coeff_ref[0]);
+    chsnprintf(buf, len, S_DELTA "%.2f", coeff[0] - coeff_ref[0]);
     break;
   case TRC_IMAG:
-    chsnprintf(buf, len, "\004%.2fj", coeff[1] - coeff_ref[1]);
+    chsnprintf(buf, len, S_DELTA "%.2fj", coeff[1] - coeff_ref[1]);
     break;
   case TRC_R:
     gamma2resistance(buf, len, coeff);
@@ -1738,7 +1738,7 @@ cell_draw_marker_info(int m, int n, int w, int h)
       if (uistat.marker_delta && mk != active_marker) 
       {
         freq -= frequencies[markers[active_marker].index];
-        frequency_string_short(buf, sizeof buf, freq, '\004');
+        frequency_string_short(buf, sizeof buf, freq, C_DELTA);
       } 
       else 
       {
@@ -1768,7 +1768,7 @@ cell_draw_marker_info(int m, int n, int w, int h)
       xpos -= m * CELLWIDTH - CELLOFFSETX;
       ypos -= n * CELLHEIGHT;
 
-      chsnprintf(buf, sizeof buf, "%s%d:", S_DIAMOND, previous_marker+1); // fixme: character #4?
+      chsnprintf(buf, sizeof buf, "%c%d:", C_DELTA, previous_marker+1);
       strwidthpx = cell_drawstring_8x8(w, h, buf, xpos, ypos, 0xffff, FALSE);
       xpos += strwidthpx + 4;      
 

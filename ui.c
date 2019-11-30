@@ -31,9 +31,9 @@ uistat_t uistat = {
  digit: 6,
  current_trace: 0,
  lever_mode: LM_MARKER,
- marker_delta: FALSE
+ marker_delta: FALSE,
+ marker_smith_format: MS_RLC
 };
-
 
 
 #define NO_EVENT          0
@@ -914,6 +914,14 @@ menu_marker_search_cb(int item)
   uistat.lever_mode = LM_SEARCH;
 }
 
+static void
+menu_marker_smith_cb(int item)
+{
+  uistat.marker_smith_format = item;
+  redraw_marker(active_marker, TRUE);
+  draw_menu();
+}
+
 void 
 active_marker_select(int item)
 {
@@ -1112,10 +1120,21 @@ const menuitem_t menu_marker_search[] = {
   { MT_NONE, NULL, NULL } // sentinel
 };
 
+const menuitem_t menu_marker_smith[] = {
+  { MT_CALLBACK, "LIN", menu_marker_smith_cb },
+  { MT_CALLBACK, "LOG", menu_marker_smith_cb },
+  { MT_CALLBACK, "Re+Im", menu_marker_smith_cb },
+  { MT_CALLBACK, "R+Xj", menu_marker_smith_cb },
+  { MT_CALLBACK, "R+L/C", menu_marker_smith_cb },
+  { MT_CANCEL, S_LARROW" BACK", NULL },
+  { MT_NONE, NULL, NULL } // sentinel
+};
+
 const menuitem_t menu_marker[] = {
   { MT_SUBMENU, "\2SELECT\0MARKER", menu_marker_sel },
   { MT_SUBMENU, "SEARCH", menu_marker_search },
   { MT_SUBMENU, "OPERATIONS", menu_marker_ops },
+  { MT_SUBMENU, "\2SMITH\0VALUE", menu_marker_smith },
   { MT_CANCEL, S_LARROW" BACK", NULL },
   { MT_NONE, NULL, NULL } // sentinel
 };
@@ -1430,7 +1449,12 @@ menu_item_modify_attribute(const menuitem_t *menu, int item,
         *bg = 0x0000;
         *fg = 0xffff;
       }
-    }   
+    }
+  } else if (menu == menu_marker_smith) {
+    if (uistat.marker_smith_format == item) {
+      *bg = 0x0000;
+      *fg = 0xffff;
+    }
   } else if (menu == menu_calop) {
     if ((item == 0 && (cal_status & CALSTAT_OPEN))
         || (item == 1 && (cal_status & CALSTAT_SHORT))

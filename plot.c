@@ -1703,7 +1703,7 @@ cell_draw_marker_info(int m, int n, int w, int h)
 {
   char buf[24];
   int t;
-  uint16_t slen, strwidthpx = 0;
+  uint16_t strwidthpx = 0;
 
 #define MARKER_Y_DELTA 10
   
@@ -1728,8 +1728,8 @@ cell_draw_marker_info(int m, int n, int w, int h)
       int ypos = 1 + (j/2) * MARKER_Y_DELTA;
       xpos -= m * CELLWIDTH -CELLOFFSETX;
       ypos -= n * CELLHEIGHT;
-      strcpy(buf, "MK1");
-      buf[2] += mk;
+      strcpy(buf, "M1");
+      buf[1] += mk;
       strwidthpx = cell_drawstring(w, h, buf, xpos, ypos, config.trace_color[t], 0x0000, 1, TRUE, mk == active_marker);
 
       xpos += strwidthpx + 4;
@@ -1747,11 +1747,13 @@ cell_draw_marker_info(int m, int n, int w, int h)
       strwidthpx = cell_drawstring(w, h, buf, xpos, ypos, config.trace_color[t], 0x0000, 1, TRUE, FALSE);
       
       xpos += strwidthpx + 4;
+
       if (uistat.marker_delta && mk != active_marker)
         trace_get_value_string_delta(t, buf, sizeof buf, measured[trace[t].channel], markers[mk].index, markers[active_marker].index);
       else
         trace_get_value_string(t, buf, sizeof buf, measured[trace[t].channel], markers[mk].index);
-      cell_drawstring(w, h, buf, xpos, ypos, config.trace_color[t], 0x0000, 1, TRUE, FALSE);
+        
+      cell_drawstring(w, h, buf, xpos, ypos, 0xffff, 0x0000, 1, TRUE, FALSE);
 
       j++;
     }
@@ -1764,7 +1766,7 @@ cell_draw_marker_info(int m, int n, int w, int h)
       int xpos = 160;
       int ypos = 1 + (j/2) * MARKER_Y_DELTA;
       xpos -= m * CELLWIDTH - CELLOFFSETX;
-      ypos += MARKER_Y_DELTA;
+      ypos -= n * CELLHEIGHT;
 
       chsnprintf(buf, sizeof buf, "%s%d:", S_DIAMOND, previous_marker+1); // fixme: character #4?
       strwidthpx = cell_drawstring_8x8(w, h, buf, xpos, ypos, 0xffff, FALSE);
@@ -1800,15 +1802,14 @@ cell_draw_marker_info(int m, int n, int w, int h)
 
       chsnprintf(buf, sizeof buf, "C%d:", trace[t].channel);
       strwidthpx = cell_drawstring_8x8_var(w, h, buf, xpos, ypos, config.trace_color[t], t == uistat.current_trace);
-
       xpos += strwidthpx + 4;
 
-      slen = trace_get_info(t, buf, sizeof buf);
-      buf[slen] = ' ';
-      slen++;
-      trace_get_value_string(t, buf+slen, (sizeof(buf))-slen, measured[trace[t].channel], idx);
-     
-      cell_drawstring_8x8_var(w, h, buf, xpos, ypos, config.trace_color[t], FALSE);
+      trace_get_info(t, buf, sizeof buf);
+      strwidthpx = cell_drawstring_8x8_var(w, h, buf, xpos, ypos, config.trace_color[t], t == uistat.current_trace);
+      xpos += strwidthpx + 4;
+
+      trace_get_value_string(t, buf, (sizeof(buf)), measured[trace[t].channel], idx);
+      cell_drawstring_8x8_var(w, h, buf, xpos, ypos, 0xffff, FALSE);
 
       j++;
 
@@ -1912,17 +1913,17 @@ frequency_string_short(char *b, size_t len, int32_t freq, char prefix)
              (int)(freq / 1000),
              (int)(freq % 1000));
   } else {
-    chsnprintf(buf, len, "%d.%06d",
+    chsnprintf(buf, len, "%d.%03d",
              (int)(freq / 1000000),
              (int)(freq % 1000000));
-    strcpy(b+9, "MHz");
+    strcpy(b+7, "MHz");
   }
 }
 
 void
 draw_frequencies(void)
 {
-  char buf[24];
+  char buf[36];
 
   if ((domain_mode & DOMAIN_MODE) == DOMAIN_FREQ) 
   {

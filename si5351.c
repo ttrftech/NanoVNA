@@ -222,55 +222,66 @@ si5351_setupMultisynth(uint8_t     output,
   si5351_write(clkctrl[output], dat);
 }
 
-static uint32_t
-gcd(uint32_t x, uint32_t y)
-{
-  uint32_t z;
-  while (y != 0) {
-    z = x % y;
-    x = y;
-    y = z;
-  }
-  return x;
-}
-
 #define XTALFREQ 26000000L
 #define PLL_N 32
 #define PLLFREQ (XTALFREQ * PLL_N)
 
 void
 si5351_set_frequency_fixedpll(int channel, int pll, int pllfreq, int freq,
-                              uint32_t rdiv, uint8_t drive_strength)
+                              int rdiv, uint8_t drive_strength, int mul)
 {
-    int32_t div = pllfreq / freq; // range: 8 ~ 1800
-    int32_t num = pllfreq - freq * div;
-    int32_t denom = freq;
-    //int32_t k = freq / (1<<20) + 1;
-    int32_t k = gcd(num, denom);
-    num /= k;
-    denom /= k;
-    while (denom >= (1<<20)) {
-      num >>= 1;
-      denom >>= 1;
+    int denom = freq;
+    int div = (pllfreq * mul) / denom; // range: 8 ~ 1800
+    int num = (pllfreq * mul) - denom * div;
+
+    // cf. https://github.com/python/cpython/blob/master/Lib/fractions.py#L227
+    int max_denominator = (1 << 20) - 1;
+    if (denom > max_denominator) {
+      int p0 = 0, q0 = 1, p1 = 1, q1 = 0;
+      while (denom != 0) {
+        int a = num / denom;
+        int q2 = q0 + a*q1;
+        if (q2 > max_denominator)
+          break;
+        int p2 = p0 + a*p1;
+        p0 = p1; q0 = q1; p1 = p2; q1 = q2;
+        int new_denom = num - a * denom;
+        num = denom; denom = new_denom;
+      }
+      num = p1;
+      denom = q1;
     }
+
     si5351_setupMultisynth(channel, pll, div, num, denom, rdiv, drive_strength);
 }
 
 void
 si5351_set_frequency_fixeddiv(int channel, int pll, int freq, int div,
-                              uint8_t     drive_strength)
+                              uint8_t drive_strength, int mul)
 {
-    int32_t pllfreq = freq * div;
-    int32_t multi = pllfreq / XTALFREQ;
-    int32_t num = pllfreq - multi * XTALFREQ;
-    int32_t denom = XTALFREQ;
-    int32_t k = gcd(num, denom);
-    num /= k;
-    denom /= k;
-    while (denom >= (1<<20)) {
-      num >>= 1;
-      denom >>= 1;
+    int denom = XTALFREQ * mul;
+    int64_t pllfreq = (int64_t)freq * div;
+    int multi = pllfreq / denom;
+    int num = pllfreq - denom * multi;
+
+    // cf. https://github.com/python/cpython/blob/master/Lib/fractions.py#L227
+    int max_denominator = (1 << 20) - 1;
+    if (denom > max_denominator) {
+      int p0 = 0, q0 = 1, p1 = 1, q1 = 0;
+      while (denom != 0) {
+        int a = num / denom;
+        int q2 = q0 + a*q1;
+        if (q2 > max_denominator)
+          break;
+        int p2 = p0 + a*p1;
+        p0 = p1; q0 = q1; p1 = p2; q1 = q2;
+        int new_denom = num - a * denom;
+        num = denom; denom = new_denom;
+      }
+      num = p1;
+      denom = q1;
     }
+
     si5351_setupPLL(pll, multi, num, denom);
     si5351_setupMultisynth(channel, pll, div, 0, 1, SI5351_R_DIV_1, drive_strength);
 }
@@ -285,11 +296,11 @@ si5351_set_frequency(int channel, int freq, uint8_t drive_strength)
 {
   if (freq <= 100000000) {
     si5351_setupPLL(SI5351_PLL_B, 32, 0, 1);
-    si5351_set_frequency_fixedpll(channel, SI5351_PLL_B, PLLFREQ, freq, SI5351_R_DIV_1, drive_strength);
+    si5351_set_frequency_fixedpll(channel, SI5351_PLL_B, PLLFREQ, freq, SI5351_R_DIV_1, drive_strength, 1);
   } else if (freq < 150000000) {
-    si5351_set_frequency_fixeddiv(channel, SI5351_PLL_B, freq, 6, drive_strength);
+    si5351_set_frequency_fixeddiv(channel, SI5351_PLL_B, freq, 6, drive_strength, 1);
   } else {
-    si5351_set_frequency_fixeddiv(channel, SI5351_PLL_B, freq, 4, drive_strength);
+    si5351_set_frequency_fixeddiv(channel, SI5351_PLL_B, freq, 4, drive_strength, 1);
   }
 }
 
@@ -313,17 +324,18 @@ si5351_set_frequency_with_offset(uint32_t freq, int offset, uint8_t drive_streng
   int band;
   int delay = DELAY_NORMAL;
   uint32_t ofreq = freq + offset;
+  int mul = 1, omul = 1;
   uint32_t rdiv = SI5351_R_DIV_1;
   if (freq >= config.harmonic_freq_threshold * 3) {
-    freq /= 5;
-    ofreq /= 7;
+    mul = 5;
+    omul = 7;
   } else if (freq >= config.harmonic_freq_threshold) {
-    freq /= 3;
-    ofreq /= 5;
+    mul = 3;
+    omul = 5;
   }
-  if (freq <= 100000000) {
+  if ((freq / mul) < 100000000) {
     band = 0;
-  } else if (freq < 150000000) {
+  } else if ((freq / mul) < 150000000) {
     band = 1;
   } else {
     band = 2;
@@ -357,34 +369,34 @@ si5351_set_frequency_with_offset(uint32_t freq, int offset, uint8_t drive_streng
     }
 
     si5351_set_frequency_fixedpll(0, SI5351_PLL_A, PLLFREQ, ofreq,
-                                  rdiv, drive_strength);
+                                  rdiv, drive_strength, omul);
     si5351_set_frequency_fixedpll(1, SI5351_PLL_A, PLLFREQ, freq,
-                                  rdiv, drive_strength);
+                                  rdiv, drive_strength, mul);
     //if (current_band != 0)
       si5351_set_frequency_fixedpll(2, SI5351_PLL_A, PLLFREQ, CLK2_FREQUENCY,
-                                    SI5351_R_DIV_1, SI5351_CLK_DRIVE_STRENGTH_2MA);
+                                    SI5351_R_DIV_1, SI5351_CLK_DRIVE_STRENGTH_2MA, 1);
     break;
 
   case 1:
     // Set PLL twice on changing from band 2
     if (current_band == 2) {
-      si5351_set_frequency_fixeddiv(0, SI5351_PLL_A, ofreq, 6, drive_strength);
-      si5351_set_frequency_fixeddiv(1, SI5351_PLL_B, freq, 6, drive_strength);
+      si5351_set_frequency_fixeddiv(0, SI5351_PLL_A, ofreq, 6, drive_strength, omul);
+      si5351_set_frequency_fixeddiv(1, SI5351_PLL_B, freq, 6, drive_strength, mul);
     }
 
     // div by 6 mode. both PLL A and B are dedicated for CLK0, CLK1
-    si5351_set_frequency_fixeddiv(0, SI5351_PLL_A, ofreq, 6, drive_strength);
-    si5351_set_frequency_fixeddiv(1, SI5351_PLL_B, freq, 6, drive_strength);
-    si5351_set_frequency_fixedpll(2, SI5351_PLL_B, freq * 6, CLK2_FREQUENCY,
-                                  SI5351_R_DIV_1, SI5351_CLK_DRIVE_STRENGTH_2MA);
+    si5351_set_frequency_fixeddiv(0, SI5351_PLL_A, ofreq, 6, drive_strength, omul);
+    si5351_set_frequency_fixeddiv(1, SI5351_PLL_B, freq, 6, drive_strength, mul);
+    si5351_set_frequency_fixedpll(2, SI5351_PLL_B, freq / mul * 6, CLK2_FREQUENCY,
+                                  SI5351_R_DIV_1, SI5351_CLK_DRIVE_STRENGTH_2MA, 1);
     break;
 
   case 2:
     // div by 4 mode. both PLL A and B are dedicated for CLK0, CLK1
-    si5351_set_frequency_fixeddiv(0, SI5351_PLL_A, ofreq, 4, drive_strength);
-    si5351_set_frequency_fixeddiv(1, SI5351_PLL_B, freq, 4, drive_strength);
-    si5351_set_frequency_fixedpll(2, SI5351_PLL_B, freq * 4, CLK2_FREQUENCY,
-                                  SI5351_R_DIV_1, SI5351_CLK_DRIVE_STRENGTH_2MA);
+    si5351_set_frequency_fixeddiv(0, SI5351_PLL_A, ofreq, 4, drive_strength, omul);
+    si5351_set_frequency_fixeddiv(1, SI5351_PLL_B, freq, 4, drive_strength, mul);
+    si5351_set_frequency_fixedpll(2, SI5351_PLL_B, freq / mul * 4, CLK2_FREQUENCY,
+                                  SI5351_R_DIV_1, SI5351_CLK_DRIVE_STRENGTH_2MA, 1);
     break;
   }
 

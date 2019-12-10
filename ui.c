@@ -400,8 +400,10 @@ show_version(void)
   ili9341_drawstring_size(BOARD_NAME, x, y += 25, 0xffff, 0x0000, 4);
   y += 25;
 
-  ili9341_drawstring_8x8_var("2016-2019 Copyright @edy555, DL9CAT under GPL", x, y += 10, 0xffff, 0x0000);
+  ili9341_drawstring_8x8_var("(c) @edy555, DL9CAT under GPL. V " VERSION, x, y += 10, 0xffff, 0x0000);
+
   /* fixme: we are out of flash!
+  ili9341_drawstring_8x8_var("2016-2019 Copyright @edy555 under GPL", x, y += 10, 0xffff, 0x0000);
   ili9341_drawstring_8x8_var("Variant with lager fonts by DL9CAT. =^..^=", x, y += 10, 0xffff, 0x0000);
   ili9341_drawstring_8x8_var("Licensed under GPL.", x, y += 10, 0xffff, 0x0000);
   ili9341_drawstring_8x8_var("  see: https://github.com/reald/NanoVNA", x, y += 10, 0xffff, 0x0000);

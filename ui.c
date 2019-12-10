@@ -400,10 +400,7 @@ show_version(void)
   ili9341_drawstring_size(BOARD_NAME, x, y += 25, 0xffff, 0x0000, 4);
   y += 25;
 
-  ili9341_drawstring_8x8_var("(c) @edy555, DL9CAT under GPL. V " VERSION, x, y += 10, 0xffff, 0x0000);
-
-  /* fixme: we are out of flash!
-  ili9341_drawstring_8x8_var("2016-2019 Copyright @edy555 under GPL", x, y += 10, 0xffff, 0x0000);
+  ili9341_drawstring_8x8_var("2016-2019 Copyright @edy555", x, y += 10, 0xffff, 0x0000);
   ili9341_drawstring_8x8_var("Variant with lager fonts by DL9CAT. =^..^=", x, y += 10, 0xffff, 0x0000);
   ili9341_drawstring_8x8_var("Licensed under GPL.", x, y += 10, 0xffff, 0x0000);
   ili9341_drawstring_8x8_var("  see: https://github.com/reald/NanoVNA", x, y += 10, 0xffff, 0x0000);
@@ -416,7 +413,7 @@ show_version(void)
   ili9341_drawstring_8x8_var("Port Info: " PORT_INFO, x, y += 10, 0xffff, 0x0000);
   y += 5;
   ili9341_drawstring_8x8_var("Platform: ", x, y += 10, 0xffff, 0x0000);
-  ili9341_drawstring_8x8_var(PLATFORM_NAME, x, y += 10, 0xffff, 0x0000); */
+  ili9341_drawstring_8x8_var(PLATFORM_NAME, x, y += 10, 0xffff, 0x0000);
 
   while (true) {
     if (touch_check() == EVT_TOUCH_PRESSED)
@@ -985,7 +982,9 @@ const menuitem_t menu_save[] = {
   { MT_CALLBACK, "SAVE 1", menu_save_cb },
   { MT_CALLBACK, "SAVE 2", menu_save_cb },
   { MT_CALLBACK, "SAVE 3", menu_save_cb },
+#if SAVEAREA_MAX == 5
   { MT_CALLBACK, "SAVE 4", menu_save_cb },
+#endif
   { MT_CANCEL, S_LARROW" BACK", NULL },
   { MT_NONE, NULL, NULL } // sentinel
 };
@@ -1144,7 +1143,9 @@ const menuitem_t menu_recall[] = {
   { MT_CALLBACK, "RECALL1", menu_recall_cb },
   { MT_CALLBACK, "RECALL2", menu_recall_cb },
   { MT_CALLBACK, "RECALL3", menu_recall_cb },
+#if SAVEAREA_MAX == 5
   { MT_CALLBACK, "RECALL4", menu_recall_cb },
+#endif
   { MT_CANCEL, S_LARROW" BACK", NULL },
   { MT_NONE, NULL, NULL } // sentinel
 };

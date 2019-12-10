@@ -343,7 +343,7 @@ ili9341_drawchar(uint8_t ch, int x, int y, const uint16_t fg, const uint16_t bg,
   uint16_t charwidthpx = 8 * size;
 
   uint16_t cline;
-  uint32_t ccol;
+  uint32_t ccol; /* 32bit datatype saves flash?!? */
   uint8_t bits;
 
   ch = x8x8_map_char_table(ch);

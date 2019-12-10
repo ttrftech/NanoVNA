@@ -79,7 +79,11 @@ checksum(const void *start, size_t len)
 
 #define FLASH_PAGESIZE 0x800
 
+#if SAVEAREA_MAX==5
 const uint32_t save_config_area = 0x08018000;
+#else
+const uint32_t save_config_area = 0x08019800;
+#endif
 
 int
 config_save(void)
@@ -122,10 +126,14 @@ config_recall(void)
   return 0;
 }
 
-#define SAVEAREA_MAX 5
+
 
 const uint32_t saveareas[] =
-  { 0x08018800, 0x0801a000, 0x0801b800, 0x0801d000, 0x0801e800 };
+{
+#if SAVEAREA_MAX==5
+                  0x08018800,
+#endif
+                  0x0801a000, 0x0801b800, 0x0801d000, 0x0801e800 };
 
 int16_t lastsaveid = 0;
 
@@ -210,7 +218,11 @@ caldata_ref(int id)
   return src;
 }
 
+#if SAVEAREA_MAX==5
 const uint32_t save_config_prop_area_size = 0x8000;
+#else
+const uint32_t save_config_prop_area_size = 0x6800;
+#endif
 
 void
 clear_all_config_prop_data(void)

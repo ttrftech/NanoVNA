@@ -337,31 +337,33 @@ ili9341_read_memory_continue(int len, uint16_t* out)
 
 
 unsigned char
-ili9341_drawchar(uint8_t ch, int x, int y, uint16_t fg, uint16_t bg, uint8_t size, uint8_t var, uint8_t invert)
+ili9341_drawchar(uint8_t ch, int x, int y, const uint16_t fg, const uint16_t bg, const uint8_t size, const uint8_t var, const uint8_t invert)
 {
   uint16_t *buf = spi_buffer;
   uint16_t charwidthpx = 8 * size;
+
+  uint16_t cline;
+  uint32_t ccol;
   uint8_t bits;
-  int cline, ccol;
 
   ch = x8x8_map_char_table(ch);
 
   if ( var != FALSE )
   {
-    charwidthpx = x8x8_len[ch] * size;
+    charwidthpx = x8x8_get_len(ch) * size;
   }
   
-  for(cline = 0; cline < 8*size; cline++) 
+  for (cline = 0; cline < 8*size; cline++) 
   {
     bits = x8x8_bits[ch][cline/size];
     
-    if (invert)
+    if (invert != FALSE)
       bits = ~bits;
     
     for (ccol = 0; ccol < charwidthpx; ccol++) 
     {
       *buf++ = (0x80 & bits) ? fg : bg;
-      if (ccol % size == (size-1)) 
+      if ( (uint8_t)(ccol % size) == (size-1)) 
       {
           bits <<= 1;
       }
@@ -375,7 +377,7 @@ ili9341_drawchar(uint8_t ch, int x, int y, uint16_t fg, uint16_t bg, uint8_t siz
 
 
 unsigned int
-ili9341_drawstring(const char *str, int x, int y, uint16_t fg, uint16_t bg, uint8_t size, uint8_t var, uint8_t invert)
+ili9341_drawstring(const char *str, int x, int y, const uint16_t fg, const uint16_t bg, const uint8_t size, const uint8_t var, const uint8_t invert)
 {
   unsigned char clengthpx = 0;
   unsigned int strwidthpx = 0;
@@ -462,8 +464,8 @@ ili9341_drawfont(uint8_t ch, const font_t *font, int x, int y, uint16_t fg, uint
 
 #if 0
 const uint16_t colormap[] = {
-  RGB565(255,0,0), RGB565(0,255,0), RGB565(0,0,255),
-  RGB565(255,255,0), RGB565(0,255,255), RGB565(255,0,255)
+  RGB_565(0,0,255), RGB_565(255,0,0), RGB_565(0,255,0),
+  RGB_565(255,0,255), RGB_565(255,255,0), RGB_565(0,255,255)
 };
 
 void
@@ -476,7 +478,7 @@ ili9341_test(int mode)
 #if 1
     ili9341_fill(0, 0, 320, 240, 0);
     for (y = 0; y < 240; y++) {
-      ili9341_fill(0, y, 320, 1, RGB565(y, (y + 120) % 256, 240-y));
+      ili9341_fill(0, y, 320, 1, RGB_565((y + 120) % 256, 240-y, y));
     }
     break;
   case 1:

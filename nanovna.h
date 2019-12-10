@@ -132,7 +132,6 @@ extern void tlv320aic3204_select(int channel);
 #define HEIGHT 233
 
 #define CELLOFFSETX 5
-
 #define AREA_WIDTH_NORMAL (WIDTH + CELLOFFSETX*2)
 
 extern int area_width;
@@ -143,7 +142,9 @@ extern int area_height;
 // font
 
 extern const uint8_t x8x8_bits[][8];
-extern const uint8_t x8x8_len[];
+extern uint8_t x8x8_get_len(uint8_t ch);
+extern uint8_t x8x8_map_char_table(uint8_t ch);
+
 extern const uint8_t numfont20x22[][22 * 3];
 
 #define S_DELTA "\001" 
@@ -155,8 +156,6 @@ extern const uint8_t numfont20x22[][22 * 3];
 #define S_LARROW "\003"
 #define S_RARROW "\004"
 #define C_DELTA '\001'
-
-extern uint8_t x8x8_map_char_table(uint8_t ch);
 
 
 
@@ -246,7 +245,6 @@ void draw_frequencies(void);
 void draw_all(bool flush);
 
 void draw_cal_status(void);
-void draw_frequencies(void);
 
 void markmap_all_markers(void);
 
@@ -268,7 +266,6 @@ extern int16_t vbat;
 /*
  * ili9341.c
  */
-#define RGB565(b,r,g)     ( (((b)<<8)&0xfc00) | (((r)<<2)&0x03e0) | (((g)>>3)&0x001f) )
 #define RGB_565(r, g, b)     ( (((b)<<8)&0xfc00) | (((r)<<2)&0x03e0) | (((g)>>3)&0x001f) )
 
 typedef struct {
@@ -288,8 +285,8 @@ void ili9341_test(int mode);
 void ili9341_bulk(int x, int y, int w, int h);
 void ili9341_fill(int x, int y, int w, int h, int color);
 
-unsigned char ili9341_drawchar(uint8_t ch, int x, int y, uint16_t fg, uint16_t bg, uint8_t size, uint8_t var, uint8_t invert);
-unsigned int ili9341_drawstring(const char *str, int x, int y, uint16_t fg, uint16_t bg, uint8_t size, uint8_t var, uint8_t invert);
+unsigned char ili9341_drawchar(uint8_t ch, int x, int y, const uint16_t fg, const uint16_t bg, const uint8_t size, const uint8_t var, const uint8_t invert);
+unsigned int ili9341_drawstring(const char *str, int x, int y, const uint16_t fg, const uint16_t bg, const uint8_t size, const uint8_t var, const uint8_t invert);
 #define ili9341_drawstring_size(str, x, y, fg, bg, size)  ili9341_drawstring(str, x, y, fg, bg, size, TRUE, FALSE)
 #define ili9341_drawstring_8x8(str, x, y, fg, bg)         ili9341_drawstring(str, x, y, fg, bg, 1, FALSE, FALSE)
 #define ili9341_drawstring_8x8_var(str, x, y, fg, bg)     ili9341_drawstring(str, x, y, fg, bg, 1, TRUE, FALSE)
@@ -392,13 +389,11 @@ extern uint8_t operation_requested;
 void touch_start_watchdog(void);
 void touch_position(int *x, int *y);
 void handle_touch_interrupt(void);
-void touch_start_watchdog(void);
 
 #define TOUCH_THRESHOLD 2000
 
 void touch_cal_exec(void);
 void touch_draw_test(void);
-void touch_position(int *x, int *y);
 void enter_dfu(void);
 
 /*
@@ -424,7 +419,8 @@ static inline uint8_t vbat2bati(int16_t vbat)
   if (vbat < 3450) return 25;
   if (vbat < 3700) return 50;
   if (vbat < 4100) return 75;
-    return 100;
+  
+  return 100;
 }
 
 /*EOF*/

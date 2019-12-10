@@ -1646,7 +1646,7 @@ cell_drawchar(int w, int h, uint8_t ch, int x, int y, uint16_t fg, uint16_t bg, 
 
   if ( var != FALSE )
   {
-    charwidthpx = x8x8_len[ch] * size;
+    charwidthpx = x8x8_get_len(ch) * size;
   }
   
   if ( y <= -(8*size) || y >= h || x <= -(charwidthpx) || x >= w )
@@ -2053,7 +2053,7 @@ draw_battery_status(void)
     int i, c;
     uint16_t *buf = spi_buffer;
     uint8_t vbati = vbat2bati(vbat);
-    uint16_t col = vbati == 0 ? RGB565(0, 255, 0) : RGB565(0, 0, 240);
+    uint16_t col = vbati == 0 ? RGB_565(255, 0, 0) : RGB_565(0, 240, 0);
     memset(spi_buffer, 0, w * h * 2);
 
     // battery head

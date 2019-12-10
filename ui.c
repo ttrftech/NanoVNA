@@ -22,7 +22,6 @@
 #include "hal.h"
 #include "chprintf.h"
 #include "nanovna.h"
-#include "chprintf.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -398,12 +397,11 @@ show_version(void)
   adc_stop(ADC1);
   ili9341_fill(0, 0, 320, 240, 0);
 
-
-  ili9341_drawstring_size(USER_CALL, x, y, 0xf800, 0x0000, 3);
   ili9341_drawstring_size(BOARD_NAME, x, y += 25, 0xffff, 0x0000, 4);
   y += 25;
 
-  ili9341_drawstring_8x8_var("2016-2019 Copyright @edy555", x, y += 10, 0xffff, 0x0000);
+  ili9341_drawstring_8x8_var("2016-2019 Copyright @edy555, DL9CAT under GPL", x, y += 10, 0xffff, 0x0000);
+  /* fixme: we are out of flash!
   ili9341_drawstring_8x8_var("Variant with lager fonts by DL9CAT. =^..^=", x, y += 10, 0xffff, 0x0000);
   ili9341_drawstring_8x8_var("Licensed under GPL.", x, y += 10, 0xffff, 0x0000);
   ili9341_drawstring_8x8_var("  see: https://github.com/reald/NanoVNA", x, y += 10, 0xffff, 0x0000);
@@ -416,7 +414,7 @@ show_version(void)
   ili9341_drawstring_8x8_var("Port Info: " PORT_INFO, x, y += 10, 0xffff, 0x0000);
   y += 5;
   ili9341_drawstring_8x8_var("Platform: ", x, y += 10, 0xffff, 0x0000);
-  ili9341_drawstring_8x8_var(PLATFORM_NAME, x, y += 10, 0xffff, 0x0000);
+  ili9341_drawstring_8x8_var(PLATFORM_NAME, x, y += 10, 0xffff, 0x0000); */
 
   while (true) {
     if (touch_check() == EVT_TOUCH_PRESSED)
@@ -1396,7 +1394,7 @@ draw_numeric_input(const char *buf)
       c = -1;
 
     if (uistat.digit == 8-i) {
-      fg = RGB565(128,255,128);
+      fg = RGB_565(255,128,128);
       focused = TRUE;
       if (uistat.digit_mode)
         bg = 0x0000;

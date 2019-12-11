@@ -30,6 +30,7 @@ endif
 
 # Enable this if you want link time optimizations (LTO)
 ifeq ($(USE_LTO),)
+  # Enabling this, frees more memory for use
   USE_LTO = yes
 endif
 

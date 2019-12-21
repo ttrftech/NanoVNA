@@ -119,6 +119,7 @@ static void leave_ui_mode(void);
 static void erase_menu_buttons(void);
 static void ui_process_keypad(void);
 static void ui_process_numeric(void);
+static void ui_process_autoscale(void);
 
 static void menu_move_back(void);
 static void menu_push_submenu(const menuitem_t *submenu);
@@ -660,7 +661,9 @@ menu_scale_cb(int item, uint8_t data)
   if (data == KM_SCALE && trace[uistat.current_trace].type == TRC_DELAY) {
     data = KM_SCALEDELAY;
   }
-  if (btn_wait_release() & EVT_BUTTON_DOWN_LONG) {
+  if (item == 3){
+    ui_process_autoscale();
+  } else if (btn_wait_release() & EVT_BUTTON_DOWN_LONG) {
     ui_mode_numeric(data);
     ui_process_numeric();
   } else {
@@ -908,6 +911,7 @@ const menuitem_t menu_scale[] = {
   { MT_CALLBACK, KM_SCALE, "SCALE/DIV", menu_scale_cb },
   { MT_CALLBACK, KM_REFPOS, "\2REFERENCE\0POSITION", menu_scale_cb },
   { MT_CALLBACK, KM_EDELAY, "\2ELECTRICAL\0DELAY", menu_scale_cb },
+  { MT_CALLBACK, 0, "AUTO", menu_scale_cb },
   { MT_CANCEL, 0, S_LARROW" BACK", NULL },
   { MT_NONE, 0, NULL, NULL } // sentinel
 };
@@ -1945,6 +1949,17 @@ numeric_apply_touch(void)
   draw_numeric_area();
   
   return;
+}
+
+static void
+ui_process_autoscale(void)
+{
+  float refpos = get_trace_refpos(uistat.current_trace);
+  float scale = get_trace_scale(uistat.current_trace);
+  get_trace_autoscale(uistat.current_trace, &scale, &refpos, measured[trace[uistat.current_trace].channel]);
+  set_trace_refpos(uistat.current_trace, refpos);
+  set_trace_scale(uistat.current_trace, scale);
+  ui_mode_normal();
 }
 
 static void

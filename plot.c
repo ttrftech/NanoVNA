@@ -436,7 +436,7 @@ groupdelay(const float *v, const float *w, float deltaf)
 static float
 linear(const float *v)
 {
-  return - sqrtf(v[0]*v[0] + v[1]*v[1]);
+  return sqrtf(v[0]*v[0] + v[1]*v[1]);
 }
 
 /*
@@ -449,6 +449,16 @@ swr(const float *v)
   if (x >= 1)
     return INFINITY;
   return (1 + x)/(1 - x);
+}
+
+float real(const float *v)
+{
+  return v[0];
+}
+
+float imag(const float *v)
+{
+  return v[1];
 }
 
 static float
@@ -549,12 +559,110 @@ trace_into_index(int t, int i, float array[POINTS_COUNT][2])
     cartesian_scale(coeff[0], coeff[1], &x, &y, scale);
     goto set_index;
   }
-  if (v <  0) v = 0;
-  if (v > NGRIDY) v = NGRIDY;
+  if (v < 0) v = 0;
+  if (v > 8) v = 8;
   x = (i * (WIDTH) + (sweep_points-1)/2) / (sweep_points-1) + CELLOFFSETX;
   y = floatToInt(v * GRIDY);
 set_index:
   return INDEX(x, y);
+}
+
+
+/** find minimum-max range of the data array using a specific function to evaluate the single point
+ *  @param array[in] is the data array
+ *  @param fmetric[in] is the function to be used for point evaluation
+ *  @param min[out] is te minimum found value
+ *  @param max[out] is the maximum found value
+ */
+
+static void find_min_max(const float array[101][2], float(*const fmetric)(const float *), float *min, float *max)
+{
+    float v, m, M;
+    m = M = fmetric(array[0]);
+    for (int i = 1; i<101; i++) {
+      v = fmetric(array[i]);
+      if (v > M)
+        M = v;
+      else if (v < m)
+        m = v;
+    }
+    *min = m;
+    *max = M;
+}
+
+/** Get the autoscale values for the given trace
+ * @param t[in] the trace to be autoscaled
+ * @param scale[inout] the scale value to be calculated (initialized with the current value)
+ * @param refpos[inout] the reference position to be calculated (initialized with the current value)
+ * @param array[in] data point set
+ */
+
+void
+get_trace_autoscale(int t, float *scale, float *refpos, const float array[101][2])
+{
+  float min, max, sc = *scale, rp = *refpos;
+  switch (trace[t].type) {
+  case TRC_LOGMAG:
+    find_min_max(array, logmag, &min, &max);
+    sc = (max-min)/7;
+    if (sc < 1) sc = ceil(sc*10)/10;
+    else if (sc < 10) sc = ceil(sc);
+    else sc = ceil(sc/10)*10;
+    rp = 4 - (min+max) / 2 / sc;
+    break;
+  case TRC_PHASE:
+    find_min_max(array, phase, &min, &max);
+    sc = (max-min)/7;
+    if (sc < 10) sc = ceil(sc);
+    else sc = ceil(sc/5)*5;
+    rp = 4 - (min+max) / 2 / sc;
+    break;
+  case TRC_DELAY:
+  case TRC_LINEAR:
+    find_min_max(array, linear, &min, &max);
+    sc = (max-min)/7;
+    if (sc < 1e-12) sc = 1e-12;
+    rp = 4 - (min+max) / 2 / sc;
+    break;
+  case TRC_SWR:
+    find_min_max(array, swr, &min, &max);
+    sc = (max-min)/7;
+    if (sc < 1e-12) sc = 1e-12;
+    else if (sc > 30) sc = 30;
+    rp = 4 - (min+max) / 2 / sc;
+    break;
+  case TRC_REAL:
+    find_min_max(array, real, &min, &max);
+    sc = (max-min)/7;
+    if (sc < 1e-12) sc = 1e-12;
+    rp = 4 - (min+max) / 2 / sc;
+    break;
+  case TRC_IMAG:
+    find_min_max(array, imag, &min, &max);
+    sc = (max-min)/7;
+    if (sc < 1e-12) sc = 1e-12;
+    rp = 4 - (min+max) / 2 / sc;
+    break;
+  case TRC_R:
+    find_min_max(array, resitance, &min, &max);
+    sc = (max-min)/7;
+    if (sc < 1e-12) sc = 1e-12;
+    rp = 4 - (min+max) / 2 / sc;
+    break;
+  case TRC_X:
+    find_min_max(array, reactance, &min, &max);
+    sc = (max-min)/7;
+    if (sc < 1e-12) sc = 1e-12;
+    rp = 4 - (min+max) / 2 / sc;
+    break;
+  case TRC_SMITH:
+  //case TRC_ADMIT:
+  case TRC_POLAR:
+    break;
+  }
+  *scale = sc;
+  *refpos = rp;
+  return;
 }
 
 static void

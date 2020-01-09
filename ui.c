@@ -1342,7 +1342,7 @@ draw_numeric_area_frame(void)
 {
   ili9341_fill(0, 208, 320, 32, 0xffff);
   ili9341_drawstring_5x7(keypad_mode_label[keypad_mode], 10, 220, 0x0000, 0xffff);
-  ili9341_drawfont(KP_KEYPAD, &NF20x22, 300, 216, 0x0000, 0xffff);
+  //ili9341_drawfont(KP_KEYPAD, &NF20x22, 300, 216, 0x0000, 0xffff);
 }
 
 void
@@ -1948,10 +1948,6 @@ keypad_apply_touch(void)
     }
     i++;
   }
-  if (touch_y > 48 * 4) {
-    // exit keypad mode
-    return -2;
-  }
   return -1;
 }
 
@@ -2105,10 +2101,6 @@ ui_process_keypad(void)
       if (key >= 0 && keypad_click(key))
         /* exit loop on done or cancel */
         break;
-//      else if (key == -2) {
-//        //xxx;
-//        return;
-//      }
     }
   }
 

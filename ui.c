@@ -2105,10 +2105,10 @@ ui_process_keypad(void)
       if (key >= 0 && keypad_click(key))
         /* exit loop on done or cancel */
         break;
-      else if (key == -2) {
-        //xxx;
-        return;
-      }
+//      else if (key == -2) {
+//        //xxx;
+//        return;
+//      }
     }
   }
 

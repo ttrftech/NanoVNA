@@ -8,7 +8,7 @@
 #define SWAP(x,y) do { int z=x; x = y; y = z; } while(0)
 
 static void cell_draw_marker_info(int m, int n, int w, int h);
-void frequency_string(char *buf, size_t len, int32_t freq);
+void frequency_string(char *buf, size_t len, uint32_t freq);
 void frequency_string_short(char *buf, size_t len, int32_t freq, char prefix);
 void markmap_all_markers(void);
 
@@ -1693,24 +1693,24 @@ cell_draw_marker_info(int m, int n, int w, int h)
 }
 
 void
-frequency_string(char *buf, size_t len, int32_t freq)
+frequency_string(char *buf, size_t len, uint32_t freq)
 {
-  if (freq < 0) {
+/*  if (freq < 0) {
     freq = -freq;
     *buf++ = '-';
     len -= 1;
-  }
+  }*/
   if (freq < 1000) {
     chsnprintf(buf, len, "%d Hz", (int)freq);
-  } else if (freq < 1000000) {
+  } else if (freq < 1000000U) {
     chsnprintf(buf, len, "%d.%03d kHz",
-             (int)(freq / 1000),
-             (int)(freq % 1000));
+             (freq / 1000U),
+             (freq % 1000U));
   } else {
     chsnprintf(buf, len, "%d.%03d %03d MHz",
-             (int)(freq / 1000000),
-             (int)((freq / 1000) % 1000),
-             (int)(freq % 1000));
+             (freq / 1000000U),
+             ((freq / 1000U) % 1000U),
+             (freq % 1000U));
   }
 }
 
@@ -1746,20 +1746,18 @@ draw_frequencies(void)
 {
   char buf[24];
   if ((domain_mode & DOMAIN_MODE) == DOMAIN_FREQ) {
-      if (frequency1 > 0) {
-        int start = frequency0;
-        int stop = frequency1;
+      if (frequency0 < frequency1) {
         strcpy(buf, "START ");
-        frequency_string(buf+6, 24-6, start);
+        frequency_string(buf+6, 24-6, frequency0);
         strcat(buf, "    ");
         ili9341_drawstring_5x7(buf, OFFSETX, 233, 0xffff, 0x0000);
         strcpy(buf, "STOP ");
-        frequency_string(buf+5, 24-5, stop);
+        frequency_string(buf+5, 24-5, frequency1);
         strcat(buf, "    ");
         ili9341_drawstring_5x7(buf, 205, 233, 0xffff, 0x0000);
-      } else if (frequency1 < 0) {
-        int fcenter = frequency0;
-        int fspan = -frequency1;
+      } else if (frequency0 > frequency1) {
+        uint32_t fcenter = frequency0/2 + frequency1/2;
+        uint32_t fspan = frequency0 - frequency1;
         int x = OFFSETX;
         strcpy(buf, "CENTER");
         ili9341_drawstring_5x7_inv(buf, x, 233, 0xffff, 0x0000, uistat.lever_mode == LM_CENTER);

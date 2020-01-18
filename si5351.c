@@ -227,7 +227,7 @@ si5351_setupMultisynth(uint8_t     output,
 #define PLLFREQ (XTALFREQ * PLL_N)
 
 void
-si5351_set_frequency_fixedpll(int channel, int pll, int pllfreq, int freq,
+si5351_set_frequency_fixedpll(int channel, int pll, uint32_t pllfreq, uint32_t freq,
                               int rdiv, uint8_t drive_strength, int mul)
 {
     int denom = freq;
@@ -256,7 +256,7 @@ si5351_set_frequency_fixedpll(int channel, int pll, int pllfreq, int freq,
 }
 
 void
-si5351_set_frequency_fixeddiv(int channel, int pll, int freq, int div,
+si5351_set_frequency_fixeddiv(int channel, int pll, uint32_t freq, int div,
                               uint8_t drive_strength, int mul)
 {
     int denom = XTALFREQ * mul;
@@ -324,25 +324,31 @@ si5351_set_frequency_with_offset(uint32_t freq, int offset, uint8_t drive_streng
   int band;
   int delay = DELAY_NORMAL;
   uint32_t ofreq = freq + offset;
-  int mul = 1, omul = 1;
+  uint32_t mul = 1, omul = 1;
   uint32_t rdiv = SI5351_R_DIV_1;
-  if (freq >= config.harmonic_freq_threshold * 3) {
+  if (freq >= config.harmonic_freq_threshold * 7U) {
+    mul = 9;
+    omul = 11;
+  } else if (freq >= config.harmonic_freq_threshold * 5U) {
+    mul = 7;
+    omul = 9;
+  } else if (freq >= config.harmonic_freq_threshold * 3U) {
     mul = 5;
     omul = 7;
   } else if (freq >= config.harmonic_freq_threshold) {
     mul = 3;
     omul = 5;
   }
-  if ((freq / mul) < 100000000) {
+  if ((freq / mul) < 100000000U) {
     band = 0;
-  } else if ((freq / mul) < 150000000) {
+  } else if ((freq / mul) < 150000000U) {
     band = 1;
   } else {
     band = 2;
   }
-  if (freq <= 500000) {
+  if (freq <= 500000U) {
     rdiv = SI5351_R_DIV_64;
-  } else if (freq <= 4000000) {
+  } else if (freq <= 4000000U) {
     rdiv = SI5351_R_DIV_8;
   }
 

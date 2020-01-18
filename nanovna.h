@@ -71,7 +71,7 @@ enum {
   ST_START, ST_STOP, ST_CENTER, ST_SPAN, ST_CW
 };
 
-void set_sweep_frequency(int type, int32_t frequency);
+void set_sweep_frequency(int type, uint32_t frequency);
 uint32_t get_sweep_frequency(int type);
 
 float my_atof(const char *p);
@@ -292,9 +292,9 @@ void ili9341_read_memory_continue(int len, uint16_t* out);
 #define SAVEAREA_MAX 5
 
 typedef struct {
-  int32_t magic;
-  int32_t _frequency0; // start or center
-  int32_t _frequency1; // stop or span
+  uint32_t magic;
+  uint32_t _frequency0; // start or center
+  uint32_t _frequency1; // stop or span
   int16_t _sweep_points;
   uint16_t _cal_status;
 

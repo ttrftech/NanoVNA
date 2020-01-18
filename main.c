@@ -618,7 +618,8 @@ properties_t current_props = {
   ._markers = {
     { 1, 30, 0 }, { 0, 40, 0 }, { 0, 60, 0 }, { 0, 80, 0 }
   },
-  ._velocity_factor =  70,
+  ._velocity_factor =  0.7,
+  ._marker_smith_format = MS_RLC
 };
 properties_t *active_props = &current_props;
 

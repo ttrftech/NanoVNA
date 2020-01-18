@@ -636,7 +636,7 @@ format_smith_value(char *buf, int len, const float coeff[2], uint32_t frequency)
   float zi = 2*coeff[1] * d;
   int n;
 
-  switch (uistat.marker_smith_format) {
+  switch (marker_smith_format) {
   case MS_LIN:
     chsnprintf(buf, len, "%.2f %.1f" S_DEGREE, linear(coeff), phase(coeff));
     break;
@@ -829,7 +829,7 @@ static float time_of_index(int idx) {
 static float distance_of_index(int idx) {
 #define SPEED_OF_LIGHT 299792458
    float distance = ((float)idx * (float)SPEED_OF_LIGHT) / ( (float)(frequencies[1] - frequencies[0]) * (float)FFT_SIZE * 2.0);
-   return distance * (velocity_factor / 100.0);
+   return distance * velocity_factor;
 }
 
 
@@ -1687,7 +1687,7 @@ cell_draw_marker_info(int m, int n, int w, int h)
     cell_drawstring_5x7(w, h, buf, xpos, ypos, 0xffff);
     xpos += n * 5 + 5;
     float light_speed_ps = 299792458e-12; //(m/ps)
-    string_value_with_prefix(buf, sizeof buf, electrical_delay * light_speed_ps * velocity_factor / 100.0, 'm');
+    string_value_with_prefix(buf, sizeof buf, electrical_delay * light_speed_ps * velocity_factor, 'm');
     cell_drawstring_5x7(w, h, buf, xpos, ypos, 0xffff);
   }
 }

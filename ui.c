@@ -31,7 +31,6 @@ uistat_t uistat = {
  current_trace: 0,
  lever_mode: LM_MARKER,
  marker_delta: FALSE,
- marker_smith_format: MS_RLC
 };
 
 
@@ -888,7 +887,7 @@ menu_marker_search_cb(int item)
 static void
 menu_marker_smith_cb(int item)
 {
-  uistat.marker_smith_format = item;
+  marker_smith_format = item;
   redraw_marker(active_marker, TRUE);
   draw_menu();
 }
@@ -1421,7 +1420,7 @@ menu_item_modify_attribute(const menuitem_t *menu, int item,
       }
     }
   } else if (menu == menu_marker_smith) {
-    if (uistat.marker_smith_format == item) {
+    if (marker_smith_format == item) {
       *bg = 0x0000;
       *fg = 0xffff;
     }
@@ -1590,7 +1589,7 @@ fetch_numeric_target(void)
     uistat.value = get_electrical_delay();
     break;
   case KM_VELOCITY_FACTOR:
-    uistat.value = velocity_factor;
+    uistat.value = velocity_factor * 100;
     break;
   case KM_SCALEDELAY:
     uistat.value = get_trace_scale(uistat.current_trace) * 1e12;
@@ -1894,7 +1893,7 @@ keypad_click(int key)
       set_electrical_delay(value); // pico seconds
       break;
     case KM_VELOCITY_FACTOR:
-      velocity_factor = value;
+      velocity_factor = value / 100.0;
       break;
     case KM_SCALEDELAY:
       set_trace_scale(uistat.current_trace, value * 1e-12); // pico second

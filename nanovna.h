@@ -295,8 +295,8 @@ void ili9341_read_memory_continue(int len, uint16_t* out);
 
 typedef struct {
   uint32_t magic;
-  uint32_t _frequency0; // start or center
-  uint32_t _frequency1; // stop or span
+  uint32_t _frequency0;
+  uint32_t _frequency1;
   int16_t _sweep_points;
   uint16_t _cal_status;
 
@@ -306,13 +306,17 @@ typedef struct {
   
   trace_t _trace[TRACES_MAX];
   marker_t _markers[MARKERS_MAX];
-  int _active_marker;
-  uint8_t _domain_mode; /* 0bxxxxxffm : where ff: TD_FUNC m: DOMAIN_MODE */
-  uint8_t _velocity_factor; // %
 
-  uint8_t _reserved[54];
+  float _velocity_factor; // %
+  int8_t _active_marker;
+  uint8_t _domain_mode; /* 0bxxxxxffm : where ff: TD_FUNC m: DOMAIN_MODE */
+  uint8_t _marker_smith_format;
+
+  uint8_t _reserved[50];
   int32_t checksum;
 } properties_t;
+
+//sizeof(properties_t) == 0x1200
 
 #define CONFIG_MAGIC 0x434f4e45 /* 'CONF' */
 
@@ -335,6 +339,7 @@ extern int8_t previous_marker;
 #define active_marker current_props._active_marker
 #define domain_mode current_props._domain_mode
 #define velocity_factor current_props._velocity_factor
+#define marker_smith_format current_props._marker_smith_format
 
 int caldata_save(int id);
 int caldata_recall(int id);
@@ -367,7 +372,6 @@ typedef struct {
   uint32_t previous_value;
   uint8_t lever_mode;
   bool marker_delta;
-  uint8_t marker_smith_format;
 } uistat_t;
 
 extern uistat_t uistat;

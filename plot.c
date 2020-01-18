@@ -1775,12 +1775,13 @@ draw_frequencies(void)
         strcat(buf, "    ");
         ili9341_drawstring_5x7(buf, x, 233, 0xffff, 0x0000);
       } else {
-        int fcenter = frequency0;
-        chsnprintf(buf, 24, "CW %d.%03d %03d MHz    ",
-                   (int)(fcenter / 1000000),
-                   (int)((fcenter / 1000) % 1000),
-                   (int)(fcenter % 1000));
-        ili9341_drawstring_5x7(buf, OFFSETX, 233, 0xffff, 0x0000);
+        int x = OFFSETX;
+        strcpy(buf, "CW");
+        ili9341_drawstring_5x7_inv(buf, x, 233, 0xffff, 0x0000, uistat.lever_mode == LM_CENTER);
+        x += 5 * 2;
+        strcpy(buf, " ");
+        frequency_string(buf+1, 24-1, frequency0);
+        ili9341_drawstring_5x7(buf, x, 233, 0xffff, 0x0000);
         chsnprintf(buf, 24, "                             ");
         ili9341_drawstring_5x7(buf, 205, 233, 0xffff, 0x0000);
       }

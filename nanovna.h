@@ -221,8 +221,8 @@ typedef struct {
   uint32_t frequency;
 } marker_t;
 
-//extern marker_t markers[4];
-//extern int active_marker;
+extern int8_t previous_marker;
+extern int8_t marker_tracking;
 
 void plot_init(void);
 void update_grid(void);
@@ -244,7 +244,8 @@ void markmap_all_markers(void);
 
 void marker_position(int m, int t, int *x, int *y);
 int search_nearest_index(int x, int y, int t);
-int marker_search(int mode);
+void set_marker_search(int mode);
+int marker_search(void);
 int marker_search_left(int from);
 int marker_search_right(int from);
 
@@ -311,7 +312,6 @@ typedef struct {
   int8_t _active_marker;
   uint8_t _domain_mode; /* 0bxxxxxffm : where ff: TD_FUNC m: DOMAIN_MODE */
   uint8_t _marker_smith_format;
-
   uint8_t _reserved[50];
   int32_t checksum;
 } properties_t;
@@ -323,8 +323,6 @@ typedef struct {
 extern int16_t lastsaveid;
 extern properties_t *active_props;
 extern properties_t current_props;
-
-extern int8_t previous_marker;
 
 #define frequency0 current_props._frequency0
 #define frequency1 current_props._frequency1
@@ -379,8 +377,6 @@ extern uistat_t uistat;
 void ui_init(void);
 void ui_show(void);
 void ui_hide(void);
-
-extern uint8_t operation_requested;
 
 void touch_start_watchdog(void);
 void touch_position(int *x, int *y);

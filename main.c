@@ -90,6 +90,14 @@ static THD_FUNCTION(Thread1, arg)
         if (completed) {
           plot_into_index(measured);
           redraw_request |= REDRAW_CELLS;
+
+          if (marker_tracking) {
+            int i = marker_search();
+            if (i != -1 && active_marker != -1) {
+              markers[active_marker].index = i;
+              redraw_request |= REDRAW_MARKER;
+            }
+          }
         }
       }
 

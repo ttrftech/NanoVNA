@@ -862,7 +862,8 @@ menu_marker_search_cb(int item)
   switch (item) {
   case 0: /* maximum */
   case 1: /* minimum */
-    i = marker_search(item);
+    set_marker_search(item);
+    i = marker_search();
     if (i != -1)
       markers[active_marker].index = i;
     draw_menu();
@@ -877,6 +878,10 @@ menu_marker_search_cb(int item)
     i = marker_search_right(markers[active_marker].index);
     if (i != -1)
       markers[active_marker].index = i;
+    draw_menu();
+    break;
+  case 4: /* tracking */
+    marker_tracking = !marker_tracking;
     draw_menu();
     break;
   }
@@ -1085,7 +1090,7 @@ const menuitem_t menu_marker_search[] = {
   { MT_CALLBACK, "MINIMUM", menu_marker_search_cb },
   { MT_CALLBACK, "\2SEARCH\0" S_LARROW" LEFT", menu_marker_search_cb },
   { MT_CALLBACK, "\2SEARCH\0" S_RARROW" RIGHT", menu_marker_search_cb },
-  //{ MT_CALLBACK, "TRACKING", menu_marker_search_cb },
+  { MT_CALLBACK, "TRACKING", menu_marker_search_cb },
   { MT_CANCEL, S_LARROW" BACK", NULL },
   { MT_NONE, NULL, NULL } // sentinel
 };
@@ -1418,6 +1423,11 @@ menu_item_modify_attribute(const menuitem_t *menu, int item,
         *bg = 0x0000;
         *fg = 0xffff;
       }
+    }
+  } else if (menu == menu_marker_search) {
+    if (item == 4 && marker_tracking) {
+      *bg = 0x0000;
+      *fg = 0xffff;
     }
   } else if (menu == menu_marker_smith) {
     if (marker_smith_format == item) {

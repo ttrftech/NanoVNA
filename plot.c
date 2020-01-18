@@ -658,7 +658,8 @@ format_smith_value(char *buf, int len, const float coeff[2], uint32_t frequency)
 
   case MS_RX:
     n = string_value_with_prefix(buf, len, zr, S_OHM[0]);
-    buf[n++] = ' ';
+    if (zi >= 0)
+      buf[n++] = ' ';
     string_value_with_prefix(buf+n, len-n, zi, 'j');
     break;
 
@@ -1161,19 +1162,14 @@ static int greater(int x, int y) { return x > y; }
 static int lesser(int x, int y) { return x < y; }
 
 static int (*compare)(int x, int y) = lesser;
-
+int8_t marker_tracking = false;
 
 int
-marker_search(int mode)
+marker_search(void)
 {
   int i;
   int found = 0;
 
-  if (mode == 0)
-    compare = greater;
-  else
-    compare = lesser;
-    
   if (uistat.current_trace == -1)
     return -1;
 
@@ -1187,6 +1183,15 @@ marker_search(int mode)
   }
 
   return found;
+}
+
+void
+set_marker_search(int mode)
+{
+  if (mode == 0)
+    compare = greater;
+  else
+    compare = lesser;
 }
 
 int

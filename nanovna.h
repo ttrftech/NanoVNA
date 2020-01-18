@@ -189,6 +189,8 @@ typedef struct {
   int16_t touch_cal[4];
   int8_t default_loadcal;
   uint32_t harmonic_freq_threshold;
+
+  uint8_t _reserved[24];
   int32_t checksum;
 } config_t;
 
@@ -308,6 +310,7 @@ typedef struct {
   uint8_t _domain_mode; /* 0bxxxxxffm : where ff: TD_FUNC m: DOMAIN_MODE */
   uint8_t _velocity_factor; // %
 
+  uint8_t _reserved[54];
   int32_t checksum;
 } properties_t;
 

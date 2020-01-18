@@ -591,17 +591,6 @@ static void cmd_sample(BaseSequentialStream *chp, int argc, char *argv[])
   chprintf(chp, "usage: sample {gamma|ampl|ref}\r\n");
 }
 
-
-#if 0
-int32_t frequency0 = 1000000;
-int32_t frequency1 = 300000000;
-int16_t sweep_points = 101;
-
-uint32_t frequencies[101];
-uint16_t cal_status;
-float cal_data[5][101][2];
-#endif
-
 config_t config = {
   .magic =             CONFIG_MAGIC,
   .dac_value =         1922,
@@ -612,33 +601,24 @@ config_t config = {
 //  .touch_cal =         { 693, 605, 124, 171 },  // 2.4 inch LCD panel
   .touch_cal =         { 338, 522, 153, 192 },  // 2.8 inch LCD panel
   .default_loadcal =   0,
-  .harmonic_freq_threshold = 300000000,
-  .checksum =          0
+  .harmonic_freq_threshold = 300000000
 };
 
 properties_t current_props = {
-  /* magic */   CONFIG_MAGIC,
-  /* frequency0 */     50000, // start = 50kHz
-  /* frequency1 */ 900000000, // end = 900MHz
-  /* sweep_points */     101,
-  /* cal_status */         0,
-  /* frequencies */       {},
-  /* cal_data */          {},
-  /* electrical_delay */   0,
-  /* trace[4] */
-  {/*enable, type, channel, polar, scale, refpos*/
+  .magic =             CONFIG_MAGIC,
+  ._frequency0 =       50000,     // start = 50kHz
+  ._frequency1 =       900000000, // end = 900MHz
+  ._sweep_points =     101,
+  ._trace = {/*enable, type, channel, polar, scale, refpos*/
     { 1, TRC_LOGMAG, 0, 0, 1.0, 7.0 },
     { 1, TRC_LOGMAG, 1, 0, 1.0, 7.0 },
     { 1, TRC_SMITH,  0, 1, 1.0, 0.0 },
     { 1, TRC_PHASE,  1, 0, 1.0, 4.0 }
   },
-  /* markers[4] */ {
+  ._markers = {
     { 1, 30, 0 }, { 0, 40, 0 }, { 0, 60, 0 }, { 0, 80, 0 }
   },
-  /* active_marker */      0,
-  /* domain_mode */        0,
-  /* velocity_factor */   70,
-  /* checksum */           0
+  ._velocity_factor =  70,
 };
 properties_t *active_props = &current_props;
 

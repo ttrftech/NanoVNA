@@ -321,7 +321,7 @@ smith_grid3(int x, int y)
   if (d < 0)
     return 0;
   if (d == 0)
-    return 0;
+    return 1;
 
   // shift circle center to right origin
   x -= P_RADIUS /2;
@@ -1450,13 +1450,13 @@ draw_cell(int m, int n)
       for (x = 0; x < w; x++) {
         int n = 0;
         if (grid_mode & GRID_SMITH)
-          n+= smith_grid(x+x0off, y+y0);
+          n = smith_grid(x+x0off, y+y0);
         else if (grid_mode & GRID_ADMIT)
-          n+= smith_grid3(x+x0off, y+y0);
-        //n+= smith_grid2(x+x0, y+y0, 0.5);
+          n = smith_grid3(x+x0off, y+y0);
+        //n = smith_grid2(x+x0, y+y0, 0.5);
         else if (grid_mode & GRID_POLAR)
-          n+= polar_grid(x+x0off, y+y0);
-        if (n>0)
+          n = polar_grid(x+x0off, y+y0);
+        if (n)
           spi_buffer[y * w + x] = c;
       }
     }

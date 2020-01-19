@@ -1541,6 +1541,11 @@ my_atof(const char *p)
   return x;
 }
 
+typedef struct {
+	  char *tracename;
+	  uint8_t type;
+} type_list;
+
 static void cmd_trace(BaseSequentialStream *chp, int argc, char *argv[])
 {
   int t;
@@ -1575,34 +1580,29 @@ static void cmd_trace(BaseSequentialStream *chp, int argc, char *argv[])
     chprintf(chp, "%d %s %s\r\n", t, type, channel);
     return;
   }
+
   if (argc > 1) {
-    if (strcmp(argv[1], "logmag") == 0) {
-      set_trace_type(t, TRC_LOGMAG);
-    } else if (strcmp(argv[1], "phase") == 0) {
-      set_trace_type(t, TRC_PHASE);
-    } else if (strcmp(argv[1], "polar") == 0) {
-      set_trace_type(t, TRC_POLAR);
-    } else if (strcmp(argv[1], "smith") == 0) {
-      set_trace_type(t, TRC_SMITH);
-    } else if (strcmp(argv[1], "delay") == 0) {
-      set_trace_type(t, TRC_DELAY);
-    } else if (strcmp(argv[1], "linear") == 0) {
-      set_trace_type(t, TRC_LINEAR);
-    } else if (strcmp(argv[1], "swr") == 0) {
-      set_trace_type(t, TRC_SWR);
-    } else if (strcmp(argv[1], "real") == 0) {
-      set_trace_type(t, TRC_REAL);
-    } else if (strcmp(argv[1], "imag") == 0) {
-      set_trace_type(t, TRC_IMAG);
-    } else if (strcmp(argv[1], "r") == 0) {
-      set_trace_type(t, TRC_R);
-    } else if (strcmp(argv[1], "x") == 0) {
-      set_trace_type(t, TRC_X);
-    } else if (strcmp(argv[1], "linear") == 0) {
-      set_trace_type(t, TRC_LINEAR);
-    } else if (strcmp(argv[1], "off") == 0) {
-      set_trace_type(t, TRC_OFF);
-    } else if (strcmp(argv[1], "scale") == 0 && argc >= 3) {
+	  static const type_list t_list[] = {
+	  	{"logmag", TRC_LOGMAG},
+	  	{"phase", TRC_PHASE},
+	  	{"polar", TRC_POLAR},
+	  	{"smith", TRC_SMITH},
+	  	{"delay", TRC_DELAY},
+	  	{"linear", TRC_LINEAR},
+	  	{"swr", TRC_SWR},
+	  	{"real", TRC_REAL},
+	  	{"imag", TRC_IMAG},
+	  	{"r", TRC_R},
+	  	{"x", TRC_X},
+	  	{"off", TRC_OFF},
+	  };
+	  for (uint16_t i=0; i<sizeof(t_list)/sizeof(type_list); i++){
+		if (strcmp(argv[1], t_list[i].tracename) == 0) {
+		      set_trace_type(t, t_list[i].type);
+		      goto check_ch_num;
+		}
+	}
+  	if (strcmp(argv[1], "scale") == 0 && argc >= 3) {
       //trace[t].scale = my_atof(argv[2]);
       set_trace_scale(t, my_atof(argv[2]));
       goto exit;
@@ -1614,16 +1614,17 @@ static void cmd_trace(BaseSequentialStream *chp, int argc, char *argv[])
       goto usage;
     }
   }
+  check_ch_num:
   if (argc > 2) {
     int src = atoi(argv[2]);
     if (src != 0 && src != 1)
       goto usage;
     trace[t].channel = src;
-  }  
+  }
  exit:
   return;
  usage:
-  chprintf(chp, "trace {0|1|2|3|all} [logmag|phase|smith|linear|delay|swr|real|imag|r|x|off] [src]\r\n");
+  chprintf(chp, "trace {0|1|2|3|all} [logmag|phase|polar|smith|linear|delay|swr|real|imag|r|x|off] [src]\r\n");
   chprintf(chp, "trace {0|1|2|3} {scale|refpos} {value}\r\n");
 }
 

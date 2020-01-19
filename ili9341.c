@@ -338,58 +338,6 @@ void ili9341_init(void)
         p += 2 + p[1];
         chThdSleepMilliseconds(5);
     }
-    /*
-    int x1, y1, x2, y2;
-    x1 = y1 = 0;
-    y2 = 240 - 1;
-    for(x2=0; x2<320; x2+=6) ili9341_line(x1, y1, x2, y2);
-    x2 = 320 - 1;
-    for(y2=0; y2<240; y2+=6) ili9341_line(x1, y1, x2, y2);
-    chThdSleepMilliseconds(2000);*/
-/*
-    char buf[64];
-    ili9341_fill(0,0, 320, 240, 255);
-
-
-    systime_t time = chVTGetSystemTimeX();
-    for (int c=0;c<255;c+=5)
-    	ili9341_fill(0,0, 320, 240, RGB565(0,0,c));
-    chThdSleepMilliseconds(1000);
-    for (int c=0;c<255;c+=5)
-    	ili9341_fill(0,0, 320, 240, RGB565(0,c,0));
-    chThdSleepMilliseconds(1000);
-    for (int c=0;c<255;c+=5)
-    	ili9341_fill(0,0, 320, 240, RGB565(c,0,0));
-    chThdSleepMilliseconds(1000);
-    time = chVTGetSystemTimeX() - time;
-    chsnprintf(buf, sizeof buf, "Fill Time %d", time);
-    ili9341_drawstring(buf, 10,10);
-    chThdSleepMilliseconds(2000);
-
-//    time = chVTGetSystemTimeX();
-//    for (int c=0;c<50;c++)
-//    	show_version();
-//    time = chVTGetSystemTimeX() - time;
-//    chsnprintf(buf, sizeof buf, "Fill Time %d", time);
-
-    chsnprintf(buf, sizeof buf, "0123456789123456789");
-
-    setForegroundColor(RGB565(255,0,0));
-    ili9341_drawstring(buf, 0,  0);
-    setForegroundColor(RGB565(0,255,0));
-    ili9341_drawstring(buf, 0,  8);
-    setForegroundColor(RGB565(0,0,255));
-    ili9341_drawstring(buf, 0, 16);
-    ili9341_drawstring(buf, 0, 24);
-    ili9341_drawstring(buf, 0, 32);
-    ili9341_fill(0, 64, 320, 64, 0);
-    chThdSleepMilliseconds(2000);
-    ili9341_read_memory(0,  0, 32, 16, 512, spi_buffer);
-    ili9341_bulk(32, 64, 32, 16);
-    ili9341_read_memory(0, 16, 32, 16, 512, spi_buffer);
-    ili9341_bulk(32, 64+16, 32, 16);
-    chThdSleepMilliseconds(5000);/**/
-    /**/
 }
 
 #ifndef __USE_DISPLAY_DMA__

@@ -305,7 +305,7 @@ void touch_wait_release(void)
   } while(status != EVT_TOUCH_RELEASED);
 }
 
-extern void ili9341_line(int, int, int, int, int);
+extern void ili9341_line(int, int, int, int);
 
 void
 touch_cal_exec(void)
@@ -314,11 +314,12 @@ touch_cal_exec(void)
   int x1, x2, y1, y2;
   
   adc_stop(ADC1);
-
-  ili9341_fill(0, 0, 320, 240, 0);
-  ili9341_line(0, 0, 0, 32, 0xffff);
-  ili9341_line(0, 0, 32, 0, 0xffff);
-  ili9341_drawstring_5x7("TOUCH UPPER LEFT", 10, 10, 0xffff, 0x0000);
+  setForegroundColor(DEFAULT_FG_COLOR);
+  setBackgroundColor(DEFAULT_BG_COLOR);
+  ili9341_fill(0, 0, 320, 240, DEFAULT_BG_COLOR);
+  ili9341_line(0, 0, 0, 32);
+  ili9341_line(0, 0, 32, 0);
+  ili9341_drawstring("TOUCH UPPER LEFT", 10, 10);
 
   do {
     status = touch_check();
@@ -326,10 +327,10 @@ touch_cal_exec(void)
   x1 = last_touch_x;
   y1 = last_touch_y;
 
-  ili9341_fill(0, 0, 320, 240, 0);
-  ili9341_line(320-1, 240-1, 320-1, 240-32, 0xffff);
-  ili9341_line(320-1, 240-1, 320-32, 240-1, 0xffff);
-  ili9341_drawstring_5x7("TOUCH LOWER RIGHT", 230, 220, 0xffff, 0x0000);
+  ili9341_fill(0, 0, 320, 240, DEFAULT_BG_COLOR);
+  ili9341_line(320-1, 240-1, 320-1, 240-32);
+  ili9341_line(320-1, 240-1, 320-32, 240-1);
+  ili9341_drawstring("TOUCH LOWER RIGHT", 230, 220);
 
   do {
     status = touch_check();
@@ -355,8 +356,10 @@ touch_draw_test(void)
   
   adc_stop(ADC1);
 
-  ili9341_fill(0, 0, 320, 240, 0);
-  ili9341_drawstring_5x7("TOUCH TEST: DRAG PANEL", OFFSETX, 233, 0xffff, 0x0000);
+  ili9341_fill(0, 0, 320, 240, DEFAULT_BG_COLOR);
+  setForegroundColor(DEFAULT_FG_COLOR);
+  setBackgroundColor(DEFAULT_BG_COLOR);
+  ili9341_drawstring("TOUCH TEST: DRAG PANEL", OFFSETX, 233);
 
   do {
     status = touch_check();
@@ -366,7 +369,7 @@ touch_draw_test(void)
   do {
     status = touch_check();
     touch_position(&x1, &y1);
-    ili9341_line(x0, y0, x1, y1, 0xffff);
+    ili9341_line(x0, y0, x1, y1);
     x0 = x1;
     y0 = y1;
     chThdSleepMilliseconds(50);
@@ -390,21 +393,23 @@ show_version(void)
   int x = 5, y = 5;
   
   adc_stop(ADC1);
-  ili9341_fill(0, 0, 320, 240, 0);
+  ili9341_fill(0, 0, 320, 240, DEFAULT_BG_COLOR);
 
-  ili9341_drawstring_size(BOARD_NAME, x, y, 0xffff, 0x0000, 4);
+  setForegroundColor(DEFAULT_FG_COLOR);
+  setBackgroundColor(DEFAULT_BG_COLOR);
+  ili9341_drawstring_size(BOARD_NAME, x, y, 4);
   y += 25;
 
-  ili9341_drawstring_5x7("2016-2019 Copyright @edy555", x, y += 10, 0xffff, 0x0000);
-  ili9341_drawstring_5x7("Licensed under GPL. See: https://github.com/ttrftech/NanoVNA", x, y += 10, 0xffff, 0x0000);
-  ili9341_drawstring_5x7("Version: " VERSION, x, y += 10, 0xffff, 0x0000);
-  ili9341_drawstring_5x7("Build Time: " __DATE__ " - " __TIME__, x, y += 10, 0xffff, 0x0000);
+  ili9341_drawstring("2016-2019 Copyright @edy555", x, y += 10);
+  ili9341_drawstring("Licensed under GPL. See: https://github.com/ttrftech/NanoVNA", x, y += 10);
+  ili9341_drawstring("Version: " VERSION, x, y += 10);
+  ili9341_drawstring("Build Time: " __DATE__ " - " __TIME__, x, y += 10);
   y += 5;
-  ili9341_drawstring_5x7("Kernel: " CH_KERNEL_VERSION, x, y += 10, 0xffff, 0x0000);
-  ili9341_drawstring_5x7("Compiler: " PORT_COMPILER_NAME, x, y += 10, 0xffff, 0x0000);
-  ili9341_drawstring_5x7("Architecture: " PORT_ARCHITECTURE_NAME " Core Variant: " PORT_CORE_VARIANT_NAME, x, y += 10, 0xffff, 0x0000);
-  ili9341_drawstring_5x7("Port Info: " PORT_INFO, x, y += 10, 0xffff, 0x0000);
-  ili9341_drawstring_5x7("Platform: " PLATFORM_NAME, x, y += 10, 0xffff, 0x0000);
+  ili9341_drawstring("Kernel: " CH_KERNEL_VERSION, x, y += 10);
+  ili9341_drawstring("Compiler: " PORT_COMPILER_NAME, x, y += 10);
+  ili9341_drawstring("Architecture: " PORT_ARCHITECTURE_NAME " Core Variant: " PORT_CORE_VARIANT_NAME, x, y += 10);
+  ili9341_drawstring("Port Info: " PORT_INFO, x, y += 10);
+  ili9341_drawstring("Platform: " PLATFORM_NAME, x, y += 10);
 
   while (true) {
     if (touch_check() == EVT_TOUCH_PRESSED)
@@ -422,11 +427,12 @@ enter_dfu(void)
   adc_stop(ADC1);
 
   int x = 5, y = 5;
-
+  setForegroundColor(DEFAULT_FG_COLOR);
+  setBackgroundColor(DEFAULT_BG_COLOR);
   // leave a last message 
-  ili9341_fill(0, 0, 320, 240, 0);
-  ili9341_drawstring_5x7("DFU: Device Firmware Update Mode", x, y += 10, 0xffff, 0x0000);
-  ili9341_drawstring_5x7("To exit DFU mode, please reset device yourself.", x, y += 10, 0xffff, 0x0000);
+  ili9341_fill(0, 0, 320, 240, DEFAULT_BG_COLOR);
+  ili9341_drawstring("DFU: Device Firmware Update Mode", x, y += 10);
+  ili9341_drawstring("To exit DFU mode, please reset device yourself.", x, y += 10);
 
   // see __early_init in ./NANOVNA_STM32_F072/board.c
   *((unsigned long *)BOOT_FROM_SYTEM_MEMORY_MAGIC_ADDRESS) = BOOT_FROM_SYTEM_MEMORY_MAGIC;
@@ -453,6 +459,11 @@ static void menu_move_back(void);
 static void
 menu_calop_cb(int item)
 {
+  static const uint8_t cal_type[]={CAL_OPEN, CAL_SHORT, CAL_LOAD, CAL_ISOLN, CAL_THRU};
+  if (item < 0 && item >= sizeof(cal_type))
+	  return;
+  cal_collect(cal_type[item]);
+/*
   switch (item) {
   case 0: // OPEN
     cal_collect(CAL_OPEN);
@@ -469,7 +480,7 @@ menu_calop_cb(int item)
   case 4: // THRU
     cal_collect(CAL_THRU);
     break;
-  }
+  }*/
   selection = item+1;
   draw_cal_status();
   draw_menu();
@@ -607,6 +618,11 @@ menu_trace_cb(int item)
 static void
 menu_format_cb(int item)
 {
+  static const uint8_t types[]={TRC_LOGMAG, TRC_PHASE, TRC_DELAY, TRC_SMITH, TRC_SWR};
+  if (item < 0 && item >= sizeof(types))
+	  return;
+  set_trace_type(uistat.current_trace, types[item]);
+  /*
   switch (item) {
   case 0:
     set_trace_type(uistat.current_trace, TRC_LOGMAG);
@@ -623,7 +639,7 @@ menu_format_cb(int item)
   case 4:
     set_trace_type(uistat.current_trace, TRC_SWR);
     break;
-  }
+  }*/
 
   request_to_redraw_grid();
   ui_mode_normal();
@@ -633,6 +649,11 @@ menu_format_cb(int item)
 static void
 menu_format2_cb(int item)
 {
+  static const uint8_t types[]={TRC_POLAR, TRC_LINEAR, TRC_REAL, TRC_IMAG, TRC_R, TRC_X};
+  if (item < 0 && item >= sizeof(types))
+	  return;
+  set_trace_type(uistat.current_trace, types[item]);
+  /*
   switch (item) {
   case 0:
     set_trace_type(uistat.current_trace, TRC_POLAR);
@@ -652,7 +673,7 @@ menu_format2_cb(int item)
   case 5:
     set_trace_type(uistat.current_trace, TRC_X);
     break;
-  }
+  }*/
 
   request_to_redraw_grid();
   ui_mode_normal();
@@ -1335,8 +1356,10 @@ draw_keypad(void)
     uint16_t bg = config.menu_normal_color;
     if (i == selection)
       bg = config.menu_active_color;
+    setForegroundColor(DEFAULT_MENU_TEXT_COLOR);
+    setBackgroundColor(bg);
     ili9341_fill(keypads[i].x, keypads[i].y, 44, 44, bg);
-    ili9341_drawfont(keypads[i].c, &NF20x22, keypads[i].x+12, keypads[i].y+10, 0x0000, bg);
+    ili9341_drawfont(keypads[i].c, keypads[i].x+14, keypads[i].y+10);
     i++;
   }
 }
@@ -1344,9 +1367,11 @@ draw_keypad(void)
 void
 draw_numeric_area_frame(void)
 {
-  ili9341_fill(0, 208, 320, 32, 0xffff);
-  ili9341_drawstring_5x7(keypad_mode_label[keypad_mode], 10, 220, 0x0000, 0xffff);
-  //ili9341_drawfont(KP_KEYPAD, &NF20x22, 300, 216, 0x0000, 0xffff);
+  ili9341_fill(0, 208, 320, 32, DEFAULT_MENU_COLOR);
+  setForegroundColor(DEFAULT_MENU_TEXT_COLOR);
+  setBackgroundColor(DEFAULT_MENU_COLOR);
+  ili9341_drawstring(keypad_mode_label[keypad_mode], 10, 220);
+  //ili9341_drawfont(KP_KEYPAD, 300, 216);
 }
 
 void
@@ -1355,10 +1380,11 @@ draw_numeric_input(const char *buf)
   int i = 0;
   int x = 64;
   int focused = FALSE;
-  const uint16_t xsim[] = { 0, 0, 8, 0, 0, 8, 0, 0, 0, 0 };
-  for (i = 0; i < 10 && buf[i]; i++) {
-    uint16_t fg = 0x0000;
-    uint16_t bg = 0xffff;
+  uint16_t xsim = 0b0010010000000000;
+
+  for (i = 0; i < 10 && buf[i]; i++, xsim<<=1) {
+    uint16_t fg = DEFAULT_MENU_TEXT_COLOR;
+    uint16_t bg = DEFAULT_MENU_COLOR;
     int c = buf[i];
     if (c == '.')
       c = KP_PERIOD;
@@ -1373,24 +1399,21 @@ draw_numeric_input(const char *buf)
       fg = RGB565(128,255,128);
       focused = TRUE;
       if (uistat.digit_mode)
-        bg = 0x0000;
+        bg = DEFAULT_MENU_COLOR;
     }
-
+    setForegroundColor(fg);
+    setBackgroundColor(bg);
     if (c >= 0)
-      ili9341_drawfont(c, &NF20x22, x, 208+4, fg, bg);
+      ili9341_drawfont(c, x, 208+4);
     else if (focused)
-      ili9341_drawfont(0, &NF20x22, x, 208+4, fg, bg);
+      ili9341_drawfont(0, x, 208+4);
     else
       ili9341_fill(x, 208+4, 20, 24, bg);
       
-    x += 20;
-    if (xsim[i] > 0) {
-      //ili9341_fill(x, 208+4, xsim[i], 20, bg);
-      x += xsim[i];
-    }
+    x += xsim&0x8000 ? 18+8 : 18;
   }
   if (i < 10) {
-      ili9341_fill(x, 208+4, 20*(10-i), 24, 0xffff);
+      ili9341_fill(x, 208+4, 20*(10-i), 24, DEFAULT_MENU_COLOR);
   }
 }
 
@@ -1415,24 +1438,25 @@ menu_item_modify_attribute(const menuitem_t *menu, int item,
   } else if (menu == menu_marker_sel) {
     if (item < 4) {
       if (markers[item].enabled) {
-        *bg = 0x0000;
-        *fg = 0xffff;
+        *bg = DEFAULT_MENU_TEXT_COLOR;
+        *fg = config.menu_normal_color;
       }
     } else if (item == 5) {
       if (uistat.marker_delta) {
-        *bg = 0x0000;
-        *fg = 0xffff;
+        *bg = DEFAULT_MENU_TEXT_COLOR;
+        *fg = config.menu_normal_color;
       }
     }
   } else if (menu == menu_marker_search) {
     if (item == 4 && marker_tracking) {
-      *bg = 0x0000;
-      *fg = 0xffff;
+      *bg = DEFAULT_MENU_TEXT_COLOR;
+      *fg = config.menu_normal_color;
     }
   } else if (menu == menu_marker_smith) {
+
     if (marker_smith_format == item) {
-      *bg = 0x0000;
-      *fg = 0xffff;
+      *bg = DEFAULT_MENU_TEXT_COLOR;
+      *fg = config.menu_normal_color;
     }
   } else if (menu == menu_calop) {
     if ((item == 0 && (cal_status & CALSTAT_OPEN))
@@ -1441,18 +1465,18 @@ menu_item_modify_attribute(const menuitem_t *menu, int item,
         || (item == 3 && (cal_status & CALSTAT_ISOLN))
         || (item == 4 && (cal_status & CALSTAT_THRU))) {
       domain_mode = (domain_mode & ~DOMAIN_MODE) | DOMAIN_FREQ;
-      *bg = 0x0000;
-      *fg = 0xffff;
+      *bg = DEFAULT_MENU_TEXT_COLOR;
+      *fg = config.menu_normal_color;
     }
   } else if (menu == menu_stimulus) {
     if (item == 5 /* PAUSE */ && !sweep_enabled) {
-      *bg = 0x0000;
-      *fg = 0xffff;
+      *bg = DEFAULT_MENU_TEXT_COLOR;
+      *fg = config.menu_normal_color;
     }
   } else if (menu == menu_cal) {
     if (item == 3 /* CORRECTION */ && (cal_status & CALSTAT_APPLY)) {
-      *bg = 0x0000;
-      *fg = 0xffff;
+      *bg = DEFAULT_MENU_TEXT_COLOR;
+      *fg = config.menu_normal_color;
     }
   } else if (menu == menu_transform) {
       if ((item == 0 && (domain_mode & DOMAIN_MODE) == DOMAIN_TIME)
@@ -1460,16 +1484,16 @@ menu_item_modify_attribute(const menuitem_t *menu, int item,
        || (item == 2 && (domain_mode & TD_FUNC) == TD_FUNC_LOWPASS_STEP)
        || (item == 3 && (domain_mode & TD_FUNC) == TD_FUNC_BANDPASS)
        ) {
-        *bg = 0x0000;
-        *fg = 0xffff;
+        *bg = DEFAULT_MENU_TEXT_COLOR;
+        *fg = config.menu_normal_color;
       }
   } else if (menu == menu_transform_window) {
       if ((item == 0 && (domain_mode & TD_WINDOW) == TD_WINDOW_MINIMUM)
        || (item == 1 && (domain_mode & TD_WINDOW) == TD_WINDOW_NORMAL)
        || (item == 2 && (domain_mode & TD_WINDOW) == TD_WINDOW_MAXIMUM)
        ) {
-        *bg = 0x0000;
-        *fg = 0xffff;
+        *bg = DEFAULT_MENU_TEXT_COLOR;
+        *fg = config.menu_normal_color;
       }
   }
 }
@@ -1486,18 +1510,22 @@ draw_menu_buttons(const menuitem_t *menu)
       continue;
     int y = 32*i;
     uint16_t bg = config.menu_normal_color;
-    uint16_t fg = 0x0000;
+    uint16_t fg = DEFAULT_MENU_TEXT_COLOR;
     // focus only in MENU mode but not in KEYPAD mode
     if (ui_mode == UI_MENU && i == selection)
       bg = config.menu_active_color;
     ili9341_fill(320-60, y, 60, 30, bg);
     
     menu_item_modify_attribute(menu, i, &fg, &bg);
+    setForegroundColor(fg);
+    setBackgroundColor(bg);
     if (menu_is_multiline(menu[i].label, &l1, &l2)) {
-      ili9341_drawstring_5x7(l1, 320-54, y+8, fg, bg);
-      ili9341_drawstring_5x7(l2, 320-54, y+15, fg, bg);
+      ili9341_fill(320-57, y+6, 54, 19, bg);
+      ili9341_drawstring(l1, 320-55, y+8);
+      ili9341_drawstring(l2, 320-55, y+16);
     } else {
-      ili9341_drawstring_5x7(menu[i].label, 320-54, y+12, fg, bg);
+      ili9341_fill(320-57, y+10, 54, 11, bg);
+      ili9341_drawstring(menu[i].label, 320-55, y+12);
     }
   }
 }
@@ -1546,8 +1574,7 @@ draw_menu(void)
 void
 erase_menu_buttons(void)
 {
-  uint16_t bg = 0;
-  ili9341_fill(320-60, 0, 60, 32*7, bg);
+  ili9341_fill(320-60, 0, 60, 32*7, DEFAULT_BG_COLOR);
 }
 
 void
@@ -1667,7 +1694,7 @@ ui_mode_menu(void)
   ui_mode = UI_MENU;
   /* narrowen plotting area */
   area_width = AREA_WIDTH_NORMAL - (64-8);
-  area_height = HEIGHT;
+  area_height = HEIGHT+1;
   ensure_selection();
   draw_menu();
 }
@@ -1721,7 +1748,7 @@ ui_mode_normal(void)
     return;
 
   area_width = AREA_WIDTH_NORMAL;
-  area_height = HEIGHT;
+  area_height = HEIGHT+1;
   leave_ui_mode();
   ui_mode = UI_NORMAL;
 }

@@ -19,6 +19,9 @@
  */
 #include "ch.h"
 
+// Need enable HAL_USE_SPI in halconf.h
+#define __USE_DISPLAY_DMA__
+
 /*
  * main.c
  */
@@ -129,7 +132,12 @@ extern void tlv320aic3204_select(int channel);
 #define OFFSETX 15
 #define OFFSETY 0
 #define WIDTH 291
-#define HEIGHT 233
+#define HEIGHT 230
+
+// Smith/polar chart
+#define P_CENTER_X 145
+#define P_CENTER_Y 115
+#define P_RADIUS 115
 
 #define CELLOFFSETX 5
 #define AREA_WIDTH_NORMAL (WIDTH + CELLOFFSETX*2)
@@ -137,21 +145,29 @@ extern void tlv320aic3204_select(int channel);
 extern int area_width;
 extern int area_height;
 
-#define GRIDY 29
+#define GRIDY 23
 
 // font
 
 extern const uint8_t x5x7_bits [];
-extern const uint8_t numfont20x22[][22 * 3];
+#define FONT_GET_DATA(ch)	(&x5x7_bits[ch*7])
+#define FONT_GET_WIDTH(ch)	(7-(x5x7_bits[ch*7]&3))
+#define FONT_GET_HEIGHT		7
+
+extern const uint16_t numfont16x22[];
+#define NUM_FONT_GET_DATA(ch)	(&numfont16x22[ch*22])
+#define NUM_FONT_GET_WIDTH  	16
+#define NUM_FONT_GET_HEIGHT		22
 
 #define S_DELTA "\004"
+#define S_DEGREE "\037"
+#define S_SARROW "\030"
+#define S_INFINITY "\031"
+#define S_LARROW "\032"
+#define S_RARROW "\033"
 #define S_PI    "\034"
 #define S_MICRO "\035"
 #define S_OHM   "\036"
-#define S_DEGREE "\037"
-#define S_LARROW "\032"
-#define S_RARROW "\033"
-
 // trace 
 
 #define TRACES_MAX 4
@@ -261,8 +277,34 @@ extern int16_t vbat;
 /*
  * ili9341.c
  */
-#define RGB565(b,r,g)     ( (((b)<<8)&0xfc00) | (((r)<<2)&0x03e0) | (((g)>>3)&0x001f) )
+// SPI bus revert byte order
+//gggBBBbb RRRrrGGG
+#define RGB565(r,g,b)  ( (((g)&0x1c)<<11) | (((b)&0xf8)<<5) | ((r)&0xf8) | (((g)&0xe0)>>5) )
+#define RGBHEX(hex) ( (((hex)&0x001c00)<<3) | (((hex)&0x0000f8)<<5) | (((hex)&0xf80000)>>16) | (((hex)&0x00e000)>>13) )
 
+#define DEFAULT_FG_COLOR			RGB565(255,255,255)
+#define DEFAULT_BG_COLOR			RGB565(  0,  0,  0)
+#define DEFAULT_GRID_COLOR			RGB565(128,128,128)
+#define DEFAULT_MENU_COLOR			RGB565(255,255,255)
+#define DEFAULT_MENU_TEXT_COLOR		RGB565(  0,  0,  0)
+#define DEFAULT_MENU_ACTIVE_COLOR	RGB565(180,255,180)
+#define DEFAULT_TRACE_1_COLOR		RGB565(  0,255,255)
+#define DEFAULT_TRACE_2_COLOR		RGB565(255,  0, 40)
+#define DEFAULT_TRACE_3_COLOR		RGB565(  0,  0,255)
+#define DEFAULT_TRACE_4_COLOR		RGB565( 50,255,  0)
+
+/*
+#define DEFAULT_FG_COLOR			RGB565(  0,  0,  0)
+#define DEFAULT_BG_COLOR			RGB565(255,255,255)
+#define DEFAULT_GRID_COLOR			RGB565(150,150,150)
+#define DEFAULT_MENU_TEXT_COLOR		RGB565(  0,  0,  0)
+#define DEFAULT_MENU_COLOR			RGB565(180,180,180)
+#define DEFAULT_MENU_ACTIVE_COLOR	RGB565(180,255,180)
+#define DEFAULT_TRACE_1_COLOR		RGB565(  0,255,255)
+#define DEFAULT_TRACE_2_COLOR		RGB565(255,  0, 40)
+#define DEFAULT_TRACE_3_COLOR		RGB565(  0,  0,255)
+#define DEFAULT_TRACE_4_COLOR		RGB565( 50,255,  0)
+*/
 typedef struct {
 	uint16_t width;
 	uint16_t height;
@@ -271,23 +313,30 @@ typedef struct {
 	const uint8_t *bitmap;
 } font_t;
 
-extern const font_t NF20x22;
+extern uint16_t foreground_color;
+extern uint16_t background_color;
 
 extern uint16_t spi_buffer[1024];
 
 void ili9341_init(void);
+//void ili9341_setRotation(uint8_t r);
 void ili9341_test(int mode);
 void ili9341_bulk(int x, int y, int w, int h);
 void ili9341_fill(int x, int y, int w, int h, int color);
-void ili9341_drawchar_5x7(uint8_t ch, int x, int y, uint16_t fg, uint16_t bg);
-void ili9341_drawstring_5x7(const char *str, int x, int y, uint16_t fg, uint16_t bg);
-void ili9341_drawstring_5x7_inv(const char *str, int x, int y, uint16_t fg, uint16_t bg, bool inv);
-void ili9341_drawchar_size(uint8_t ch, int x, int y, uint16_t fg, uint16_t bg, uint8_t size);
-void ili9341_drawstring_size(const char *str, int x, int y, uint16_t fg, uint16_t bg, uint8_t size);
-void ili9341_drawfont(uint8_t ch, const font_t *font, int x, int y, uint16_t fg, uint16_t bg);
+void setForegroundColor(uint16_t fg);
+void setBackgroundColor(uint16_t fg);
+void blit8BitWidthBitmap(uint16_t x, uint16_t y, uint16_t width, uint16_t height, const uint8_t *bitmap);
+void blit16BitWidthBitmap(uint16_t x, uint16_t y, uint16_t width, uint16_t height, const uint16_t *bitmap);
+void ili9341_drawchar(uint8_t ch, int x, int y);
+void ili9341_drawstring(const char *str, int x, int y);
+void ili9341_drawstringV(const char *str, int x, int y);
+int  ili9341_drawchar_size(uint8_t ch, int x, int y, uint8_t size);
+void ili9341_drawstring_size(const char *str, int x, int y, uint8_t size);
+void ili9341_drawfont(uint8_t ch, int x, int y);
 void ili9341_read_memory(int x, int y, int w, int h, int len, uint16_t* out);
-void ili9341_read_memory_continue(int len, uint16_t* out);
-
+void ili9341_line(int x0, int y0, int x1, int y1);
+void show_version(void);
+void show_logo(void);
 
 /*
  * flash.c
@@ -403,15 +452,5 @@ int16_t adc_vbat_read(ADC_TypeDef *adc);
  * misclinous
  */
 #define PULSE do { palClearPad(GPIOC, GPIOC_LED); palSetPad(GPIOC, GPIOC_LED);} while(0)
-
-// convert vbat [mV] to battery indicator
-static inline uint8_t vbat2bati(int16_t vbat)
-{
-	if (vbat < 3200) return 0;
-	if (vbat < 3450) return 25;
-	if (vbat < 3700) return 50;
-	if (vbat < 4100) return 75;
-	return 100;
-}
 
 /*EOF*/

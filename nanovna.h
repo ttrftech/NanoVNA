@@ -293,26 +293,6 @@ extern int16_t vbat;
 #define DEFAULT_TRACE_3_COLOR		RGB565(  0,  0,255)
 #define DEFAULT_TRACE_4_COLOR		RGB565( 50,255,  0)
 
-/*
-#define DEFAULT_FG_COLOR			RGB565(  0,  0,  0)
-#define DEFAULT_BG_COLOR			RGB565(255,255,255)
-#define DEFAULT_GRID_COLOR			RGB565(150,150,150)
-#define DEFAULT_MENU_TEXT_COLOR		RGB565(  0,  0,  0)
-#define DEFAULT_MENU_COLOR			RGB565(180,180,180)
-#define DEFAULT_MENU_ACTIVE_COLOR	RGB565(180,255,180)
-#define DEFAULT_TRACE_1_COLOR		RGB565(  0,255,255)
-#define DEFAULT_TRACE_2_COLOR		RGB565(255,  0, 40)
-#define DEFAULT_TRACE_3_COLOR		RGB565(  0,  0,255)
-#define DEFAULT_TRACE_4_COLOR		RGB565( 50,255,  0)
-*/
-typedef struct {
-	uint16_t width;
-	uint16_t height;
-	uint16_t scaley;
-	uint16_t slide;
-	const uint8_t *bitmap;
-} font_t;
-
 extern uint16_t foreground_color;
 extern uint16_t background_color;
 
@@ -334,8 +314,9 @@ int  ili9341_drawchar_size(uint8_t ch, int x, int y, uint8_t size);
 void ili9341_drawstring_size(const char *str, int x, int y, uint8_t size);
 void ili9341_drawfont(uint8_t ch, int x, int y);
 void ili9341_read_memory(int x, int y, int w, int h, int len, uint16_t* out);
-void ili9341_read_memory_continue(int len, uint16_t* out);
-void ili9341_line(int x0, int y0, int x1, int y1, uint16_t fg);
+void ili9341_line(int x0, int y0, int x1, int y1);
+void show_version(void);
+void show_logo(void);
 
 /*
  * flash.c

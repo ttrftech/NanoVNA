@@ -287,6 +287,7 @@ void ili9341_drawstring_size(const char *str, int x, int y, uint16_t fg, uint16_
 void ili9341_drawfont(uint8_t ch, const font_t *font, int x, int y, uint16_t fg, uint16_t bg);
 void ili9341_read_memory(int x, int y, int w, int h, int len, uint16_t* out);
 void ili9341_read_memory_continue(int len, uint16_t* out);
+void ili9341_line(int x0, int y0, int x1, int y1, uint16_t fg);
 
 
 /*

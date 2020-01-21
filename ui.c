@@ -305,8 +305,6 @@ void touch_wait_release(void)
   } while(status != EVT_TOUCH_RELEASED);
 }
 
-extern void ili9341_line(int, int, int, int);
-
 void
 touch_cal_exec(void)
 {

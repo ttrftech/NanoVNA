@@ -334,9 +334,8 @@ int  ili9341_drawchar_size(uint8_t ch, int x, int y, uint8_t size);
 void ili9341_drawstring_size(const char *str, int x, int y, uint8_t size);
 void ili9341_drawfont(uint8_t ch, int x, int y);
 void ili9341_read_memory(int x, int y, int w, int h, int len, uint16_t* out);
-void ili9341_line(int x0, int y0, int x1, int y1);
-void show_version(void);
-void show_logo(void);
+void ili9341_read_memory_continue(int len, uint16_t* out);
+void ili9341_line(int x0, int y0, int x1, int y1, uint16_t fg);
 
 /*
  * flash.c

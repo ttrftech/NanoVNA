@@ -501,6 +501,7 @@ cartesian_scale(float re, float im, int *xp, int *yp, float scale)
 float
 groupdelay_from_array(int i, float array[101][2])
 {
+/*
   if (i == 0) {
     float deltaf = frequencies[1] - frequencies[0];
     return groupdelay(array[0], array[1], deltaf);
@@ -511,6 +512,11 @@ groupdelay_from_array(int i, float array[101][2])
     float deltaf = frequencies[i+1] - frequencies[i-1];
     return groupdelay(array[i-1], array[i+1], deltaf);
   }
+*/
+  int bottom = (i ==   0) ?   0 : i - 1;
+  int top    = (i == 100) ? 100 : i + 1;
+  float deltaf = frequencies[top] - frequencies[bottom];
+  return groupdelay(array[bottom], array[top], deltaf);
 }
 
 uint32_t

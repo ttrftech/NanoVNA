@@ -58,24 +58,23 @@ uint32_t trace_index[TRACES_MAX][101];
 #define CELL_P(i, x, y) (((((x)&0x03e0UL)<<22) | (((y)&0x03e0UL)<<17)) == ((i)&0xffc00000UL))
 
 //#define floatToInt(v) ((int)(v))
-//*
 int floatToInt(float v){
 	if (v < 0) return v-0.5;
 	if (v > 0) return v+0.5;
 	return 0;
-}/**/
+}
 
 void update_grid(void)
 {
   int32_t gdigit = 100000000;
   int32_t fstart, fspan;
   int32_t grid;
-  if (frequency1 > 0) {
+  if (frequency0 < frequency1) {
     fstart = frequency0;
     fspan = frequency1 - frequency0;
   } else {
-    fspan = -frequency1;
-    fstart = frequency0 - fspan/2;
+    fstart = frequency1;
+    fspan = frequency0 - frequency1;
   }
   
   while (gdigit > 100) {
@@ -465,7 +464,7 @@ float linear(const float *v)
 float swr(const float *v)
 {
   float x = sqrtf(v[0]*v[0] + v[1]*v[1]);
-  if (x > 1)
+  if (x >= 1)
     return INFINITY;
   return (1 + x)/(1 - x);
 }
@@ -731,7 +730,10 @@ trace_get_value_string(int t, char *buf, int len, float array[101][2], int i)
     break;
   case TRC_SWR:
     v = swr(coeff);
-    chsnprintf(buf, len, "%.2f", v);
+    if (v == INFINITY)
+    	chsnprintf(buf, len, S_INFINITY);
+    else
+    	chsnprintf(buf, len, "%.2f", v);
     break;
   case TRC_SMITH:
     format_smith_value(buf, len, coeff, frequencies[i]);
@@ -1676,7 +1678,7 @@ cell_draw_marker_info(int m, int n, int w, int h)
         frequency_string_short(buf, sizeof buf, freq, 0);
       }
       cell_drawstring(w, h, buf, xpos, ypos);
-      xpos += 60;
+      xpos += 64;
       if (uistat.marker_delta && mk != active_marker)
         trace_get_value_string_delta(t, buf, sizeof buf, measured[trace[t].channel], markers[mk].index, markers[active_marker].index);
       else

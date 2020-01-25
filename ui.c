@@ -76,11 +76,15 @@ uint8_t ui_mode = UI_NORMAL;
 uint8_t keypad_mode;
 int8_t selection = 0;
 
+// Set structure align as WORD (save flash memory)
+#pragma pack(push, 2)
 typedef struct {
   uint8_t type;
+  uint8_t data;
   char *label;
   const void *reference;
 } menuitem_t;
+#pragma pack(pop)
 
 int8_t last_touch_status = FALSE;
 int16_t last_touch_x;
@@ -116,8 +120,6 @@ void ui_process_keypad(void);
 static void ui_process_numeric(void);
 
 static void menu_push_submenu(const menuitem_t *submenu);
-
-
 
 static int btn_check(void)
 {
@@ -448,48 +450,28 @@ enum {
   MT_CLOSE
 };
 
-typedef void (*menuaction_cb_t)(int item);
+typedef void (*menuaction_cb_t)(int item, uint8_t data);
 
 
 static void menu_move_back(void);
 
 
 static void
-menu_calop_cb(int item)
+menu_calop_cb(int item, uint8_t data)
 {
-  static const uint8_t cal_type[]={CAL_OPEN, CAL_SHORT, CAL_LOAD, CAL_ISOLN, CAL_THRU};
-  if (item < 0 && item >= sizeof(cal_type))
-	  return;
-  cal_collect(cal_type[item]);
-/*
-  switch (item) {
-  case 0: // OPEN
-    cal_collect(CAL_OPEN);
-    break;
-  case 1: // SHORT
-    cal_collect(CAL_SHORT);
-    break;
-  case 2: // LOAD
-    cal_collect(CAL_LOAD);
-    break;
-  case 3: // ISOLN
-    cal_collect(CAL_ISOLN);
-    break;
-  case 4: // THRU
-    cal_collect(CAL_THRU);
-    break;
-  }*/
+  cal_collect(data);
   selection = item+1;
   draw_cal_status();
   draw_menu();
 }
 
 static void
-menu_caldone_cb(int item)
+menu_caldone_cb(int item, uint8_t data)
 {
   extern const menuitem_t menu_save[];
   //extern const menuitem_t menu_cal[];
   (void)item;
+  (void)data;
   cal_done();
   draw_cal_status();
   menu_move_back();
@@ -497,16 +479,16 @@ menu_caldone_cb(int item)
 }
 
 static void
-menu_cal2_cb(int item)
+menu_cal2_cb(int item, uint8_t data)
 {
+  (void)data;
   switch (item) {
   case 2: // RESET
     cal_status = 0;
     break;
   case 3: // CORRECTION
     // toggle applying correction
-    if (cal_status)
-      cal_status ^= CALSTAT_APPLY;
+    cal_status ^= CALSTAT_APPLY;
     draw_menu();
     break;
   }
@@ -515,11 +497,10 @@ menu_cal2_cb(int item)
 }
 
 static void
-menu_recall_cb(int item)
+menu_recall_cb(int item, uint8_t data)
 {
-  if (item < 0 || item >= 5)
-    return;
-  if (caldata_recall(item) == 0) {
+  (void)item;
+  if (caldata_recall(data) == 0) {
     menu_move_back();
     ui_mode_normal();
     update_grid();
@@ -528,8 +509,9 @@ menu_recall_cb(int item)
 }
 
 static void
-menu_config_cb(int item)
+menu_config_cb(int item, uint8_t data)
 {
+  (void)data;
   switch (item) {
   case 0:
       touch_cal_exec();
@@ -557,20 +539,18 @@ menu_config_cb(int item)
 }
 
 static void
-menu_dfu_cb(int item)
+menu_dfu_cb(int item, uint8_t data)
 {
-  switch (item) {
-  case 0:
-      enter_dfu();
-  }
+  (void)item;
+  (void)data;
+  enter_dfu();
 }
 
 static void
-menu_save_cb(int item)
+menu_save_cb(int item, uint8_t data)
 {
-  if (item < 0 || item >= 5)
-    return;
-  if (caldata_save(item) == 0) {
+  (void)item;
+  if (caldata_save(data) == 0) {
     menu_move_back();
     ui_mode_normal();
     draw_cal_status();
@@ -592,21 +572,19 @@ choose_active_trace(void)
 }
 
 static void
-menu_trace_cb(int item)
+menu_trace_cb(int item, uint8_t data)
 {
-  if (item < 0 || item >= 4)
-    return;
-  if (trace[item].enabled) {
-    if (item == uistat.current_trace) {
+  if (trace[data].enabled) {
+    if (data == uistat.current_trace) {
       // disable if active trace is selected
-      trace[item].enabled = FALSE;
+      trace[data].enabled = FALSE;
       choose_active_trace();
     } else {
       // make active selected trace
       uistat.current_trace = item;
     }
   } else {
-    trace[item].enabled = TRUE;
+    trace[data].enabled = TRUE;
     uistat.current_trace = item;
   }
   request_to_redraw_grid();
@@ -614,137 +592,64 @@ menu_trace_cb(int item)
 }
 
 static void
-menu_format_cb(int item)
+menu_format_cb(int item, uint8_t data)
 {
-  static const uint8_t types[]={TRC_LOGMAG, TRC_PHASE, TRC_DELAY, TRC_SMITH, TRC_SWR};
-  if (item < 0 && item >= sizeof(types))
-	  return;
-  set_trace_type(uistat.current_trace, types[item]);
-  /*
-  switch (item) {
-  case 0:
-    set_trace_type(uistat.current_trace, TRC_LOGMAG);
-    break;
-  case 1:
-    set_trace_type(uistat.current_trace, TRC_PHASE);
-    break;
-  case 2:
-    set_trace_type(uistat.current_trace, TRC_DELAY);
-    break;
-  case 3:
-    set_trace_type(uistat.current_trace, TRC_SMITH);
-    break;
-  case 4:
-    set_trace_type(uistat.current_trace, TRC_SWR);
-    break;
-  }*/
-
+  (void)item;
+  set_trace_type(uistat.current_trace, data);
   request_to_redraw_grid();
   ui_mode_normal();
   //redraw_all();
 }
 
 static void
-menu_format2_cb(int item)
+menu_channel_cb(int item, uint8_t data)
 {
-  static const uint8_t types[]={TRC_POLAR, TRC_LINEAR, TRC_REAL, TRC_IMAG, TRC_R, TRC_X};
-  if (item < 0 && item >= sizeof(types))
-	  return;
-  set_trace_type(uistat.current_trace, types[item]);
-  /*
-  switch (item) {
-  case 0:
-    set_trace_type(uistat.current_trace, TRC_POLAR);
-    break;
-  case 1:
-    set_trace_type(uistat.current_trace, TRC_LINEAR);
-    break;
-  case 2:
-    set_trace_type(uistat.current_trace, TRC_REAL);
-    break;
-  case 3:
-    set_trace_type(uistat.current_trace, TRC_IMAG);
-    break;
-  case 4:
-    set_trace_type(uistat.current_trace, TRC_R);
-    break;
-  case 5:
-    set_trace_type(uistat.current_trace, TRC_X);
-    break;
-  }*/
-
-  request_to_redraw_grid();
-  ui_mode_normal();
-}
-
-static void
-menu_channel_cb(int item)
-{
-  if (item < 0 || item >= 2)
-    return;
-  set_trace_channel(uistat.current_trace, item);
+  (void)item;
+  set_trace_channel(uistat.current_trace, data);
   menu_move_back();
   ui_mode_normal();
 }
 
 static void
-menu_transform_window_cb(int item)
+menu_transform_window_cb(int item, uint8_t data)
 {
+  (void)item;
   // TODO
-  switch (item) {
-    case 0:
-      domain_mode = (domain_mode & ~TD_WINDOW) | TD_WINDOW_MINIMUM;
-      ui_mode_normal();
-      break;
-    case 1:
-      domain_mode = (domain_mode & ~TD_WINDOW) | TD_WINDOW_NORMAL;
-      ui_mode_normal();
-      break;
-    case 2:
-      domain_mode = (domain_mode & ~TD_WINDOW) | TD_WINDOW_MAXIMUM;
-      ui_mode_normal();
-      break;
+  domain_mode = (domain_mode & ~TD_WINDOW) | data;
+  ui_mode_normal();
+}
+
+static void
+menu_transform_cb(int item, uint8_t data)
+{
+  (void)item;
+  (void)data;
+  domain_mode ^= DOMAIN_TIME;
+  uistat.lever_mode = LM_MARKER;
+  draw_frequencies();
+  ui_mode_normal();
+}
+
+static void
+menu_velocity_cb(int item, uint8_t data){
+  (void)item;
+  (void)data;
+  int status = btn_wait_release();
+  if (status & EVT_BUTTON_DOWN_LONG) {
+      ui_mode_numeric(KM_VELOCITY_FACTOR);
+      ui_process_numeric();
+  } else {
+      ui_mode_keypad(KM_VELOCITY_FACTOR);
+      ui_process_keypad();
   }
 }
 
 static void
-menu_transform_cb(int item)
+menu_transform_filter_cb(int item, uint8_t data)
 {
-  int status;
-  switch (item) {
-    case 0:
-      if ((domain_mode & DOMAIN_MODE) == DOMAIN_TIME) {
-          domain_mode = (domain_mode & ~DOMAIN_MODE) | DOMAIN_FREQ;
-      } else {
-          domain_mode = (domain_mode & ~DOMAIN_MODE) | DOMAIN_TIME;
-      }
-      uistat.lever_mode = LM_MARKER;
-      draw_frequencies();
-      ui_mode_normal();
-      break;
-    case 1:
-      domain_mode = (domain_mode & ~TD_FUNC) | TD_FUNC_LOWPASS_IMPULSE;
-      ui_mode_normal();
-      break;
-    case 2:
-      domain_mode = (domain_mode & ~TD_FUNC) | TD_FUNC_LOWPASS_STEP;
-      ui_mode_normal();
-      break;
-    case 3:
-      domain_mode = (domain_mode & ~TD_FUNC) | TD_FUNC_BANDPASS;
-      ui_mode_normal();
-      break;
-    case 5:
-      status = btn_wait_release();
-      if (status & EVT_BUTTON_DOWN_LONG) {
-        ui_mode_numeric(KM_VELOCITY_FACTOR);
-        ui_process_numeric();
-      } else {
-        ui_mode_keypad(KM_VELOCITY_FACTOR);
-        ui_process_keypad();
-      }
-      break;
-  }
+  (void)item;
+  domain_mode = (domain_mode & ~TD_FUNC) | data;
+  ui_mode_normal();
 }
 
 static void 
@@ -760,26 +665,26 @@ choose_active_marker(void)
 }
 
 static void
-menu_scale_cb(int item)
+menu_scale_cb(int item, uint8_t data)
 {
-  int status;
-  int km = KM_SCALE + item;
-  if (km == KM_SCALE && trace[uistat.current_trace].type == TRC_DELAY) {
-    km = KM_SCALEDELAY;
+  (void)item;
+  if (data == KM_SCALE && trace[uistat.current_trace].type == TRC_DELAY) {
+	  data = KM_SCALEDELAY;
   }
-  status = btn_wait_release();
+  int status = btn_wait_release();
   if (status & EVT_BUTTON_DOWN_LONG) {
-    ui_mode_numeric(km);
+    ui_mode_numeric(data);
     ui_process_numeric();
   } else {
-    ui_mode_keypad(km);
+    ui_mode_keypad(data);
     ui_process_keypad();
   }
 }
 
 static void
-menu_stimulus_cb(int item)
+menu_stimulus_cb(int item, uint8_t data)
 {
+  (void)data;
   int status;
   switch (item) {
   case 0: /* START */
@@ -818,8 +723,9 @@ get_marker_frequency(int marker)
 }
 
 static void
-menu_marker_op_cb(int item)
+menu_marker_op_cb(int item, uint8_t data)
 {
+  (void)data;
   int32_t freq = get_marker_frequency(active_marker);
   if (freq < 0)
     return; // no active marker
@@ -872,8 +778,9 @@ menu_marker_op_cb(int item)
 }
 
 static void
-menu_marker_search_cb(int item)
+menu_marker_search_cb(int item, uint8_t data)
 {
+  (void)data;
   int i;
   if (active_marker == -1)
     return;
@@ -909,9 +816,10 @@ menu_marker_search_cb(int item)
 }
 
 static void
-menu_marker_smith_cb(int item)
+menu_marker_smith_cb(int item, uint8_t data)
 {
-  marker_smith_format = item;
+  (void)item;
+  marker_smith_format = data;
   redraw_marker(active_marker, TRUE);
   draw_menu();
 }
@@ -933,8 +841,9 @@ active_marker_select(int item)
 }
 
 static void
-menu_marker_sel_cb(int item)
+menu_marker_sel_cb(int item, uint8_t data)
 {
+  (void)data;
   if (item >= 0 && item < 4) {
     if (markers[item].enabled) {
       if (item == active_marker) {
@@ -964,215 +873,215 @@ menu_marker_sel_cb(int item)
 }
 
 const menuitem_t menu_calop[] = {
-  { MT_CALLBACK, "OPEN", menu_calop_cb },
-  { MT_CALLBACK, "SHORT", menu_calop_cb },
-  { MT_CALLBACK, "LOAD", menu_calop_cb },
-  { MT_CALLBACK, "ISOLN", menu_calop_cb },
-  { MT_CALLBACK, "THRU", menu_calop_cb },
-  { MT_CALLBACK, "DONE", menu_caldone_cb },
-  { MT_CANCEL, S_LARROW" BACK", NULL },
-  { MT_NONE, NULL, NULL } // sentinel
+  { MT_CALLBACK, CAL_OPEN,  "OPEN",  menu_calop_cb },
+  { MT_CALLBACK, CAL_SHORT, "SHORT", menu_calop_cb },
+  { MT_CALLBACK, CAL_LOAD,  "LOAD",  menu_calop_cb },
+  { MT_CALLBACK, CAL_ISOLN, "ISOLN", menu_calop_cb },
+  { MT_CALLBACK, CAL_THRU,  "THRU",  menu_calop_cb },
+  { MT_CALLBACK, 0,         "DONE",  menu_caldone_cb },
+  { MT_CANCEL,   0, S_LARROW" BACK", NULL },
+  { MT_NONE,     0, NULL, NULL } // sentinel
 };
 
 const menuitem_t menu_save[] = {
-  { MT_CALLBACK, "SAVE 0", menu_save_cb },
-  { MT_CALLBACK, "SAVE 1", menu_save_cb },
-  { MT_CALLBACK, "SAVE 2", menu_save_cb },
-  { MT_CALLBACK, "SAVE 3", menu_save_cb },
-  { MT_CALLBACK, "SAVE 4", menu_save_cb },
-  { MT_CANCEL, S_LARROW" BACK", NULL },
-  { MT_NONE, NULL, NULL } // sentinel
+  { MT_CALLBACK, 0, "SAVE 0", menu_save_cb },
+  { MT_CALLBACK, 1, "SAVE 1", menu_save_cb },
+  { MT_CALLBACK, 2, "SAVE 2", menu_save_cb },
+  { MT_CALLBACK, 3, "SAVE 3", menu_save_cb },
+  { MT_CALLBACK, 4, "SAVE 4", menu_save_cb },
+  { MT_CANCEL, 0, S_LARROW" BACK", NULL },
+  { MT_NONE, 0, NULL, NULL } // sentinel
 };
 
 const menuitem_t menu_cal[] = {
-  { MT_SUBMENU, "CALIBRATE", menu_calop },
-  { MT_SUBMENU, "SAVE", menu_save },
-  { MT_CALLBACK, "RESET", menu_cal2_cb },
-  { MT_CALLBACK, "CORRECTION", menu_cal2_cb },
-  { MT_CANCEL, S_LARROW" BACK", NULL },
-  { MT_NONE, NULL, NULL } // sentinel
+  { MT_SUBMENU,  0, "CALIBRATE", menu_calop },
+  { MT_SUBMENU,  0, "SAVE", menu_save },
+  { MT_CALLBACK, 0, "RESET", menu_cal2_cb },
+  { MT_CALLBACK, 0, "CORRECTION", menu_cal2_cb },
+  { MT_CANCEL, 0, S_LARROW" BACK", NULL },
+  { MT_NONE, 0, NULL, NULL } // sentinel
 };
 
 const menuitem_t menu_trace[] = {
-  { MT_CALLBACK, "TRACE 0", menu_trace_cb },
-  { MT_CALLBACK, "TRACE 1", menu_trace_cb },
-  { MT_CALLBACK, "TRACE 2", menu_trace_cb },
-  { MT_CALLBACK, "TRACE 3", menu_trace_cb },
-  { MT_CANCEL, S_LARROW" BACK", NULL },
-  { MT_NONE, NULL, NULL } // sentinel
+  { MT_CALLBACK, 0, "TRACE 0", menu_trace_cb },
+  { MT_CALLBACK, 1, "TRACE 1", menu_trace_cb },
+  { MT_CALLBACK, 2, "TRACE 2", menu_trace_cb },
+  { MT_CALLBACK, 3, "TRACE 3", menu_trace_cb },
+  { MT_CANCEL, 0, S_LARROW" BACK", NULL },
+  { MT_NONE, 0, NULL, NULL } // sentinel
 };
 
 const menuitem_t menu_format2[] = {
-  { MT_CALLBACK, "POLAR", menu_format2_cb },
-  { MT_CALLBACK, "LINEAR", menu_format2_cb },
-  { MT_CALLBACK, "REAL", menu_format2_cb },
-  { MT_CALLBACK, "IMAG", menu_format2_cb },
-  { MT_CALLBACK, "RESISTANCE", menu_format2_cb },
-  { MT_CALLBACK, "REACTANCE", menu_format2_cb },
-  { MT_CANCEL, S_LARROW" BACK", NULL },
-  { MT_NONE, NULL, NULL } // sentinel
+  { MT_CALLBACK, TRC_POLAR, "POLAR", menu_format_cb },
+  { MT_CALLBACK, TRC_LINEAR, "LINEAR", menu_format_cb },
+  { MT_CALLBACK, TRC_REAL, "REAL", menu_format_cb },
+  { MT_CALLBACK, TRC_IMAG, "IMAG", menu_format_cb },
+  { MT_CALLBACK, TRC_R, "RESISTANCE", menu_format_cb },
+  { MT_CALLBACK, TRC_X, "REACTANCE", menu_format_cb },
+  { MT_CANCEL, 0, S_LARROW" BACK", NULL },
+  { MT_NONE, 0, NULL, NULL } // sentinel
 };
 
 const menuitem_t menu_format[] = {
-  { MT_CALLBACK, "LOGMAG", menu_format_cb },
-  { MT_CALLBACK, "PHASE", menu_format_cb },
-  { MT_CALLBACK, "DELAY", menu_format_cb },
-  { MT_CALLBACK, "SMITH", menu_format_cb },
-  { MT_CALLBACK, "SWR", menu_format_cb },
-  { MT_SUBMENU, S_RARROW" MORE", menu_format2 },  
-  //{ MT_CALLBACK, "LINEAR", menu_format_cb },
-  //{ MT_CALLBACK, "SWR", menu_format_cb },
-  { MT_CANCEL, S_LARROW" BACK", NULL },
-  { MT_NONE, NULL, NULL } // sentinel
+  { MT_CALLBACK, TRC_LOGMAG, "LOGMAG", menu_format_cb },
+  { MT_CALLBACK, TRC_PHASE, "PHASE", menu_format_cb },
+  { MT_CALLBACK, TRC_DELAY, "DELAY", menu_format_cb },
+  { MT_CALLBACK, TRC_SMITH, "SMITH", menu_format_cb },
+  { MT_CALLBACK, TRC_SWR, "SWR", menu_format_cb },
+  { MT_SUBMENU, 0, S_RARROW" MORE", menu_format2 },
+  //{ MT_CALLBACK, TRC_LINEAR, "LINEAR", menu_format_cb },
+  //{ MT_CALLBACK, TRC_SWR, "SWR", menu_format_cb },
+  { MT_CANCEL, 0, S_LARROW" BACK", NULL },
+  { MT_NONE, 0, NULL, NULL } // sentinel
 };
 
 const menuitem_t menu_scale[] = {
-  { MT_CALLBACK, "SCALE/DIV", menu_scale_cb },
-  { MT_CALLBACK, "\2REFERENCE\0POSITION", menu_scale_cb },
-  { MT_CALLBACK, "\2ELECTRICAL\0DELAY", menu_scale_cb },
-  { MT_CANCEL, S_LARROW" BACK", NULL },
-  { MT_NONE, NULL, NULL } // sentinel
+  { MT_CALLBACK, KM_SCALE, "SCALE/DIV", menu_scale_cb },
+  { MT_CALLBACK, KM_REFPOS, "\2REFERENCE\0POSITION", menu_scale_cb },
+  { MT_CALLBACK, KM_EDELAY, "\2ELECTRICAL\0DELAY", menu_scale_cb },
+  { MT_CANCEL, 0, S_LARROW" BACK", NULL },
+  { MT_NONE, 0, NULL, NULL } // sentinel
 };
 
 
 const menuitem_t menu_channel[] = {
-  { MT_CALLBACK, "\2CH0\0REFLECT", menu_channel_cb },
-  { MT_CALLBACK, "\2CH1\0THROUGH", menu_channel_cb },
-  { MT_CANCEL, S_LARROW" BACK", NULL },
-  { MT_NONE, NULL, NULL } // sentinel
+  { MT_CALLBACK, 0, "\2CH0\0REFLECT", menu_channel_cb },
+  { MT_CALLBACK, 1, "\2CH1\0THROUGH", menu_channel_cb },
+  { MT_CANCEL, 0, S_LARROW" BACK", NULL },
+  { MT_NONE, 0, NULL, NULL } // sentinel
 };
 
 const menuitem_t menu_transform_window[] = {
-  { MT_CALLBACK, "MINIMUM", menu_transform_window_cb },
-  { MT_CALLBACK, "NORMAL", menu_transform_window_cb },
-  { MT_CALLBACK, "MAXIMUM", menu_transform_window_cb },
-  { MT_CANCEL, S_LARROW" BACK", NULL },
-  { MT_NONE, NULL, NULL } // sentinel
+  { MT_CALLBACK, TD_WINDOW_MINIMUM, "MINIMUM", menu_transform_window_cb },
+  { MT_CALLBACK, TD_WINDOW_NORMAL,   "NORMAL", menu_transform_window_cb },
+  { MT_CALLBACK, TD_WINDOW_MAXIMUM, "MAXIMUM", menu_transform_window_cb },
+  { MT_CANCEL, 0, S_LARROW" BACK", NULL },
+  { MT_NONE, 0, NULL, NULL } // sentinel
 };
 
 const menuitem_t menu_transform[] = {
-  { MT_CALLBACK, "\2TRANSFORM\0ON", menu_transform_cb },
-  { MT_CALLBACK, "\2LOW PASS\0IMPULSE", menu_transform_cb },
-  { MT_CALLBACK, "\2LOW PASS\0STEP", menu_transform_cb },
-  { MT_CALLBACK, "BANDPASS", menu_transform_cb },
-  { MT_SUBMENU, "WINDOW", menu_transform_window },
-  { MT_CALLBACK, "\2VELOCITY\0FACTOR", menu_transform_cb },
-  { MT_CANCEL, S_LARROW" BACK", NULL },
-  { MT_NONE, NULL, NULL } // sentinel
+  { MT_CALLBACK, 0, "\2TRANSFORM\0ON", menu_transform_cb },
+  { MT_CALLBACK, TD_FUNC_LOWPASS_IMPULSE, "\2LOW PASS\0IMPULSE", menu_transform_filter_cb },
+  { MT_CALLBACK, TD_FUNC_LOWPASS_STEP, "\2LOW PASS\0STEP", menu_transform_filter_cb },
+  { MT_CALLBACK, TD_FUNC_BANDPASS, "BANDPASS", menu_transform_filter_cb },
+  { MT_SUBMENU, 0, "WINDOW", menu_transform_window },
+  { MT_CALLBACK, 0, "\2VELOCITY\0FACTOR", menu_velocity_cb },
+  { MT_CANCEL, 0, S_LARROW" BACK", NULL },
+  { MT_NONE, 0, NULL, NULL } // sentinel
 };
 
 const menuitem_t menu_display[] = {
-  { MT_SUBMENU, "TRACE", menu_trace },
-  { MT_SUBMENU, "FORMAT", menu_format },
-  { MT_SUBMENU, "SCALE", menu_scale },
-  { MT_SUBMENU, "CHANNEL", menu_channel },
-  { MT_SUBMENU, "TRANSFORM", menu_transform },
-  { MT_CANCEL, S_LARROW" BACK", NULL },
-  { MT_NONE, NULL, NULL } // sentinel
+  { MT_SUBMENU, 0, "TRACE", menu_trace },
+  { MT_SUBMENU, 0, "FORMAT", menu_format },
+  { MT_SUBMENU, 0, "SCALE", menu_scale },
+  { MT_SUBMENU, 0, "CHANNEL", menu_channel },
+  { MT_SUBMENU, 0, "TRANSFORM", menu_transform },
+  { MT_CANCEL, 0, S_LARROW" BACK", NULL },
+  { MT_NONE, 0, NULL, NULL } // sentinel
 };
 
 const menuitem_t menu_stimulus[] = {
-  { MT_CALLBACK, "START", menu_stimulus_cb },
-  { MT_CALLBACK, "STOP", menu_stimulus_cb },
-  { MT_CALLBACK, "CENTER", menu_stimulus_cb },
-  { MT_CALLBACK, "SPAN", menu_stimulus_cb },
-  { MT_CALLBACK, "CW FREQ", menu_stimulus_cb },
-  { MT_CALLBACK, "\2PAUSE\0SWEEP", menu_stimulus_cb },
-  { MT_CANCEL, S_LARROW" BACK", NULL },
-  { MT_NONE, NULL, NULL } // sentinel
+  { MT_CALLBACK, 0, "START", menu_stimulus_cb },
+  { MT_CALLBACK, 0, "STOP", menu_stimulus_cb },
+  { MT_CALLBACK, 0, "CENTER", menu_stimulus_cb },
+  { MT_CALLBACK, 0, "SPAN", menu_stimulus_cb },
+  { MT_CALLBACK, 0, "CW FREQ", menu_stimulus_cb },
+  { MT_CALLBACK, 0, "\2PAUSE\0SWEEP", menu_stimulus_cb },
+  { MT_CANCEL, 0, S_LARROW" BACK", NULL },
+  { MT_NONE, 0, NULL, NULL } // sentinel
 };
 
 const menuitem_t menu_marker_sel[] = {
-  { MT_CALLBACK, "MARKER 1", menu_marker_sel_cb },
-  { MT_CALLBACK, "MARKER 2", menu_marker_sel_cb },
-  { MT_CALLBACK, "MARKER 3", menu_marker_sel_cb },
-  { MT_CALLBACK, "MARKER 4", menu_marker_sel_cb },
-  { MT_CALLBACK, "ALL OFF", menu_marker_sel_cb },
-  { MT_CALLBACK, "DELTA", menu_marker_sel_cb },
-  { MT_CANCEL, S_LARROW" BACK", NULL },
-  { MT_NONE, NULL, NULL } // sentinel
+  { MT_CALLBACK, 1, "MARKER 1", menu_marker_sel_cb },
+  { MT_CALLBACK, 2, "MARKER 2", menu_marker_sel_cb },
+  { MT_CALLBACK, 3, "MARKER 3", menu_marker_sel_cb },
+  { MT_CALLBACK, 4, "MARKER 4", menu_marker_sel_cb },
+  { MT_CALLBACK, 0, "ALL OFF", menu_marker_sel_cb },
+  { MT_CALLBACK, 0, "DELTA", menu_marker_sel_cb },
+  { MT_CANCEL, 0, S_LARROW" BACK", NULL },
+  { MT_NONE, 0, NULL, NULL } // sentinel
 };
 
 const menuitem_t menu_marker_ops[] = {
-  { MT_CALLBACK, S_RARROW"START", menu_marker_op_cb },
-  { MT_CALLBACK, S_RARROW"STOP", menu_marker_op_cb },
-  { MT_CALLBACK, S_RARROW"CENTER", menu_marker_op_cb },
-  { MT_CALLBACK, S_RARROW"SPAN", menu_marker_op_cb },
-  { MT_CALLBACK, S_RARROW"EDELAY", menu_marker_op_cb },
-  { MT_CANCEL, S_LARROW" BACK", NULL },
-  { MT_NONE, NULL, NULL } // sentinel
+  { MT_CALLBACK, 0, S_RARROW"START", menu_marker_op_cb },
+  { MT_CALLBACK, 0, S_RARROW"STOP", menu_marker_op_cb },
+  { MT_CALLBACK, 0, S_RARROW"CENTER", menu_marker_op_cb },
+  { MT_CALLBACK, 0, S_RARROW"SPAN", menu_marker_op_cb },
+  { MT_CALLBACK, 0, S_RARROW"EDELAY", menu_marker_op_cb },
+  { MT_CANCEL, 0, S_LARROW" BACK", NULL },
+  { MT_NONE, 0, NULL, NULL } // sentinel
 };
 
 const menuitem_t menu_marker_search[] = {
   //{ MT_CALLBACK, "OFF", menu_marker_search_cb },
-  { MT_CALLBACK, "MAXIMUM", menu_marker_search_cb },
-  { MT_CALLBACK, "MINIMUM", menu_marker_search_cb },
-  { MT_CALLBACK, "\2SEARCH\0" S_LARROW" LEFT", menu_marker_search_cb },
-  { MT_CALLBACK, "\2SEARCH\0" S_RARROW" RIGHT", menu_marker_search_cb },
-  { MT_CALLBACK, "TRACKING", menu_marker_search_cb },
-  { MT_CANCEL, S_LARROW" BACK", NULL },
-  { MT_NONE, NULL, NULL } // sentinel
+  { MT_CALLBACK, 0, "MAXIMUM", menu_marker_search_cb },
+  { MT_CALLBACK, 0, "MINIMUM", menu_marker_search_cb },
+  { MT_CALLBACK, 0, "\2SEARCH\0" S_LARROW" LEFT", menu_marker_search_cb },
+  { MT_CALLBACK, 0, "\2SEARCH\0" S_RARROW" RIGHT", menu_marker_search_cb },
+  { MT_CALLBACK, 0, "TRACKING", menu_marker_search_cb },
+  { MT_CANCEL, 0, S_LARROW" BACK", NULL },
+  { MT_NONE, 0, NULL, NULL } // sentinel
 };
 
 const menuitem_t menu_marker_smith[] = {
-  { MT_CALLBACK, "LIN", menu_marker_smith_cb },
-  { MT_CALLBACK, "LOG", menu_marker_smith_cb },
-  { MT_CALLBACK, "Re+Im", menu_marker_smith_cb },
-  { MT_CALLBACK, "R+Xj", menu_marker_smith_cb },
-  { MT_CALLBACK, "R+L/C", menu_marker_smith_cb },
-  { MT_CANCEL, S_LARROW" BACK", NULL },
-  { MT_NONE, NULL, NULL } // sentinel
+  { MT_CALLBACK, MS_LIN, "LIN", menu_marker_smith_cb },
+  { MT_CALLBACK, MS_LOG, "LOG", menu_marker_smith_cb },
+  { MT_CALLBACK, MS_REIM,"Re+Im", menu_marker_smith_cb },
+  { MT_CALLBACK, MS_RX,  "R+Xj", menu_marker_smith_cb },
+  { MT_CALLBACK, MS_RLC, "R+L/C", menu_marker_smith_cb },
+  { MT_CANCEL, 0, S_LARROW" BACK", NULL },
+  { MT_NONE, 0, NULL, NULL } // sentinel
 };
 
 const menuitem_t menu_marker[] = {
-  { MT_SUBMENU, "\2SELECT\0MARKER", menu_marker_sel },
-  { MT_SUBMENU, "SEARCH", menu_marker_search },
-  { MT_SUBMENU, "OPERATIONS", menu_marker_ops },
-  { MT_SUBMENU, "\2SMITH\0VALUE", menu_marker_smith },
-  { MT_CANCEL, S_LARROW" BACK", NULL },
-  { MT_NONE, NULL, NULL } // sentinel
+  { MT_SUBMENU, 0, "\2SELECT\0MARKER", menu_marker_sel },
+  { MT_SUBMENU, 0, "SEARCH", menu_marker_search },
+  { MT_SUBMENU, 0, "OPERATIONS", menu_marker_ops },
+  { MT_SUBMENU, 0, "\2SMITH\0VALUE", menu_marker_smith },
+  { MT_CANCEL, 0, S_LARROW" BACK", NULL },
+  { MT_NONE, 0, NULL, NULL } // sentinel
 };
 
 const menuitem_t menu_recall[] = {
-  { MT_CALLBACK, "RECALL 0", menu_recall_cb },
-  { MT_CALLBACK, "RECALL 1", menu_recall_cb },
-  { MT_CALLBACK, "RECALL 2", menu_recall_cb },
-  { MT_CALLBACK, "RECALL 3", menu_recall_cb },
-  { MT_CALLBACK, "RECALL 4", menu_recall_cb },
-  { MT_CANCEL, S_LARROW" BACK", NULL },
-  { MT_NONE, NULL, NULL } // sentinel
+  { MT_CALLBACK, 0, "RECALL 0", menu_recall_cb },
+  { MT_CALLBACK, 1, "RECALL 1", menu_recall_cb },
+  { MT_CALLBACK, 2, "RECALL 2", menu_recall_cb },
+  { MT_CALLBACK, 3, "RECALL 3", menu_recall_cb },
+  { MT_CALLBACK, 4, "RECALL 4", menu_recall_cb },
+  { MT_CANCEL, 0, S_LARROW" BACK", NULL },
+  { MT_NONE, 0, NULL, NULL } // sentinel
 };
 
 const menuitem_t menu_dfu[] = {
-  { MT_CALLBACK, "\2RESET AND\0ENTER DFU", menu_dfu_cb },
-  { MT_CANCEL, S_LARROW"CANCEL", NULL },
-  { MT_NONE, NULL, NULL } // sentinel
+  { MT_CALLBACK, 0, "\2RESET AND\0ENTER DFU", menu_dfu_cb },
+  { MT_CANCEL, 0, S_LARROW"CANCEL", NULL },
+  { MT_NONE, 0, NULL, NULL } // sentinel
 };
 
 const menuitem_t menu_config[] = {
-  { MT_CALLBACK, "TOUCH CAL", menu_config_cb },
-  { MT_CALLBACK, "TOUCH TEST", menu_config_cb },
-  { MT_CALLBACK, "SAVE", menu_config_cb },
-  { MT_CALLBACK, "VERSION", menu_config_cb },
-  { MT_SUBMENU, S_RARROW"DFU", menu_dfu },
-  { MT_CANCEL, S_LARROW" BACK", NULL },
-  { MT_NONE, NULL, NULL } // sentinel
+  { MT_CALLBACK, 0, "TOUCH CAL", menu_config_cb },
+  { MT_CALLBACK, 0, "TOUCH TEST", menu_config_cb },
+  { MT_CALLBACK, 0, "SAVE", menu_config_cb },
+  { MT_CALLBACK, 0, "VERSION", menu_config_cb },
+  { MT_SUBMENU, 0, S_RARROW"DFU", menu_dfu },
+  { MT_CANCEL, 0, S_LARROW" BACK", NULL },
+  { MT_NONE, 0, NULL, NULL } // sentinel
 };
 
 const menuitem_t menu_top[] = {
-  { MT_SUBMENU, "DISPLAY", menu_display },
-  { MT_SUBMENU, "MARKER", menu_marker },
-  { MT_SUBMENU, "STIMULUS", menu_stimulus },
-  { MT_SUBMENU, "CAL", menu_cal },
-  { MT_SUBMENU, "RECALL", menu_recall },
-  { MT_SUBMENU, "CONFIG", menu_config },
-  { MT_NONE, NULL, NULL } // sentinel
+  { MT_SUBMENU, 0, "DISPLAY", menu_display },
+  { MT_SUBMENU, 0, "MARKER", menu_marker },
+  { MT_SUBMENU, 0, "STIMULUS", menu_stimulus },
+  { MT_SUBMENU, 0, "CAL", menu_cal },
+  { MT_SUBMENU, 0, "RECALL", menu_recall },
+  { MT_SUBMENU, 0, "CONFIG", menu_config },
+  { MT_NONE, 0, NULL, NULL } // sentinel
 };
 
 #define MENU_STACK_DEPTH_MAX 4
 uint8_t menu_current_level = 0;
 const menuitem_t *menu_stack[4] = {
-  menu_top, NULL, NULL, NULL
+  menu_top, 0, NULL, NULL, NULL
 };
 
 static void
@@ -1238,7 +1147,7 @@ void menu_invoke(int item)
     menuaction_cb_t cb = (menuaction_cb_t)menu->reference;
     if (cb == NULL)
       return;
-    (*cb)(item);
+    (*cb)(item, menu->data);
     break;
   }
 

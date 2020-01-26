@@ -83,7 +83,9 @@ static THD_FUNCTION(Thread1, arg)
           adc_stop(ADC1);
           vbat = adc_vbat_read(ADC1);
           touch_start_watchdog();
-          draw_battery_status();
+          if (vbat != -1) {
+            draw_battery_status();
+          }
         }
 
         /* calculate trace coordinates and plot only if scan completed */

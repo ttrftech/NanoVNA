@@ -33,7 +33,6 @@ uistat_t uistat = {
  marker_delta: FALSE,
 };
 
-
 #define NO_EVENT					0
 #define EVT_BUTTON_SINGLE_CLICK		0x01
 #define EVT_BUTTON_DOUBLE_CLICK		0x02
@@ -72,9 +71,9 @@ enum {
   KM_START, KM_STOP, KM_CENTER, KM_SPAN, KM_CW, KM_SCALE, KM_REFPOS, KM_EDELAY, KM_VELOCITY_FACTOR, KM_SCALEDELAY
 };
 
-uint8_t ui_mode = UI_NORMAL;
-uint8_t keypad_mode;
-int8_t selection = 0;
+static uint8_t ui_mode = UI_NORMAL;
+static uint8_t keypad_mode;
+static int8_t  selection = 0;
 
 // Set structure align as WORD (save flash memory)
 #pragma pack(push, 2)
@@ -86,9 +85,11 @@ typedef struct {
 } menuitem_t;
 #pragma pack(pop)
 
-int8_t last_touch_status = FALSE;
-int16_t last_touch_x;
-int16_t last_touch_y;
+// Touch screen
+static int8_t last_touch_status = FALSE;
+static int16_t last_touch_x;
+static int16_t last_touch_y;
+
 //int16_t touch_cal[4] = { 1000, 1000, 10*16, 12*16 };
 //int16_t touch_cal[4] = { 620, 600, 130, 180 };
 #define EVT_TOUCH_NONE 0
@@ -107,7 +108,6 @@ int awd_count;
 
 char kp_buf[11];
 int8_t kp_index = 0;
-
 
 void ui_mode_normal(void);
 void ui_mode_menu(void);
@@ -439,7 +439,6 @@ enter_dfu(void)
   NVIC_SystemReset();
 }
 
-
 // type of menu item 
 enum {
   MT_NONE,
@@ -574,6 +573,7 @@ choose_active_trace(void)
 static void
 menu_trace_cb(int item, uint8_t data)
 {
+  (void)item;
   if (trace[data].enabled) {
     if (data == uistat.current_trace) {
       // disable if active trace is selected
@@ -581,11 +581,11 @@ menu_trace_cb(int item, uint8_t data)
       choose_active_trace();
     } else {
       // make active selected trace
-      uistat.current_trace = item;
+      uistat.current_trace = data;
     }
   } else {
     trace[data].enabled = TRUE;
-    uistat.current_trace = item;
+    uistat.current_trace = data;
   }
   request_to_redraw_grid();
   draw_menu();
@@ -740,7 +740,7 @@ menu_marker_op_cb(int item, uint8_t data)
       if (previous_marker == -1 || active_marker == previous_marker) {
         // if only 1 marker is active, keep center freq and make span the marker comes to the edge
         uint32_t center = get_sweep_frequency(ST_CENTER);
-        uint32_t span = center > freq ? center - freq : freq - center;
+        uint32_t span = get_sweep_frequency(ST_SPAN);
         set_sweep_frequency(ST_SPAN, span * 2);
       } else {
         // if 2 or more marker active, set start and stop freq to each marker
@@ -1480,8 +1480,7 @@ erase_menu_buttons(void)
 void
 erase_numeric_input(void)
 {
-  uint16_t bg = 0;
-  ili9341_fill(0, 240-32, 320, 32, bg);
+  ili9341_fill(0, 240-32, 320, 32, DEFAULT_BG_COLOR);
 }
 
 void
@@ -1571,7 +1570,7 @@ void set_numeric_value(void)
     set_electrical_delay(uistat.value);
     break;
   case KM_VELOCITY_FACTOR:
-    velocity_factor = uistat.value;
+    velocity_factor = uistat.value/100.0;
     break;
   }
 }
@@ -1583,7 +1582,6 @@ draw_numeric_area(void)
   chsnprintf(buf, sizeof buf, "%9d", uistat.value);
   draw_numeric_input(buf);
 }
-
 
 void
 ui_mode_menu(void)
@@ -1718,12 +1716,11 @@ lever_zoom_span(int status)
   uint32_t span = get_sweep_frequency(ST_SPAN);
   if (status & EVT_UP) {
     span = step_round(span - 1);
-    set_sweep_frequency(ST_SPAN, span);
   } else if (status & EVT_DOWN) {
     span = step_round(span + 1);
     span = step_round(span * 3);
-    set_sweep_frequency(ST_SPAN, span);
   }
+  set_sweep_frequency(ST_SPAN, span);
 }
 
 static void

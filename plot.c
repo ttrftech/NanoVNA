@@ -12,9 +12,6 @@ void frequency_string(char *buf, size_t len, uint32_t freq, char *prefix);
 void frequency_string_short(char *buf, size_t len, int32_t freq, char prefix);
 void markmap_all_markers(void);
 
-//#define GRID_COLOR 0x0863
-//uint16_t grid_color = 0x1084;
-
 /* indicate dirty cells */
 uint16_t markmap[2][8];
 uint16_t current_mappage = 0;
@@ -294,16 +291,16 @@ smith_grid2(int x, int y, float scale)
 #endif
 
 const int cirs[][4] = {
-		  { 0, 58/2, 58/2, 0 },    // Constant Reactance Circle: 2j : R/2 = 58
-		  { 29/2, 0, 29/2, 1 },    // Constant Resistance Circle: 3 : R/4 = 29
-		  { 0, 115/2, 115/2, 0 },  // Constant Reactance Circle: 1j : R = 115
-		  { 58/2, 0, 58/2, 1 },    // Constant Resistance Circle: 1 : R/2 = 58
-		  { 0, 230/2, 230/2, 0 },  // Constant Reactance Circle: 1/2j : R*2 = 230
-		  { 86/2, 0, 86/2, 1 },    // Constant Resistance Circle: 1/3 : R*3/4 = 86
-		  { 0, 460/2, 460/2, 0 },  // Constant Reactance Circle: 1/4j : R*4 = 460
-		  { 115/2, 0, 115/2, 1 },  // Constant Resistance Circle: 0 : R
-		  { 173/2, 0, 173/2, 1 },  // Constant Resistance Circle: -1/3 : R*3/2 = 173
-		  { 0, 0, 0, 0 } // sentinel
+  { 0, 58/2, 58/2, 0 },    // Constant Reactance Circle: 2j : R/2 = 58
+  { 29/2, 0, 29/2, 1 },    // Constant Resistance Circle: 3 : R/4 = 29
+  { 0, 115/2, 115/2, 0 },  // Constant Reactance Circle: 1j : R = 115
+  { 58/2, 0, 58/2, 1 },    // Constant Resistance Circle: 1 : R/2 = 58
+  { 0, 230/2, 230/2, 0 },  // Constant Reactance Circle: 1/2j : R*2 = 230
+  { 86/2, 0, 86/2, 1 },    // Constant Resistance Circle: 1/3 : R*3/4 = 86
+  { 0, 460/2, 460/2, 0 },  // Constant Reactance Circle: 1/4j : R*4 = 460
+  { 115/2, 0, 115/2, 1 },  // Constant Resistance Circle: 0 : R
+  { 173/2, 0, 173/2, 1 },  // Constant Resistance Circle: -1/3 : R*3/2 = 173
+  { 0, 0, 0, 0 } // sentinel
 };  
 
 int
@@ -500,18 +497,6 @@ cartesian_scale(float re, float im, int *xp, int *yp, float scale)
 float
 groupdelay_from_array(int i, float array[POINTS_COUNT][2])
 {
-/*
-  if (i == 0) {
-    float deltaf = frequencies[1] - frequencies[0];
-    return groupdelay(array[0], array[1], deltaf);
-  } else if (i == 100) {
-    float deltaf = frequencies[i] - frequencies[i-1];
-    return groupdelay(array[i-1], array[i], deltaf);
-  } else {
-    float deltaf = frequencies[i+1] - frequencies[i-1];
-    return groupdelay(array[i-1], array[i+1], deltaf);
-  }
-*/
   int bottom = (i ==   0) ?   0 : i - 1;
   int top    = (i == POINTS_COUNT-1) ? POINTS_COUNT-1 : i + 1;
   float deltaf = frequencies[top] - frequencies[bottom];

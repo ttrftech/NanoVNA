@@ -114,3 +114,4 @@ Hardware design material is disclosed to prevent bad quality clone. Please let m
 
 * [@hugen79](https://github.com/hugen79)
 * [@cho45](https://github.com/cho45)
+* [@DiSlord](https://github.com/DiSlord/)

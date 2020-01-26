@@ -533,32 +533,21 @@ static void cmd_dump(BaseSequentialStream *chp, int argc, char *argv[])
 static void cmd_capture(BaseSequentialStream *chp, int argc, char *argv[])
 {
 // read pixel count at one time (PART*2 bytes required for read buffer)
-#define PART 320
     (void)argc;
     (void)argv;
 
     chMtxLock(&mutex);
 
-    // use uint16_t spi_buffer[1024] (defined in ili9341) for read buffer
-    uint16_t *buf = &spi_buffer[0];
-    int len = 320 * 240;
-    int i;
-    ili9341_read_memory(0, 0, 320, 240, PART, buf);
-    for (i = 0; i < PART; i++) {
-        streamPut(chp, buf[i] >> 8);
-        streamPut(chp, buf[i] & 0xff);
-    }
-
-    len -= PART;
-    while (len > 0) {
-        ili9341_read_memory_continue(PART, buf);
-        for (i = 0; i < PART; i++) {
-            streamPut(chp, buf[i] >> 8);
-            streamPut(chp, buf[i] & 0xff);
+    // read 2 row pixel time (read buffer limit by 2/3 + 1 from spi_buffer size)
+    for (int y=0; y < 240; y+=2)
+    {
+    	// use uint16_t spi_buffer[1024] (defined in ili9341) for read buffer
+    	uint8_t *buf = (uint8_t *)spi_buffer;
+        ili9341_read_memory(0, y, 320, 2, 2*320, spi_buffer);
+        for (int i = 0; i < 4*320; i++) {
+        	streamPut(chp, *buf++);
         }
-        len -= PART;
     }
-    //*/
 
     chMtxUnlock(&mutex);
 }
@@ -602,10 +591,10 @@ static void cmd_sample(BaseSequentialStream *chp, int argc, char *argv[])
 config_t config = {
   .magic =             CONFIG_MAGIC,
   .dac_value =         1922,
-  .grid_color =        0x1084,
-  .menu_normal_color = 0xffff,
-  .menu_active_color = 0x7777,
-  .trace_color =       { RGB565(0,255,255), RGB565(255,0,40), RGB565(0,0,255), RGB565(50,255,0) },
+  .grid_color =        DEFAULT_GRID_COLOR,
+  .menu_normal_color = DEFAULT_MENU_COLOR,
+  .menu_active_color = DEFAULT_MENU_ACTIVE_COLOR,
+  .trace_color =       { DEFAULT_TRACE_1_COLOR, DEFAULT_TRACE_2_COLOR, DEFAULT_TRACE_3_COLOR, DEFAULT_TRACE_4_COLOR },
 //  .touch_cal =         { 693, 605, 124, 171 },  // 2.4 inch LCD panel
   .touch_cal =         { 338, 522, 153, 192 },  // 2.8 inch LCD panel
   .default_loadcal =   0,
@@ -618,10 +607,10 @@ properties_t current_props = {
   ._frequency1 =       900000000, // end = 900MHz
   ._sweep_points =     101,
   ._trace = {/*enable, type, channel, polar, scale, refpos*/
-    { 1, TRC_LOGMAG, 0, 0, 1.0, 7.0 },
-    { 1, TRC_LOGMAG, 1, 0, 1.0, 7.0 },
+    { 1, TRC_LOGMAG, 0, 0, 1.0, 9.0 },
+    { 1, TRC_LOGMAG, 1, 0, 1.0, 9.0 },
     { 1, TRC_SMITH,  0, 1, 1.0, 0.0 },
-    { 1, TRC_PHASE,  1, 0, 1.0, 4.0 }
+    { 1, TRC_PHASE,  1, 0, 1.0, 5.0 }
   },
   ._markers = {
     { 1, 30, 0 }, { 0, 40, 0 }, { 0, 60, 0 }, { 0, 80, 0 }
@@ -1431,17 +1420,17 @@ const struct {
   uint16_t refpos;
   float scale_unit;
 } trace_info[] = {
-  { "LOGMAG", 7, 10 },
-  { "PHASE",  4, 90 },
-  { "DELAY",  4,  1e-9 },
+  { "LOGMAG", 9, 10 },
+  { "PHASE",  5, 90 },
+  { "DELAY",  5,  1e-9 },
   { "SMITH",  0,  1 },
   { "POLAR",  0,  1 },
   { "LINEAR", 0,  0.125 },
   { "SWR",    0,  1 },
-  { "REAL",   4,  0.25 },
-  { "IMAG",   4,  0.25 },
+  { "REAL",   5,  0.25 },
+  { "IMAG",   5,  0.25 },
   { "R",      0, 100 },
-  { "X",      4, 100 }
+  { "X",      5, 100 }
 };
 
 const char * const trc_channel_name[] = {
@@ -1552,6 +1541,11 @@ my_atof(const char *p)
   return x;
 }
 
+typedef struct {
+	  char *tracename;
+	  uint8_t type;
+} type_list;
+
 static void cmd_trace(BaseSequentialStream *chp, int argc, char *argv[])
 {
   int t;
@@ -1586,34 +1580,29 @@ static void cmd_trace(BaseSequentialStream *chp, int argc, char *argv[])
     chprintf(chp, "%d %s %s\r\n", t, type, channel);
     return;
   }
+
   if (argc > 1) {
-    if (strcmp(argv[1], "logmag") == 0) {
-      set_trace_type(t, TRC_LOGMAG);
-    } else if (strcmp(argv[1], "phase") == 0) {
-      set_trace_type(t, TRC_PHASE);
-    } else if (strcmp(argv[1], "polar") == 0) {
-      set_trace_type(t, TRC_POLAR);
-    } else if (strcmp(argv[1], "smith") == 0) {
-      set_trace_type(t, TRC_SMITH);
-    } else if (strcmp(argv[1], "delay") == 0) {
-      set_trace_type(t, TRC_DELAY);
-    } else if (strcmp(argv[1], "linear") == 0) {
-      set_trace_type(t, TRC_LINEAR);
-    } else if (strcmp(argv[1], "swr") == 0) {
-      set_trace_type(t, TRC_SWR);
-    } else if (strcmp(argv[1], "real") == 0) {
-      set_trace_type(t, TRC_REAL);
-    } else if (strcmp(argv[1], "imag") == 0) {
-      set_trace_type(t, TRC_IMAG);
-    } else if (strcmp(argv[1], "r") == 0) {
-      set_trace_type(t, TRC_R);
-    } else if (strcmp(argv[1], "x") == 0) {
-      set_trace_type(t, TRC_X);
-    } else if (strcmp(argv[1], "linear") == 0) {
-      set_trace_type(t, TRC_LINEAR);
-    } else if (strcmp(argv[1], "off") == 0) {
-      set_trace_type(t, TRC_OFF);
-    } else if (strcmp(argv[1], "scale") == 0 && argc >= 3) {
+	  static const type_list t_list[] = {
+	  	{"logmag", TRC_LOGMAG},
+	  	{"phase", TRC_PHASE},
+	  	{"polar", TRC_POLAR},
+	  	{"smith", TRC_SMITH},
+	  	{"delay", TRC_DELAY},
+	  	{"linear", TRC_LINEAR},
+	  	{"swr", TRC_SWR},
+	  	{"real", TRC_REAL},
+	  	{"imag", TRC_IMAG},
+	  	{"r", TRC_R},
+	  	{"x", TRC_X},
+	  	{"off", TRC_OFF},
+	  };
+	  for (uint16_t i=0; i<sizeof(t_list)/sizeof(type_list); i++){
+		if (strcmp(argv[1], t_list[i].tracename) == 0) {
+		      set_trace_type(t, t_list[i].type);
+		      goto check_ch_num;
+		}
+	}
+  	if (strcmp(argv[1], "scale") == 0 && argc >= 3) {
       //trace[t].scale = my_atof(argv[2]);
       set_trace_scale(t, my_atof(argv[2]));
       goto exit;
@@ -1625,16 +1614,17 @@ static void cmd_trace(BaseSequentialStream *chp, int argc, char *argv[])
       goto usage;
     }
   }
+  check_ch_num:
   if (argc > 2) {
     int src = atoi(argv[2]);
     if (src != 0 && src != 1)
       goto usage;
     trace[t].channel = src;
-  }  
+  }
  exit:
   return;
  usage:
-  chprintf(chp, "trace {0|1|2|3|all} [logmag|phase|smith|linear|delay|swr|real|imag|r|x|off] [src]\r\n");
+  chprintf(chp, "trace {0|1|2|3|all} [logmag|phase|polar|smith|linear|delay|swr|real|imag|r|x|off] [src]\r\n");
   chprintf(chp, "trace {0|1|2|3} {scale|refpos} {value}\r\n");
 }
 

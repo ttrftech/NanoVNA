@@ -1841,31 +1841,29 @@ frequency_string_short(char *b, size_t len, int32_t freq, char prefix)
 void
 draw_frequencies(void)
 {
-	  char buf1[24];buf1[0]=' ';
-	  char buf2[24];
-	  if ((domain_mode & DOMAIN_MODE) == DOMAIN_FREQ) {
-	      if (frequency0 < frequency1) {
-	        frequency_string(buf1+1, sizeof(buf1)-1, frequency0, "START ");
-	        frequency_string(buf2, sizeof buf2, frequency1, "STOP ");
-	      } else if (frequency0 > frequency1) {
-	        frequency_string(buf1+1, sizeof(buf1)-1, frequency0/2 + frequency1/2, "CENTER ");
-	        frequency_string(buf2, sizeof buf2, frequency0 - frequency1, "SPAN ");
-	      } else {
-	        frequency_string(buf1+1, sizeof(buf1)-1, frequency0,  "CW ");
-	      }
-
-	  } else {
-		  chsnprintf(buf1+1, sizeof(buf1)-1, "START 0s");
-	      chsnprintf(buf2, sizeof buf2, "%s%dns (%.2fm)", "STOP ", (uint16_t)(time_of_index(POINTS_COUNT-1) * 1e9), distance_of_index(POINTS_COUNT-1));
-	  }
-	  setForegroundColor(DEFAULT_FG_COLOR);
-	  setBackgroundColor(DEFAULT_BG_COLOR);
-	  ili9341_fill(0, 232, 320, 8, DEFAULT_BG_COLOR);
-	  if (uistat.lever_mode == LM_SPAN || uistat.lever_mode == LM_CENTER)
-		buf1[0] = S_SARROW[0];
-	  ili9341_drawstring(buf1, OFFSETX, 232);
-	  ili9341_drawstring(buf2, 205, 232);
-
+  char buf1[24];buf1[0]=' ';
+  char buf2[24];buf2[0]=0;
+  if ((domain_mode & DOMAIN_MODE) == DOMAIN_FREQ) {
+      if (frequency0 < frequency1) {
+        frequency_string(buf1+1, sizeof(buf1)-1, frequency0, "START ");
+        frequency_string(buf2, sizeof buf2, frequency1, "STOP ");
+      } else if (frequency0 > frequency1) {
+        frequency_string(buf1+1, sizeof(buf1)-1, frequency0/2 + frequency1/2, "CENTER ");
+        frequency_string(buf2, sizeof buf2, frequency0 - frequency1, "SPAN ");
+      } else {
+        frequency_string(buf1+1, sizeof(buf1)-1, frequency0,  "CW ");
+      }
+  } else {
+	  chsnprintf(buf1+1, sizeof(buf1)-1, "START 0s");
+      chsnprintf(buf2, sizeof buf2, "%s%dns (%.2fm)", "STOP ", (uint16_t)(time_of_index(POINTS_COUNT-1) * 1e9), distance_of_index(POINTS_COUNT-1));
+  }
+  setForegroundColor(DEFAULT_FG_COLOR);
+  setBackgroundColor(DEFAULT_BG_COLOR);
+  ili9341_fill(0, 232, 320, 8, DEFAULT_BG_COLOR);
+  if (uistat.lever_mode == LM_SPAN || uistat.lever_mode == LM_CENTER)
+	buf1[0] = S_SARROW[0];
+  ili9341_drawstring(buf1, OFFSETX, 232);
+  ili9341_drawstring(buf2, 205, 232);
 }
 
 void

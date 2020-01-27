@@ -739,7 +739,8 @@ menu_marker_op_cb(int item, uint8_t data)
     {
       if (previous_marker == -1 || active_marker == previous_marker) {
         // if only 1 marker is active, keep center freq and make span the marker comes to the edge
-        uint32_t span = get_sweep_frequency(ST_SPAN);
+        uint32_t center = get_sweep_frequency(ST_CENTER);
+        uint32_t span = center > freq ? center - freq : freq - center;
         set_sweep_frequency(ST_SPAN, span * 2);
       } else {
         // if 2 or more marker active, set start and stop freq to each marker

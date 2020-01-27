@@ -1070,7 +1070,7 @@ const menuitem_t menu_top[] = {
 #define MENU_STACK_DEPTH_MAX 4
 uint8_t menu_current_level = 0;
 const menuitem_t *menu_stack[4] = {
-  menu_top, 0, NULL, NULL, NULL
+  menu_top, NULL, NULL, NULL
 };
 
 static void

@@ -289,6 +289,7 @@ extern int16_t vbat;
 #define DEFAULT_MENU_COLOR			RGB565(255,255,255)
 #define DEFAULT_MENU_TEXT_COLOR		RGB565(  0,  0,  0)
 #define DEFAULT_MENU_ACTIVE_COLOR	RGB565(180,255,180)
+<<<<<<< HEAD
 #define DEFAULT_TRACE_1_COLOR		RGB565(255,200, 14)
 #define DEFAULT_TRACE_2_COLOR		RGB565(  0,191,231)
 #define DEFAULT_TRACE_3_COLOR		RGB565( 64,255,  0)
@@ -296,6 +297,12 @@ extern int16_t vbat;
 #define DEFAULT_NORMAL_BAT_COLOR	RGB565( 31,227,  0)
 #define DEFAULT_LOW_BAT_COLOR		RGB565(255,  0,  0)
 #define	DEFAULT_SPEC_INPUT_COLOR	RGB565(128,255,128);
+=======
+#define DEFAULT_TRACE_1_COLOR		RGB565(255,255,  0)
+#define DEFAULT_TRACE_2_COLOR		RGB565(  0,255,255)
+#define DEFAULT_TRACE_3_COLOR		RGB565(  0,255,  0)
+#define DEFAULT_TRACE_4_COLOR		RGB565(255,  0,255)
+>>>>>>> fix: revert color of traces to the original
 
 extern uint16_t foreground_color;
 extern uint16_t background_color;

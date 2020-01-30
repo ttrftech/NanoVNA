@@ -143,8 +143,8 @@ extern void tlv320aic3204_select(int channel);
 #define CELLOFFSETX 5
 #define AREA_WIDTH_NORMAL (WIDTH + CELLOFFSETX*2)
 
-extern int area_width;
-extern int area_height;
+extern int16_t area_width;
+extern int16_t area_height;
 
 #define GRIDY 23
 

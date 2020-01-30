@@ -16,12 +16,11 @@ void markmap_all_markers(void);
 uint16_t markmap[2][8];
 uint16_t current_mappage = 0;
 
-int32_t fgrid = 50000000;
 int16_t grid_offset;
 int16_t grid_width;
 
-int area_width = AREA_WIDTH_NORMAL;
-int area_height = HEIGHT+1;
+int16_t area_width = AREA_WIDTH_NORMAL;
+int16_t area_height = HEIGHT+1;
 
 #define GRID_RECTANGULAR (1<<0)
 #define GRID_SMITH       (1<<1)
@@ -86,10 +85,9 @@ void update_grid(void)
       break;
     gdigit /= 10;
   }
-  fgrid = grid;
 
-  grid_offset = (WIDTH-1) * ((fstart % fgrid) / 100) / (fspan / 100);
-  grid_width = (WIDTH-1) * (fgrid / 100) / (fspan / 1000);
+  grid_offset = (WIDTH-1) * ((fstart % grid) / 100) / (fspan / 100);
+  grid_width = (WIDTH-1) * (grid / 100) / (fspan / 1000);
 
   force_set_markmap();
   redraw_request |= REDRAW_FREQUENCY;

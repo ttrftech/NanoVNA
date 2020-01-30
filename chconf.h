@@ -147,7 +147,7 @@
  *
  * @note    The default is @p TRUE.
  */
-#define CH_CFG_USE_REGISTRY                 TRUE
+#define CH_CFG_USE_REGISTRY                 FALSE
 
 /**
  * @brief   Threads synchronization APIs.
@@ -269,7 +269,7 @@
  *
  * @note    The default is @p TRUE.
  */
-#define CH_CFG_USE_QUEUES                   TRUE
+#define CH_CFG_USE_QUEUES                   FALSE
 
 /**
  * @brief   Core Memory Manager APIs.
@@ -530,11 +530,11 @@
  * ChibiOS/os/various/shell/shell_cmd.c
  */
 #define SHELL_CMD_EXIT_ENABLED TRUE
-#define SHELL_CMD_INFO_ENABLED TRUE
+#define SHELL_CMD_INFO_ENABLED FALSE
 #define SHELL_CMD_ECHO_ENABLED FALSE
 #define SHELL_CMD_SYSTIME_ENABLED FALSE
 #define SHELL_CMD_MEM_ENABLED FALSE
-#define SHELL_CMD_THREADS_ENABLED TRUE
+#define SHELL_CMD_THREADS_ENABLED FALSE
 #define SHELL_CMD_TEST_ENABLED FALSE
 
 

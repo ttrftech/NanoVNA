@@ -273,8 +273,11 @@ const int8_t gain_table[] = {
   40, // 300 ~ 600MHz
   50, // 600 ~ 900MHz
   75, // 900 ~ 1200MHz
-  85, // 1200 ~ 1400MHz
-  95  // 1400MHz ~
+  85, // 1200 ~ 1500MHz
+  95, // 1500MHz ~
+  95, // 1800MHz ~
+  95, // 2100MHz ~
+  95  // 2400MHz ~
 };
 
 #define DELAY_GAIN_CHANGE 10

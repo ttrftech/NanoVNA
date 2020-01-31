@@ -26,7 +26,8 @@
  * main.c
  */
 
-extern float measured[2][101][2];
+#define POINTS_COUNT 101
+extern float measured[2][POINTS_COUNT][2];
 
 #define CAL_LOAD 0
 #define CAL_OPEN 1
@@ -142,8 +143,8 @@ extern void tlv320aic3204_select(int channel);
 #define CELLOFFSETX 5
 #define AREA_WIDTH_NORMAL (WIDTH + CELLOFFSETX*2)
 
-extern int area_width;
-extern int area_height;
+extern int16_t area_width;
+extern int16_t area_height;
 
 #define GRIDY 23
 
@@ -225,7 +226,7 @@ void draw_battery_status(void);
 
 void set_electrical_delay(float picoseconds);
 float get_electrical_delay(void);
-float groupdelay_from_array(int i, float array[101][2]);
+float groupdelay_from_array(int i, float array[POINTS_COUNT][2]);
 
 // marker
 
@@ -249,7 +250,7 @@ void request_to_draw_cells_behind_menu(void);
 void request_to_draw_cells_behind_numeric_input(void);
 void redraw_marker(int marker, int update_info);
 void trace_get_info(int t, char *buf, int len);
-void plot_into_index(float measured[2][101][2]);
+void plot_into_index(float measured[2][POINTS_COUNT][2]);
 void force_set_markmap(void);
 void draw_frequencies(void);
 void draw_all(bool flush);
@@ -288,10 +289,13 @@ extern int16_t vbat;
 #define DEFAULT_MENU_COLOR			RGB565(255,255,255)
 #define DEFAULT_MENU_TEXT_COLOR		RGB565(  0,  0,  0)
 #define DEFAULT_MENU_ACTIVE_COLOR	RGB565(180,255,180)
-#define DEFAULT_TRACE_1_COLOR		RGB565(  0,255,255)
-#define DEFAULT_TRACE_2_COLOR		RGB565(255,  0, 40)
-#define DEFAULT_TRACE_3_COLOR		RGB565(  0,  0,255)
-#define DEFAULT_TRACE_4_COLOR		RGB565( 50,255,  0)
+#define DEFAULT_TRACE_1_COLOR		RGB565(255,200, 14)
+#define DEFAULT_TRACE_2_COLOR		RGB565(  0,191,231)
+#define DEFAULT_TRACE_3_COLOR		RGB565( 64,255,  0)
+#define DEFAULT_TRACE_4_COLOR		RGB565(255,160,100)
+#define DEFAULT_NORMAL_BAT_COLOR	RGB565( 31,227,  0)
+#define DEFAULT_LOW_BAT_COLOR		RGB565(255,  0,  0)
+#define	DEFAULT_SPEC_INPUT_COLOR	RGB565(128,255,128);
 
 extern uint16_t foreground_color;
 extern uint16_t background_color;
@@ -330,8 +334,8 @@ typedef struct {
   int16_t _sweep_points;
   uint16_t _cal_status;
 
-  uint32_t _frequencies[101];
-  float _cal_data[5][101][2];
+  uint32_t _frequencies[POINTS_COUNT];
+  float _cal_data[5][POINTS_COUNT][2];
   float _electrical_delay; // picoseconds
   
   trace_t _trace[TRACES_MAX];

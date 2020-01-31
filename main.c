@@ -156,18 +156,18 @@ transform_domain(void)
   // and calculate ifft for time domain
   float* tmp = (float*)spi_buffer;
 
-  uint8_t window_size = 101, offset = 0;
+  uint8_t window_size = POINTS_COUNT, offset = 0;
   uint8_t is_lowpass = FALSE;
   switch (domain_mode & TD_FUNC) {
       case TD_FUNC_BANDPASS:
           offset = 0;
-          window_size = 101;
+          window_size = POINTS_COUNT;
           break;
       case TD_FUNC_LOWPASS_IMPULSE:
       case TD_FUNC_LOWPASS_STEP:
           is_lowpass = TRUE;
-          offset = 101;
-          window_size = 202;
+          offset = POINTS_COUNT;
+          window_size = POINTS_COUNT*2;
           break;
   }
 
@@ -187,17 +187,17 @@ transform_domain(void)
 
   for (int ch = 0; ch < 2; ch++) {
       memcpy(tmp, measured[ch], sizeof(measured[0]));
-      for (int i = 0; i < 101; i++) {
+      for (int i = 0; i < POINTS_COUNT; i++) {
           float w = kaiser_window(i+offset, window_size, beta);
           tmp[i*2+0] *= w;
           tmp[i*2+1] *= w;
       }
-      for (int i = 101; i < FFT_SIZE; i++) {
+      for (int i = POINTS_COUNT; i < FFT_SIZE; i++) {
           tmp[i*2+0] = 0.0;
           tmp[i*2+1] = 0.0;
       }
       if (is_lowpass) {
-          for (int i = 1; i < 101; i++) {
+          for (int i = 1; i < POINTS_COUNT; i++) {
               tmp[(FFT_SIZE-i)*2+0] =  tmp[i*2+0];
               tmp[(FFT_SIZE-i)*2+1] = -tmp[i*2+1];
           }
@@ -205,7 +205,7 @@ transform_domain(void)
 
       fft256_inverse((float(*)[2])tmp);
       memcpy(measured[ch], tmp, sizeof(measured[0]));
-      for (int i = 0; i < 101; i++) {
+      for (int i = 0; i < POINTS_COUNT; i++) {
           measured[ch][i][0] /= (float)FFT_SIZE;
           if (is_lowpass) {
               measured[ch][i][1] = 0.0;
@@ -214,7 +214,7 @@ transform_domain(void)
           }
       }
       if ( (domain_mode & TD_FUNC) == TD_FUNC_LOWPASS_STEP ) {
-          for (int i = 1; i < 101; i++) {
+          for (int i = 1; i < POINTS_COUNT; i++) {
               measured[ch][i][0] += measured[ch][i-1][0];
           }
       }
@@ -420,7 +420,7 @@ int16_t dump_selection = 0;
 
 volatile int16_t wait_count = 0;
 
-float measured[2][101][2];
+float measured[2][POINTS_COUNT][2];
 
 static void
 wait_dsp(int count)
@@ -605,7 +605,7 @@ properties_t current_props = {
   .magic =             CONFIG_MAGIC,
   ._frequency0 =       50000,     // start = 50kHz
   ._frequency1 =       900000000, // end = 900MHz
-  ._sweep_points =     101,
+  ._sweep_points =     POINTS_COUNT,
   ._trace = {/*enable, type, channel, polar, scale, refpos*/
     { 1, TRC_LOGMAG, 0, 0, 1.0, 9.0 },
     { 1, TRC_LOGMAG, 1, 0, 1.0, 9.0 },

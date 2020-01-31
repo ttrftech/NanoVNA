@@ -12,19 +12,15 @@ void frequency_string(char *buf, size_t len, uint32_t freq, char *prefix);
 void frequency_string_short(char *buf, size_t len, int32_t freq, char prefix);
 void markmap_all_markers(void);
 
-//#define GRID_COLOR 0x0863
-//uint16_t grid_color = 0x1084;
-
 /* indicate dirty cells */
 uint16_t markmap[2][8];
 uint16_t current_mappage = 0;
 
-int32_t fgrid = 50000000;
 int16_t grid_offset;
 int16_t grid_width;
 
-int area_width = AREA_WIDTH_NORMAL;
-int area_height = HEIGHT+1;
+int16_t area_width = AREA_WIDTH_NORMAL;
+int16_t area_height = HEIGHT+1;
 
 #define GRID_RECTANGULAR (1<<0)
 #define GRID_SMITH       (1<<1)
@@ -42,7 +38,7 @@ int area_height = HEIGHT+1;
  * CELL_X[5:9] position in the cell
  * CELL_Y[0:4]
  */
-uint32_t trace_index[TRACES_MAX][101];
+uint32_t trace_index[TRACES_MAX][POINTS_COUNT];
 
 #define INDEX(x, y, n) \
   ((((x)&0x03e0UL)<<22) | (((y)&0x03e0UL)<<17) | (((n)&0x0fffUL)<<10)  \
@@ -66,10 +62,10 @@ int floatToInt(float v){
 
 void update_grid(void)
 {
-  int32_t gdigit = 100000000;
-  int32_t fstart, fspan;
-  int32_t grid;
-  if (frequency0 < frequency1) {
+  uint32_t gdigit = 100000000;
+  uint32_t fstart, fspan;
+  uint32_t grid;
+  if (frequency0 <= frequency1) {
     fstart = frequency0;
     fspan = frequency1 - frequency0;
   } else {
@@ -89,10 +85,9 @@ void update_grid(void)
       break;
     gdigit /= 10;
   }
-  fgrid = grid;
 
-  grid_offset = (WIDTH-1) * ((fstart % fgrid) / 100) / (fspan / 100);
-  grid_width = (WIDTH-1) * (fgrid / 100) / (fspan / 1000);
+  grid_offset = (WIDTH-1) * ((fstart % grid) / 100) / (fspan / 100);
+  grid_width = (WIDTH-1) * (grid / 100) / (fspan / 1000);
 
   force_set_markmap();
   redraw_request |= REDRAW_FREQUENCY;
@@ -294,16 +289,16 @@ smith_grid2(int x, int y, float scale)
 #endif
 
 const int cirs[][4] = {
-		  { 0, 58/2, 58/2, 0 },    // Constant Reactance Circle: 2j : R/2 = 58
-		  { 29/2, 0, 29/2, 1 },    // Constant Resistance Circle: 3 : R/4 = 29
-		  { 0, 115/2, 115/2, 0 },  // Constant Reactance Circle: 1j : R = 115
-		  { 58/2, 0, 58/2, 1 },    // Constant Resistance Circle: 1 : R/2 = 58
-		  { 0, 230/2, 230/2, 0 },  // Constant Reactance Circle: 1/2j : R*2 = 230
-		  { 86/2, 0, 86/2, 1 },    // Constant Resistance Circle: 1/3 : R*3/4 = 86
-		  { 0, 460/2, 460/2, 0 },  // Constant Reactance Circle: 1/4j : R*4 = 460
-		  { 115/2, 0, 115/2, 1 },  // Constant Resistance Circle: 0 : R
-		  { 173/2, 0, 173/2, 1 },  // Constant Resistance Circle: -1/3 : R*3/2 = 173
-		  { 0, 0, 0, 0 } // sentinel
+  { 0, 58/2, 58/2, 0 },    // Constant Reactance Circle: 2j : R/2 = 58
+  { 29/2, 0, 29/2, 1 },    // Constant Resistance Circle: 3 : R/4 = 29
+  { 0, 115/2, 115/2, 0 },  // Constant Reactance Circle: 1j : R = 115
+  { 58/2, 0, 58/2, 1 },    // Constant Resistance Circle: 1 : R/2 = 58
+  { 0, 230/2, 230/2, 0 },  // Constant Reactance Circle: 1/2j : R*2 = 230
+  { 86/2, 0, 86/2, 1 },    // Constant Resistance Circle: 1/3 : R*3/4 = 86
+  { 0, 460/2, 460/2, 0 },  // Constant Reactance Circle: 1/4j : R*4 = 460
+  { 115/2, 0, 115/2, 1 },  // Constant Resistance Circle: 0 : R
+  { 173/2, 0, 173/2, 1 },  // Constant Resistance Circle: -1/3 : R*3/2 = 173
+  { 0, 0, 0, 0 } // sentinel
 };  
 
 int
@@ -498,28 +493,16 @@ cartesian_scale(float re, float im, int *xp, int *yp, float scale)
 }
 
 float
-groupdelay_from_array(int i, float array[101][2])
+groupdelay_from_array(int i, float array[POINTS_COUNT][2])
 {
-/*
-  if (i == 0) {
-    float deltaf = frequencies[1] - frequencies[0];
-    return groupdelay(array[0], array[1], deltaf);
-  } else if (i == 100) {
-    float deltaf = frequencies[i] - frequencies[i-1];
-    return groupdelay(array[i-1], array[i], deltaf);
-  } else {
-    float deltaf = frequencies[i+1] - frequencies[i-1];
-    return groupdelay(array[i-1], array[i+1], deltaf);
-  }
-*/
   int bottom = (i ==   0) ?   0 : i - 1;
-  int top    = (i == 100) ? 100 : i + 1;
+  int top    = (i == POINTS_COUNT-1) ? POINTS_COUNT-1 : i + 1;
   float deltaf = frequencies[top] - frequencies[bottom];
   return groupdelay(array[bottom], array[top], deltaf);
 }
 
 uint32_t
-trace_into_index(int x, int t, int i, float array[101][2])
+trace_into_index(int x, int t, int i, float array[POINTS_COUNT][2])
 {
   int y = 0;
   float v = 0;
@@ -626,7 +609,6 @@ string_value_with_prefix(char *buf, int len, float val, char unit)
   return n;
 }
 
-
 #define PI2 6.283184
 
 static void
@@ -704,7 +686,7 @@ gamma2reactance(char *buf, int len, const float coeff[2])
 }
 
 static void
-trace_get_value_string(int t, char *buf, int len, float array[101][2], int i)
+trace_get_value_string(int t, char *buf, int len, float array[POINTS_COUNT][2], int i)
 {
   float *coeff = array[i];
   float v;
@@ -758,7 +740,7 @@ trace_get_value_string(int t, char *buf, int len, float array[101][2], int i)
 }
 
 static void
-trace_get_value_string_delta(int t, char *buf, int len, float array[101][2], int index, int index_ref)
+trace_get_value_string_delta(int t, char *buf, int len, float array[POINTS_COUNT][2], int index, int index_ref)
 {
   float *coeff = array[index];
   float *coeff_ref = array[index_ref];
@@ -928,11 +910,11 @@ mark_cells_from_index(void)
   }
 }
 
-void plot_into_index(float measured[2][101][2])
+void plot_into_index(float measured[2][POINTS_COUNT][2])
 {
   int i, t;
   for (i = 0; i < sweep_points; i++) {
-    int x = i * (WIDTH-1) / (sweep_points-1);
+    int x = (i * (WIDTH-1) + sweep_points/2) / (sweep_points-1);
     for (t = 0; t < TRACES_MAX; t++) {
       if (!trace[t].enabled)
         continue;
@@ -1026,7 +1008,7 @@ cell_drawline(int w, int h, int x0, int y0, int x1, int y1, int c)
 }
 
 int
-search_index_range(int x, int y, uint32_t index[101], int *i0, int *i1)
+search_index_range(int x, int y, uint32_t index[POINTS_COUNT], int *i0, int *i1)
 {
   int i, j;
   int head = 0;
@@ -1056,14 +1038,14 @@ search_index_range(int x, int y, uint32_t index[101], int *i0, int *i1)
     j--;
   *i0 = j;
   j = i;
-  while (j < 100 && x == CELL_X0(index[j+1]) && y == CELL_Y0(index[j+1]))
+  while (j < POINTS_COUNT-1 && x == CELL_X0(index[j+1]) && y == CELL_Y0(index[j+1]))
     j++;
   *i1 = j;
   return TRUE;
 }
 
 static int
-search_index_range_x(int x, uint32_t index[101], int *i0, int *i1)
+search_index_range_x(int x, uint32_t index[POINTS_COUNT], int *i0, int *i1)
 {
   int i, j;
   int head = 0;
@@ -1093,7 +1075,7 @@ search_index_range_x(int x, uint32_t index[101], int *i0, int *i1)
     j--;
   *i0 = j;
   j = i;
-  while (j < 100 && x == CELL_X0(index[j+1]))
+  while (j < POINTS_COUNT-1 && x == CELL_X0(index[j+1]))
     j++;
   *i1 = j;
   return TRUE;
@@ -1238,7 +1220,7 @@ marker_search(void)
     return -1;
 
   int value = CELL_Y(trace_index[uistat.current_trace][0]);
-  for (i = 0; i < 101; i++) {
+  for (i = 0; i < POINTS_COUNT; i++) {
     uint32_t index = trace_index[uistat.current_trace][i];
     if ((*compare)(value, CELL_Y(index))) {
       value = CELL_Y(index);
@@ -1296,14 +1278,14 @@ marker_search_right(int from)
     return -1;
 
   int value = CELL_Y(trace_index[uistat.current_trace][from]);
-  for (i = from + 1; i < 101; i++) {
+  for (i = from + 1; i < POINTS_COUNT; i++) {
     uint32_t index = trace_index[uistat.current_trace][i];
     if ((*compare)(value, CELL_Y(index)))
       break;
     value = CELL_Y(index);
   }
 
-  for (; i < 101; i++) {
+  for (; i < POINTS_COUNT; i++) {
     uint32_t index = trace_index[uistat.current_trace][i];
     if ((*compare)(CELL_Y(index), value)) {
       break;
@@ -1482,7 +1464,7 @@ draw_cell(int m, int n)
     if (search_index_range_x(x0, trace_index[t], &i0, &i1)) {
       if (i0 > 0)
         i0--;
-      if (i1 < 101-1)
+      if (i1 < POINTS_COUNT-1)
         i1++;
       for (i = i0; i < i1; i++) {
         int x1 = CELL_X(trace_index[t][i]);
@@ -1665,10 +1647,10 @@ cell_draw_marker_info(int m, int n, int w, int h)
 	  if (mk == active_marker)
     	cell_drawstring(w, h, S_SARROW, xpos, ypos);
 	  xpos += 5;
-      chsnprintf(buf, sizeof buf, "MK%d", mk);
+      chsnprintf(buf, sizeof buf, "M%d", mk+1);
       cell_drawstring(w, h, buf, xpos, ypos);
       
-	  xpos += 19;
+	  xpos += 13;
       //trace_get_info(t, buf, sizeof buf);
       int32_t freq = frequencies[markers[mk].index];
       if (uistat.marker_delta && mk != active_marker) {
@@ -1691,7 +1673,7 @@ cell_draw_marker_info(int m, int n, int w, int h)
     // draw marker delta
     if (!uistat.marker_delta && previous_marker >= 0 && active_marker != previous_marker && markers[previous_marker].enabled) {
       int idx0 = markers[previous_marker].index;
-      int xpos = 192;
+      int xpos = 185;
       int ypos = 1 + (j/2)*8;
       xpos -= m * CELLWIDTH -CELLOFFSETX;
       ypos -= n * CELLHEIGHT;
@@ -1701,7 +1683,8 @@ cell_draw_marker_info(int m, int n, int w, int h)
       cell_drawstring(w, h, buf, xpos, ypos);
       xpos += 19;
       if ((domain_mode & DOMAIN_MODE) == DOMAIN_FREQ) {
-        frequency_string(buf, sizeof buf, frequencies[idx] - frequencies[idx0], "");
+    	uint32_t delta = frequencies[idx] > frequencies[idx0] ? frequencies[idx]-frequencies[idx0] : frequencies[idx0]-frequencies[idx];
+        frequency_string(buf, sizeof buf, delta, "");
       } else {
         //chsnprintf(buf, sizeof buf, "%d ns %.1f m", (uint16_t)(time_of_index(idx) * 1e9 - time_of_index(idx0) * 1e9),
         //                                            distance_of_index(idx) - distance_of_index(idx0));
@@ -1742,10 +1725,11 @@ cell_draw_marker_info(int m, int n, int w, int h)
     }
 
     // draw marker frequency
-    int xpos = 192;
+    int xpos = 185;
     int ypos = 1 + (j/2)*8;
     xpos -= m * CELLWIDTH -CELLOFFSETX;
     ypos -= n * CELLHEIGHT;
+    setForegroundColor(DEFAULT_FG_COLOR);
 //    strcpy(buf, "1:");
 //    buf[0] += active_marker;
 //    xpos += 5;
@@ -1755,7 +1739,7 @@ cell_draw_marker_info(int m, int n, int w, int h)
     if (uistat.lever_mode == LM_MARKER)
     	cell_drawstring(w, h, S_SARROW, xpos, ypos);
     xpos += 5;
-    chsnprintf(buf, sizeof buf, "1:%d", active_marker);
+    chsnprintf(buf, sizeof buf, "M%d:", active_marker+1);
     cell_drawstring(w, h, buf, xpos, ypos);
 	xpos += 19;
 
@@ -1840,31 +1824,29 @@ frequency_string_short(char *b, size_t len, int32_t freq, char prefix)
 void
 draw_frequencies(void)
 {
-	  char buf1[24];buf1[0]=' ';
-	  char buf2[24];
-	  if ((domain_mode & DOMAIN_MODE) == DOMAIN_FREQ) {
-	      if (frequency0 < frequency1) {
-	        frequency_string(buf1+1, sizeof(buf1)-1, frequency0, "START ");
-	        frequency_string(buf2, sizeof buf2, frequency1, "STOP ");
-	      } else if (frequency0 > frequency1) {
-	        frequency_string(buf1+1, sizeof(buf1)-1, frequency0/2 + frequency1/2, "CENTER ");
-	        frequency_string(buf2, sizeof buf2, frequency0 - frequency1, "SPAN ");
-	      } else {
-	        frequency_string(buf1+1, sizeof(buf1)-1, frequency0,  "CW ");
-	      }
-
-	  } else {
-		  chsnprintf(buf1, sizeof buf1, "START 0s");
-	      chsnprintf(buf2, sizeof buf2, "%s%d ns", "STOP ", (uint16_t)(time_of_index(101) * 1e9));
-	  }
-	  setForegroundColor(DEFAULT_FG_COLOR);
-	  setBackgroundColor(DEFAULT_BG_COLOR);
-	  ili9341_fill(0, 232, 320, 8, DEFAULT_BG_COLOR);
-	  if (uistat.lever_mode == LM_SPAN || uistat.lever_mode == LM_CENTER)
-		buf1[0] = S_SARROW[0];
-	  ili9341_drawstring(buf1, OFFSETX, 232);
-	  ili9341_drawstring(buf2, 205, 232);
-
+  char buf1[24];buf1[0]=' ';
+  char buf2[24];buf2[0]=0;
+  if ((domain_mode & DOMAIN_MODE) == DOMAIN_FREQ) {
+      if (frequency0 < frequency1) {
+        frequency_string(buf1+1, sizeof(buf1)-1, frequency0, "START ");
+        frequency_string(buf2, sizeof buf2, frequency1, "STOP ");
+      } else if (frequency0 > frequency1) {
+        frequency_string(buf1+1, sizeof(buf1)-1, frequency0/2 + frequency1/2, "CENTER ");
+        frequency_string(buf2, sizeof buf2, frequency0 - frequency1, "SPAN ");
+      } else {
+        frequency_string(buf1+1, sizeof(buf1)-1, frequency0,  "CW ");
+      }
+  } else {
+	  chsnprintf(buf1+1, sizeof(buf1)-1, "START 0s");
+      chsnprintf(buf2, sizeof buf2, "%s%dns (%.2fm)", "STOP ", (uint16_t)(time_of_index(POINTS_COUNT-1) * 1e9), distance_of_index(POINTS_COUNT-1));
+  }
+  setForegroundColor(DEFAULT_FG_COLOR);
+  setBackgroundColor(DEFAULT_BG_COLOR);
+  ili9341_fill(0, 232, 320, 8, DEFAULT_BG_COLOR);
+  if (uistat.lever_mode == LM_SPAN || uistat.lever_mode == LM_CENTER)
+	buf1[0] = S_SARROW[0];
+  ili9341_drawstring(buf1, OFFSETX, 232);
+  ili9341_drawstring(buf2, 205, 232);
 }
 
 void
@@ -1919,7 +1901,7 @@ draw_battery_status(void)
 {
     uint8_t string_buf[25];
 	// Set battery color
-	setForegroundColor(vbat < BATTERY_WARNING_LEVEL ? RGBHEX(0xff0000) : RGBHEX(0x1fe300));
+	setForegroundColor(vbat < BATTERY_WARNING_LEVEL ? DEFAULT_LOW_BAT_COLOR : DEFAULT_NORMAL_BAT_COLOR);
     setBackgroundColor(DEFAULT_BG_COLOR);
 //    chsnprintf(string_buf, sizeof string_buf, "V:%d", vbat);
 //    ili9341_drawstringV(string_buf, 1, 60);

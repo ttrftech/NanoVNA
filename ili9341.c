@@ -343,11 +343,12 @@ void ili9341_init(void)
 #ifndef __USE_DISPLAY_DMA__
 void ili9341_fill(int x, int y, int w, int h, int color)
 {
-	uint8_t xx[4] = { x >> 8, x, (x+w-1) >> 8, (x+w-1) };
-	uint8_t yy[4] = { y >> 8, y, (y+h-1) >> 8, (y+h-1) };
-
-	send_command(ILI9341_COLUMN_ADDRESS_SET, 4, xx);
-	send_command(ILI9341_PAGE_ADDRESS_SET, 4, yy);
+//	uint8_t xx[4] = { x >> 8, x, (x+w-1) >> 8, (x+w-1) };
+//	uint8_t yy[4] = { y >> 8, y, (y+h-1) >> 8, (y+h-1) };
+	uint32_t xx = __REV16(x|((x+w-1)<<16));
+	uint32_t yy = __REV16(y|((y+h-1)<<16));
+	send_command(ILI9341_COLUMN_ADDRESS_SET, 4, (uint8_t*)&xx);
+	send_command(ILI9341_PAGE_ADDRESS_SET, 4, (uint8_t*)&yy);
 	send_command(ILI9341_MEMORY_WRITE, 0, NULL);
 	int32_t len = w * h;
 	while (len-- > 0){
@@ -358,12 +359,13 @@ void ili9341_fill(int x, int y, int w, int h, int color)
 
 void ili9341_bulk(int x, int y, int w, int h)
 {
-	uint8_t xx[4] = { x >> 8, x, (x+w-1) >> 8, (x+w-1) };
-	uint8_t yy[4] = { y >> 8, y, (y+h-1) >> 8, (y+h-1) };
+//	uint8_t xx[4] = { x >> 8, x, (x+w-1) >> 8, (x+w-1) };
+//	uint8_t yy[4] = { y >> 8, y, (y+h-1) >> 8, (y+h-1) };
 	uint16_t *buf = spi_buffer;
-
-	send_command(ILI9341_COLUMN_ADDRESS_SET, 4, xx);
-	send_command(ILI9341_PAGE_ADDRESS_SET, 4, yy);
+	uint32_t xx = __REV16(x|((x+w-1)<<16));
+	uint32_t yy = __REV16(y|((y+h-1)<<16));
+	send_command(ILI9341_COLUMN_ADDRESS_SET, 4, (uint8_t*)&xx);
+	send_command(ILI9341_PAGE_ADDRESS_SET, 4, (uint8_t*)&yy);
 	send_command(ILI9341_MEMORY_WRITE, 0, NULL);
 	int32_t len = w * h;
 	while (len-- > 0){
@@ -372,7 +374,7 @@ void ili9341_bulk(int x, int y, int w, int h)
 	}
 }
 
-static uint8_t ssp_sendrecvdata()
+static uint8_t ssp_sendrecvdata(void)
 {
 	// Start RX clock (by sending data)
 	SPI_WRITE_8BIT(0);
@@ -383,10 +385,12 @@ static uint8_t ssp_sendrecvdata()
 
 void ili9341_read_memory(int x, int y, int w, int h, int len, uint16_t *out)
 {
-	uint8_t xx[4] = { x >> 8, x, (x+w-1) >> 8, (x+w-1) };
-	uint8_t yy[4] = { y >> 8, y, (y+h-1) >> 8, (y+h-1) };
-	send_command(ILI9341_COLUMN_ADDRESS_SET, 4, xx);
-	send_command(ILI9341_PAGE_ADDRESS_SET, 4, yy);
+//	uint8_t xx[4] = { x >> 8, x, (x+w-1) >> 8, (x+w-1) };
+//	uint8_t yy[4] = { y >> 8, y, (y+h-1) >> 8, (y+h-1) };
+	uint32_t xx = __REV16(x|((x+w-1)<<16));
+	uint32_t yy = __REV16(y|((y+h-1)<<16));
+	send_command(ILI9341_COLUMN_ADDRESS_SET, 4, (uint8_t*)&xx);
+	send_command(ILI9341_PAGE_ADDRESS_SET, 4, (uint8_t*)&yy);
 	send_command(ILI9341_MEMORY_READ, 0, NULL);
 
 	// Skip data from rx buffer
@@ -411,10 +415,10 @@ void ili9341_read_memory(int x, int y, int w, int h, int len, uint16_t *out)
 // Fill region by some color
 void ili9341_fill(int x, int y, int w, int h, int color)
 {
-	uint8_t xx[4] = { x >> 8, x, (x+w-1) >> 8, (x+w-1) };
-	uint8_t yy[4] = { y >> 8, y, (y+h-1) >> 8, (y+h-1) };
-	send_command(ILI9341_COLUMN_ADDRESS_SET, 4, xx);
-	send_command(ILI9341_PAGE_ADDRESS_SET, 4, yy);
+	uint32_t xx = __REV16(x|((x+w-1)<<16));
+	uint32_t yy = __REV16(y|((y+h-1)<<16));
+	send_command(ILI9341_COLUMN_ADDRESS_SET, 4, (uint8_t*)&xx);
+	send_command(ILI9341_PAGE_ADDRESS_SET, 4, (uint8_t*)&yy);
 	send_command(ILI9341_MEMORY_WRITE, 0, NULL);
 
 	dmaStreamSetMemory0(dmatx, &color);
@@ -424,10 +428,10 @@ void ili9341_fill(int x, int y, int w, int h, int color)
 // Copy spi_buffer to region
 void ili9341_bulk(int x, int y, int w, int h)
 {
-	uint8_t xx[4] = { x >> 8, x, (x+w-1) >> 8, (x+w-1) };
-	uint8_t yy[4] = { y >> 8, y, (y+h-1) >> 8, (y+h-1) };
-	send_command(ILI9341_COLUMN_ADDRESS_SET, 4, xx);
-	send_command(ILI9341_PAGE_ADDRESS_SET, 4, yy);
+	uint32_t xx = __REV16(x|((x+w-1)<<16));
+	uint32_t yy = __REV16(y|((y+h-1)<<16));
+	send_command(ILI9341_COLUMN_ADDRESS_SET, 4, (uint8_t*)&xx);
+	send_command(ILI9341_PAGE_ADDRESS_SET, 4, (uint8_t*)&yy);
 	send_command(ILI9341_MEMORY_WRITE, 0, NULL);
 
 	// Init Tx DMA mem->spi, set size, mode (spi and mem data size is 16 bit)
@@ -443,11 +447,10 @@ void ili9341_read_memory(int x, int y, int w, int h, int len, uint16_t *out)
 	uint8_t dummy_tx = 0;
 	uint8_t *rgbbuf=(uint8_t *)out;
 	uint16_t data_size = len * 3 + 1;
-
-	uint8_t xx[4] = { x >> 8, x, (x+w-1) >> 8, (x+w-1) };
-	uint8_t yy[4] = { y >> 8, y, (y+h-1) >> 8, (y+h-1) };
-	send_command(ILI9341_COLUMN_ADDRESS_SET, 4, xx);
-	send_command(ILI9341_PAGE_ADDRESS_SET, 4, yy);
+	uint32_t xx = __REV16(x|((x+w-1)<<16));
+	uint32_t yy = __REV16(y|((y+h-1)<<16));
+	send_command(ILI9341_COLUMN_ADDRESS_SET, 4, (uint8_t*)&xx);
+	send_command(ILI9341_PAGE_ADDRESS_SET, 4, (uint8_t*)&yy);
 	send_command(ILI9341_MEMORY_READ, 0, NULL);
 	// Skip SPI rx buffer
 	while (SPI_RX_IS_NOT_EMPTY)

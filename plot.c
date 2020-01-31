@@ -791,28 +791,32 @@ trace_get_value_string_delta(int t, char *buf, int len, float array[POINTS_COUNT
   }
 }
 
-void
+static int
 trace_get_info(int t, char *buf, int len)
 {
-  const char *type = get_trace_typename(t);
-  int n;
+  strcpy(buf, get_trace_typename(t));
+  int n = strlen(buf);
+  char *p = buf + n;
+  len -= n;
   switch (trace[t].type) {
   case TRC_LOGMAG:
-    chsnprintf(buf, len, "%s %ddB/", type, (int)get_trace_scale(t));
+    n += chsnprintf(p, len, " %ddB/", (int)get_trace_scale(t));
     break;
   case TRC_PHASE:
-    chsnprintf(buf, len, "%s %d" S_DEGREE "/", type, (int)get_trace_scale(t));
+    n += chsnprintf(p, len, " %d" S_DEGREE "/", (int)get_trace_scale(t));
     break;
   case TRC_SMITH:
   //case TRC_ADMIT:
   case TRC_POLAR:
-    chsnprintf(buf, len, "%s %.1fFS", type, get_trace_scale(t));
+    if (get_trace_scale(t) != 1.0)
+      n += chsnprintf(p, len, " %.1fFS", get_trace_scale(t));
     break;
   default:
-    n = chsnprintf(buf, len, "%s ", type);
-    string_value_with_prefix(buf+n, len-n, get_trace_scale(t), '/');
+    strcat(p, " ");
+    string_value_with_prefix(p+1, len-1  , get_trace_scale(t), '/');
     break;
   }
+  return n;
 }
 
 static float time_of_index(int idx) {
@@ -1677,14 +1681,14 @@ cell_draw_marker_info(int m, int n, int w, int h)
       int ypos = 1 + (j/2)*8;
       xpos -= m * CELLWIDTH -CELLOFFSETX;
       ypos -= n * CELLHEIGHT;
-      strcpy(buf, S_DELTA "1:");
-      buf[1] += previous_marker;
+      strcpy(buf, S_DELTA "1-1:");
+      buf[1] += active_marker;
+      buf[3] += previous_marker;
       setForegroundColor(DEFAULT_FG_COLOR);
       cell_drawstring(w, h, buf, xpos, ypos);
-      xpos += 19;
+      xpos += 29;
       if ((domain_mode & DOMAIN_MODE) == DOMAIN_FREQ) {
-    	uint32_t delta = frequencies[idx] > frequencies[idx0] ? frequencies[idx]-frequencies[idx0] : frequencies[idx0]-frequencies[idx];
-        frequency_string(buf, sizeof buf, delta, "");
+        frequency_string_short(buf, sizeof buf, frequencies[idx] - frequencies[idx0], 0);
       } else {
         //chsnprintf(buf, sizeof buf, "%d ns %.1f m", (uint16_t)(time_of_index(idx) * 1e9 - time_of_index(idx0) * 1e9),
         //                                            distance_of_index(idx) - distance_of_index(idx0));
@@ -1718,8 +1722,10 @@ cell_draw_marker_info(int m, int n, int w, int h)
 
       trace_get_info(t, buf, sizeof buf);
       cell_drawstring(w, h, buf, xpos, ypos);
-      xpos += 60;
+      xpos += (strlen(buf) + 1) * 5;
+      //xpos += 60;
       trace_get_value_string(t, buf, sizeof buf, measured[trace[t].channel], idx);
+      setForegroundColor(DEFAULT_FG_COLOR);
       cell_drawstring(w, h, buf, xpos, ypos);
       j++;
     }
@@ -1736,6 +1742,7 @@ cell_draw_marker_info(int m, int n, int w, int h)
 //    setForegroundColor(0xffff);
 //    cell_drawstring_invert(w, h, buf, xpos, ypos, uistat.lever_mode == LM_MARKER);
 //	xpos += 14;
+    setForegroundColor(DEFAULT_FG_COLOR);
     if (uistat.lever_mode == LM_MARKER)
     	cell_drawstring(w, h, S_SARROW, xpos, ypos);
     xpos += 5;

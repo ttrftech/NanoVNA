@@ -249,7 +249,6 @@ void redraw_frame(void);
 void request_to_draw_cells_behind_menu(void);
 void request_to_draw_cells_behind_numeric_input(void);
 void redraw_marker(int marker, int update_info);
-void trace_get_info(int t, char *buf, int len);
 void plot_into_index(float measured[2][POINTS_COUNT][2]);
 void force_set_markmap(void);
 void draw_frequencies(void);
@@ -289,20 +288,13 @@ extern int16_t vbat;
 #define DEFAULT_MENU_COLOR			RGB565(255,255,255)
 #define DEFAULT_MENU_TEXT_COLOR		RGB565(  0,  0,  0)
 #define DEFAULT_MENU_ACTIVE_COLOR	RGB565(180,255,180)
-<<<<<<< HEAD
-#define DEFAULT_TRACE_1_COLOR		RGB565(255,200, 14)
-#define DEFAULT_TRACE_2_COLOR		RGB565(  0,191,231)
-#define DEFAULT_TRACE_3_COLOR		RGB565( 64,255,  0)
-#define DEFAULT_TRACE_4_COLOR		RGB565(255,160,100)
-#define DEFAULT_NORMAL_BAT_COLOR	RGB565( 31,227,  0)
-#define DEFAULT_LOW_BAT_COLOR		RGB565(255,  0,  0)
-#define	DEFAULT_SPEC_INPUT_COLOR	RGB565(128,255,128);
-=======
 #define DEFAULT_TRACE_1_COLOR		RGB565(255,255,  0)
 #define DEFAULT_TRACE_2_COLOR		RGB565(  0,255,255)
 #define DEFAULT_TRACE_3_COLOR		RGB565(  0,255,  0)
 #define DEFAULT_TRACE_4_COLOR		RGB565(255,  0,255)
->>>>>>> fix: revert color of traces to the original
+#define DEFAULT_NORMAL_BAT_COLOR	RGB565( 31,227,  0)
+#define DEFAULT_LOW_BAT_COLOR		RGB565(255,  0,  0)
+#define	DEFAULT_SPEC_INPUT_COLOR	RGB565(128,255,128);
 
 extern uint16_t foreground_color;
 extern uint16_t background_color;

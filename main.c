@@ -308,28 +308,94 @@ int set_frequency(uint32_t freq)
     return delay;
 }
 
+// Use macro, std isdigit more big
+#define _isdigit(c) (c >= '0' && c <= '9')
+// Rewrite universal standart str to value functions to more compact
+//
+// Convert string to int32
+int32_t my_atoi(const char *p){
+	int32_t value = 0;
+	uint32_t c;
+	bool neg = false;
+
+	if (*p == '-') {neg = true; p++;}
+	if (*p == '+') p++;
+	while ((c = *p++ - '0') < 10)
+		value = value * 10 + c;
+	return neg ? -value : value;
+}
+
+// Convert string to uint32
+uint32_t my_atoui(const char *p){
+	uint32_t value = 0;
+	uint32_t c;
+	if (*p == '+') p++;
+	while ((c = *p++ - '0') < 10)
+		value = value * 10 + c;
+	return value;
+}
+
+float
+my_atof(const char *p)
+{
+  int neg = FALSE;
+  if (*p == '-')
+    neg = TRUE;
+  if (*p == '-' || *p == '+')
+    p++;
+  float x = my_atoi(p);
+  while (_isdigit((int)*p))
+    p++;
+  if (*p == '.') {
+    float d = 1.0f;
+    p++;
+    while (_isdigit((int)*p)) {
+      d /= 10;
+      x += d * (*p - '0');
+      p++;
+    }
+  }
+  if (*p == 'e' || *p == 'E') {
+    p++;
+    int exp = my_atoi(p);
+    while (exp > 0) {
+      x *= 10;
+      exp--;
+    }
+    while (exp < 0) {
+      x /= 10;
+      exp++;
+    }
+  }
+  if (neg)
+    x = -x;
+  return x;
+}
+
 static void cmd_offset(BaseSequentialStream *chp, int argc, char *argv[])
 {
     if (argc != 1) {
         chprintf(chp, "usage: offset {frequency offset(Hz)}\r\n");
         return;
     }
-    frequency_offset = atoi(argv[0]);
+    frequency_offset = my_atoui(argv[0]);
     set_frequency(frequency);
 }
 
 static void cmd_freq(BaseSequentialStream *chp, int argc, char *argv[])
 {
-    int freq;
     if (argc != 1) {
-        chprintf(chp, "usage: freq {frequency(Hz)}\r\n");
-        return;
+        goto usage;
     }
+    uint32_t freq = my_atoui(argv[0]);
+
     pause_sweep();
     chMtxLock(&mutex);
-    freq = atoi(argv[0]);
     set_frequency(freq);
     chMtxUnlock(&mutex);
+    return;
+usage:
+	chprintf(chp, "usage: freq {frequency(Hz)}\r\n");
 }
 
 static void cmd_power(BaseSequentialStream *chp, int argc, char *argv[])
@@ -338,7 +404,7 @@ static void cmd_power(BaseSequentialStream *chp, int argc, char *argv[])
         chprintf(chp, "usage: power {0-3|-1}\r\n");
         return;
     }
-    drive_strength = atoi(argv[0]);
+    drive_strength = my_atoi(argv[0]);
     set_frequency(frequency);
 }
 
@@ -360,20 +426,20 @@ static void cmd_dac(BaseSequentialStream *chp, int argc, char *argv[])
         chprintf(chp, "current value: %d\r\n", config.dac_value);
         return;
     }
-    value = atoi(argv[0]);
+    value = my_atoi(argv[0]);
     config.dac_value = value;
     dacPutChannelX(&DACD2, 0, value);
 }
 
 static void cmd_threshold(BaseSequentialStream *chp, int argc, char *argv[])
 {
-    int value;
+    uint32_t value;
     if (argc != 1) {
         chprintf(chp, "usage: threshold {frequency in harmonic mode}\r\n");
         chprintf(chp, "current: %d\r\n", config.harmonic_freq_threshold);
         return;
     }
-    value = atoi(argv[0]);
+    value = my_atoui(argv[0]);
     config.harmonic_freq_threshold = value;
 }
 
@@ -490,7 +556,7 @@ static void cmd_data(BaseSequentialStream *chp, int argc, char *argv[])
   int sel = 0;
 
   if (argc == 1)
-    sel = atoi(argv[0]);
+    sel = my_atoi(argv[0]);
   if (sel == 0 || sel == 1) {
     chMtxLock(&mutex);
     for (i = 0; i < sweep_points; i++) {
@@ -517,7 +583,7 @@ static void cmd_dump(BaseSequentialStream *chp, int argc, char *argv[])
   int len;
 
   if (argc == 1)
-    dump_selection = atoi(argv[0]);
+    dump_selection = my_atoi(argv[0]);
 
   wait_dsp(3);
 
@@ -679,22 +745,22 @@ bool sweep(bool break_on_operation)
 
 static void cmd_scan(BaseSequentialStream *chp, int argc, char *argv[])
 {
-  int32_t start, stop;
+  uint32_t start, stop;
   int16_t points = sweep_points;
 
   if (argc != 2 && argc != 3) {
-    chprintf(chp, "usage: sweep {start(Hz)} {stop(Hz)} [points]\r\n");
+    chprintf(chp, "usage: scan {start(Hz)} {stop(Hz)} [points]\r\n");
     return;
   }
 
-  start = atoi(argv[0]);
-  stop = atoi(argv[1]);
+  start = my_atoui(argv[0]);
+  stop = my_atoui(argv[1]);
   if (start == 0 || stop == 0 || start > stop) {
       chprintf(chp, "frequency range is invalid\r\n");
       return;
   }
   if (argc == 3) {
-    points = atoi(argv[2]);
+    points = my_atoi(argv[2]);
     if (points <= 0 || points > sweep_points) {
       chprintf(chp, "sweep points exceeds range\r\n");
       return;
@@ -907,7 +973,6 @@ get_sweep_frequency(int type)
   return 0;
 }
 
-
 static void cmd_sweep(BaseSequentialStream *chp, int argc, char *argv[])
 {
   if (argc == 0) {
@@ -916,40 +981,34 @@ static void cmd_sweep(BaseSequentialStream *chp, int argc, char *argv[])
   } else if (argc > 3) {
     goto usage;
   }
-  if (argc >= 2) {
-    if (strcmp(argv[0], "start") == 0) {
-      int32_t value = atoi(argv[1]);
-      set_sweep_frequency(ST_START, value);
-      return;
-    } else if (strcmp(argv[0], "stop") == 0) {
-      int32_t value = atoi(argv[1]);
-      set_sweep_frequency(ST_STOP, value);
-      return;
-    } else if (strcmp(argv[0], "center") == 0) {
-      int32_t value = atoi(argv[1]);
-      set_sweep_frequency(ST_CENTER, value);
-      return;
-    } else if (strcmp(argv[0], "span") == 0) {
-      int32_t value = atoi(argv[1]);
-      set_sweep_frequency(ST_SPAN, value);
-      return;
-    } else if (strcmp(argv[0], "cw") == 0) {
-      int32_t value = atoi(argv[1]);
-      set_sweep_frequency(ST_CW, value);
-      return;
-    }
-  }
+  uint32_t value0 = 0;
+  uint32_t value1 = 0;
+  if (argc >=1) value0 = my_atoui(argv[0]);
+  if (argc >=2) value1 = my_atoui(argv[1]);
 
-  if (argc >= 1) {
-    int32_t value = atoi(argv[0]);
-    if (value == 0)
-      goto usage;
-    set_sweep_frequency(ST_START, value);
+  // Parse  {start|stop|center|span|cw} {freq(Hz)}
+  if (argc == 2 && value0 == 0) {
+	int type;
+    if (strcmp(argv[0], "start") == 0)
+    	type = ST_START;
+    else if (strcmp(argv[0], "stop") == 0)
+    	type = ST_STOP;
+    else if (strcmp(argv[0], "center") == 0)
+    	type = ST_CENTER;
+    else if (strcmp(argv[0], "span") == 0)
+    	type = ST_SPAN;
+    else if (strcmp(argv[0], "cw") == 0)
+    	type = ST_CW;
+    else
+    	goto usage;
+    set_sweep_frequency(type, value1);
+    return;
   }
-  if (argc >= 2) {
-    int32_t value = atoi(argv[1]);
-    set_sweep_frequency(ST_STOP, value);
-  }
+  //  Parse sweep {start(Hz)} [stop(Hz)]
+  if (value0)
+    set_sweep_frequency(ST_START, value0);
+  if (value1)
+    set_sweep_frequency(ST_STOP, value1);
   return;
 usage:
   chprintf(chp, "usage: sweep {start(Hz)} [stop(Hz)]\r\n");
@@ -1346,7 +1405,7 @@ static void cmd_cal(BaseSequentialStream *chp, int argc, char *argv[])
   } else if (strcmp(cmd, "in") == 0) {
     int s = 0;
     if (argc > 1)
-      s = atoi(argv[1]);
+      s = my_atoi(argv[1]);
     cal_interpolate(s);
     redraw_request |= REDRAW_CAL_STATUS;
     return;
@@ -1363,7 +1422,7 @@ static void cmd_save(BaseSequentialStream *chp, int argc, char *argv[])
   if (argc != 1)
     goto usage;
 
-  int id = atoi(argv[0]);
+  int id = my_atoi(argv[0]);
   if (id < 0 || id >= SAVEAREA_MAX)
     goto usage;
   caldata_save(id);
@@ -1380,7 +1439,7 @@ static void cmd_recall(BaseSequentialStream *chp, int argc, char *argv[])
   if (argc != 1)
     goto usage;
 
-  int id = atoi(argv[0]);
+  int id = my_atoi(argv[0]);
   if (id < 0 || id >= SAVEAREA_MAX)
     goto usage;
 
@@ -1488,43 +1547,6 @@ float get_trace_refpos(int t)
   return trace[t].refpos;
 }
 
-float
-my_atof(const char *p)
-{
-  int neg = FALSE;
-  if (*p == '-')
-    neg = TRUE;
-  if (*p == '-' || *p == '+')
-    p++;
-  float x = atoi(p);
-  while (isdigit((int)*p))
-    p++;
-  if (*p == '.') {
-    float d = 1.0f;
-    p++;
-    while (isdigit((int)*p)) {
-      d /= 10;
-      x += d * (*p - '0');
-      p++;
-    }
-  }
-  if (*p == 'e' || *p == 'E') {
-    p++;
-    int exp = atoi(p);
-    while (exp > 0) {
-      x *= 10;
-      exp--;
-    }
-    while (exp < 0) {
-      x /= 10;
-      exp++;
-    }
-  }
-  if (neg)
-    x = -x;
-  return x;
-}
-
 typedef struct {
 	  char *tracename;
 	  uint8_t type;
@@ -1555,7 +1577,7 @@ static void cmd_trace(BaseSequentialStream *chp, int argc, char *argv[])
     goto exit;
   }
 
-  t = atoi(argv[0]);
+  t = my_atoi(argv[0]);
   if (t < 0 || t >= 4)
     goto usage;
   if (argc == 1) {
@@ -1600,7 +1622,7 @@ static void cmd_trace(BaseSequentialStream *chp, int argc, char *argv[])
   }
   check_ch_num:
   if (argc > 2) {
-    int src = atoi(argv[2]);
+    int src = my_atoi(argv[2]);
     if (src != 0 && src != 1)
       goto usage;
     trace[t].channel = src;
@@ -1657,7 +1679,7 @@ static void cmd_marker(BaseSequentialStream *chp, int argc, char *argv[])
     return;
   }
 
-  t = atoi(argv[0])-1;
+  t = my_atoi(argv[0])-1;
   if (t < 0 || t >= 4)
     goto usage;
   if (argc == 1) {
@@ -1681,7 +1703,7 @@ static void cmd_marker(BaseSequentialStream *chp, int argc, char *argv[])
     } else {
       // select active marker and move to index
       markers[t].enabled = TRUE;
-      int index = atoi(argv[1]);
+      int index = my_atoi(argv[1]);
       markers[t].index = index;
       markers[t].frequency = frequencies[index];
       active_marker = t;
@@ -1820,7 +1842,7 @@ static void cmd_test(BaseSequentialStream *chp, int argc, char *argv[])
   int i;
   int mode = 0;
   if (argc >= 1)
-    mode = atoi(argv[0]);
+    mode = my_atoi(argv[0]);
 
   for (i = 0; i < 20; i++) {
     palClearPad(GPIOC, GPIOC_LED);
@@ -1860,9 +1882,9 @@ static void cmd_gain(BaseSequentialStream *chp, int argc, char *argv[])
     chprintf(chp, "usage: gain {lgain(0-95)} [rgain(0-95)]\r\n");
     return;
   }
-  rvalue = atoi(argv[0]);
+  rvalue = my_atoi(argv[0]);
   if (argc == 2) 
-    lvalue = atoi(argv[1]);
+    lvalue = my_atoi(argv[1]);
   tlv320aic3204_set_gain(lvalue, rvalue);
 }
 
@@ -1873,7 +1895,7 @@ static void cmd_port(BaseSequentialStream *chp, int argc, char *argv[])
     chprintf(chp, "usage: port {0:TX 1:RX}\r\n");
     return;
   }
-  port = atoi(argv[0]);
+  port = my_atoi(argv[0]);
   tlv320aic3204_select(port);
 }
 

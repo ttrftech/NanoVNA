@@ -330,7 +330,7 @@ typedef struct {
   uint32_t magic;
   uint32_t _frequency0;
   uint32_t _frequency1;
-  int16_t _sweep_points;
+  uint16_t _sweep_points;
   uint16_t _cal_status;
 
   uint32_t _frequencies[POINTS_COUNT];

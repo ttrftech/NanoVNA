@@ -38,7 +38,7 @@ static void apply_error_term_at(int i);
 static void apply_edelay_at(int i);
 static void cal_interpolate(int s);
 void update_frequencies(void);
-void set_frequencies(uint32_t start, uint32_t stop, int16_t points);
+void set_frequencies(uint32_t start, uint32_t stop, uint16_t points);
 
 bool sweep(bool break_on_operation);
 
@@ -747,7 +747,7 @@ update_marker_index(void)
 }
 
 void
-set_frequencies(uint32_t start, uint32_t stop, int16_t points)
+set_frequencies(uint32_t start, uint32_t stop, uint16_t points)
 {
   int i;
   float span = stop - start;
@@ -811,45 +811,35 @@ void
 set_sweep_frequency(int type, uint32_t freq)
 {
   int cal_applied = cal_status & CALSTAT_APPLY;
-/*  // negative value indicate overflow, do nothing
-  if (freq < 0)
-    return;*/
+
+  // Check frequency for out of bounds (minimum SPAN can be any value)
+  if (type!=ST_SPAN && freq < START_MIN)
+	  freq = START_MIN;
+  if (freq > STOP_MAX)
+	  freq = STOP_MAX;
+
   switch (type) {
   case ST_START:
     freq_mode_startstop();
-    if (freq < START_MIN)
-      freq = START_MIN;
-    if (freq > STOP_MAX)
-      freq = STOP_MAX;
     if (frequency0 != freq) {
       ensure_edit_config();
       frequency0 = freq;
       // if start > stop then make start = stop
       if (frequency1 < freq)
         frequency1 = freq;
-      update_frequencies();
     }
     break;
   case ST_STOP:
     freq_mode_startstop();
-    if (freq > STOP_MAX)
-      freq = STOP_MAX;
-    if (freq < START_MIN)
-      freq = START_MIN;
     if (frequency1 != freq) {
       ensure_edit_config();
       frequency1 = freq;
       // if start > stop then make start = stop
       if (frequency0 > freq)
         frequency0 = freq;
-      update_frequencies();
     }
     break;
   case ST_CENTER:
-    if (freq < START_MIN)
-      freq = START_MIN;
-    if (freq > STOP_MAX)
-      freq = STOP_MAX;
     freq_mode_centerspan();
     uint32_t center = frequency0/2 + frequency1/2;
     if (center != freq) {
@@ -863,12 +853,9 @@ set_sweep_frequency(int type, uint32_t freq)
       }
       frequency0 = freq + span/2;
       frequency1 = freq - span/2;
-      update_frequencies();
     }
     break;
   case ST_SPAN:
-    if (freq > STOP_MAX)
-      freq = STOP_MAX;
     freq_mode_centerspan();
     if (frequency0 - frequency1 != freq) {
       ensure_edit_config();
@@ -881,24 +868,18 @@ set_sweep_frequency(int type, uint32_t freq)
       }
       frequency1 = center - freq/2;
       frequency0 = center + freq/2;
-      update_frequencies();
     }
     break;
   case ST_CW:
-    if (freq < START_MIN)
-      freq = START_MIN;
-    if (freq > STOP_MAX)
-      freq = STOP_MAX;
     freq_mode_centerspan();
     if (frequency0 != freq || frequency1 != freq) {
       ensure_edit_config();
       frequency0 = freq;
       frequency1 = freq;
-      update_frequencies();
     }
     break;
   }
-
+  update_frequencies();
   if (cal_auto_interpolate && cal_applied)
     cal_interpolate(lastsaveid);
 }

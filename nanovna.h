@@ -78,7 +78,7 @@ enum {
 void set_sweep_frequency(int type, uint32_t frequency);
 uint32_t get_sweep_frequency(int type);
 
-float my_atof(const char *p);
+double my_atof(const char *p);
 
 void toggle_sweep(void);
 

@@ -335,7 +335,7 @@ uint32_t my_atoui(const char *p){
 	return value;
 }
 
-float
+double
 my_atof(const char *p)
 {
   int neg = FALSE;
@@ -343,11 +343,11 @@ my_atof(const char *p)
     neg = TRUE;
   if (*p == '-' || *p == '+')
     p++;
-  float x = my_atoi(p);
+  double x = my_atoi(p);
   while (_isdigit((int)*p))
     p++;
   if (*p == '.') {
-    float d = 1.0f;
+	  double d = 1.0f;
     p++;
     while (_isdigit((int)*p)) {
       d /= 10;
@@ -815,11 +815,19 @@ update_marker_index(void)
 void
 set_frequencies(uint32_t start, uint32_t stop, uint16_t points)
 {
-  int i;
-  float span = stop - start;
-  for (i = 0; i < points; i++) {
-    float offset = i * span / (float)(points - 1);
-    frequencies[i] = start + (uint32_t)offset;
+  uint32_t i;
+  uint32_t step = (points - 1);
+  uint32_t span = stop - start;
+  uint32_t delta = span / step;
+  uint32_t error = span - delta * step;
+  uint32_t f = start, df = step/2;
+  for (i = 0; i <= step; i++, f+=delta) {
+    frequencies[i] = f;
+    df+=error;
+    if (df >=step) {
+    	f++;
+    	df-=step;
+    }
   }
   // disable at out of sweep range
   for (; i < sweep_points; i++)

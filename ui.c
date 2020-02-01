@@ -106,7 +106,7 @@ int awd_count;
 #define KP_DONE 1
 #define KP_CANCEL 2
 
-char kp_buf[11];
+char kp_buf[NUMINPUT_LEN+1];
 int8_t kp_index = 0;
 
 void ui_mode_normal(void);
@@ -1791,7 +1791,7 @@ keypad_click(int key)
 {
   int c = keypads[key].c;
   if ((c >= KP_X1 && c <= KP_G) || c == KP_N || c == KP_P) {
-    float scale = 1;
+    int32_t scale = 1;
     if (c >= KP_X1 && c <= KP_G) {
       int n = c - KP_X1;
       while (n-- > 0)
@@ -1800,7 +1800,7 @@ keypad_click(int key)
       scale *= 1000;
     }
     /* numeric input done */
-    float value = my_atof(kp_buf) * scale;
+    double value = my_atof(kp_buf) * scale;
     switch (keypad_mode) {
     case KM_START:
       set_sweep_frequency(ST_START, value);

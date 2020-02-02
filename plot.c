@@ -550,10 +550,15 @@ trace_into_index(int x, int t, int i, float array[POINTS_COUNT][2])
   return INDEX(x +CELLOFFSETX, y, i);
 }
 
+// Prefixes for values bigger then 1000.0
+static char   bigPrefix[]={'k', 'M', 'G', 'T', 'P', 'E', 'Z', 'Y'};
+// Prefixes for values less   then 1.0
+static char smallPrefix[]={'m', S_MICRO[0], 'n', 'p', 'f', 'a', 'z', 'y'};
+
 static int
 string_value_with_prefix(char *buf, int len, float val, char unit)
 {
-  char prefix;
+  char prefix=0;
   int n = 0;
   if (val < 0) {
     val = -val;
@@ -565,34 +570,12 @@ string_value_with_prefix(char *buf, int len, float val, char unit)
 	  prefix = S_INFINITY[0];
   }
   else {
-	  if (val < 1e-12) {
-		  prefix = 'f';
-		  val *= 1e15;
-	  } else if (val < 1e-9) {
-	  	 prefix = 'p';
-	  	 val *= 1e12;
-	  } else if (val < 1e-6) {
-		  prefix = 'n';
-		  val *= 1e9;
-	  } else if (val < 1e-3) {
-		  prefix = S_MICRO[0];
-		  val *= 1e6;
-	  } else if (val < 1) {
-		  prefix = 'm';
-		  val *= 1e3;
-	  } else if (val < 1e3) {
-		  prefix = 0;
-	  } else if (val < 1e6) {
-		  prefix = 'k';
-		  val /= 1e3;
-	  } else if (val < 1e9) {
-		  prefix = 'M';
-		  val /= 1e6;
-	  } else {
-		  prefix = 'G';
-		  val /= 1e9;
-	  }
-
+	  if (val > 1000)
+		  for (uint32_t i=0; i<sizeof(bigPrefix) && val > 1000; i++, val/=1000)
+			  prefix=bigPrefix[i];
+	  else if (val < 1)
+		  for (uint32_t i=0; i<sizeof(smallPrefix) && val < 1000;i++, val*=1000)
+			  prefix=smallPrefix[i];
 	  if (val < 10) {
 		  n += chsnprintf(&buf[n], len, "%.2f", val);
 	  } else if (val < 100) {

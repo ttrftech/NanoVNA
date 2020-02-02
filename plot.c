@@ -574,7 +574,7 @@ string_value_with_prefix(char *buf, int len, float val, char unit)
 		  for (uint32_t i=0; i<sizeof(bigPrefix) && val > 1000; i++, val/=1000)
 			  prefix=bigPrefix[i];
 	  else if (val < 1)
-		  for (uint32_t i=0; i<sizeof(smallPrefix) && val < 1000;i++, val*=1000)
+		  for (uint32_t i=0; i<sizeof(smallPrefix) && val < 1;i++, val*=1000)
 			  prefix=smallPrefix[i];
 	  if (val < 10) {
 		  n += chsnprintf(&buf[n], len, "%.2f", val);

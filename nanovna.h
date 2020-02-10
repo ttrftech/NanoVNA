@@ -152,7 +152,7 @@ extern int16_t area_height;
 
 extern const uint8_t x5x7_bits [];
 #define FONT_GET_DATA(ch)	(&x5x7_bits[ch*7])
-#define FONT_GET_WIDTH(ch)	(7-(x5x7_bits[ch*7]&3))
+#define FONT_GET_WIDTH(ch)	(8-(x5x7_bits[ch*7]&7))
 #define FONT_GET_HEIGHT		7
 
 extern const uint16_t numfont16x22[];

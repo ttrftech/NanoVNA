@@ -818,8 +818,8 @@ set_frequencies(uint32_t start, uint32_t stop, uint16_t points)
   uint32_t step = (points - 1);
   uint32_t span = stop - start;
   uint32_t delta = span / step;
-  uint32_t error = span - delta * step;
-  uint32_t f = start, df = step/2;
+  uint32_t error = span % step;
+  uint32_t f = start, df = step>>1;
   for (i = 0; i <= step; i++, f+=delta) {
     frequencies[i] = f;
     df+=error;
@@ -993,7 +993,7 @@ static void cmd_sweep(BaseSequentialStream *chp, int argc, char *argv[])
   if (argc >=1) value0 = my_atoui(argv[0]);
   if (argc >=2) value1 = my_atoui(argv[1]);
 
-  // Parse  {start|stop|center|span|cw} {freq(Hz)}
+  // Parse sweep {start|stop|center|span|cw} {freq(Hz)}
   if (argc == 2 && value0 == 0) {
 	int type;
     if (strcmp(argv[0], "start") == 0)

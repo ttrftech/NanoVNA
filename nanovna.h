@@ -378,6 +378,14 @@ extern properties_t current_props;
 #define velocity_factor current_props._velocity_factor
 #define marker_smith_format current_props._marker_smith_format
 
+#define FREQ_IS_STARTSTOP() (frequency0 < frequency1)
+#define FREQ_IS_CENTERSPAN() (frequency0 > frequency1)
+#define FREQ_IS_CW() (frequency0 == frequency1)
+#define FREQ_START() (frequency0)
+#define FREQ_STOP() (frequency1)
+#define FREQ_CENTER() (frequency0/2 + frequency1/2)
+#define FREQ_SPAN() (frequency0 - frequency1)
+
 int caldata_save(int id);
 int caldata_recall(int id);
 const properties_t *caldata_ref(int id);

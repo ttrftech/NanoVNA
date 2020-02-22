@@ -26,13 +26,34 @@
 #include "fft.h"
 
 #include <chprintf.h>
-#include <shell.h>
-#include <stdlib.h>
+//#include <stdlib.h>
 #include <string.h>
-#include <ctype.h>
+//#include <ctype.h>
 #include <math.h>
 
+/*
+ *  Shell settings
+ */
+// If need run shell as thread (use more amount of memory fore stack), after enable this need reduce spi_buffer size, by default shell run in main thread
+//#define VNA_SHELL_THREAD
+
+static BaseSequentialStream *shell_stream = (BaseSequentialStream *)&SDU1;
+
+// Shell new line
+#define VNA_SHELL_NEWLINE_STR    "\r\n"
+// Shell command promt
+#define VNA_SHELL_PROMPT_STR     "ch> "
+// Shell max arguments
+#define VNA_SHELL_MAX_ARGUMENTS   4
+// Shell max command line size
+#define VNA_SHELL_MAX_LENGTH     64
+// Shell command functions prototypes
+typedef                                         void (*vna_shellcmd_t)(BaseSequentialStream *chp, int argc, char *argv[]);
+#define VNA_SHELL_FUNCTION(command_name) static void      command_name(BaseSequentialStream *chp, int argc, char *argv[])
+
 //#define ENABLED_DUMP
+//#define ENABLE_THREADS_COMMAND
+
 
 static void apply_error_term_at(int i);
 static void apply_edelay_at(int i);
@@ -124,30 +145,30 @@ toggle_sweep(void)
   sweep_enabled = !sweep_enabled;
 }
 
-float bessel0(float x) {
-	const float eps = 0.0001;
+static float
+bessel0(float x) {
+  const float eps = 0.0001;
 
-	float ret = 0;
-	float term = 1;
-	float m = 0;
+  float ret = 0;
+  float term = 1;
+  float m = 0;
 
-	while (term  > eps * ret) {
-		ret += term;
-		++m;
-		term *= (x*x) / (4*m*m);
-	}
-
-	return ret;
+  while (term  > eps * ret) {
+    ret += term;
+    ++m;
+    term *= (x*x) / (4*m*m);
+  }
+  return ret;
 }
 
-float kaiser_window(float k, float n, float beta) {
-	if (beta == 0.0) return 1.0;
-	float r = (2 * k) / (n - 1) - 1;
-	return bessel0(beta * sqrt(1 - r * r)) / bessel0(beta);
+static float
+kaiser_window(float k, float n, float beta) {
+  if (beta == 0.0) return 1.0;
+  float r = (2 * k) / (n - 1) - 1;
+  return bessel0(beta * sqrt(1 - r * r)) / bessel0(beta);
 }
 
-static
-void
+static void
 transform_domain(void)
 {
   if ((domain_mode & DOMAIN_MODE) != DOMAIN_TIME) return; // nothing to do for freq domain
@@ -220,6 +241,16 @@ transform_domain(void)
   }
 }
 
+// Shell commands output
+static int shell_printf(BaseSequentialStream *chp, const char *fmt, ...) {
+  va_list ap;
+  int formatted_bytes;
+  va_start(ap, fmt);
+  formatted_bytes = chvprintf(chp, fmt, ap);
+  va_end(ap);
+  return formatted_bytes;
+}
+
 static void cmd_pause(BaseSequentialStream *chp, int argc, char *argv[])
 {
     (void)chp;
@@ -249,13 +280,13 @@ static void cmd_reset(BaseSequentialStream *chp, int argc, char *argv[])
 
     if (argc == 1) {
         if (strcmp(argv[0], "dfu") == 0) {
-            chprintf(chp, "Performing reset to DFU mode\r\n");
+            shell_printf(chp, "Performing reset to DFU mode\r\n");
             enter_dfu();
             return;
         }
     }
 
-    chprintf(chp, "Performing reset\r\n");
+    shell_printf(chp, "Performing reset\r\n");
 
     rccEnableWWDG(FALSE);
 
@@ -312,7 +343,7 @@ int set_frequency(uint32_t freq)
 // Rewrite universal standart str to value functions to more compact
 //
 // Convert string to int32
-int32_t my_atoi(const char *p){
+static int32_t my_atoi(const char *p){
   int32_t value = 0;
   uint32_t c;
   bool neg = false;
@@ -374,7 +405,7 @@ my_atof(const char *p)
 static void cmd_offset(BaseSequentialStream *chp, int argc, char *argv[])
 {
     if (argc != 1) {
-        chprintf(chp, "usage: offset {frequency offset(Hz)}\r\n");
+        shell_printf(chp, "usage: offset {frequency offset(Hz)}\r\n");
         return;
     }
     frequency_offset = my_atoui(argv[0]);
@@ -394,13 +425,13 @@ static void cmd_freq(BaseSequentialStream *chp, int argc, char *argv[])
     chMtxUnlock(&mutex);
     return;
 usage:
-	chprintf(chp, "usage: freq {frequency(Hz)}\r\n");
+    shell_printf(chp, "usage: freq {frequency(Hz)}\r\n");
 }
 
 static void cmd_power(BaseSequentialStream *chp, int argc, char *argv[])
 {
     if (argc != 1) {
-        chprintf(chp, "usage: power {0-3|-1}\r\n");
+        shell_printf(chp, "usage: power {0-3|-1}\r\n");
         return;
     }
     drive_strength = my_atoi(argv[0]);
@@ -413,7 +444,7 @@ static void cmd_time(BaseSequentialStream *chp, int argc, char *argv[])
     (void)argc;
     (void)argv;
     rtcGetTime(&RTCD1, &timespec);
-    chprintf(chp, "%d/%d/%d %d\r\n", timespec.year+1980, timespec.month, timespec.day, timespec.millisecond);
+    shell_printf(chp, "%d/%d/%d %d\r\n", timespec.year+1980, timespec.month, timespec.day, timespec.millisecond);
 }
 
 
@@ -421,8 +452,8 @@ static void cmd_dac(BaseSequentialStream *chp, int argc, char *argv[])
 {
     int value;
     if (argc != 1) {
-        chprintf(chp, "usage: dac {value(0-4095)}\r\n");
-        chprintf(chp, "current value: %d\r\n", config.dac_value);
+        shell_printf(chp, "usage: dac {value(0-4095)}\r\n"\
+                          "current value: %d\r\n", config.dac_value);
         return;
     }
     value = my_atoi(argv[0]);
@@ -434,8 +465,8 @@ static void cmd_threshold(BaseSequentialStream *chp, int argc, char *argv[])
 {
     uint32_t value;
     if (argc != 1) {
-        chprintf(chp, "usage: threshold {frequency in harmonic mode}\r\n");
-        chprintf(chp, "current: %d\r\n", config.harmonic_freq_threshold);
+        shell_printf(chp, "usage: threshold {frequency in harmonic mode}\r\n"\
+                          "current: %d\r\n", config.harmonic_freq_threshold);
         return;
     }
     value = my_atoui(argv[0]);
@@ -447,24 +478,24 @@ static void cmd_saveconfig(BaseSequentialStream *chp, int argc, char *argv[])
   (void)argc;
   (void)argv;
   config_save();
-  chprintf(chp, "Config saved.\r\n");
+  shell_printf(chp, "Config saved.\r\n");
 }
 
 static void cmd_clearconfig(BaseSequentialStream *chp, int argc, char *argv[])
 {
   if (argc != 1) {
-    chprintf(chp, "usage: clearconfig {protection key}\r\n");
+    shell_printf(chp, "usage: clearconfig {protection key}\r\n");
     return;
   }
 
   if (strcmp(argv[0], "1234") != 0) {
-    chprintf(chp, "Key unmatched.\r\n");
+    shell_printf(chp, "Key unmatched.\r\n");
     return;
   }
 
   clear_all_config_prop_data();
-  chprintf(chp, "Config and all cal data cleared.\r\n");
-  chprintf(chp, "Do reset manually to take effect. Then do touch cal and save.\r\n");
+  shell_printf(chp, "Config and all cal data cleared.\r\n"\
+                    "Do reset manually to take effect. Then do touch cal and save.\r\n");
 }
 
 static struct {
@@ -560,18 +591,18 @@ static void cmd_data(BaseSequentialStream *chp, int argc, char *argv[])
     chMtxLock(&mutex);
     for (i = 0; i < sweep_points; i++) {
       if (frequencies[i] != 0)
-        chprintf(chp, "%f %f\r\n", measured[sel][i][0], measured[sel][i][1]);
+        shell_printf(chp, "%f %f\r\n", measured[sel][i][0], measured[sel][i][1]);
     }
     chMtxUnlock(&mutex);
   } else if (sel >= 2 && sel < 7) {
     chMtxLock(&mutex);
     for (i = 0; i < sweep_points; i++) {
       if (frequencies[i] != 0)
-        chprintf(chp, "%f %f\r\n", cal_data[sel-2][i][0], cal_data[sel-2][i][1]);
+        shell_printf(chp, "%f %f\r\n", cal_data[sel-2][i][0], cal_data[sel-2][i][1]);
     }
     chMtxUnlock(&mutex);
   } else {
-    chprintf(chp, "usage: data [array]\r\n");
+    shell_printf(chp, "usage: data [array]\r\n");
   }
 }
 
@@ -591,9 +622,9 @@ static void cmd_dump(BaseSequentialStream *chp, int argc, char *argv[])
     len /= 2;
   for (i = 0; i < len; ) {
     for (j = 0; j < 16; j++, i++) {
-      chprintf(chp, "%04x ", 0xffff & (int)dump_buffer[i]);
+      shell_printf(chp, "%04x ", 0xffff & (int)dump_buffer[i]);
     }
-    chprintf(chp, "\r\n");
+    shell_printf(chp, "\r\n");
   }
 }
 #endif
@@ -609,12 +640,12 @@ static void cmd_capture(BaseSequentialStream *chp, int argc, char *argv[])
     // read 2 row pixel time (read buffer limit by 2/3 + 1 from spi_buffer size)
     for (int y=0; y < 240; y+=2)
     {
-    	// use uint16_t spi_buffer[1024] (defined in ili9341) for read buffer
-    	uint8_t *buf = (uint8_t *)spi_buffer;
-        ili9341_read_memory(0, y, 320, 2, 2*320, spi_buffer);
-        for (int i = 0; i < 4*320; i++) {
-        	streamPut(chp, *buf++);
-        }
+      // use uint16_t spi_buffer[2048] (defined in ili9341) for read buffer
+      uint8_t *buf = (uint8_t *)spi_buffer;
+      ili9341_read_memory(0, y, 320, 2, 2*320, spi_buffer);
+      for (int i = 0; i < 4*320; i++) {
+        streamPut(chp, *buf++);
+      }
     }
 
     chMtxUnlock(&mutex);
@@ -633,7 +664,7 @@ static void cmd_gamma(BaseSequentialStream *chp, int argc, char *argv[])
   calculate_gamma(gamma);
   chMtxUnlock(&mutex);
 
-  chprintf(chp, "%d %d\r\n", gamma[0], gamma[1]);
+  shell_printf(chp, "%d %d\r\n", gamma[0], gamma[1]);
 }
 #endif
 
@@ -653,7 +684,7 @@ static void cmd_sample(BaseSequentialStream *chp, int argc, char *argv[])
       return;
     }
   }
-  chprintf(chp, "usage: sample {gamma|ampl|ref}\r\n");
+  shell_printf(chp, "usage: sample {gamma|ampl|ref}\r\n");
 }
 
 config_t config = {
@@ -674,10 +705,10 @@ properties_t current_props = {
   ._frequency0 =       50000,     // start = 50kHz
   ._frequency1 =       900000000, // end = 900MHz
   ._sweep_points =     POINTS_COUNT,
-  ._trace = {/*enable, type, channel, polar, scale, refpos*/
+  ._trace = {/*enable, type, channel, reserved, scale, refpos*/
     { 1, TRC_LOGMAG, 0, 0, 1.0, 9.0 },
     { 1, TRC_LOGMAG, 1, 0, 1.0, 9.0 },
-    { 1, TRC_SMITH,  0, 1, 1.0, 0.0 },
+    { 1, TRC_SMITH,  0, 0, 1.0, 0.0 },
     { 1, TRC_PHASE,  1, 0, 1.0, 5.0 }
   },
   ._markers = {
@@ -748,20 +779,20 @@ static void cmd_scan(BaseSequentialStream *chp, int argc, char *argv[])
   int16_t points = sweep_points;
 
   if (argc != 2 && argc != 3) {
-    chprintf(chp, "usage: scan {start(Hz)} {stop(Hz)} [points]\r\n");
+    shell_printf(chp, "usage: scan {start(Hz)} {stop(Hz)} [points]\r\n");
     return;
   }
 
   start = my_atoui(argv[0]);
   stop = my_atoui(argv[1]);
   if (start == 0 || stop == 0 || start > stop) {
-      chprintf(chp, "frequency range is invalid\r\n");
+      shell_printf(chp, "frequency range is invalid\r\n");
       return;
   }
   if (argc == 3) {
     points = my_atoi(argv[2]);
     if (points <= 0 || points > sweep_points) {
-      chprintf(chp, "sweep points exceeds range\r\n");
+      shell_printf(chp, "sweep points exceeds range\r\n");
       return;
     }
   }
@@ -785,7 +816,7 @@ update_marker_index(void)
 {
   int m;
   int i;
-  for (m = 0; m < 4; m++) {
+  for (m = 0; m < MARKERS_MAX; m++) {
     if (!markers[m].enabled)
       continue;
     uint32_t f = markers[m].frequency;
@@ -854,7 +885,7 @@ update_frequencies(void)
   update_grid();
 }
 
-void
+static void
 freq_mode_startstop(void)
 {
   if (frequency0 > frequency1) {
@@ -865,7 +896,7 @@ freq_mode_startstop(void)
   }
 }
 
-void
+static void
 freq_mode_centerspan(void)
 {
   if (frequency0 <= frequency1) {
@@ -875,7 +906,6 @@ freq_mode_centerspan(void)
     frequency0 = f;
   }
 }
-
 
 #define START_MIN 50000
 #define STOP_MAX 2700000000U
@@ -983,7 +1013,7 @@ get_sweep_frequency(int type)
 static void cmd_sweep(BaseSequentialStream *chp, int argc, char *argv[])
 {
   if (argc == 0) {
-    chprintf(chp, "%d %d %d\r\n", frequency0, frequency1, sweep_points);
+    shell_printf(chp, "%d %d %d\r\n", frequency0, frequency1, sweep_points);
     return;
   } else if (argc > 3) {
     goto usage;
@@ -1018,8 +1048,8 @@ static void cmd_sweep(BaseSequentialStream *chp, int argc, char *argv[])
     set_sweep_frequency(ST_STOP, value1);
   return;
 usage:
-  chprintf(chp, "usage: sweep {start(Hz)} [stop(Hz)]\r\n");
-  chprintf(chp, "\tsweep {start|stop|center|span|cw} {freq(Hz)}\r\n");
+  shell_printf(chp, "usage: sweep {start(Hz)} [stop(Hz)]\r\n"\
+                    "\tsweep {start|stop|center|span|cw} {freq(Hz)}\r\n");
 }
 
 
@@ -1058,7 +1088,7 @@ adjust_ed(void)
     // prepare 1/s11ao to avoid dividing complex
     float c = 1000e-15;
     float z0 = 50;
-    //float z = 6.2832 * frequencies[i] * c * z0;
+    //float z = 2 * M_PI * frequencies[i] * c * z0;
     float z = 0.02;
     cal_data[ETERM_ED][i][0] += z;
   }
@@ -1076,7 +1106,7 @@ eterm_calc_es(void)
     float c = 50e-15;
     //float c = 1.707e-12;
     float z0 = 50;
-    float z = 6.2832 * frequencies[i] * c * z0;
+    float z = 2 * M_PI * frequencies[i] * c * z0;
     float sq = 1 + z*z;
     float s11aor = (1 - z*z) / sq;
     float s11aoi = 2*z / sq;
@@ -1181,7 +1211,7 @@ void apply_error_term(void)
 }
 #endif
 
-void apply_error_term_at(int i)
+static void apply_error_term_at(int i)
 {
     // S11m' = S11m - Ed
     // S11a = S11m' / (Er + Es S11m')
@@ -1298,7 +1328,7 @@ cal_done(void)
   redraw_request |= REDRAW_CAL_STATUS;
 }
 
-void
+static void
 cal_interpolate(int s)
 {
   const properties_t *src = caldata_ref(s);
@@ -1370,9 +1400,9 @@ static void cmd_cal(BaseSequentialStream *chp, int argc, char *argv[])
     int i;
     for (i = 0; i < 9; i++) {
       if (cal_status & (1<<i))
-        chprintf(chp, "%s ", items[i]);
+        shell_printf(chp, "%s ", items[i]);
     }
-    chprintf(chp, "\r\n");
+    shell_printf(chp, "\r\n");
     return;
   }
 
@@ -1403,11 +1433,11 @@ static void cmd_cal(BaseSequentialStream *chp, int argc, char *argv[])
     redraw_request |= REDRAW_CAL_STATUS;
     return;
   } else if (strcmp(cmd, "data") == 0) {
-    chprintf(chp, "%f %f\r\n", cal_data[CAL_LOAD][0][0], cal_data[CAL_LOAD][0][1]);
-    chprintf(chp, "%f %f\r\n", cal_data[CAL_OPEN][0][0], cal_data[CAL_OPEN][0][1]);
-    chprintf(chp, "%f %f\r\n", cal_data[CAL_SHORT][0][0], cal_data[CAL_SHORT][0][1]);
-    chprintf(chp, "%f %f\r\n", cal_data[CAL_THRU][0][0], cal_data[CAL_THRU][0][1]);
-    chprintf(chp, "%f %f\r\n", cal_data[CAL_ISOLN][0][0], cal_data[CAL_ISOLN][0][1]);
+    shell_printf(chp, "%f %f\r\n", cal_data[CAL_LOAD][0][0], cal_data[CAL_LOAD][0][1]);
+    shell_printf(chp, "%f %f\r\n", cal_data[CAL_OPEN][0][0], cal_data[CAL_OPEN][0][1]);
+    shell_printf(chp, "%f %f\r\n", cal_data[CAL_SHORT][0][0], cal_data[CAL_SHORT][0][1]);
+    shell_printf(chp, "%f %f\r\n", cal_data[CAL_THRU][0][0], cal_data[CAL_THRU][0][1]);
+    shell_printf(chp, "%f %f\r\n", cal_data[CAL_ISOLN][0][0], cal_data[CAL_ISOLN][0][1]);
     return;
   } else if (strcmp(cmd, "in") == 0) {
     int s = 0;
@@ -1417,7 +1447,7 @@ static void cmd_cal(BaseSequentialStream *chp, int argc, char *argv[])
     redraw_request |= REDRAW_CAL_STATUS;
     return;
   } else {
-    chprintf(chp, "usage: cal [load|open|short|thru|isoln|done|reset|on|off|in]\r\n");
+    shell_printf(chp, "usage: cal [load|open|short|thru|isoln|done|reset|on|off|in]\r\n");
     return;
   }
 }
@@ -1437,7 +1467,7 @@ static void cmd_save(BaseSequentialStream *chp, int argc, char *argv[])
   return;
 
  usage:
-  chprintf(chp, "save {id}\r\n");
+  shell_printf(chp, "save {id}\r\n");
 }
 
 static void cmd_recall(BaseSequentialStream *chp, int argc, char *argv[])
@@ -1462,10 +1492,10 @@ static void cmd_recall(BaseSequentialStream *chp, int argc, char *argv[])
   return;
 
  usage:
-  chprintf(chp, "recall {id}\r\n");
+  shell_printf(chp, "recall {id}\r\n");
 }
 
-const struct {
+static const struct {
   const char *name;
   uint16_t refpos;
   float scale_unit;
@@ -1487,22 +1517,16 @@ const char * const trc_channel_name[] = {
   "CH0", "CH1"
 };
 
-const char *
-get_trace_typename(int t)
+const char *get_trace_typename(int t)
 {
   return trace_info[trace[t].type].name;
 }
 
 void set_trace_type(int t, int type)
 {
-  int polar = type == TRC_SMITH || type == TRC_POLAR;
   int enabled = type != TRC_OFF;
   int force = FALSE;
 
-  if (trace[t].polar != polar) {
-    trace[t].polar = polar;
-    force = TRUE;
-  }
   if (trace[t].enabled != enabled) {
     trace[t].enabled = enabled;
     force = TRUE;
@@ -1510,8 +1534,7 @@ void set_trace_type(int t, int type)
   if (trace[t].type != type) {
     trace[t].type = type;
     trace[t].refpos = trace_info[type].refpos;
-    if (polar)
-      force = TRUE;
+    force = TRUE;
   }    
   if (force) {
     plot_into_index(measured);
@@ -1529,7 +1552,7 @@ void set_trace_channel(int t, int channel)
 
 void set_trace_scale(int t, float scale)
 {
-  scale /= trace_info[trace[t].type].scale_unit;
+//  scale /= trace_info[trace[t].type].scale_unit;
   if (trace[t].scale != scale) {
     trace[t].scale = scale;
     force_set_markmap();
@@ -1538,7 +1561,7 @@ void set_trace_scale(int t, float scale)
 
 float get_trace_scale(int t)
 {
-  return trace[t].scale * trace_info[trace[t].type].scale_unit;
+  return trace[t].scale;// * trace_info[trace[t].type].scale_unit;
 }
 
 void set_trace_refpos(int t, float refpos)
@@ -1563,13 +1586,13 @@ static void cmd_trace(BaseSequentialStream *chp, int argc, char *argv[])
 {
   int t;
   if (argc == 0) {
-    for (t = 0; t < 4; t++) {
+    for (t = 0; t < TRACES_MAX; t++) {
       if (trace[t].enabled) {
         const char *type = trace_info[trace[t].type].name;
         const char *channel = trc_channel_name[trace[t].channel];
         float scale = get_trace_scale(t);
         float refpos = get_trace_refpos(t);
-        chprintf(chp, "%d %s %s %f %f\r\n", t, type, channel, scale, refpos);
+        shell_printf(chp, "%d %s %s %f %f\r\n", t, type, channel, scale, refpos);
       }
     }
     return;
@@ -1577,56 +1600,52 @@ static void cmd_trace(BaseSequentialStream *chp, int argc, char *argv[])
 
   if (strcmp(argv[0], "all") == 0 &&
       argc > 1 && strcmp(argv[1], "off") == 0) {
-    set_trace_type(0, TRC_OFF);
-    set_trace_type(1, TRC_OFF);
-    set_trace_type(2, TRC_OFF);
-    set_trace_type(3, TRC_OFF);
+  for (t = 0; t < TRACES_MAX; t++)
+      set_trace_type(t, TRC_OFF);
     goto exit;
   }
 
   t = my_atoi(argv[0]);
-  if (t < 0 || t >= 4)
+  if (t < 0 || t >= TRACES_MAX)
     goto usage;
   if (argc == 1) {
     const char *type = get_trace_typename(t);
     const char *channel = trc_channel_name[trace[t].channel];
-    chprintf(chp, "%d %s %s\r\n", t, type, channel);
+    shell_printf(chp, "%d %s %s\r\n", t, type, channel);
     return;
   }
-
-  if (argc > 1) {
-    static const type_list t_list[] = {
-      {"logmag", TRC_LOGMAG},
-      {"phase", TRC_PHASE},
-      {"polar", TRC_POLAR},
-      {"smith", TRC_SMITH},
-      {"delay", TRC_DELAY},
-      {"linear", TRC_LINEAR},
-      {"swr", TRC_SWR},
-      {"real", TRC_REAL},
-      {"imag", TRC_IMAG},
-      {"r", TRC_R},
-      {"x", TRC_X},
-      {"off", TRC_OFF},
-    };
-    for (uint16_t i=0; i<sizeof(t_list)/sizeof(type_list); i++){
-      if (strcmp(argv[1], t_list[i].tracename) == 0) {
-        set_trace_type(t, t_list[i].type);
-        goto check_ch_num;
-      }
-    }
-    if (strcmp(argv[1], "scale") == 0 && argc >= 3) {
-      //trace[t].scale = my_atof(argv[2]);
-      set_trace_scale(t, my_atof(argv[2]));
-      goto exit;
-    } else if (strcmp(argv[1], "refpos") == 0 && argc >= 3) {
-      //trace[t].refpos = my_atof(argv[2]);
-      set_trace_refpos(t, my_atof(argv[2]));
-      goto exit;
-    } else {
-      goto usage;
+  static const type_list t_list[] = {
+    {"logmag", TRC_LOGMAG},
+    {"phase", TRC_PHASE},
+    {"delay", TRC_DELAY},
+    {"smith", TRC_SMITH},
+    {"polar", TRC_POLAR},
+    {"linear", TRC_LINEAR},
+    {"swr", TRC_SWR},
+    {"real", TRC_REAL},
+    {"imag", TRC_IMAG},
+    {"r", TRC_R},
+    {"x", TRC_X},
+    {"off", TRC_OFF},
+  };
+  for (uint16_t i=0; i<sizeof(t_list)/sizeof(type_list); i++){
+    if (strcmp(argv[1], t_list[i].tracename) == 0) {
+      set_trace_type(t, t_list[i].type);
+      goto check_ch_num;
     }
   }
+  if (strcmp(argv[1], "scale") == 0 && argc >= 3) {
+    //trace[t].scale = my_atof(argv[2]);
+    set_trace_scale(t, my_atof(argv[2]));
+    goto exit;
+  } else if (strcmp(argv[1], "refpos") == 0 && argc >= 3) {
+    //trace[t].refpos = my_atof(argv[2]);
+    set_trace_refpos(t, my_atof(argv[2]));
+    goto exit;
+  } else {
+      goto usage;
+  }
+
   check_ch_num:
   if (argc > 2) {
     int src = my_atoi(argv[2]);
@@ -1637,8 +1656,8 @@ static void cmd_trace(BaseSequentialStream *chp, int argc, char *argv[])
  exit:
   return;
  usage:
-  chprintf(chp, "trace {0|1|2|3|all} [logmag|phase|polar|smith|linear|delay|swr|real|imag|r|x|off] [src]\r\n");
-  chprintf(chp, "trace {0|1|2|3} {scale|refpos} {value}\r\n");
+  shell_printf(chp, "trace {0|1|2|3|all} [logmag|phase|polar|smith|linear|delay|swr|real|imag|r|x|off] [src]\r\n"\
+                    "trace {0|1|2|3} {scale|refpos} {value}\r\n");
 }
 
 
@@ -1658,7 +1677,7 @@ float get_electrical_delay(void)
 static void cmd_edelay(BaseSequentialStream *chp, int argc, char *argv[])
 {
   if (argc == 0) {
-    chprintf(chp, "%f\r\n", electrical_delay);
+    shell_printf(chp, "%f\r\n", electrical_delay);
     return;
   }
   if (argc > 0) {
@@ -1671,26 +1690,26 @@ static void cmd_marker(BaseSequentialStream *chp, int argc, char *argv[])
 {
   int t;
   if (argc == 0) {
-    for (t = 0; t < 4; t++) {
+    for (t = 0; t < MARKERS_MAX; t++) {
       if (markers[t].enabled) {
-        chprintf(chp, "%d %d %d\r\n", t+1, markers[t].index, markers[t].frequency);
+        shell_printf(chp, "%d %d %d\r\n", t+1, markers[t].index, markers[t].frequency);
       }
     }
     return;
   } 
   if (strcmp(argv[0], "off") == 0) {
     active_marker = -1;
-    for (t = 0; t < 4; t++)
+    for (t = 0; t < MARKERS_MAX; t++)
       markers[t].enabled = FALSE;
     redraw_request |= REDRAW_MARKER;
     return;
   }
 
   t = my_atoi(argv[0])-1;
-  if (t < 0 || t >= 4)
+  if (t < 0 || t >= MARKERS_MAX)
     goto usage;
   if (argc == 1) {
-    chprintf(chp, "%d %d %d\r\n", t+1, markers[t].index, frequency);
+    shell_printf(chp, "%d %d %d\r\n", t+1, markers[t].index, frequency);
     active_marker = t;
     // select active marker
     markers[t].enabled = TRUE;
@@ -1719,7 +1738,7 @@ static void cmd_marker(BaseSequentialStream *chp, int argc, char *argv[])
   }
   return;
  usage:
-  chprintf(chp, "marker [n] [off|{index}]\r\n");
+  shell_printf(chp, "marker [n] [off|{index}]\r\n");
 }
 
 static void cmd_touchcal(BaseSequentialStream *chp, int argc, char *argv[])
@@ -1730,15 +1749,15 @@ static void cmd_touchcal(BaseSequentialStream *chp, int argc, char *argv[])
   int i;
 
   chMtxLock(&mutex);
-  chprintf(chp, "first touch upper left, then lower right...");
+  shell_printf(chp, "first touch upper left, then lower right...");
   touch_cal_exec();
-  chprintf(chp, "done\r\n");
+  shell_printf(chp, "done\r\n");
 
-  chprintf(chp, "touch cal params: ");
+  shell_printf(chp, "touch cal params: ");
   for (i = 0; i < 4; i++) {
-    chprintf(chp, "%d ", config.touch_cal[i]);
+    shell_printf(chp, "%d ", config.touch_cal[i]);
   }
-  chprintf(chp, "\r\n");
+  shell_printf(chp, "\r\n");
   chMtxUnlock(&mutex);
 }
 
@@ -1763,7 +1782,7 @@ static void cmd_frequencies(BaseSequentialStream *chp, int argc, char *argv[])
   (void)argv;
   for (i = 0; i < sweep_points; i++) {
     if (frequencies[i] != 0)
-      chprintf(chp, "%d\r\n", frequencies[i]);
+      shell_printf(chp, "%d\r\n", frequencies[i]);
   }
 }
 
@@ -1821,7 +1840,7 @@ static void cmd_transform(BaseSequentialStream *chp, int argc, char *argv[])
   return;
 
 usage:
-  chprintf(chp, "usage: transform {on|off|impulse|step|bandpass|minimum|normal|maximum} [...]\r\n");
+  shell_printf(chp, "usage: transform {on|off|impulse|step|bandpass|minimum|normal|maximum} [...]\r\n");
 }
 
 static void cmd_test(BaseSequentialStream *chp, int argc, char *argv[])
@@ -1861,22 +1880,22 @@ static void cmd_test(BaseSequentialStream *chp, int argc, char *argv[])
 
 #if 0
   //extern adcsample_t adc_samples[2];
-  //chprintf(chp, "adc: %d %d\r\n", adc_samples[0], adc_samples[1]);
+  //shell_printf(chp, "adc: %d %d\r\n", adc_samples[0], adc_samples[1]);
   int i;
   int x, y;
   for (i = 0; i < 50; i++) {
     test_touch(&x, &y);
-    chprintf(chp, "adc: %d %d\r\n", x, y);
+    shell_printf(chp, "adc: %d %d\r\n", x, y);
     chThdSleepMilliseconds(200);
   }
   //extern int touch_x, touch_y;
-  //chprintf(chp, "adc: %d %d\r\n", touch_x, touch_y);
+  //shell_printf(chp, "adc: %d %d\r\n", touch_x, touch_y);
 #endif
 
   while (argc > 1) {
     int x, y;
     touch_position(&x, &y);
-    chprintf(chp, "touch: %d %d\r\n", x, y);
+    shell_printf(chp, "touch: %d %d\r\n", x, y);
     chThdSleepMilliseconds(200);
   }
 }
@@ -1886,7 +1905,7 @@ static void cmd_gain(BaseSequentialStream *chp, int argc, char *argv[])
   int rvalue;
   int lvalue = 0;
   if (argc != 1 && argc != 2) {
-    chprintf(chp, "usage: gain {lgain(0-95)} [rgain(0-95)]\r\n");
+    shell_printf(chp, "usage: gain {lgain(0-95)} [rgain(0-95)]\r\n");
     return;
   }
   rvalue = my_atoi(argv[0]);
@@ -1899,7 +1918,7 @@ static void cmd_port(BaseSequentialStream *chp, int argc, char *argv[])
 {
   int port;
   if (argc != 1) {
-    chprintf(chp, "usage: port {0:TX 1:RX}\r\n");
+    shell_printf(chp, "usage: port {0:TX 1:RX}\r\n");
     return;
   }
   port = my_atoi(argv[0]);
@@ -1932,14 +1951,14 @@ static void cmd_stat(BaseSequentialStream *chp, int argc, char *argv[])
   stat.ave[0] = ave0;
   stat.ave[1] = ave1;
 
-  chprintf(chp, "average: %d %d\r\n", stat.ave[0], stat.ave[1]);
-  chprintf(chp, "rms: %d %d\r\n", stat.rms[0], stat.rms[1]);
-  chprintf(chp, "callback count: %d\r\n", stat.callback_count);
-  //chprintf(chp, "interval cycle: %d\r\n", stat.interval_cycles);
-  //chprintf(chp, "busy cycle: %d\r\n", stat.busy_cycles);
-  //chprintf(chp, "load: %d\r\n", stat.busy_cycles * 100 / stat.interval_cycles);
+  shell_printf(chp, "average: %d %d\r\n", stat.ave[0], stat.ave[1]);
+  shell_printf(chp, "rms: %d %d\r\n", stat.rms[0], stat.rms[1]);
+  shell_printf(chp, "callback count: %d\r\n", stat.callback_count);
+  //shell_printf(chp, "interval cycle: %d\r\n", stat.interval_cycles);
+  //shell_printf(chp, "busy cycle: %d\r\n", stat.busy_cycles);
+  //shell_printf(chp, "load: %d\r\n", stat.busy_cycles * 100 / stat.interval_cycles);
   extern int awd_count;
-  chprintf(chp, "awd: %d\r\n", awd_count);
+  shell_printf(chp, "awd: %d\r\n", awd_count);
 }
 
 
@@ -1953,64 +1972,207 @@ static void cmd_version(BaseSequentialStream *chp, int argc, char *argv[])
 {
   (void)argc;
   (void)argv;
-  chprintf(chp, "%s\r\n", NANOVNA_VERSION);
+  shell_printf(chp, "%s\r\n", NANOVNA_VERSION);
 }
 
 static void cmd_vbat(BaseSequentialStream *chp, int argc, char *argv[])
 {
   (void)argc;
   (void)argv;
-  chprintf(chp, "%d mV\r\n", vbat);
+  shell_printf(chp, "%d mV\r\n", vbat);
 }
 
-static THD_WORKING_AREA(waThread2, /* cmd_* max stack size + alpha */442);
-
-static const ShellCommand commands[] =
-{
-    { "version", cmd_version },
-    { "reset", cmd_reset },
-    { "freq", cmd_freq },
-    { "offset", cmd_offset },
-    { "time", cmd_time },
-    { "dac", cmd_dac },
-    { "saveconfig", cmd_saveconfig },
-    { "clearconfig", cmd_clearconfig },
-    { "data", cmd_data },
-#ifdef ENABLED_DUMP
-    { "dump", cmd_dump },
+#ifdef ENABLE_THREADS_COMMAND
+#if CH_CFG_USE_REGISTRY == FALSE
+#error "Threads Requite enabled CH_CFG_USE_REGISTRY in chconf.h"
 #endif
-    { "frequencies", cmd_frequencies },
-    { "port", cmd_port },
-    { "stat", cmd_stat },
-    { "gain", cmd_gain },
-    { "power", cmd_power },
-    { "sample", cmd_sample },
-    //{ "gamma", cmd_gamma },
-    { "scan", cmd_scan },
-    { "sweep", cmd_sweep },
-    { "test", cmd_test },
-    { "touchcal", cmd_touchcal },
-    { "touchtest", cmd_touchtest },
-    { "pause", cmd_pause },
-    { "resume", cmd_resume },
-    { "cal", cmd_cal },
-    { "save", cmd_save },
-    { "recall", cmd_recall },
-    { "trace", cmd_trace },
-    { "marker", cmd_marker },
-    { "edelay", cmd_edelay },
-    { "capture", cmd_capture },
-    { "vbat", cmd_vbat },
-    { "transform", cmd_transform },
-    { "threshold", cmd_threshold },
-    { NULL, NULL }
+static void cmd_threads(BaseSequentialStream *chp, int argc, char *argv[]) {
+  static const char *states[] = {CH_STATE_NAMES};
+  thread_t *tp;
+
+  (void)argv;
+  if (argc > 0) {
+    shellUsage(chp, "threads");
+    return;
+  }
+  chprintf(chp, "stklimit    stack     addr refs prio     state         name\r\n"SHELL_NEWLINE_STR);
+  tp = chRegFirstThread();
+  do {
+    uint32_t stklimit = (uint32_t)tp->wabase;
+    shell_printf(chp, "%08x %08x %08x %4u %4u %9s %12s"SHELL_NEWLINE_STR,
+             stklimit, (uint32_t)tp->ctx.sp, (uint32_t)tp,
+             (uint32_t)tp->refs - 1, (uint32_t)tp->prio, states[tp->state],
+             tp->name == NULL ? "" : tp->name);
+    tp = chRegNextThread(tp);
+  } while (tp != NULL);
+}
+#endif
+
+//=============================================================================
+static void cmd_help(BaseSequentialStream *chp, int argc, char *argv[]);
+typedef struct {
+  const char           *sc_name;
+  vna_shellcmd_t    sc_function;
+} VNAShellCommand;
+
+static const VNAShellCommand commands[] =
+{
+    { "version"     , cmd_version     },
+    { "reset"       , cmd_reset       },
+    { "freq"        , cmd_freq        },
+    { "offset"      , cmd_offset      },
+    { "time"        , cmd_time        },
+    { "dac"         , cmd_dac         },
+    { "saveconfig"  , cmd_saveconfig  },
+    { "clearconfig" , cmd_clearconfig },
+    { "data"        , cmd_data        },
+#ifdef ENABLED_DUMP
+    { "dump"        , cmd_dump        },
+#endif
+    { "frequencies" , cmd_frequencies },
+    { "port"        , cmd_port        },
+    { "stat"        , cmd_stat        },
+    { "gain"        , cmd_gain        },
+    { "power"       , cmd_power       },
+    { "sample"      , cmd_sample      },
+//  { "gamma"       , cmd_gamma       },
+    { "scan"        , cmd_scan        },
+    { "sweep"       , cmd_sweep       },
+    { "test"        , cmd_test        },
+    { "touchcal"    , cmd_touchcal    },
+    { "touchtest"   , cmd_touchtest   },
+    { "pause"       , cmd_pause       },
+    { "resume"      , cmd_resume      },
+    { "cal"         , cmd_cal         },
+    { "save"        , cmd_save        },
+    { "recall"      , cmd_recall      },
+    { "trace"       , cmd_trace       },
+    { "marker"      , cmd_marker      },
+    { "edelay"      , cmd_edelay      },
+    { "capture"     , cmd_capture     },
+    { "vbat"        , cmd_vbat        },
+    { "transform"   , cmd_transform   },
+    { "threshold"   , cmd_threshold   },
+    { "help"        , cmd_help        },
+#ifdef ENABLE_THREADS_COMMAND
+//  { "threads"     , cmd_threads     },
+#endif
+    { NULL          , NULL            }
 };
 
-static const ShellConfig shell_cfg1 =
+static void cmd_help(BaseSequentialStream *chp, int argc, char *argv[])
 {
-    (BaseSequentialStream *)&SDU1,
-    commands
-};
+  (void)argc;
+  (void)argv;
+  const VNAShellCommand *scp = commands;
+  shell_printf(chp, "Commands:");
+  while (scp->sc_name != NULL) {
+    shell_printf(chp, " %s", scp->sc_name);
+    scp++;
+  }
+  shell_printf(chp, VNA_SHELL_NEWLINE_STR);
+  return;
+}
+
+/*
+ * VNA shell functions
+ */
+
+//
+// Read command line from shell_stream
+//
+static int VNAShell_readLine(char *line, int max_size){
+  // Read line from input stream
+  uint8_t c;
+  char *ptr = line;
+  while (1){
+    // Return 0 only if stream not active
+    if (streamRead(shell_stream, &c, 1) == 0)
+      return 0;
+    // Backspace
+    if (c == 8) {
+      if (ptr != line) {
+        static const char backspace[] = {0x08,0x20,0x08,0x00};
+        shell_printf(shell_stream, backspace);
+        ptr--;
+      }
+      continue;
+    }
+    // New line (Enter)
+    if (c == '\r') {
+      shell_printf(shell_stream, VNA_SHELL_NEWLINE_STR);
+      *ptr = 0;
+      return 1;
+    }
+    // Others (skip)
+    if (c < 0x20)
+      continue;
+    // Store
+    if (ptr < line + max_size - 1) {
+      streamPut(shell_stream, c); // Echo
+      *ptr++ = (char)c;
+    }
+  }
+  return 0;
+}
+
+//
+// Parse and run command line
+//
+static void VNAShell_executeLine(char *line){
+  // Parse and execute line
+  char *args[VNA_SHELL_MAX_ARGUMENTS + 1];
+  int n = 0;
+  char *lp = line, *ep;
+  while (*lp!=0){
+    // Skipping white space and tabs at string begin.
+    while (*lp==' ' || *lp=='\t') lp++;
+    // If an argument starts with a double quote then its delimiter is another quote, else delimiter is white space.
+    ep = (*lp == '"') ? strpbrk(++lp, "\"") : strpbrk(  lp, " \t");
+    // Store in args string
+    args[n++]=lp;
+    // Stop, end of input string
+    if ((lp = ep) == NULL)
+      break;
+    // Argument limits check
+    if (n > VNA_SHELL_MAX_ARGUMENTS) {
+      shell_printf(shell_stream, "too many arguments, max 4"VNA_SHELL_NEWLINE_STR);
+      return;
+    }
+    // Set zero at the end of string and continue check
+    *lp++ = 0;
+  }
+  if (n == 0)
+    return;
+  // Execute line
+  const VNAShellCommand *scp;
+  for (scp = commands; scp->sc_name!=NULL;scp++) {
+    if (strcmp(scp->sc_name, args[0]) == 0) {
+//    chMtxLock(&mutex);
+      scp->sc_function(shell_stream, n-1, &args[1]);
+//    chMtxUnlock(&mutex);
+      return;
+    }
+  }
+  shell_printf(shell_stream, "%s?"VNA_SHELL_NEWLINE_STR, args[0]);
+}
+
+#ifdef VNA_SHELL_THREAD
+static THD_WORKING_AREA(waThread2, /* cmd_* max stack size + alpha */442);
+THD_FUNCTION(myshellThread, p) {
+  (void)p;
+  chRegSetThreadName("shell");
+  char line[VNA_SHELL_MAX_LENGTH];
+  shell_printf(shell_stream, VNA_SHELL_NEWLINE_STR"NanoVNA Shell"VNA_SHELL_NEWLINE_STR);
+  while (true) {
+    shell_printf(shell_stream, VNA_SHELL_PROMPT_STR);
+    if (VNAShell_readLine(line, VNA_SHELL_MAX_LENGTH))
+      VNAShell_executeLine(line);
+    else // Putting a delay in order to avoid an endless loop trying to read an unavailable stream.
+      osalThreadSleepMilliseconds(100);
+  }
+}
+#endif
 
 static const I2CConfig i2ccfg = {
   0x00300506, //voodoo magic 400kHz @ HSI 8MHz
@@ -2094,23 +2256,29 @@ int main(void)
 
   ui_init();
 
-  /*
-   * Shell manager initialization.
-   */
-    shellInit();
+  chThdCreateStatic(waThread1, sizeof(waThread1), NORMALPRIO-1, Thread1, NULL);
 
-    chThdCreateStatic(waThread1, sizeof(waThread1), NORMALPRIO, Thread1, NULL);
-
-    while (1) {
-      if (SDU1.config->usbp->state == USB_ACTIVE) {
-        thread_t *shelltp = chThdCreateStatic(waThread2, sizeof(waThread2), 
-                                              NORMALPRIO + 1,
-                                              shellThread, (void *)&shell_cfg1);
-        chThdWait(shelltp);               /* Waiting termination.             */
-      }
-
-      chThdSleepMilliseconds(1000);
+  while (1) {
+    if (SDU1.config->usbp->state == USB_ACTIVE) {
+#ifdef VNA_SHELL_THREAD
+      thread_t *shelltp = chThdCreateStatic(waThread2, sizeof(waThread2),
+                                            NORMALPRIO + 1,
+                                            myshellThread, NULL);
+      chThdWait(shelltp);
+#else
+      char line[VNA_SHELL_MAX_LENGTH];
+      shell_printf(shell_stream, VNA_SHELL_NEWLINE_STR"NanoVNA Shell"VNA_SHELL_NEWLINE_STR);
+      do {
+        shell_printf(shell_stream, VNA_SHELL_PROMPT_STR);
+        if (VNAShell_readLine(line, VNA_SHELL_MAX_LENGTH))
+          VNAShell_executeLine(line);
+        else
+          chThdSleepMilliseconds(200);
+      } while (SDU1.config->usbp->state == USB_ACTIVE);
+#endif
     }
+    chThdSleepMilliseconds(1000);
+  }
 }
 
 /* The prototype shows it is a naked function - in effect this is just an

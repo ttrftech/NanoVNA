@@ -21,7 +21,7 @@
 #include "hal.h"
 #include "nanovna.h"
 
-uint16_t spi_buffer[1024];
+uint16_t spi_buffer[2048];
 // Default foreground & background colors
 uint16_t foreground_color=DEFAULT_FG_COLOR;
 uint16_t background_color=DEFAULT_BG_COLOR;
@@ -568,10 +568,34 @@ void ili9341_drawstring_size(const char *str, int x, int y, uint8_t size)
     while (*str)
         x += ili9341_drawchar_size(*str++, x, y, size);
 }
+#if 0
+static void ili9341_pixel(int x, int y, uint16_t color)
+{
+  uint32_t xx = __REV16(x|((x)<<16));
+  uint32_t yy = __REV16(y|((y)<<16));
+  send_command(ILI9341_COLUMN_ADDRESS_SET, 4, (uint8_t*)&xx);
+  send_command(ILI9341_PAGE_ADDRESS_SET, 4, (uint8_t*)&yy);
+  send_command(ILI9341_MEMORY_WRITE, 2, &color);
+}
+#endif
 
 #define SWAP(x,y) { int z=x; x = y; y = z; }
 void ili9341_line(int x0, int y0, int x1, int y1)
 {
+#if 0
+  // modifed Bresenham's line algorithm, see https://en.wikipedia.org/wiki/Bresenham%27s_line_algorithm
+  int dx = x1 - x0, sx = 1; if (dx < 0) {dx = -dx; sx = -1;}
+  int dy = y1 - y0, sy = 1; if (dy < 0) {dy = -dy; sy = -1;}
+  int err = (dx > dy ? dx : -dy) / 2;
+  while (1){
+    ili9341_pixel(x0, y0, DEFAULT_FG_COLOR);
+    if (x0 == x1 && y0 == y1)
+      break;
+    int e2 = err;
+    if (e2 > -dx) { err -= dy; x0 += sx; }
+    if (e2 <  dy) { err += dx; y0 += sy; }
+  }
+#endif
 
     if (x0 > x1) {
         SWAP(x0, x1);
@@ -611,20 +635,8 @@ static const uint16_t colormap[] = {
     RGBHEX(0x00ffff), RGBHEX(0xff00ff), RGBHEX(0xffff00)
 };
 
-static void ili9341_pixel(int x, int y, int color)
-{
-    uint8_t xx[4] = { x >> 8, x, (x+1) >> 8, (x+1) };
-    uint8_t yy[4] = { y >> 8, y, (y+1) >> 8, (y+1) };
-    uint8_t cc[2] = { color >> 8, color };
-    send_command(ILI9341_COLUMN_ADDRESS_SET, 4, xx);
-    send_command(ILI9341_PAGE_ADDRESS_SET, 4, yy);
-    send_command(ILI9341_MEMORY_WRITE, 2, cc);
-    //send_command16(ILI9341_MEMORY_WRITE, color);
-}
-
 void ili9341_test(int mode)
 {
-    chMtxLock(&mutex_ili9341);
     int x, y;
     int i;
     switch (mode) {
@@ -666,6 +678,5 @@ void ili9341_test(int mode)
             ili9341_line(0, 100, 100, 0);
             break;
     }
-    chMtxUnlock(&mutex_ili9341);
 }
 #endif

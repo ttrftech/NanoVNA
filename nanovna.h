@@ -126,30 +126,35 @@ extern void tlv320aic3204_init(void);
 extern void tlv320aic3204_set_gain(int lgain, int rgain);
 extern void tlv320aic3204_select(int channel);
 
-
 /*
  * plot.c
  */
-#define OFFSETX 15
-#define OFFSETY 0
-#define WIDTH 291
+// GRIDX calculated depends from frequency span
+#define GRIDY 23
+
+// Offset of plot area
+#define OFFSETX 10
+#define OFFSETY  0
+
+// WIDTH better be n*(POINTS_COUNT-1)
+#define WIDTH  300
+// HEIGHT = 10*GRIDY
 #define HEIGHT 230
 
-// Smith/polar chart
-#define P_CENTER_X 145
-#define P_CENTER_Y 115
-#define P_RADIUS 115
-
+//
 #define CELLOFFSETX 5
-#define AREA_WIDTH_NORMAL (WIDTH + CELLOFFSETX*2)
+#define AREA_WIDTH_NORMAL  (CELLOFFSETX + WIDTH  + 1 + 4)
+#define AREA_HEIGHT_NORMAL (              HEIGHT + 1)
+
+// Smith/polar chart
+#define P_CENTER_X (CELLOFFSETX + WIDTH/2)
+#define P_CENTER_Y (HEIGHT/2)
+#define P_RADIUS   (HEIGHT/2)
 
 extern int16_t area_width;
 extern int16_t area_height;
 
-#define GRIDY 23
-
 // font
-
 extern const uint8_t x5x7_bits [];
 #define FONT_GET_DATA(ch)	(&x5x7_bits[ch*7])
 #define FONT_GET_WIDTH(ch)	(8-(x5x7_bits[ch*7]&7))
@@ -176,6 +181,8 @@ extern const uint16_t numfont16x22[];
 enum {
   TRC_LOGMAG, TRC_PHASE, TRC_DELAY, TRC_SMITH, TRC_POLAR, TRC_LINEAR, TRC_SWR, TRC_REAL, TRC_IMAG, TRC_R, TRC_X, TRC_OFF
 };
+// Mask for define rectangular plot
+#define RECTANGULAR_GRID_MASK ((1<<TRC_LOGMAG)|(1<<TRC_PHASE)|(1<<TRC_DELAY)|(1<<TRC_LINEAR)|(1<<TRC_SWR)|(1<<TRC_REAL)|(1<<TRC_IMAG)|(1<<TRC_R)|(1<<TRC_X))
 
 // LOGMAG: SCALE, REFPOS, REFVAL
 // PHASE: SCALE, REFPOS, REFVAL
@@ -191,7 +198,7 @@ typedef struct {
   uint8_t enabled;
   uint8_t type;
   uint8_t channel;
-  uint8_t polar;
+  uint8_t reserved;
   float scale;
   float refpos;
 } trace_t;
@@ -256,7 +263,7 @@ void draw_all(bool flush);
 
 void draw_cal_status(void);
 
-void markmap_all_markers(void);
+//void markmap_all_markers(void);
 
 void marker_position(int m, int t, int *x, int *y);
 int search_nearest_index(int x, int y, int t);
@@ -299,7 +306,7 @@ extern int16_t vbat;
 extern uint16_t foreground_color;
 extern uint16_t background_color;
 
-extern uint16_t spi_buffer[1024];
+extern uint16_t spi_buffer[2048];
 
 void ili9341_init(void);
 //void ili9341_setRotation(uint8_t r);

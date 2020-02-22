@@ -64,7 +64,7 @@ static char *long_to_string_with_divisor(char *p,
   do {
     uint8_t c = num % radix;
 	num /= radix;
-    *--q = c + ((c > 9) ? 'A' : '0');
+    *--q = c + ((c > 9) ? ('A'-10) : '0');
   }while((precision && --precision) || num);
   // copy string at begin
   int i = (int)(b - q);

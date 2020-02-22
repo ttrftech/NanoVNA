@@ -623,7 +623,7 @@ trace_get_value_string(int t, char *buf, int len, float array[POINTS_COUNT][2], 
     v = logmag(coeff);
     break;
   case TRC_PHASE:
-    format = "%.3f"S_DEGREE;
+    format = "%.1f"S_DEGREE;
     v = phase(coeff);
     break;
   case TRC_DELAY:
@@ -741,7 +741,7 @@ trace_get_info(int t, char *buf, int len)
     if (scale != 1.0)
       return chsnprintf(buf, len, "%s %.1fFS", name, scale);
     else
-      return chsnprintf(buf, len, name);
+      return chsnprintf(buf, len, "%s ", name);
   default:
       return chsnprintf(buf, len, "%s %F/", name, scale);
   }
@@ -1584,7 +1584,7 @@ cell_draw_marker_info(int m, int n, int w, int h)
       cell_drawstring(w, h, buf, xpos, ypos);
       xpos += 67;
       if (uistat.marker_delta && mk != active_marker)
-          trace_get_value_string_delta(t, buf, sizeof buf, measured[trace[t].channel], markers[mk].index, markers[active_marker].index);
+        trace_get_value_string_delta(t, buf, sizeof buf, measured[trace[t].channel], markers[mk].index, markers[active_marker].index);
       else
         trace_get_value_string(t, buf, sizeof buf, measured[trace[t].channel], markers[mk].index);
       setForegroundColor(DEFAULT_FG_COLOR);
@@ -1654,7 +1654,7 @@ cell_draw_marker_info(int m, int n, int w, int h)
 
     if ((domain_mode & DOMAIN_MODE) == DOMAIN_FREQ) {
       //frequency_string(buf, sizeof buf, frequencies[idx], "");
-      chsnprintf(buf, sizeof buf, "%16qHz", frequencies[idx]);
+      chsnprintf(buf, sizeof buf, "%qHz", frequencies[idx]);
     } else {
       chsnprintf(buf, sizeof buf, "%Fs (%Fm)", time_of_index(idx), distance_of_index(idx));
     }
@@ -1682,13 +1682,13 @@ draw_frequencies(void)
   char buf2[32];buf2[0]=0;
   if ((domain_mode & DOMAIN_MODE) == DOMAIN_FREQ) {
       if (frequency0 < frequency1) {
-        chsnprintf(buf1, sizeof(buf1), " START %16qHz", frequency0);
-        chsnprintf(buf2, sizeof(buf2), "STOP %16qHz", frequency1);
+        chsnprintf(buf1, sizeof(buf1), " START %qHz", frequency0);
+        chsnprintf(buf2, sizeof(buf2), " STOP %qHz", frequency1);
       } else if (frequency0 > frequency1) {
-        chsnprintf(buf1, sizeof(buf1), " CENTER %16qHz", frequency0/2 + frequency1/2);
-        chsnprintf(buf2, sizeof(buf2), "SPAN %16qHz", frequency0 - frequency1);
+        chsnprintf(buf1, sizeof(buf1), " CENTER %qHz", frequency0/2 + frequency1/2);
+        chsnprintf(buf2, sizeof(buf2), " SPAN %qHz", frequency0 - frequency1);
       } else {
-        chsnprintf(buf1, sizeof(buf1), " CW %16qHz", frequency0);
+        chsnprintf(buf1, sizeof(buf1), " CW %qHz", frequency0);
       }
   } else {
       chsnprintf(buf1, sizeof(buf1), " START 0s");
@@ -1697,8 +1697,10 @@ draw_frequencies(void)
   setForegroundColor(DEFAULT_FG_COLOR);
   setBackgroundColor(DEFAULT_BG_COLOR);
   ili9341_fill(0, 232, 320, 8, DEFAULT_BG_COLOR);
-  if (uistat.lever_mode == LM_SPAN || uistat.lever_mode == LM_CENTER)
+  if (uistat.lever_mode == LM_CENTER)
 	buf1[0] = S_SARROW[0];
+  if (uistat.lever_mode == LM_SPAN)
+	buf2[0] = S_SARROW[0];
   ili9341_drawstring(buf1, OFFSETX, 232);
   ili9341_drawstring(buf2, 200, 232);
 }

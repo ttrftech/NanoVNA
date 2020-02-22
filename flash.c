@@ -64,6 +64,7 @@ void flash_unlock(void)
   FLASH->KEYR = 0xCDEF89AB;
 }
 
+#define rotate(x) ((x<<1) | (x&(1<<31)?1:0))
 
 static uint32_t
 checksum(const void *start, size_t len)
@@ -72,7 +73,7 @@ checksum(const void *start, size_t len)
   uint32_t *tail = (uint32_t*)(start + len);
   uint32_t value = 0;
   while (p < tail)
-    value ^= *p++;
+    value = rotate(value) | *p++;
   return value;
 }
 
@@ -89,8 +90,7 @@ config_save(void)
   int count = sizeof(config_t) / sizeof(uint16_t);
 
   config.magic = CONFIG_MAGIC;
-  config.checksum = 0;
-  config.checksum = checksum(&config, sizeof config);
+  config.checksum = checksum(&config, sizeof config - sizeof config.checksum);
 
   flash_unlock();
 
@@ -114,7 +114,7 @@ config_recall(void)
 
   if (src->magic != CONFIG_MAGIC)
     return -1;
-  if (checksum(src, sizeof(config_t)) != 0)
+  if (checksum(src, sizeof *src - sizeof src->checksum) != src->checksum)
     return -1;
 
   /* duplicated saved data onto sram to be able to modify marker/trace */
@@ -182,7 +182,7 @@ caldata_recall(int id)
 
   if (src->magic != CONFIG_MAGIC)
     return -1;
-  if (checksum(src, sizeof(properties_t)) != 0)
+  if (checksum(src, sizeof *src - sizeof src->checksum) != src->checksum)
     return -1;
 
   /* active configuration points to save data on flash memory */
@@ -205,7 +205,7 @@ caldata_ref(int id)
 
   if (src->magic != CONFIG_MAGIC)
     return NULL;
-  if (checksum(src, sizeof(properties_t)) != 0)
+  if (checksum(src, sizeof *src - sizeof src->checksum) != src->checksum)
     return NULL;
   return src;
 }

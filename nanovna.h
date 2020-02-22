@@ -215,7 +215,7 @@ typedef struct {
   uint32_t harmonic_freq_threshold;
 
   uint8_t _reserved[24];
-  int32_t checksum;
+  uint32_t checksum;
 } config_t;
 
 extern config_t config;
@@ -352,7 +352,7 @@ typedef struct {
   uint8_t _domain_mode; /* 0bxxxxxffm : where ff: TD_FUNC m: DOMAIN_MODE */
   uint8_t _marker_smith_format;
   uint8_t _reserved[50];
-  int32_t checksum;
+  uint32_t checksum;
 } properties_t;
 
 //sizeof(properties_t) == 0x1200

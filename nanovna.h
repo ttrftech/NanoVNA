@@ -78,7 +78,7 @@ enum {
 void set_sweep_frequency(int type, uint32_t frequency);
 uint32_t get_sweep_frequency(int type);
 
-float my_atof(const char *p);
+double my_atof(const char *p);
 
 void toggle_sweep(void);
 
@@ -152,7 +152,7 @@ extern int16_t area_height;
 
 extern const uint8_t x5x7_bits [];
 #define FONT_GET_DATA(ch)	(&x5x7_bits[ch*7])
-#define FONT_GET_WIDTH(ch)	(7-(x5x7_bits[ch*7]&3))
+#define FONT_GET_WIDTH(ch)	(8-(x5x7_bits[ch*7]&7))
 #define FONT_GET_HEIGHT		7
 
 extern const uint16_t numfont16x22[];
@@ -330,7 +330,7 @@ typedef struct {
   uint32_t magic;
   uint32_t _frequency0;
   uint32_t _frequency1;
-  int16_t _sweep_points;
+  uint16_t _sweep_points;
   uint16_t _cal_status;
 
   uint32_t _frequencies[POINTS_COUNT];

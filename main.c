@@ -2090,7 +2090,7 @@ static int VNAShell_readLine(char *line, int max_size){
     if (streamRead(shell_stream, &c, 1) == 0)
       return 0;
     // Backspace
-    if (c == 8) {
+    if (c == 8 || c == 0x7f) {
       if (ptr != line) {
         static const char backspace[] = {0x08,0x20,0x08,0x00};
         shell_printf(shell_stream, backspace);

@@ -706,10 +706,10 @@ properties_t current_props = {
   ._frequency1 =       900000000, // end = 900MHz
   ._sweep_points =     POINTS_COUNT,
   ._trace = {/*enable, type, channel, reserved, scale, refpos*/
-    { 1, TRC_LOGMAG, 0, 0, 1.0, 9.0 },
-    { 1, TRC_LOGMAG, 1, 0, 1.0, 9.0 },
+    { 1, TRC_LOGMAG, 0, 0, 10.0, 9.0 },
+    { 1, TRC_LOGMAG, 1, 0, 10.0, 9.0 },
     { 1, TRC_SMITH,  0, 0, 1.0, 0.0 },
-    { 1, TRC_PHASE,  1, 0, 1.0, 5.0 }
+    { 1, TRC_PHASE,  1, 0, 90.0, 5.0 }
   },
   ._markers = {
     { 1, 30, 0 }, { 0, 40, 0 }, { 0, 60, 0 }, { 0, 80, 0 }

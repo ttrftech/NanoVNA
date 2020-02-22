@@ -610,7 +610,7 @@ trace_get_value_string(int t, char *buf, int len, float array[POINTS_COUNT][2], 
     v = logmag(coeff);
     break;
   case TRC_PHASE:
-    format = "%.3f"S_DEGREE;
+    format = "%.1f"S_DEGREE;
     v = phase(coeff);
     break;
   case TRC_DELAY:
@@ -1402,7 +1402,9 @@ draw_all_cells(bool flush_markmap)
 void
 draw_all(bool flush)
 {
-  if (redraw_request & REDRAW_CELLS)
+  if (redraw_request & REDRAW_MARKER)
+    markmap_upperarea();
+  if (redraw_request & (REDRAW_CELLS | REDRAW_MARKER))
     draw_all_cells(flush);
   if (redraw_request & REDRAW_FREQUENCY)
     draw_frequencies();
@@ -1610,12 +1612,12 @@ draw_frequencies(void)
   char buf1[32];
   char buf2[32];buf2[0]=0;
   if ((domain_mode & DOMAIN_MODE) == DOMAIN_FREQ) {
-      if (frequency0 < frequency1) {
+      if (FREQ_IS_STARTSTOP()) {
         chsnprintf(buf1, sizeof(buf1), " START %qHz", frequency0);
         chsnprintf(buf2, sizeof(buf2), " STOP %qHz", frequency1);
-      } else if (frequency0 > frequency1) {
-        chsnprintf(buf1, sizeof(buf1), " CENTER %qHz", frequency0/2 + frequency1/2);
-        chsnprintf(buf2, sizeof(buf2), " SPAN %qHz", frequency0 - frequency1);
+      } else if (FREQ_IS_CENTERSPAN()) {
+        chsnprintf(buf1, sizeof(buf1), " CENTER %qHz", FREQ_CENTER());
+        chsnprintf(buf2, sizeof(buf2), " SPAN %qHz", FREQ_SPAN());
       } else {
         chsnprintf(buf1, sizeof(buf1), " CW %qHz", frequency0);
       }

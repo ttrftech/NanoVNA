@@ -914,9 +914,9 @@ set_sweep_frequency(int type, uint32_t freq)
     break;
   case ST_CENTER:
     freq_mode_centerspan();
-    uint32_t center = frequency0/2 + frequency1/2;
+    uint32_t center = FREQ_CENTER();
     if (center != freq) {
-      uint32_t span = frequency0 - frequency1;
+      uint32_t span = FREQ_SPAN();
       ensure_edit_config();
       if (freq < START_MIN + span/2) {
         span = (freq - START_MIN) * 2;

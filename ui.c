@@ -439,6 +439,15 @@ enter_dfu(void)
   NVIC_SystemReset();
 }
 
+static void
+select_lever_mode(int mode)
+{
+  if (uistat.lever_mode != mode) {
+    uistat.lever_mode = mode;
+    redraw_request |= REDRAW_FREQUENCY | REDRAW_MARKER;
+  }
+}
+
 // type of menu item 
 enum {
   MT_NONE,
@@ -625,7 +634,7 @@ menu_transform_cb(int item, uint8_t data)
   (void)item;
   (void)data;
   domain_mode ^= DOMAIN_TIME;
-  uistat.lever_mode = LM_MARKER;
+  select_lever_mode(LM_MARKER);
   draw_frequencies();
   ui_mode_normal();
 }
@@ -692,7 +701,6 @@ menu_stimulus_cb(int item, uint8_t data)
   case 2: /* CENTER */
   case 3: /* SPAN */
   case 4: /* CW */
-    uistat.lever_mode = item == 3 ? LM_SPAN : LM_CENTER;
     status = btn_wait_release();
     if (status & EVT_BUTTON_DOWN_LONG) {
       ui_mode_numeric(item);
@@ -803,7 +811,7 @@ menu_marker_search_cb(int item, uint8_t data)
   }
   draw_menu();
   redraw_marker(active_marker, TRUE);
-  uistat.lever_mode = LM_SEARCH;
+  select_lever_mode(LM_SEARCH);
 }
 
 static void
@@ -860,7 +868,6 @@ menu_marker_sel_cb(int item, uint8_t data)
   }
   redraw_marker(active_marker, TRUE);
   draw_menu();
-  uistat.lever_mode = LM_MARKER;
 }
 
 const menuitem_t menu_calop[] = {
@@ -1724,15 +1731,15 @@ lever_zoom_span(int status)
 }
 
 static void
-lever_move_center(int status)
+lever_move(int status, int mode)
 {
-  uint32_t center = get_sweep_frequency(ST_CENTER);
+  uint32_t center = get_sweep_frequency(mode);
   uint32_t span = get_sweep_frequency(ST_SPAN);
   span = step_round(span / 3);
   if (status & EVT_UP) {
-    set_sweep_frequency(ST_CENTER, center + span);
+    set_sweep_frequency(mode, center + span);
   } else if (status & EVT_DOWN) {
-    set_sweep_frequency(ST_CENTER, center - span);
+    set_sweep_frequency(mode, center - span);
   }
 }
 
@@ -1747,8 +1754,15 @@ ui_process_normal(void)
       switch (uistat.lever_mode) {
       case LM_MARKER: lever_move_marker(status);   break;
       case LM_SEARCH: lever_search_marker(status); break;
-      case LM_CENTER: lever_move_center(status);   break;
-      case LM_SPAN:   lever_zoom_span(status);     break;      
+      case LM_CENTER:
+        lever_move(status, FREQ_IS_STARTSTOP() ? ST_START : ST_CENTER);
+        break;
+      case LM_SPAN:
+        if (FREQ_IS_STARTSTOP())
+          lever_move(status, ST_STOP);
+        else
+         lever_zoom_span(status);
+        break;
       }
     }
   }
@@ -2120,7 +2134,8 @@ touch_pickup_marker(void)
         }
         // select trace
         uistat.current_trace = t;
-        
+        select_lever_mode(LM_MARKER);
+       
         // drag marker until release
         drag_marker(t, m);
         return TRUE;
@@ -2131,6 +2146,27 @@ touch_pickup_marker(void)
   return FALSE;
 }
 
+static int
+touch_lever_mode_select(void)
+{
+  int touch_x, touch_y;
+  touch_position(&touch_x, &touch_y);
+  if (touch_y > HEIGHT) {
+    if (touch_x < 160) {
+        select_lever_mode(LM_CENTER);
+    } else {
+        select_lever_mode(LM_SPAN);
+    }
+    return TRUE;
+  }
+
+  if (touch_y < 15) {
+    select_lever_mode(LM_MARKER);
+    return TRUE;
+  }
+
+   return FALSE;
+ }
 
 static
 void ui_process_touch(void)
@@ -2144,6 +2180,10 @@ void ui_process_touch(void)
     case UI_NORMAL:
 
       if (touch_pickup_marker()) {
+        break;
+      } else if (touch_lever_mode_select()) {
+        draw_all(FALSE);
+        touch_wait_release();
         break;
       }
       

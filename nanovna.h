@@ -129,8 +129,6 @@ extern void tlv320aic3204_select(int channel);
 /*
  * plot.c
  */
-// GRIDX calculated depends from frequency span
-#define GRIDY 23
 
 // Offset of plot area
 #define OFFSETX 10
@@ -138,8 +136,19 @@ extern void tlv320aic3204_select(int channel);
 
 // WIDTH better be n*(POINTS_COUNT-1)
 #define WIDTH  300
-// HEIGHT = 10*GRIDY
-#define HEIGHT 230
+// HEIGHT = 8*GRIDY
+#define HEIGHT 232
+
+//#define NGRIDY 10
+#define NGRIDY 8
+
+#define FREQUENCIES_XPOS1 OFFSETX
+#define FREQUENCIES_XPOS2 200
+#define FREQUENCIES_YPOS  (HEIGHT+1)
+
+// GRIDX calculated depends from frequency span
+//#define GRIDY 29
+#define GRIDY (HEIGHT / NGRIDY)
 
 //
 #define CELLOFFSETX 5

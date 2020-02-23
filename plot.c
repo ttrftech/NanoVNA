@@ -508,7 +508,7 @@ trace_into_index(int t, int i, float array[POINTS_COUNT][2])
   int y, x;
 
   float *coeff = array[i];
-  float refpos = 10 - get_trace_refpos(t);
+  float refpos = NGRIDY - get_trace_refpos(t);
   float v = refpos;
   float scale = 1 / get_trace_scale(t);
   switch (trace[t].type) {
@@ -545,8 +545,8 @@ trace_into_index(int t, int i, float array[POINTS_COUNT][2])
     cartesian_scale(coeff[0], coeff[1], &x, &y, scale);
     goto set_index;
   }
-  if (v <  0) v =  0;
-  if (v > 10) v = 10;
+  if (v <  0) v = 0;
+  if (v > NGRIDY) v = NGRIDY;
   x = (i * (WIDTH) + (sweep_points-1)/2) / (sweep_points-1) + CELLOFFSETX;
   y = floatToInt(v * GRIDY);
 set_index:
@@ -1367,7 +1367,7 @@ draw_cell(int m, int n)
       continue;
     int x = 0 - x0 + CELLOFFSETX - REFERENCE_X_OFFSET;
     if (x+REFERENCE_WIDTH>=0 && x-REFERENCE_WIDTH<w){
-      int y = 10*GRIDY - floatToInt((get_trace_refpos(t) * GRIDY)) - y0 - REFERENCE_Y_OFFSET;
+      int y = HEIGHT - floatToInt((get_trace_refpos(t) * GRIDY)) - y0 - REFERENCE_Y_OFFSET;
       if (y+REFERENCE_HEIGHT>=0 && y-REFERENCE_HEIGHT<h)
         draw_refpos(w, h, x, y, config.trace_color[t]);
     }
@@ -1632,8 +1632,8 @@ draw_frequencies(void)
 	buf1[0] = S_SARROW[0];
   if (uistat.lever_mode == LM_SPAN)
 	buf2[0] = S_SARROW[0];
-  ili9341_drawstring(buf1, OFFSETX, 232);
-  ili9341_drawstring(buf2, 200, 232);
+  ili9341_drawstring(buf1, FREQUENCIES_XPOS1, FREQUENCIES_YPOS);
+  ili9341_drawstring(buf2, FREQUENCIES_XPOS2, FREQUENCIES_YPOS);
 }
 
 void

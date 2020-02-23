@@ -2258,6 +2258,7 @@ static const GPTConfig gpt3cfg = {
   0
 };
 
+#if 0
 static void
 test_touch(int *x, int *y)
 {
@@ -2268,6 +2269,7 @@ test_touch(int *x, int *y)
 
   touch_start_watchdog();
 }
+#endif
 
 void
 handle_touch_interrupt(void)

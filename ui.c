@@ -403,7 +403,7 @@ show_version(void)
   ili9341_drawstring_size(BOARD_NAME, x, y, 4);
   y += 25;
 
-  ili9341_drawstring("2016-2019 Copyright @edy555", x, y += 10);
+  ili9341_drawstring("2016-2020 Copyright @edy555", x, y += 10);
   ili9341_drawstring("Licensed under GPL. See: https://github.com/ttrftech/NanoVNA", x, y += 10);
   ili9341_drawstring("Version: " VERSION, x, y += 10);
   ili9341_drawstring("Build Time: " __DATE__ " - " __TIME__, x, y += 10);

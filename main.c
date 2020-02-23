@@ -402,6 +402,36 @@ my_atof(const char *p)
   return x;
 }
 
+//
+// Function used for search substring v in list
+// Example need search parameter "center" in "start|stop|center|span|cw" getStringIndex return 2
+// If not found return -1
+// Used for easy parse command arguments
+static int getStringIndex(char *v, const char *list){
+  int i = 0;
+  while(1){
+    char *p = v;
+    while (1){
+      char c = *list; if (c == '|') c = 0;
+      if (c == *p++){
+        // Found, return index
+        if (c == 0) return i;
+        list++;    // Compare next symbol
+        continue;
+      }
+      break;  // Not equal, break
+    }
+    // Set new substring ptr
+    while (1){
+    	// End of string, not found
+    	if (*list   ==  0 ) return -1;
+    	if (*list++ == '|') break;
+    }
+    i++;
+  }
+  return -1;
+}
+
 static void cmd_offset(BaseSequentialStream *chp, int argc, char *argv[])
 {
     if (argc != 1) {
@@ -672,19 +702,17 @@ static void (*sample_func)(float *gamma) = calculate_gamma;
 
 static void cmd_sample(BaseSequentialStream *chp, int argc, char *argv[])
 {
-  if (argc == 1) {
-    if (strcmp(argv[0], "ref") == 0) {
-      sample_func = fetch_amplitude_ref;
-      return;
-    } else if (strcmp(argv[0], "ampl") == 0) {
-      sample_func = fetch_amplitude;
-      return;
-    } else if (strcmp(argv[0], "gamma") == 0) {
-      sample_func = calculate_gamma;
-      return;
-    }
+  if (argc!=1) goto usage;
+  //                                         0    1   2
+  static const char cmd_sample_list[] = "gamma|ampl|ref";
+  switch (getStringIndex(argv[1], cmd_sample_list)){
+    case 0:sample_func = calculate_gamma; return;
+    case 1:sample_func = fetch_amplitude; return;
+    case 2:sample_func = fetch_amplitude_ref; return;
+    default:break;
   }
-  shell_printf(chp, "usage: sample {gamma|ampl|ref}\r\n");
+usage:
+  shell_printf(chp, "usage: sample {%s}\r\n", cmd_sample_list);
 }
 
 config_t config = {
@@ -1022,21 +1050,15 @@ static void cmd_sweep(BaseSequentialStream *chp, int argc, char *argv[])
   uint32_t value1 = 0;
   if (argc >=1) value0 = my_atoui(argv[0]);
   if (argc >=2) value1 = my_atoui(argv[1]);
-
+#if MAX_FREQ_TYPE!=5
+#error "Sweep mode possibly changed, check cmd_sweep function"
+#endif
   // Parse sweep {start|stop|center|span|cw} {freq(Hz)}
+  // get enum ST_START, ST_STOP, ST_CENTER, ST_SPAN, ST_CW
+  static const char sweep_cmd[] = "start|stop|center|span|cw";
   if (argc == 2 && value0 == 0) {
-    int type;
-    if (strcmp(argv[0], "start") == 0)
-      type = ST_START;
-    else if (strcmp(argv[0], "stop") == 0)
-      type = ST_STOP;
-    else if (strcmp(argv[0], "center") == 0)
-      type = ST_CENTER;
-    else if (strcmp(argv[0], "span") == 0)
-      type = ST_SPAN;
-    else if (strcmp(argv[0], "cw") == 0)
-      type = ST_CW;
-    else
+    int type = getStringIndex(argv[0], sweep_cmd);
+    if (type == -1)
       goto usage;
     set_sweep_frequency(type, value1);
     return;
@@ -1049,7 +1071,7 @@ static void cmd_sweep(BaseSequentialStream *chp, int argc, char *argv[])
   return;
 usage:
   shell_printf(chp, "usage: sweep {start(Hz)} [stop(Hz)]\r\n"\
-                    "\tsweep {start|stop|center|span|cw} {freq(Hz)}\r\n");
+                    "\tsweep {%s} {freq(Hz)}\r\n", sweep_cmd);
 }
 
 
@@ -1069,13 +1091,14 @@ eterm_copy(int dst, int src)
   memcpy(cal_data[dst], cal_data[src], sizeof cal_data[dst]);
 }
 
-
+#if 0
 const struct open_model {
   float c0;
   float c1;
   float c2;
   float c3;
 } open_model = { 50, 0, -300, 27 };
+#endif
 
 #if 0
 static void
@@ -1405,51 +1428,33 @@ static void cmd_cal(BaseSequentialStream *chp, int argc, char *argv[])
     shell_printf(chp, "\r\n");
     return;
   }
-
-  char *cmd = argv[0];
-  if (strcmp(cmd, "load") == 0) {
-    cal_collect(CAL_LOAD);
-  } else if (strcmp(cmd, "open") == 0) {
-    cal_collect(CAL_OPEN);
-  } else if (strcmp(cmd, "short") == 0) {
-    cal_collect(CAL_SHORT);
-  } else if (strcmp(cmd, "thru") == 0) {
-    cal_collect(CAL_THRU);
-  } else if (strcmp(cmd, "isoln") == 0) {
-    cal_collect(CAL_ISOLN);
-  } else if (strcmp(cmd, "done") == 0) {
-    cal_done();
-    return;
-  } else if (strcmp(cmd, "on") == 0) {
-    cal_status |= CALSTAT_APPLY;
-    redraw_request |= REDRAW_CAL_STATUS;
-    return;
-  } else if (strcmp(cmd, "off") == 0) {
-    cal_status &= ~CALSTAT_APPLY;
-    redraw_request |= REDRAW_CAL_STATUS;
-    return;
-  } else if (strcmp(cmd, "reset") == 0) {
-    cal_status = 0;
-    redraw_request |= REDRAW_CAL_STATUS;
-    return;
-  } else if (strcmp(cmd, "data") == 0) {
-    shell_printf(chp, "%f %f\r\n", cal_data[CAL_LOAD][0][0], cal_data[CAL_LOAD][0][1]);
-    shell_printf(chp, "%f %f\r\n", cal_data[CAL_OPEN][0][0], cal_data[CAL_OPEN][0][1]);
-    shell_printf(chp, "%f %f\r\n", cal_data[CAL_SHORT][0][0], cal_data[CAL_SHORT][0][1]);
-    shell_printf(chp, "%f %f\r\n", cal_data[CAL_THRU][0][0], cal_data[CAL_THRU][0][1]);
-    shell_printf(chp, "%f %f\r\n", cal_data[CAL_ISOLN][0][0], cal_data[CAL_ISOLN][0][1]);
-    return;
-  } else if (strcmp(cmd, "in") == 0) {
-    int s = 0;
-    if (argc > 1)
-      s = my_atoi(argv[1]);
-    cal_interpolate(s);
-    redraw_request |= REDRAW_CAL_STATUS;
-    return;
-  } else {
-    shell_printf(chp, "usage: cal [load|open|short|thru|isoln|done|reset|on|off|in]\r\n");
-    return;
+  //                                     0    1     2    3     4    5  6   7     8    9 10
+  static const char cmd_cal_list[] = "load|open|short|thru|isoln|done|on|off|reset|data|in";
+  switch (getStringIndex(argv[0], cmd_cal_list)){
+    case  0:cal_collect(CAL_LOAD ); return;
+    case  1:cal_collect(CAL_OPEN ); return;
+    case  2:cal_collect(CAL_SHORT); return;
+    case  3:cal_collect(CAL_THRU ); return;
+    case  4:cal_collect(CAL_ISOLN); return;
+    case  5:cal_done(); return;
+    case  6:cal_status|= CALSTAT_APPLY;redraw_request|=REDRAW_CAL_STATUS; return;
+    case  7:cal_status&=~CALSTAT_APPLY;redraw_request|=REDRAW_CAL_STATUS; return;
+    case  8:cal_status = 0;            redraw_request|=REDRAW_CAL_STATUS; return;
+    case  9:
+      shell_printf(chp, "%f %f\r\n", cal_data[CAL_LOAD ][0][0], cal_data[CAL_LOAD ][0][1]);
+      shell_printf(chp, "%f %f\r\n", cal_data[CAL_OPEN ][0][0], cal_data[CAL_OPEN ][0][1]);
+      shell_printf(chp, "%f %f\r\n", cal_data[CAL_SHORT][0][0], cal_data[CAL_SHORT][0][1]);
+      shell_printf(chp, "%f %f\r\n", cal_data[CAL_THRU ][0][0], cal_data[CAL_THRU ][0][1]);
+      shell_printf(chp, "%f %f\r\n", cal_data[CAL_ISOLN][0][0], cal_data[CAL_ISOLN][0][1]);
+      return;
+    case 10:
+      cal_interpolate((argc > 1) ? my_atoi(argv[1]) : 0);
+      redraw_request|=REDRAW_CAL_STATUS;
+      return;
+    default:break;
   }
+
+  shell_printf(chp, "usage: cal [%s]\r\n", cmd_cal_list);
 }
 
 static void cmd_save(BaseSequentialStream *chp, int argc, char *argv[])
@@ -1577,11 +1582,6 @@ float get_trace_refpos(int t)
   return trace[t].refpos;
 }
 
-typedef struct {
-  char *tracename;
-  uint8_t type;
-} type_list;
-
 static void cmd_trace(BaseSequentialStream *chp, int argc, char *argv[])
 {
   int t;
@@ -1614,50 +1614,44 @@ static void cmd_trace(BaseSequentialStream *chp, int argc, char *argv[])
     shell_printf(chp, "%d %s %s\r\n", t, type, channel);
     return;
   }
-  static const type_list t_list[] = {
-    {"logmag", TRC_LOGMAG},
-    {"phase", TRC_PHASE},
-    {"delay", TRC_DELAY},
-    {"smith", TRC_SMITH},
-    {"polar", TRC_POLAR},
-    {"linear", TRC_LINEAR},
-    {"swr", TRC_SWR},
-    {"real", TRC_REAL},
-    {"imag", TRC_IMAG},
-    {"r", TRC_R},
-    {"x", TRC_X},
-    {"off", TRC_OFF},
-  };
-  for (uint16_t i=0; i<sizeof(t_list)/sizeof(type_list); i++){
-    if (strcmp(argv[1], t_list[i].tracename) == 0) {
-      set_trace_type(t, t_list[i].type);
-      goto check_ch_num;
+#if MAX_TRACE_TYPE!=12
+#error "Trace type enum possibly changed, check cmd_trace function"
+#endif
+  // enum TRC_LOGMAG, TRC_PHASE, TRC_DELAY, TRC_SMITH, TRC_POLAR, TRC_LINEAR, TRC_SWR, TRC_REAL, TRC_IMAG, TRC_R, TRC_X, TRC_OFF
+  static const char cmd_type_list[] = "logmag|phase|delay|smith|polar|linear|swr|real|imag|r|x|off";
+  int type = getStringIndex(argv[1], cmd_type_list);
+  if (type >= 0){
+    set_trace_type(t, type);
+    goto check_ch_num;
+  }
+  //                                            0      1
+  static const char cmd_scale_ref_list[] = "scale|refpos";
+  if (argc >= 3){
+    switch (getStringIndex(argv[1], cmd_scale_ref_list)){
+      case 0:
+        //trace[t].scale = my_atof(argv[2]);
+        set_trace_scale(t, my_atof(argv[2]));
+        goto exit;
+      case 1:
+        //trace[t].refpos = my_atof(argv[2]);
+        set_trace_refpos(t, my_atof(argv[2]));
+        goto exit;
+      default:
+        goto usage;
     }
   }
-  if (strcmp(argv[1], "scale") == 0 && argc >= 3) {
-    //trace[t].scale = my_atof(argv[2]);
-    set_trace_scale(t, my_atof(argv[2]));
-    goto exit;
-  } else if (strcmp(argv[1], "refpos") == 0 && argc >= 3) {
-    //trace[t].refpos = my_atof(argv[2]);
-    set_trace_refpos(t, my_atof(argv[2]));
-    goto exit;
-  } else {
-      goto usage;
-  }
-
-  check_ch_num:
+check_ch_num:
   if (argc > 2) {
     int src = my_atoi(argv[2]);
     if (src != 0 && src != 1)
       goto usage;
     trace[t].channel = src;
   }
- exit:
+exit:
   return;
- usage:
-  shell_printf(chp, "trace {0|1|2|3|all} [logmag|phase|polar|smith|linear|delay|swr|real|imag|r|x|off] [src]\r\n"\
-                    "trace {0|1|2|3} {scale|refpos} {value}\r\n");
+usage:
+  shell_printf(chp, "trace {0|1|2|3|all} [%s] [src]\r\n"\
+                    "trace {0|1|2|3} {%s} {value}\r\n", cmd_type_list, cmd_scale_ref_list);
 }
 
 
@@ -1696,7 +1690,7 @@ static void cmd_marker(BaseSequentialStream *chp, int argc, char *argv[])
       }
     }
     return;
-  } 
+  }
   if (strcmp(argv[0], "off") == 0) {
     active_marker = -1;
     for (t = 0; t < MARKERS_MAX; t++)
@@ -1716,17 +1710,11 @@ static void cmd_marker(BaseSequentialStream *chp, int argc, char *argv[])
     redraw_request |= REDRAW_MARKER;
     return;
   }
-  if (argc > 1) {
-    if (strcmp(argv[1], "off") == 0) {
-      markers[t].enabled = FALSE;
-      if (active_marker == t)
-        active_marker = -1;
-      redraw_request |= REDRAW_MARKER;
-    } else if (strcmp(argv[1], "on") == 0) {
-      markers[t].enabled = TRUE;
-      active_marker = t;
-      redraw_request |= REDRAW_MARKER;
-    } else {
+  static const char cmd_marker_list[] = "on|off";
+  switch (getStringIndex(argv[1], cmd_marker_list)){
+    case 0: markers[t].enabled = TRUE; active_marker = t; redraw_request |= REDRAW_MARKER; return;
+    case 1: markers[t].enabled =FALSE; if (active_marker == t) active_marker = -1; redraw_request|=REDRAW_MARKER; return;
+    default:
       // select active marker and move to index
       markers[t].enabled = TRUE;
       int index = my_atoi(argv[1]);
@@ -1734,11 +1722,10 @@ static void cmd_marker(BaseSequentialStream *chp, int argc, char *argv[])
       markers[t].frequency = frequencies[index];
       active_marker = t;
       redraw_request |= REDRAW_MARKER;
-    }
+      return;
   }
-  return;
  usage:
-  shell_printf(chp, "marker [n] [off|{index}]\r\n");
+  shell_printf(chp, "marker [n] [%s|{index}]\r\n", cmd_marker_list);
 }
 
 static void cmd_touchcal(BaseSequentialStream *chp, int argc, char *argv[])
@@ -1814,33 +1801,24 @@ static void cmd_transform(BaseSequentialStream *chp, int argc, char *argv[])
   if (argc == 0) {
     goto usage;
   }
-
+  //                                         0   1       2    3        4       5      6       7
+  static const char cmd_transform_list[] = "on|off|impulse|step|bandpass|minimum|normal|maximum";
   for (i = 0; i < argc; i++) {
-    char *cmd = argv[i];
-    if (strcmp(cmd, "on") == 0) {
-      set_domain_mode(DOMAIN_TIME);
-    } else if (strcmp(cmd, "off") == 0) {
-      set_domain_mode(DOMAIN_FREQ);
-    } else if (strcmp(cmd, "impulse") == 0) {
-      set_timedomain_func(TD_FUNC_LOWPASS_IMPULSE);
-    } else if (strcmp(cmd, "step") == 0) {
-      set_timedomain_func(TD_FUNC_LOWPASS_STEP);
-    } else if (strcmp(cmd, "bandpass") == 0) {
-      set_timedomain_func(TD_FUNC_BANDPASS);
-    } else if (strcmp(cmd, "minimum") == 0) {
-      set_timedomain_window(TD_WINDOW_MINIMUM);
-    } else if (strcmp(cmd, "normal") == 0) {
-      set_timedomain_window(TD_WINDOW_NORMAL);
-    } else if (strcmp(cmd, "maximum") == 0) {
-      set_timedomain_window(TD_WINDOW_MAXIMUM);
-    } else {
-      goto usage;
+    switch (getStringIndex(argv[i], cmd_transform_list)){
+      case 0:set_domain_mode(DOMAIN_TIME);return;
+      case 1:set_domain_mode(DOMAIN_FREQ);return;
+      case 2:set_timedomain_func(TD_FUNC_LOWPASS_IMPULSE);return;
+      case 3:set_timedomain_func(TD_FUNC_LOWPASS_STEP);return;
+      case 4:set_timedomain_func(TD_FUNC_BANDPASS);return;
+      case 5:set_timedomain_window(TD_WINDOW_MINIMUM);return;
+      case 6:set_timedomain_window(TD_WINDOW_NORMAL);return;
+      case 7:set_timedomain_window(TD_WINDOW_MAXIMUM);return;
+      default: goto usage;
     }
   }
   return;
-
 usage:
-  shell_printf(chp, "usage: transform {on|off|impulse|step|bandpass|minimum|normal|maximum} [...]\r\n");
+  shell_printf(chp, "usage: transform {%s} [...]\r\n", cmd_transform_list);
 }
 
 static void cmd_test(BaseSequentialStream *chp, int argc, char *argv[])
@@ -1989,17 +1967,13 @@ static void cmd_vbat(BaseSequentialStream *chp, int argc, char *argv[])
 static void cmd_threads(BaseSequentialStream *chp, int argc, char *argv[]) {
   static const char *states[] = {CH_STATE_NAMES};
   thread_t *tp;
-
+  (void)argc;
   (void)argv;
-  if (argc > 0) {
-    shellUsage(chp, "threads");
-    return;
-  }
-  chprintf(chp, "stklimit    stack     addr refs prio     state         name\r\n"SHELL_NEWLINE_STR);
+  chprintf(chp, "stklimit    stack     addr refs prio     state         name"VNA_SHELL_NEWLINE_STR);
   tp = chRegFirstThread();
   do {
     uint32_t stklimit = (uint32_t)tp->wabase;
-    shell_printf(chp, "%08x %08x %08x %4u %4u %9s %12s"SHELL_NEWLINE_STR,
+    shell_printf(chp, "%08x %08x %08x %4u %4u %9s %12s"VNA_SHELL_NEWLINE_STR,
              stklimit, (uint32_t)tp->ctx.sp, (uint32_t)tp,
              (uint32_t)tp->refs - 1, (uint32_t)tp->prio, states[tp->state],
              tp->name == NULL ? "" : tp->name);
@@ -2055,7 +2029,7 @@ static const VNAShellCommand commands[] =
     { "threshold"   , cmd_threshold   },
     { "help"        , cmd_help        },
 #ifdef ENABLE_THREADS_COMMAND
-//  { "threads"     , cmd_threads     },
+    { "threads"     , cmd_threads     },
 #endif
     { NULL          , NULL            }
 };
@@ -2089,7 +2063,7 @@ static int VNAShell_readLine(char *line, int max_size){
     // Return 0 only if stream not active
     if (streamRead(shell_stream, &c, 1) == 0)
       return 0;
-    // Backspace
+    // Backspace or Delete
     if (c == 8 || c == 0x7f) {
       if (ptr != line) {
         static const char backspace[] = {0x08,0x20,0x08,0x00};
@@ -2162,12 +2136,12 @@ static THD_WORKING_AREA(waThread2, /* cmd_* max stack size + alpha */442);
 THD_FUNCTION(myshellThread, p) {
   (void)p;
   chRegSetThreadName("shell");
-  char line[VNA_SHELL_MAX_LENGTH];
+  char shell_line[VNA_SHELL_MAX_LENGTH];
   shell_printf(shell_stream, VNA_SHELL_NEWLINE_STR"NanoVNA Shell"VNA_SHELL_NEWLINE_STR);
   while (true) {
     shell_printf(shell_stream, VNA_SHELL_PROMPT_STR);
-    if (VNAShell_readLine(line, VNA_SHELL_MAX_LENGTH))
-      VNAShell_executeLine(line);
+    if (VNAShell_readLine(shell_line, VNA_SHELL_MAX_LENGTH))
+      VNAShell_executeLine(shell_line);
     else // Putting a delay in order to avoid an endless loop trying to read an unavailable stream.
       osalThreadSleepMilliseconds(100);
   }
@@ -2266,12 +2240,12 @@ int main(void)
                                             myshellThread, NULL);
       chThdWait(shelltp);
 #else
-      char line[VNA_SHELL_MAX_LENGTH];
+      char shell_line[VNA_SHELL_MAX_LENGTH];
       shell_printf(shell_stream, VNA_SHELL_NEWLINE_STR"NanoVNA Shell"VNA_SHELL_NEWLINE_STR);
       do {
         shell_printf(shell_stream, VNA_SHELL_PROMPT_STR);
-        if (VNAShell_readLine(line, VNA_SHELL_MAX_LENGTH))
-          VNAShell_executeLine(line);
+        if (VNAShell_readLine(shell_line, VNA_SHELL_MAX_LENGTH))
+          VNAShell_executeLine(shell_line);
         else
           chThdSleepMilliseconds(200);
       } while (SDU1.config->usbp->state == USB_ACTIVE);

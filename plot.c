@@ -967,7 +967,7 @@ search_index_range_x(int x1, int x2, uint32_t index[POINTS_COUNT], int *i0, int 
   return TRUE;
 }
 
-#define REFERENCE_WIDTH    5
+#define REFERENCE_WIDTH    6
 #define REFERENCE_HEIGHT   5
 #define REFERENCE_X_OFFSET 5
 #define REFERENCE_Y_OFFSET 2
@@ -1627,11 +1627,11 @@ draw_frequencies(void)
   }
   setForegroundColor(DEFAULT_FG_COLOR);
   setBackgroundColor(DEFAULT_BG_COLOR);
-  ili9341_fill(0, 232, 320, 8, DEFAULT_BG_COLOR);
+  ili9341_fill(0, FREQUENCIES_YPOS, 320, FONT_GET_HEIGHT, DEFAULT_BG_COLOR);
   if (uistat.lever_mode == LM_CENTER)
-	buf1[0] = S_SARROW[0];
+    buf1[0] = S_SARROW[0];
   if (uistat.lever_mode == LM_SPAN)
-	buf2[0] = S_SARROW[0];
+    buf2[0] = S_SARROW[0];
   ili9341_drawstring(buf1, FREQUENCIES_XPOS1, FREQUENCIES_YPOS);
   ili9341_drawstring(buf2, FREQUENCIES_XPOS2, FREQUENCIES_YPOS);
 }

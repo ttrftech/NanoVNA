@@ -71,8 +71,9 @@ extern float measured[2][POINTS_COUNT][2];
 void cal_collect(int type);
 void cal_done(void);
 
+#define MAX_FREQ_TYPE 5
 enum {
-  ST_START, ST_STOP, ST_CENTER, ST_SPAN, ST_CW
+  ST_START=0, ST_STOP, ST_CENTER, ST_SPAN, ST_CW
 };
 
 void set_sweep_frequency(int type, uint32_t frequency);
@@ -187,8 +188,9 @@ extern const uint16_t numfont16x22[];
 
 #define TRACES_MAX 4
 
+#define MAX_TRACE_TYPE 12
 enum {
-  TRC_LOGMAG, TRC_PHASE, TRC_DELAY, TRC_SMITH, TRC_POLAR, TRC_LINEAR, TRC_SWR, TRC_REAL, TRC_IMAG, TRC_R, TRC_X, TRC_OFF
+  TRC_LOGMAG=0, TRC_PHASE, TRC_DELAY, TRC_SMITH, TRC_POLAR, TRC_LINEAR, TRC_SWR, TRC_REAL, TRC_IMAG, TRC_R, TRC_X, TRC_OFF
 };
 // Mask for define rectangular plot
 #define RECTANGULAR_GRID_MASK ((1<<TRC_LOGMAG)|(1<<TRC_PHASE)|(1<<TRC_DELAY)|(1<<TRC_LINEAR)|(1<<TRC_SWR)|(1<<TRC_REAL)|(1<<TRC_IMAG)|(1<<TRC_R)|(1<<TRC_X))

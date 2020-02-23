@@ -32,12 +32,12 @@ static int flash_wait_for_last_operation(void)
 
 static void flash_erase_page0(uint32_t page_address)
 {
-	flash_wait_for_last_operation();
-	FLASH->CR |= FLASH_CR_PER;
-	FLASH->AR = page_address;
-	FLASH->CR |= FLASH_CR_STRT;
-	flash_wait_for_last_operation();
-	FLASH->CR &= ~FLASH_CR_PER;
+  flash_wait_for_last_operation();
+  FLASH->CR |= FLASH_CR_PER;
+  FLASH->AR = page_address;
+  FLASH->CR |= FLASH_CR_STRT;
+  flash_wait_for_last_operation();
+  FLASH->CR &= ~FLASH_CR_PER;
 }
 
 int flash_erase_page(uint32_t page_address)
@@ -50,11 +50,11 @@ int flash_erase_page(uint32_t page_address)
 
 void flash_program_half_word(uint32_t address, uint16_t data)
 {
-	flash_wait_for_last_operation();
-	FLASH->CR |= FLASH_CR_PG;
-    *(__IO uint16_t*)address = data;
-	flash_wait_for_last_operation();
-	FLASH->CR &= ~FLASH_CR_PG;
+  flash_wait_for_last_operation();
+  FLASH->CR |= FLASH_CR_PG;
+  *(__IO uint16_t*)address = data;
+  flash_wait_for_last_operation();
+  FLASH->CR &= ~FLASH_CR_PG;
 }
 
 void flash_unlock(void)
@@ -64,8 +64,6 @@ void flash_unlock(void)
   FLASH->KEYR = 0xCDEF89AB;
 }
 
-#define rotate(x) (((x)<<1) | ((x)&(1<<31)?1:0))
-
 static uint32_t
 checksum(const void *start, size_t len)
 {
@@ -73,7 +71,7 @@ checksum(const void *start, size_t len)
   uint32_t *tail = (uint32_t*)(start + len);
   uint32_t value = 0;
   while (p < tail)
-    value = rotate(value) + *p++;
+    value = __ROR(value, 31) + *p++;
   return value;
 }
 

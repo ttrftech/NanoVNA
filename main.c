@@ -1505,17 +1505,17 @@ static const struct {
   uint16_t refpos;
   float scale_unit;
 } trace_info[] = {
-  { "LOGMAG", 9, 10 },
-  { "PHASE",  5, 90 },
-  { "DELAY",  5,  1e-9 },
-  { "SMITH",  0,  1 },
-  { "POLAR",  0,  1 },
-  { "LINEAR", 0,  0.125 },
-  { "SWR",    0,  1 },
-  { "REAL",   5,  0.25 },
-  { "IMAG",   5,  0.25 },
-  { "R",      0, 100 },
-  { "X",      5, 100 }
+  { "LOGMAG", NGRIDY-1,  10.0 },
+  { "PHASE",  NGRIDY/2,  90.0 },
+  { "DELAY",  NGRIDY/2,  1e-9 },
+  { "SMITH",         0,  1.00 },
+  { "POLAR",         0,  1.00 },
+  { "LINEAR",        0,  0.125},
+  { "SWR",           0,  1.00 },
+  { "REAL",   NGRIDY/2,  0.25 },
+  { "IMAG",   NGRIDY/2,  0.25 },
+  { "R",      NGRIDY/2, 100.0 },
+  { "X",      NGRIDY/2, 100.0 }
 };
 
 const char * const trc_channel_name[] = {

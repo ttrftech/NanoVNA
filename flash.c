@@ -64,7 +64,7 @@ void flash_unlock(void)
   FLASH->KEYR = 0xCDEF89AB;
 }
 
-#define rotate(x) ((x<<1) | (x&(1<<31)?1:0))
+#define rotate(x) (((x)<<1) | ((x)&(1<<31)?1:0))
 
 static uint32_t
 checksum(const void *start, size_t len)
@@ -73,7 +73,7 @@ checksum(const void *start, size_t len)
   uint32_t *tail = (uint32_t*)(start + len);
   uint32_t value = 0;
   while (p < tail)
-    value = rotate(value) | *p++;
+    value = rotate(value) + *p++;
   return value;
 }
 
@@ -142,8 +142,7 @@ caldata_save(int id)
   dst = (uint16_t*)saveareas[id];
 
   current_props.magic = CONFIG_MAGIC;
-  current_props.checksum = 0;
-  current_props.checksum = checksum(&current_props, sizeof current_props);
+  current_props.checksum = checksum(&current_props, sizeof current_props - sizeof current_props.checksum);
 
   flash_unlock();
 

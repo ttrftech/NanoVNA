@@ -300,6 +300,9 @@ extern int16_t vbat;
 #define RGB565(r,g,b)  ( (((g)&0x1c)<<11) | (((b)&0xf8)<<5) | ((r)&0xf8) | (((g)&0xe0)>>5) )
 #define RGBHEX(hex) ( (((hex)&0x001c00)<<3) | (((hex)&0x0000f8)<<5) | (((hex)&0xf80000)>>16) | (((hex)&0x00e000)>>13) )
 
+// Define size of screen buffer in pixels (one pixel 16bit size)
+#define SPI_BUFFER_SIZE	            2048
+
 #define DEFAULT_FG_COLOR			RGB565(255,255,255)
 #define DEFAULT_BG_COLOR			RGB565(  0,  0,  0)
 #define DEFAULT_GRID_COLOR			RGB565(128,128,128)
@@ -317,7 +320,7 @@ extern int16_t vbat;
 extern uint16_t foreground_color;
 extern uint16_t background_color;
 
-extern uint16_t spi_buffer[2048];
+extern uint16_t spi_buffer[SPI_BUFFER_SIZE];
 
 void ili9341_init(void);
 //void ili9341_setRotation(uint8_t r);

@@ -21,7 +21,7 @@
 #include "hal.h"
 #include "nanovna.h"
 
-uint16_t spi_buffer[2048];
+uint16_t spi_buffer[SPI_BUFFER_SIZE];
 // Default foreground & background colors
 uint16_t foreground_color=DEFAULT_FG_COLOR;
 uint16_t background_color=DEFAULT_BG_COLOR;

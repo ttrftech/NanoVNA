@@ -16,6 +16,10 @@ int16_t area_height = AREA_HEIGHT_NORMAL;
 // Depends from spi_buffer size, CELLWIDTH*CELLHEIGHT <= sizeof(spi_buffer)
 #define CELLWIDTH  (64)
 #define CELLHEIGHT (32)
+// Check buffer size
+#if CELLWIDTH*CELLHEIGHT > SPI_BUFFER_SIZE
+#error "Too small spi_buffer size SPI_BUFFER_SIZE < CELLWIDTH*CELLHEIGH"
+#endif
 
 // indicate dirty cells (not redraw if cell data not changed)
 #define MAX_MARKMAP_X    ((320+CELLWIDTH-1)/CELLWIDTH)

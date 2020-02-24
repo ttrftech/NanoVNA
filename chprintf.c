@@ -36,6 +36,9 @@
 // ' ' Prepends a space for positive signed-numeric types. positive = ' ', negative = '-'. This flag is ignored if the + flag exists.
 //#define CHPRINTF_USE_SPACE_FLAG
 
+// Force putting trailing zeros on float value
+#define CHPRINTF_FORCE_TRAILING_ZEROS
+
 #define MAX_FILLER 11
 #define FLOAT_PRECISION 9
 
@@ -161,12 +164,14 @@ static char *ftoa(char *p, float num, uint32_t precision) {
   // Fix rounding error if get
   if (k>=multi){k-=multi;l++;}
   p = long_to_string_with_divisor(p, l, 10, 0);
-  if (precision && k){
+  if (precision){
 	 *p++ = '.';
 	p=long_to_string_with_divisor(p, k, 10, precision);
+#ifndef CHPRINTF_FORCE_TRAILING_ZEROS
 	// remove zeros at end
     while (p[-1]=='0') p--;
     if (p[-1]=='.') p--;
+#endif
   }
   return p;
 }

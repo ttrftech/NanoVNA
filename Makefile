@@ -70,7 +70,7 @@ endif
 # Stack size to the allocated to the Cortex-M main/exceptions stack. This
 # stack is used for processing interrupts and exceptions.
 ifeq ($(USE_EXCEPTIONS_STACKSIZE),)
-  USE_EXCEPTIONS_STACKSIZE = 0x180
+  USE_EXCEPTIONS_STACKSIZE = 0x200
 endif
 
 #

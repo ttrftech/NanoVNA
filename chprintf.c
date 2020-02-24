@@ -29,7 +29,7 @@
 
 #include "hal.h"
 #include "chprintf.h"
-#include "memstreams.h"
+//#include "memstreams.h"
 #include <math.h>
 
 // Enable [flags], support:
@@ -53,7 +53,6 @@ static char smallPrefix[]= { 'm', 0x1d,  'n',   'p',   'f',   'a',   'z',   'y',
 
 #pragma pack(pop)
 
-//86066	   5116	  11456	 102622	  190de	build/ch.elf
 static char *long_to_string_with_divisor(char *p,
                                          uint32_t num,
 										 uint32_t radix,
@@ -63,7 +62,7 @@ static char *long_to_string_with_divisor(char *p,
   // convert to string from end buffer to begin
   do {
     uint8_t c = num % radix;
-	num /= radix;
+    num /= radix;
     *--q = c + ((c > 9) ? ('A'-10) : '0');
   }while((precision && --precision) || num);
   // copy string at begin
@@ -103,7 +102,7 @@ static char *ulong_freq(char *p, uint32_t freq, uint32_t precision){
     // freq = freq / 10;
     uint32_t c = freq;
     freq>>=1;
-	freq+=freq>>1;
+    freq+=freq>>1;
     freq+=freq>>4;
     freq+=freq>>8;
     freq+=freq>>16; // freq = 858993459*freq/1073741824 = freq * 0,799999999813735485076904296875
@@ -111,12 +110,12 @@ static char *ulong_freq(char *p, uint32_t freq, uint32_t precision){
     c-= freq*10;    // freq*10 = (freq*4+freq)*2 = ((freq<<2)+freq)<<1
     while (c>=10) {freq++;c-=10;}
 #endif
-	*--q = c + '0';
-	if (freq==0)
-		break;
-	// Add spaces, calculate prefix
-	if (format&1) {*--q = ' '; s++;}
-	format>>=1;
+    *--q = c + '0';
+    if (freq==0)
+      break;
+    // Add spaces, calculate prefix
+    if (format&1) {*--q = ' '; s++;}
+    format>>=1;
   } while (1);
   s = bigPrefix[s];
 
@@ -144,7 +143,7 @@ static char *ulong_freq(char *p, uint32_t freq, uint32_t precision){
   }while (--i);
   // Put pref (amd space before it if need)
   if (flag&FREQ_PREFIX_SPACE && s!=' ')
-	  *p++ = ' ';
+    *p++ = ' ';
   *p++ = s;
   return p;
 }
@@ -162,9 +161,9 @@ static char *ftoa(char *p, float num, uint32_t precision) {
   if (k>=multi){k-=multi;l++;}
   p = long_to_string_with_divisor(p, l, 10, 0);
   if (precision && k){
-	 *p++ = '.';
-	p=long_to_string_with_divisor(p, k, 10, precision);
-	// remove zeros at end
+    *p++ = '.';
+    p=long_to_string_with_divisor(p, k, 10, precision);
+    // remove zeros at end
     while (p[-1]=='0') p--;
     if (p[-1]=='.') p--;
   }
@@ -175,14 +174,14 @@ static char *ftoaS(char *p, float num, uint32_t precision) {
   char prefix=0;
   char *ptr;
   if (num > 1000.0){
-	  for (ptr = bigPrefix+1; *ptr && num > 1000.0; num/=1000, ptr++)
-		  ;
-	  prefix = ptr[-1];
+    for (ptr = bigPrefix+1; *ptr && num > 1000.0; num/=1000, ptr++)
+      ;
+    prefix = ptr[-1];
   }
   else if (num < 1){
-	  for (ptr = smallPrefix; *ptr && num < 1.0; num*=1000, ptr++)
-		  ;
-	  prefix = num > 1e-3 ? ptr[-1] : 0;
+    for (ptr = smallPrefix; *ptr && num < 1.0; num*=1000, ptr++)
+      ;
+    prefix = num > 1e-3 ? ptr[-1] : 0;
   }
   // Auto set prescision
   uint32_t l = num;
@@ -274,13 +273,13 @@ int chvprintf(BaseSequentialStream *chp, const char *fmt, va_list ap) {
       else if (*fmt == '+')
         state|=POSITIVE;
       else if (*fmt == '0')
-    	state|=PAD_ZERO;
+        state|=PAD_ZERO;
 #ifdef CHPRINTF_USE_SPACE_FLAG
       else if (*fmt == ' ')
-    	state|=PLUS_SPACE;
+        state|=PLUS_SPACE;
 #endif
       else
-    	  break;
+        break;
       fmt++;
     }
     // Get [width] - The Width field specifies a minimum number of characters to output
@@ -309,7 +308,7 @@ int chvprintf(BaseSequentialStream *chp, const char *fmt, va_list ap) {
       }
     }
     else
-		state|=DEFAULT_PRESCISION;
+      state|=DEFAULT_PRESCISION;
     //Get [length]
     /*
     if (c == 'l' || c == 'L') {
@@ -342,42 +341,42 @@ int chvprintf(BaseSequentialStream *chp, const char *fmt, va_list ap) {
       if (state & IS_LONG)
         value.l = va_arg(ap, long);
       else*/
-    	value.l = va_arg(ap, uint32_t);
+        value.l = va_arg(ap, uint32_t);
       if (value.l < 0) {
-    	state|=NEGATIVE;
+        state|=NEGATIVE;
         *p++ = '-';
         value.l = -value.l;
       }
       else if (state & POSITIVE)
-    	*p++ = '+';
+        *p++ = '+';
 #ifdef CHPRINTF_USE_SPACE_FLAG
       else if (state & PLUS_SPACE)
-    	*p++ = ' ';
+        *p++ = ' ';
 #endif
       p = long_to_string_with_divisor(p, value.l, 10, 0);
       break;
-	case 'q':
-		value.u = va_arg(ap, uint32_t);
-		p=ulong_freq(p, value.u, precision);
-	  break;
+    case 'q':
+      value.u = va_arg(ap, uint32_t);
+      p=ulong_freq(p, value.u, precision);
+      break;
 #if CHPRINTF_USE_FLOAT
     case 'F':
     case 'f':
       value.f = va_arg(ap, double);
       if (value.f < 0) {
-    	state|=NEGATIVE;
+        state|=NEGATIVE;
         *p++ = '-';
         value.f = -value.f;
       }
       else if (state & POSITIVE)
-    	*p++ = '+';
+        *p++ = '+';
 #ifdef CHPRINTF_USE_SPACE_FLAG
       else if (state & PLUS_SPACE)
        	*p++ = ' ';
 #endif
       if (value.f == INFINITY){
-    	  *p++ = 0x19;
-    	  break;
+        *p++ = 0x19;
+        break;
       }
       p = (c=='F') ? ftoaS(p, value.f, precision) : ftoa(p, value.f, state&DEFAULT_PRESCISION ? FLOAT_PRECISION : precision);
       break;
@@ -422,7 +421,7 @@ unsigned_common:/*
       while (width){
         streamPut(chp, (uint8_t)filler);
         n++;
-		width--;
+        width--;
       }
     }
     // put data
@@ -462,6 +461,7 @@ unsigned_common:/*
  *
  * @api
  */
+#if 0
 int chprintf(BaseSequentialStream *chp, const char *fmt, ...) {
   va_list ap;
   int formatted_bytes;
@@ -472,7 +472,7 @@ int chprintf(BaseSequentialStream *chp, const char *fmt, ...) {
 
   return formatted_bytes;
 }
-
+#endif
 /**
  * @brief   System formatted output function.
  * @details This function implements a minimal @p vprintf()-like functionality
@@ -501,6 +501,7 @@ int chprintf(BaseSequentialStream *chp, const char *fmt, ...) {
  *
  * @api
  */
+#if 0
 int chsnprintf(char *str, size_t size, const char *fmt, ...) {
   va_list ap;
   MemoryStream ms;
@@ -528,6 +529,53 @@ int chsnprintf(char *str, size_t size, const char *fmt, ...) {
       str[ms.eos] = 0;
 
   /* Return number of bytes that would have been written.*/
+  return retval;
+}
+#endif
+
+//
+// Small memory stream object, only put function
+//
+struct printStreamVMT {
+  _base_sequential_stream_methods
+};
+
+typedef struct {
+  const struct printStreamVMT *vmt;
+  uint8_t  *buffer;
+  uint16_t size;
+} printStream;
+
+static msg_t put(void *ip, uint8_t b) {
+  printStream *ps = ip;
+  if (ps->size > 1){
+   *(ps->buffer++) = b;
+   ps->size--;
+  }
+  return MSG_OK;
+}
+
+static const struct printStreamVMT vmt = {NULL, NULL, put, NULL};
+void printObjectInit(printStream *ps, int size, uint8_t *buffer){
+  ps->vmt    = &vmt;
+  ps->buffer = buffer;
+  ps->size   = size;
+}
+// Simple print in buffer function
+int plot_printf(char *str, int size, const char *fmt, ...) {
+  va_list ap;
+  printStream ps;
+  int retval;
+  if (size <= 0) return 0;
+  // Init small memory stream for print
+  printObjectInit(&ps, size, (uint8_t *)str);
+  // Performing the print operation using the common code.
+  va_start(ap, fmt);
+  retval = chvprintf((BaseSequentialStream *)(void *)&ps, fmt, ap);
+  va_end(ap);
+  *(ps.buffer)=0;
+  if (retval > size-1) retval = size-1;
+  // Return number of bytes that would have been written.
   return retval;
 }
 

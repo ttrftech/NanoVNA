@@ -782,7 +782,7 @@ static void
 menu_marker_search_cb(int item, uint8_t data)
 {
   (void)data;
-  int i;
+  int i = -1;
   if (active_marker == -1)
     return;
 
@@ -791,23 +791,19 @@ menu_marker_search_cb(int item, uint8_t data)
   case 1: /* minimum */
     set_marker_search(item);
     i = marker_search();
-    if (i != -1)
-      markers[active_marker].index = i;
     break;
   case 2: /* search Left */
     i = marker_search_left(markers[active_marker].index);
-    if (i != -1)
-      markers[active_marker].index = i;
     break;
   case 3: /* search right */
     i = marker_search_right(markers[active_marker].index);
-    if (i != -1)
-      markers[active_marker].index = i;
     break;
   case 4: /* tracking */
     marker_tracking = !marker_tracking;
     break;
   }
+  if (i != -1)
+    markers[active_marker].index = i;
   draw_menu();
   redraw_marker(active_marker, TRUE);
   select_lever_mode(LM_SEARCH);
@@ -1601,7 +1597,7 @@ static void
 draw_numeric_area(void)
 {
   char buf[10];
-  chsnprintf(buf, sizeof buf, "%9d", uistat.value);
+  plot_printf(buf, sizeof buf, "%9d", uistat.value);
   draw_numeric_input(buf);
 }
 

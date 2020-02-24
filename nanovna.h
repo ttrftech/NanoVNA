@@ -168,6 +168,7 @@ extern int16_t area_height;
 extern const uint8_t x5x7_bits [];
 #define FONT_GET_DATA(ch)	(&x5x7_bits[ch*7])
 #define FONT_GET_WIDTH(ch)	(8-(x5x7_bits[ch*7]&7))
+#define FONT_MAX_WIDTH		7
 #define FONT_GET_HEIGHT		7
 
 extern const uint16_t numfont16x22[];
@@ -463,6 +464,10 @@ int16_t adc_vbat_read(ADC_TypeDef *adc);
 /*
  * misclinous
  */
+int plot_printf(char *str, int, const char *fmt, ...);
 #define PULSE do { palClearPad(GPIOC, GPIOC_LED); palSetPad(GPIOC, GPIOC_LED);} while(0)
 
+// Speed profile definition
+#define START_PROFILE   systime_t time = chVTGetSystemTimeX();
+#define STOP_PROFILE    {char string_buf[12];plot_printf(string_buf, sizeof string_buf, "T:%06d", chVTGetSystemTimeX() - time);ili9341_drawstringV(string_buf, 1, 60);}
 /*EOF*/

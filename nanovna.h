@@ -330,6 +330,7 @@ void ili9341_bulk(int x, int y, int w, int h);
 void ili9341_fill(int x, int y, int w, int h, int color);
 void setForegroundColor(uint16_t fg);
 void setBackgroundColor(uint16_t fg);
+void clearScreen(void);
 void blit8BitWidthBitmap(uint16_t x, uint16_t y, uint16_t width, uint16_t height, const uint8_t *bitmap);
 void blit16BitWidthBitmap(uint16_t x, uint16_t y, uint16_t width, uint16_t height, const uint16_t *bitmap);
 void ili9341_drawchar(uint8_t ch, int x, int y);

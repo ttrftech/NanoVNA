@@ -487,6 +487,10 @@ void ili9341_read_memory(int x, int y, int w, int h, int len, uint16_t *out)
 }
 #endif
 
+void clearScreen(void){
+	ili9341_fill(0, 0, ILI9341_WIDTH, ILI9341_HEIGHT, background_color);
+}
+
 void setForegroundColor(uint16_t fg) {foreground_color = fg;}
 void setBackgroundColor(uint16_t bg) {background_color = bg;}
 

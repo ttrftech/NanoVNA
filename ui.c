@@ -311,7 +311,7 @@ touch_cal_exec(void)
   adc_stop(ADC1);
   setForegroundColor(DEFAULT_FG_COLOR);
   setBackgroundColor(DEFAULT_BG_COLOR);
-  ili9341_fill(0, 0, 320, 240, DEFAULT_BG_COLOR);
+  clearScreen();
   ili9341_line(0, 0, 0, 32);
   ili9341_line(0, 0, 32, 0);
   ili9341_drawstring("TOUCH UPPER LEFT", 10, 10);
@@ -320,7 +320,7 @@ touch_cal_exec(void)
   x1 = last_touch_x;
   y1 = last_touch_y;
 
-  ili9341_fill(0, 0, 320, 240, DEFAULT_BG_COLOR);
+  clearScreen();
   ili9341_line(320-1, 240-1, 320-1, 240-32);
   ili9341_line(320-1, 240-1, 320-32, 240-1);
   ili9341_drawstring("TOUCH LOWER RIGHT", 230, 220);
@@ -346,9 +346,9 @@ touch_draw_test(void)
   
   adc_stop(ADC1);
 
-  ili9341_fill(0, 0, 320, 240, DEFAULT_BG_COLOR);
   setForegroundColor(DEFAULT_FG_COLOR);
   setBackgroundColor(DEFAULT_BG_COLOR);
+  clearScreen();
   ili9341_drawstring("TOUCH TEST: DRAG PANEL", OFFSETX, 233);
 
   touch_wait_pressed();
@@ -378,12 +378,11 @@ void
 show_version(void)
 {
   int x = 5, y = 5;
-  
   adc_stop(ADC1);
-  ili9341_fill(0, 0, 320, 240, DEFAULT_BG_COLOR);
-
   setForegroundColor(DEFAULT_FG_COLOR);
   setBackgroundColor(DEFAULT_BG_COLOR);
+
+  clearScreen();
   ili9341_drawstring_size(BOARD_NAME, x, y, 4);
   y += 25;
 
@@ -417,7 +416,7 @@ enter_dfu(void)
   setForegroundColor(DEFAULT_FG_COLOR);
   setBackgroundColor(DEFAULT_BG_COLOR);
   // leave a last message 
-  ili9341_fill(0, 0, 320, 240, DEFAULT_BG_COLOR);
+  clearScreen();
   ili9341_drawstring("DFU: Device Firmware Update Mode", x, y += 10);
   ili9341_drawstring("To exit DFU mode, please reset device yourself.", x, y += 10);
 
@@ -647,7 +646,7 @@ static void
 choose_active_marker(void)
 {
   int i;
-  for (i = 0; i < 4; i++)
+  for (i = 0; i < MARKERS_MAX; i++)
     if (markers[i].enabled) {
       active_marker = i;
       return;
@@ -1478,7 +1477,7 @@ erase_menu_buttons(void)
 static void
 erase_numeric_input(void)
 {
-  ili9341_fill(0, 240-32, 320, 32, DEFAULT_BG_COLOR);
+  ili9341_fill(0, 240-NUM_INPUT_HEIGHT, 320, NUM_INPUT_HEIGHT, DEFAULT_BG_COLOR);
 }
 
 static void

@@ -145,7 +145,7 @@ extern void tlv320aic3204_select(int channel);
 
 #define FREQUENCIES_XPOS1 OFFSETX
 #define FREQUENCIES_XPOS2 200
-#define FREQUENCIES_YPOS  (HEIGHT+1)
+#define FREQUENCIES_YPOS  (240-7)
 
 // GRIDX calculated depends from frequency span
 //#define GRIDY 29

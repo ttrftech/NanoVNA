@@ -80,55 +80,58 @@ int8_t cal_auto_interpolate = TRUE;
 uint16_t redraw_request = 0; // contains REDRAW_XXX flags
 int16_t vbat = 0;
 
-static THD_WORKING_AREA(waThread1, 512);
+//
+// Profile stack usage (enable threads command by def ENABLE_THREADS_COMMAND) show:
+// Stack maximum usage = 480 bytes, free stack = 32+64 bytes
+//
+static THD_WORKING_AREA(waThread1, 512+64);
 static THD_FUNCTION(Thread1, arg)
 {
-    (void)arg;
-    chRegSetThreadName("sweep");
+  (void)arg;
+  chRegSetThreadName("sweep");
 
-    while (1) {
-      bool completed = false;
-      if (sweep_enabled || sweep_once) {
-        chMtxLock(&mutex);
-        // Sweep require 8367 system tick
-        completed = sweep(true);
-        sweep_once = FALSE;
-        chMtxUnlock(&mutex);
-      } else {
-        __WFI();
+  while (1) {
+    bool completed = false;
+    if (sweep_enabled || sweep_once) {
+      chMtxLock(&mutex);
+      // Sweep require 8367 system tick
+      completed = sweep(true);
+      sweep_once = FALSE;
+      chMtxUnlock(&mutex);
+    } else {
+      __WFI();
+    }
+
+    chMtxLock(&mutex);
+    // Ui and render require 800 system tick
+    ui_process();
+
+    if (sweep_enabled) {
+      if (vbat != -1) {
+        adc_stop(ADC1);
+        vbat = adc_vbat_read(ADC1);
+        touch_start_watchdog();
+        draw_battery_status();
       }
 
-      chMtxLock(&mutex);
-      // Ui and render require 800 system tick
-      ui_process();
+      // calculate trace coordinates and plot only if scan completed
+      if (completed) {
+        plot_into_index(measured);
+        redraw_request |= REDRAW_CELLS;
 
-      if (sweep_enabled) {
-        if (vbat != -1) {
-          adc_stop(ADC1);
-          vbat = adc_vbat_read(ADC1);
-          touch_start_watchdog();
-          draw_battery_status();
-        }
-
-        /* calculate trace coordinates and plot only if scan completed */
-        if (completed) {
-          plot_into_index(measured);
-          redraw_request |= REDRAW_CELLS;
-
-          if (marker_tracking) {
-            int i = marker_search();
-            if (i != -1 && active_marker != -1) {
-              markers[active_marker].index = i;
-              redraw_request |= REDRAW_MARKER;
-            }
+        if (marker_tracking) {
+          int i = marker_search();
+          if (i != -1 && active_marker != -1) {
+            markers[active_marker].index = i;
+            redraw_request |= REDRAW_MARKER;
           }
         }
       }
-
-      /* plot trace and other indications as raster */
-      draw_all(completed); // flush markmap only if scan completed to prevent remaining traces
-      chMtxUnlock(&mutex);
     }
+    // plot trace and other indications as raster
+    draw_all(completed); // flush markmap only if scan completed to prevent remaining traces
+    chMtxUnlock(&mutex);
+  }
 }
 
 void
@@ -206,6 +209,7 @@ transform_domain(void)
           beta = 13;
           break;
   }
+
 
   for (int ch = 0; ch < 2; ch++) {
       memcpy(tmp, measured[ch], sizeof(measured[0]));
@@ -1939,12 +1943,22 @@ VNA_SHELL_FUNCTION(cmd_threads) {
   thread_t *tp;
   (void)argc;
   (void)argv;
-  chprintf(chp, "stklimit    stack     addr refs prio     state         name"VNA_SHELL_NEWLINE_STR);
+  shell_printf("stklimit|   stack|stk free|    addr|refs|prio|    state|        name"VNA_SHELL_NEWLINE_STR);
   tp = chRegFirstThread();
   do {
+    uint32_t max_stack_use = 0U;
+#if (CH_DBG_ENABLE_STACK_CHECK == TRUE) || (CH_CFG_USE_DYNAMIC == TRUE)
     uint32_t stklimit = (uint32_t)tp->wabase;
-    shell_printf("%08x %08x %08x %4u %4u %9s %12s"VNA_SHELL_NEWLINE_STR,
-             stklimit, (uint32_t)tp->ctx.sp, (uint32_t)tp,
+#if CH_DBG_FILL_THREADS == TRUE
+    uint8_t *p = (uint8_t *)tp->wabase; while(p[max_stack_use]==CH_DBG_STACK_FILL_VALUE) max_stack_use++;
+#endif
+#else
+    uint32_t stklimit = 0U;
+#endif
+
+
+    shell_printf("%08x|%08x|%08x|%08x|%4u|%4u|%9s|%12s"VNA_SHELL_NEWLINE_STR,
+             stklimit, (uint32_t)tp->ctx.sp, max_stack_use, (uint32_t)tp,
              (uint32_t)tp->refs - 1, (uint32_t)tp->prio, states[tp->state],
              tp->name == NULL ? "" : tp->name);
     tp = chRegNextThread(tp);
@@ -2142,68 +2156,65 @@ static DACConfig dac1cfg1 = {
   datamode:     DAC_DHRM_12BIT_RIGHT
 };
 
+
+// Main thread stack size defined in makefile USE_PROCESS_STACKSIZE = 0x200
+// Profile stack usage (enable threads command by def ENABLE_THREADS_COMMAND) show:
+// Stack maximum usage = 472 bytes (need test more and run all commands), free stack = 40 bytes
+//
 int main(void)
 {
-    halInit();
-    chSysInit();
+  halInit();
+  chSysInit();
 
-    chMtxObjectInit(&mutex);
+  chMtxObjectInit(&mutex);
 
-    //palSetPadMode(GPIOB, 8, PAL_MODE_ALTERNATE(1) | PAL_STM32_OTYPE_OPENDRAIN);
-    //palSetPadMode(GPIOB, 9, PAL_MODE_ALTERNATE(1) | PAL_STM32_OTYPE_OPENDRAIN);
-    i2cStart(&I2CD1, &i2ccfg);
-    si5351_init();
+  //palSetPadMode(GPIOB, 8, PAL_MODE_ALTERNATE(1) | PAL_STM32_OTYPE_OPENDRAIN);
+  //palSetPadMode(GPIOB, 9, PAL_MODE_ALTERNATE(1) | PAL_STM32_OTYPE_OPENDRAIN);
+  i2cStart(&I2CD1, &i2ccfg);
+  si5351_init();
 
-    // MCO on PA8
-    //palSetPadMode(GPIOA, 8, PAL_MODE_ALTERNATE(0));
-  /*
-   * Initializes a serial-over-USB CDC driver.
-   */
-    sduObjectInit(&SDU1);
-    sduStart(&SDU1, &serusbcfg);
+  // MCO on PA8
+  //palSetPadMode(GPIOA, 8, PAL_MODE_ALTERNATE(0));
+/*
+ * Initializes a serial-over-USB CDC driver.
+ */
+  sduObjectInit(&SDU1);
+  sduStart(&SDU1, &serusbcfg);
+/*
+ * Activates the USB driver and then the USB bus pull-up on D+.
+ * Note, a delay is inserted in order to not have to disconnect the cable
+ * after a reset.
+ */
+  usbDisconnectBus(serusbcfg.usbp);
+  chThdSleepMilliseconds(100);
+  usbStart(serusbcfg.usbp, &usbcfg);
+  usbConnectBus(serusbcfg.usbp);
 
-  /*
-   * Activates the USB driver and then the USB bus pull-up on D+.
-   * Note, a delay is inserted in order to not have to disconnect the cable
-   * after a reset.
-   */
-    usbDisconnectBus(serusbcfg.usbp);
-    chThdSleepMilliseconds(100);
-    usbStart(serusbcfg.usbp, &usbcfg);
-    usbConnectBus(serusbcfg.usbp);
-
-  /*
-   * SPI LCD Initialize
-   */
+/*
+ * SPI LCD Initialize
+ */
   ili9341_init();
 
-  /*
-   * Initialize graph plotting
-   */
-  plot_init();
-
-  /* restore config */
+/* restore config */
   config_recall();
 
   dac1cfg1.init = config.dac_value;
-  /*
-   * Starting DAC1 driver, setting up the output pin as analog as suggested
-   * by the Reference Manual.
-   */
+/*
+ * Starting DAC1 driver, setting up the output pin as analog as suggested
+ * by the Reference Manual.
+ */
   dacStart(&DACD2, &dac1cfg1);
 
-  /* initial frequencies */
+/* initial frequencies */
   update_frequencies();
 
-  /* restore frequencies and calibration properties from flash memory */
+/* restore frequencies and calibration properties from flash memory */
   if (config.default_loadcal >= 0)
     caldata_recall(config.default_loadcal);
 
-  redraw_frame();
-
-  /*
-   * I2S Initialize
-   */
+/*
+ * I2S Initialize
+ */
   tlv320aic3204_init();
   i2sInit();
   i2sObjectInit(&I2SD2);
@@ -2211,12 +2222,17 @@ int main(void)
   i2sStartExchange(&I2SD2);
 
   ui_init();
-
+  //Initialize graph plotting
+  plot_init();
+  redraw_frame();
   chThdCreateStatic(waThread1, sizeof(waThread1), NORMALPRIO-1, Thread1, NULL);
 
   while (1) {
     if (SDU1.config->usbp->state == USB_ACTIVE) {
 #ifdef VNA_SHELL_THREAD
+#if CH_CFG_USE_WAITEXIT == FALSE
+#error "VNA_SHELL_THREAD use chThdWait, need enable CH_CFG_USE_WAITEXIT in chconf.h"
+#endif
       thread_t *shelltp = chThdCreateStatic(waThread2, sizeof(waThread2),
                                             NORMALPRIO + 1,
                                             myshellThread, NULL);

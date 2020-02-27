@@ -1271,7 +1271,7 @@ draw_numeric_area_frame(void)
   ili9341_fill(0, 240-NUM_INPUT_HEIGHT, 320, NUM_INPUT_HEIGHT, DEFAULT_MENU_COLOR);
   setForegroundColor(DEFAULT_MENU_TEXT_COLOR);
   setBackgroundColor(DEFAULT_MENU_COLOR);
-  ili9341_drawstring(keypad_mode_label[keypad_mode], 10, 240-FONT_GET_HEIGHT-(NUM_INPUT_HEIGHT-FONT_GET_HEIGHT)/2);
+  ili9341_drawstring(keypad_mode_label[keypad_mode], 10, 240-(FONT_GET_HEIGHT+NUM_INPUT_HEIGHT)/2);
   //ili9341_drawfont(KP_KEYPAD, 300, 216);
 }
 
@@ -1297,8 +1297,8 @@ draw_numeric_input(const char *buf)
     if (ui_mode == UI_NUMERIC && uistat.digit == 8-i) {
       fg = DEFAULT_SPEC_INPUT_COLOR;
       focused = TRUE;
-      if (uistat.digit_mode)
-        bg = DEFAULT_MENU_COLOR;
+//      if (uistat.digit_mode)
+//        bg = DEFAULT_MENU_COLOR;
     }
     setForegroundColor(fg);
     setBackgroundColor(bg);
@@ -1307,12 +1307,12 @@ draw_numeric_input(const char *buf)
     else if (focused) // c not number, but focused
       ili9341_drawfont(0, x, 240-NUM_INPUT_HEIGHT+4);
     else // erase
-      ili9341_fill(x, 240-NUM_INPUT_HEIGHT+4, 20, 24, bg);
+      ili9341_fill(x, 240-NUM_INPUT_HEIGHT+4, NUM_FONT_GET_HEIGHT, NUM_FONT_GET_WIDTH+2+8, bg);
       
     x += xsim&0x8000 ? NUM_FONT_GET_WIDTH+2+8 : NUM_FONT_GET_WIDTH+2;
   }
   // erase last
-  ili9341_fill(x, 240-NUM_INPUT_HEIGHT+4, NUM_FONT_GET_WIDTH+2+8, 24, DEFAULT_MENU_COLOR);
+  ili9341_fill(x, 240-NUM_INPUT_HEIGHT+4, NUM_FONT_GET_WIDTH+2+8, NUM_FONT_GET_WIDTH+2+8, DEFAULT_MENU_COLOR);
 }
 
 static int
@@ -1607,7 +1607,7 @@ ui_mode_numeric(int _keypad_mode)
   keypad_mode = _keypad_mode;
   ui_mode = UI_NUMERIC;
   area_width = AREA_WIDTH_NORMAL;
-  area_height = 240-32;//AREA_HEIGHT_NORMAL - 32;
+  area_height = 240-NUM_INPUT_HEIGHT;//AREA_HEIGHT_NORMAL - 32;
 
   draw_numeric_area_frame();
   fetch_numeric_target();
@@ -1629,7 +1629,7 @@ ui_mode_keypad(int _keypad_mode)
   keypads_last_index = i;
 
   ui_mode = UI_KEYPAD;
-  area_width = AREA_WIDTH_NORMAL - 60;
+  area_width = AREA_WIDTH_NORMAL - MENU_BUTTON_WIDTH;
   area_height = HEIGHT - 32;
   draw_menu();
   draw_keypad();
@@ -1740,7 +1740,7 @@ ui_process_normal(void)
     if (status & EVT_BUTTON_SINGLE_CLICK) {
       ui_mode_menu();
     } else {
-      switch (uistat.lever_mode) {
+    switch (uistat.lever_mode) {
       case LM_MARKER: lever_move_marker(status);   break;
       case LM_SEARCH: lever_search_marker(status); break;
       case LM_CENTER:
@@ -2050,7 +2050,6 @@ ui_process_lever(void)
     break;    
   }
 }
-
 
 static void
 drag_marker(int t, int m)

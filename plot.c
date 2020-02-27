@@ -1462,7 +1462,7 @@ cell_drawstring(char *str, int x, int y)
 static void
 cell_draw_marker_info(int x0, int y0)
 {
-  char buf[32];
+  char buf[24];
   int t;
   if (active_marker < 0)
     return;
@@ -1474,8 +1474,8 @@ cell_draw_marker_info(int x0, int y0)
     for (mk = 0; mk < MARKERS_MAX; mk++) {
       if (!markers[mk].enabled)
         continue;
-      int xpos = 1 + (j%2)*146 + CELLOFFSETX - x0;
-      int ypos = 1 + (j/2)*8 - y0;
+      int xpos = 1 + (j%2)*(WIDTH/2) + CELLOFFSETX - x0;
+      int ypos = 1 + (j/2)*(FONT_GET_HEIGHT+1) - y0;
 
       setForegroundColor(config.trace_color[t]);
       if (mk == active_marker)
@@ -1507,13 +1507,13 @@ cell_draw_marker_info(int x0, int y0)
     // draw marker delta
     if (!uistat.marker_delta && previous_marker >= 0 && active_marker != previous_marker && markers[previous_marker].enabled) {
       int idx0 = markers[previous_marker].index;
-      int xpos = 180 + CELLOFFSETX - x0;
-      int ypos = 1 + (j/2)*8 - y0;
+      int xpos = (WIDTH/2+30) + CELLOFFSETX - x0;
+      int ypos = 1 + (j/2)*(FONT_GET_HEIGHT+1) - y0;
 
-      plot_printf(buf, sizeof buf, S_DELTA"%d-%d", active_marker+1, previous_marker+1);
+      plot_printf(buf, sizeof buf, S_DELTA"%d-%d:", active_marker+1, previous_marker+1);
       setForegroundColor(DEFAULT_FG_COLOR);
       cell_drawstring(buf, xpos, ypos);
-      xpos += 24;
+      xpos += 27;
       if ((domain_mode & DOMAIN_MODE) == DOMAIN_FREQ) {
         uint32_t freq  = frequencies[idx];
         uint32_t freq1 = frequencies[idx0];
@@ -1528,8 +1528,8 @@ cell_draw_marker_info(int x0, int y0)
     for (t = 0; t < TRACES_MAX; t++) {
       if (!trace[t].enabled)
         continue;
-      int xpos = 1 + (j%2)*146 + CELLOFFSETX - x0;
-      int ypos = 1 + (j/2)*8 - y0;
+      int xpos = 1 + (j%2)*(WIDTH/2) + CELLOFFSETX - x0;
+      int ypos = 1 + (j/2)*(FONT_GET_HEIGHT+1) - y0;
 
       setForegroundColor(config.trace_color[t]);
       if (t == uistat.current_trace)
@@ -1550,8 +1550,8 @@ cell_draw_marker_info(int x0, int y0)
     }
 
     // draw marker frequency
-    int xpos = 185 + CELLOFFSETX - x0;
-    int ypos = 1 + (j/2)*8 - y0;
+    int xpos = (WIDTH/2+40) + CELLOFFSETX - x0;
+    int ypos = 1 + (j/2)*(FONT_GET_HEIGHT+1) - y0;
 
     setForegroundColor(DEFAULT_FG_COLOR);
     if (uistat.lever_mode == LM_MARKER)
@@ -1572,7 +1572,7 @@ cell_draw_marker_info(int x0, int y0)
   if (electrical_delay != 0) {
     // draw electrical delay
     int xpos = 21 + CELLOFFSETX - x0;
-    int ypos = 1 + ((j+1)/2)*8 - y0;
+    int ypos = 1 + ((j+1)/2)*(FONT_GET_HEIGHT+1) - y0;
 
     float light_speed_ps = 299792458e-12; //(m/ps)
     plot_printf(buf, sizeof buf, "Edelay %Fs %Fm", electrical_delay * 1e-12,
@@ -1663,7 +1663,7 @@ draw_battery_status(void)
 {
   if (vbat<=0)
     return;
-  uint8_t string_buf[25];
+  uint8_t string_buf[16];
   // Set battery color
   setForegroundColor(vbat < BATTERY_WARNING_LEVEL ? DEFAULT_LOW_BAT_COLOR : DEFAULT_NORMAL_BAT_COLOR);
   setBackgroundColor(DEFAULT_BG_COLOR);
@@ -1697,7 +1697,8 @@ request_to_redraw_grid(void)
 void
 redraw_frame(void)
 {
-  ili9341_fill(0, 0, 320, 240, DEFAULT_BG_COLOR);
+  setBackgroundColor(DEFAULT_BG_COLOR);
+  clearScreen();
   draw_frequencies();
   draw_cal_status();
 }

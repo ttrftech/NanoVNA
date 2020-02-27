@@ -82,9 +82,9 @@ int16_t vbat = 0;
 
 //
 // Profile stack usage (enable threads command by def ENABLE_THREADS_COMMAND) show:
-// Stack maximum usage = 480 bytes, free stack = 32+64 bytes
+// Stack maximum usage = 576 bytes, free stack = 64 bytes
 //
-static THD_WORKING_AREA(waThread1, 512+64);
+static THD_WORKING_AREA(waThread1, 640);
 static THD_FUNCTION(Thread1, arg)
 {
   (void)arg;

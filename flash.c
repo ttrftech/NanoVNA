@@ -78,7 +78,7 @@ checksum(const void *start, size_t len)
 
 #define FLASH_PAGESIZE 0x800
 
-const uint32_t save_config_area = 0x08018000;
+const uint32_t save_config_area = SAVE_CONFIG_ADDR;
 
 int
 config_save(void)
@@ -120,14 +120,12 @@ config_recall(void)
   return 0;
 }
 
-#define SAVEAREA_MAX 5
-
 const uint32_t saveareas[SAVEAREA_MAX] = {
-  SAVE_CONFIG_0_ADDR,
-  SAVE_CONFIG_1_ADDR,
-  SAVE_CONFIG_2_ADDR,
-  SAVE_CONFIG_3_ADDR,
-  SAVE_CONFIG_4_ADDR };
+  SAVE_PROP_CONFIG_0_ADDR,
+  SAVE_PROP_CONFIG_1_ADDR,
+  SAVE_PROP_CONFIG_2_ADDR,
+  SAVE_PROP_CONFIG_3_ADDR,
+  SAVE_PROP_CONFIG_4_ADDR };
 
 int16_t lastsaveid = 0;
 
@@ -212,7 +210,7 @@ caldata_ref(int id)
   return src;
 }
 
-const uint32_t save_config_prop_area_size = 0x8000;
+const uint32_t save_config_prop_area_size = SAVE_CONFIG_AREA_SIZE;
 
 void
 clear_all_config_prop_data(void)

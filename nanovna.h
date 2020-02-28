@@ -92,12 +92,16 @@ extern int8_t sweep_enabled;
  *  flash.c
  */
 #define SAVEAREA_MAX 5
-
-#define SAVE_CONFIG_0_ADDR 0x08018800
-#define SAVE_CONFIG_1_ADDR 0x0801a000
-#define SAVE_CONFIG_2_ADDR 0x0801b800
-#define SAVE_CONFIG_3_ADDR 0x0801d000
-#define SAVE_CONFIG_4_ADDR 0x0801e800
+// Begin addr                   0x08018000
+#define SAVE_CONFIG_AREA_SIZE   0x00008000
+// config save area
+#define SAVE_CONFIG_ADDR        0x08018000
+// properties_t save area
+#define SAVE_PROP_CONFIG_0_ADDR 0x08018800
+#define SAVE_PROP_CONFIG_1_ADDR 0x0801a000
+#define SAVE_PROP_CONFIG_2_ADDR 0x0801b800
+#define SAVE_PROP_CONFIG_3_ADDR 0x0801d000
+#define SAVE_PROP_CONFIG_4_ADDR 0x0801e800
 
 /*
  * ui.c

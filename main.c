@@ -725,28 +725,43 @@ config_t config = {
   .trace_color =       { DEFAULT_TRACE_1_COLOR, DEFAULT_TRACE_2_COLOR, DEFAULT_TRACE_3_COLOR, DEFAULT_TRACE_4_COLOR },
 //  .touch_cal =         { 693, 605, 124, 171 },  // 2.4 inch LCD panel
   .touch_cal =         { 338, 522, 153, 192 },  // 2.8 inch LCD panel
-  .default_loadcal =   0,
   .harmonic_freq_threshold = 300000000
 };
 
-properties_t current_props = {
-  .magic =             CONFIG_MAGIC,
-  ._frequency0 =       50000,     // start = 50kHz
-  ._frequency1 =       900000000, // end = 900MHz
-  ._sweep_points =     POINTS_COUNT,
-  ._trace = {/*enable, type, channel, reserved, scale, refpos*/
-    { 1, TRC_LOGMAG, 0, 0, 10.0, NGRIDY-1 },
-    { 1, TRC_LOGMAG, 1, 0, 10.0, NGRIDY-1 },
-    { 1, TRC_SMITH,  0, 0, 1.0, 0 },
-    { 1, TRC_PHASE,  1, 0, 90.0, NGRIDY/2 }
-  },
-  ._markers = {
-    { 1, 30, 0 }, { 0, 40, 0 }, { 0, 60, 0 }, { 0, 80, 0 }
-  },
-  ._velocity_factor =  0.7,
-  ._marker_smith_format = MS_RLC
-};
+properties_t current_props;
 properties_t *active_props = &current_props;
+
+// NanoVNA Default settings
+static const trace_t def_trace[TRACES_MAX] = {//enable, type, channel, reserved, scale, refpos
+  { 1, TRC_LOGMAG, 0, 0, 10.0, NGRIDY-1 },
+  { 1, TRC_LOGMAG, 1, 0, 10.0, NGRIDY-1 },
+  { 1, TRC_SMITH,  0, 0, 1.0, 0 },
+  { 1, TRC_PHASE,  1, 0, 90.0, NGRIDY/2 }
+};
+
+static const marker_t def_markers[MARKERS_MAX] = {
+  { 1, 30, 0 }, { 0, 40, 0 }, { 0, 60, 0 }, { 0, 80, 0 }
+};
+
+// Load propeties default settings
+void loadDefaultProps(void){
+  current_props.magic = CONFIG_MAGIC;
+  current_props._frequency0   =     50000;    // start =  50kHz
+  current_props._frequency1   = 900000000;    // end   = 900MHz
+  current_props._sweep_points = POINTS_COUNT;
+  current_props._cal_status   = 0;
+//This data not loaded by default
+//current_props._frequencies[POINTS_COUNT];
+//current_props._cal_data[5][POINTS_COUNT][2];
+//=============================================
+  current_props._electrical_delay = 0.0;
+  memcpy(current_props._trace, def_trace, sizeof(def_trace));
+  memcpy(current_props._markers, def_markers, sizeof(def_markers));
+  current_props._velocity_factor =  0.7;
+  current_props._active_marker   = 0;
+  current_props._domain_mode     = 0;
+  current_props._marker_smith_format = MS_RLC;
+}
 
 void
 ensure_edit_config(void)
@@ -768,20 +783,19 @@ bool sweep(bool break_on_operation)
   int i;
   // blink LED while scanning
   palClearPad(GPIOC, GPIOC_LED);
-  for (i = 0; i < sweep_points; i++) {
-    int delay = set_frequency(frequencies[i]);
-    tlv320aic3204_select(0); // CH0:REFLECT
-    wait_dsp(delay);
+  for (i = 0; i < sweep_points; i++) {         // 8365
+    int delay = set_frequency(frequencies[i]); // 1560
+    tlv320aic3204_select(0);                   // 60 CH0:REFLECT
 
-    /* calculate reflection coefficient */
-    (*sample_func)(measured[0][i]);
+    wait_dsp(delay);                           // 3270
+    // calculate reflection coefficient
+    (*sample_func)(measured[0][i]);            // 60
 
-    tlv320aic3204_select(1); // CH1:TRANSMISSION
-    wait_dsp(DELAY_CHANNEL_CHANGE);
-
-    /* calculate transmission coefficient */
-    (*sample_func)(measured[1][i]);
-
+    tlv320aic3204_select(1);                   // 60 CH1:TRANSMISSION
+    wait_dsp(DELAY_CHANNEL_CHANGE);            // 2700
+    // calculate transmission coefficient
+    (*sample_func)(measured[1][i]);            // 60
+                                               // ======== 170 ===========
     if (cal_status & CALSTAT_APPLY)
       apply_error_term_at(i);
 
@@ -927,9 +941,6 @@ freq_mode_centerspan(void)
     frequency0 = f;
   }
 }
-
-#define START_MIN 50000
-#define STOP_MAX 2700000000U
 
 void
 set_sweep_frequency(int type, uint32_t freq)
@@ -1472,14 +1483,12 @@ VNA_SHELL_FUNCTION(cmd_recall)
   int id = my_atoi(argv[0]);
   if (id < 0 || id >= SAVEAREA_MAX)
     goto usage;
-
-  if (caldata_recall(id) == 0) {
-    // success
-    update_frequencies();
-    redraw_request |= REDRAW_CAL_STATUS;
-  }
+  // Check for success
+  if (caldata_recall(id) == -1)
+    shell_printf("Err, default load\r\n");
+  update_frequencies();
+  redraw_request |= REDRAW_CAL_STATUS;
   return;
-
  usage:
   shell_printf("recall {id}\r\n");
 }
@@ -2203,6 +2212,8 @@ int main(void)
 
 /* restore config */
   config_recall();
+/* restore frequencies and calibration 0 slot properties from flash memory */
+  caldata_recall(0);
 
   dac1cfg1.init = config.dac_value;
 /*
@@ -2213,10 +2224,6 @@ int main(void)
 
 /* initial frequencies */
   update_frequencies();
-
-/* restore frequencies and calibration properties from flash memory */
-  if (config.default_loadcal >= 0)
-    caldata_recall(config.default_loadcal);
 
 /*
  * I2S Initialize

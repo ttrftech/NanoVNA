@@ -122,11 +122,14 @@ config_recall(void)
 
 #define SAVEAREA_MAX 5
 
-const uint32_t saveareas[] =
-  { 0x08018800, 0x0801a000, 0x0801b800, 0x0801d000, 0x0801e800 };
+const uint32_t saveareas[SAVEAREA_MAX] = {
+  SAVE_CONFIG_0_ADDR,
+  SAVE_CONFIG_1_ADDR,
+  SAVE_CONFIG_2_ADDR,
+  SAVE_CONFIG_3_ADDR,
+  SAVE_CONFIG_4_ADDR };
 
 int16_t lastsaveid = 0;
-
 
 int
 caldata_save(int id)
@@ -172,15 +175,15 @@ caldata_recall(int id)
   void *dst = &current_props;
 
   if (id < 0 || id >= SAVEAREA_MAX)
-    return -1;
+    goto load_default;
 
   // point to saved area on the flash memory
   src = (properties_t*)saveareas[id];
 
   if (src->magic != CONFIG_MAGIC)
-    return -1;
+    goto load_default;
   if (checksum(src, sizeof *src - sizeof src->checksum) != src->checksum)
-    return -1;
+    goto load_default;
 
   /* active configuration points to save data on flash memory */
   active_props = src;
@@ -188,8 +191,10 @@ caldata_recall(int id)
 
   /* duplicated saved data onto sram to be able to modify marker/trace */
   memcpy(dst, src, sizeof(properties_t));
-
   return 0;
+load_default:
+  loadDefaultProps();
+  return -1;
 }
 
 const properties_t *

@@ -25,6 +25,8 @@
 /*
  * main.c
  */
+#define START_MIN 50000
+#define STOP_MAX 2700000000U
 
 #define POINTS_COUNT 101
 extern float measured[2][POINTS_COUNT][2];
@@ -82,8 +84,20 @@ uint32_t get_sweep_frequency(int type);
 double my_atof(const char *p);
 
 void toggle_sweep(void);
+void loadDefaultProps(void);
 
 extern int8_t sweep_enabled;
+
+/*
+ *  flash.c
+ */
+#define SAVEAREA_MAX 5
+
+#define SAVE_CONFIG_0_ADDR 0x08018800
+#define SAVE_CONFIG_1_ADDR 0x0801a000
+#define SAVE_CONFIG_2_ADDR 0x0801b800
+#define SAVE_CONFIG_3_ADDR 0x0801d000
+#define SAVE_CONFIG_4_ADDR 0x0801e800
 
 /*
  * ui.c
@@ -222,8 +236,8 @@ typedef struct {
   uint16_t menu_normal_color;
   uint16_t menu_active_color;
   uint16_t trace_color[TRACES_MAX];
-  int16_t touch_cal[4];
-  int8_t default_loadcal;
+  int16_t  touch_cal[4];
+  int8_t   reserved_1;
   uint32_t harmonic_freq_threshold;
 
   uint8_t _reserved[24];

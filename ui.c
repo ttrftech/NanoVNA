@@ -490,12 +490,11 @@ static void
 menu_recall_cb(int item, uint8_t data)
 {
   (void)item;
-  if (caldata_recall(data) == 0) {
-    menu_move_back();
-    ui_mode_normal();
-    update_grid();
-    draw_cal_status();
-  }
+  caldata_recall(data);
+  menu_move_back();
+  ui_mode_normal();
+  update_grid();
+  draw_cal_status();
 }
 
 static void

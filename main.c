@@ -56,6 +56,7 @@ static char shell_line[VNA_SHELL_MAX_LENGTH];
 
 //#define ENABLED_DUMP
 //#define ENABLE_THREADS_COMMAND
+//#define ENABLE_TIME_COMMAND
 
 static void apply_error_term_at(int i);
 static void apply_edelay_at(int i);
@@ -63,7 +64,8 @@ static void cal_interpolate(int s);
 void update_frequencies(void);
 void set_frequencies(uint32_t start, uint32_t stop, uint16_t points);
 
-bool sweep(bool break_on_operation);
+static bool sweep(bool break_on_operation);
+static void transform_domain(void);
 
 static MUTEX_DECL(mutex);
 
@@ -75,7 +77,7 @@ int32_t frequency_offset = 5000;
 uint32_t frequency = 10000000;
 int8_t drive_strength = DRIVE_STRENGTH_AUTO;
 int8_t sweep_enabled = TRUE;
-int8_t sweep_once = FALSE;
+volatile int8_t sweep_once = FALSE;
 int8_t cal_auto_interpolate = TRUE;
 uint16_t redraw_request = 0; // contains REDRAW_XXX flags
 int16_t vbat = 0;
@@ -116,6 +118,8 @@ static THD_FUNCTION(Thread1, arg)
 
       // calculate trace coordinates and plot only if scan completed
       if (completed) {
+        if ((domain_mode & DOMAIN_MODE) == DOMAIN_TIME)
+          transform_domain();
         plot_into_index(measured);
         redraw_request |= REDRAW_CELLS;
 
@@ -134,13 +138,13 @@ static THD_FUNCTION(Thread1, arg)
   }
 }
 
-void
+static inline void
 pause_sweep(void)
 {
   sweep_enabled = FALSE;
 }
 
-void
+static inline void
 resume_sweep(void)
 {
   sweep_enabled = TRUE;
@@ -468,6 +472,10 @@ VNA_SHELL_FUNCTION(cmd_power)
   set_frequency(frequency);
 }
 
+#ifdef ENABLE_TIME_COMMAND
+#if HAL_USE_RTC == FALSE
+#error "Error cmd_time require ENABLE_TIME_COMMAND = TRUE in halconf.h"
+#endif
 VNA_SHELL_FUNCTION(cmd_time)
 {
   RTCDateTime timespec;
@@ -476,7 +484,7 @@ VNA_SHELL_FUNCTION(cmd_time)
   rtcGetTime(&RTCD1, &timespec);
   shell_printf("%d/%d/%d %d\r\n", timespec.year+1980, timespec.month, timespec.day, timespec.millisecond);
 }
-
+#endif
 
 VNA_SHELL_FUNCTION(cmd_dac)
 {
@@ -786,8 +794,6 @@ bool sweep(bool break_on_operation)
   }
   // blink LED while scanning
   palSetPad(GPIOC, GPIOC_LED);
-  if ((domain_mode & DOMAIN_MODE) == DOMAIN_TIME)
-    transform_domain();
   return true;
 }
 
@@ -1467,13 +1473,11 @@ VNA_SHELL_FUNCTION(cmd_recall)
   if (id < 0 || id >= SAVEAREA_MAX)
     goto usage;
 
-  pause_sweep();
   if (caldata_recall(id) == 0) {
     // success
     update_frequencies();
     redraw_request |= REDRAW_CAL_STATUS;
   }
-  resume_sweep();
   return;
 
  usage:
@@ -1985,7 +1989,9 @@ static const VNAShellCommand commands[] =
     {"reset"       , cmd_reset       , 0},
     {"freq"        , cmd_freq        , CMD_WAIT_MUTEX},
     {"offset"      , cmd_offset      , 0},
+#ifdef ENABLE_TIME_COMMAND
     {"time"        , cmd_time        , 0},
+#endif
     {"dac"         , cmd_dac         , 0},
     {"saveconfig"  , cmd_saveconfig  , 0},
     {"clearconfig" , cmd_clearconfig , 0},

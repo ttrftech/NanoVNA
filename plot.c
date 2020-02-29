@@ -1599,6 +1599,10 @@ cell_draw_marker_info(int m, int n, int w, int h)
     xpos -= m * CELLWIDTH -CELLOFFSETX;
     ypos -= n * CELLHEIGHT;
 
+    if (uistat.lever_mode == LM_EDELAY)
+      cell_drawstring(w, h, S_SARROW, xpos, ypos);
+    xpos += 5;
+
     float light_speed_ps = 299792458e-12; //(m/ps)
     chsnprintf(buf, sizeof buf, "Edelay %Fs %Fm", electrical_delay * 1e-12,
                                                   electrical_delay * light_speed_ps * velocity_factor);

@@ -410,7 +410,7 @@ void clear_all_config_prop_data(void);
 
 // lever_mode
 enum lever_mode {
-  LM_MARKER, LM_SEARCH, LM_CENTER, LM_SPAN
+  LM_MARKER, LM_SEARCH, LM_CENTER, LM_SPAN, LM_EDELAY
 };
 
 // marker smith value format

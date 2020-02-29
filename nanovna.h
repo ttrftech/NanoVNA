@@ -71,7 +71,7 @@ extern float measured[2][POINTS_COUNT][2];
 void cal_collect(int type);
 void cal_done(void);
 
-enum {
+enum stimulus {
   ST_START, ST_STOP, ST_CENTER, ST_SPAN, ST_CW
 };
 
@@ -90,7 +90,7 @@ extern int8_t sweep_enabled;
 extern void ui_init(void);
 extern void ui_process(void);
 
-enum { OP_NONE = 0, OP_LEVER, OP_TOUCH, OP_FREQCHANGE };
+enum opreq { OP_NONE = 0, OP_LEVER, OP_TOUCH, OP_FREQCHANGE };
 extern uint8_t operation_requested;
 
 /*
@@ -187,7 +187,7 @@ extern const uint16_t numfont16x22[];
 
 #define TRACES_MAX 4
 
-enum {
+enum trace_type {
   TRC_LOGMAG, TRC_PHASE, TRC_DELAY, TRC_SMITH, TRC_POLAR, TRC_LINEAR, TRC_SWR, TRC_REAL, TRC_IMAG, TRC_R, TRC_X, TRC_OFF
 };
 // Mask for define rectangular plot
@@ -203,7 +203,7 @@ enum {
 // Electrical Delay
 // Phase
 
-typedef struct {
+typedef struct trace {
   uint8_t enabled;
   uint8_t type;
   uint8_t channel;
@@ -212,7 +212,7 @@ typedef struct {
   float refpos;
 } trace_t;
 
-typedef struct {
+typedef struct config {
   int32_t magic;
   uint16_t dac_value;
   uint16_t grid_color;
@@ -248,7 +248,7 @@ float groupdelay_from_array(int i, float array[POINTS_COUNT][2]);
 
 #define MARKERS_MAX 4
 
-typedef struct {
+typedef struct marker {
   int8_t enabled;
   int16_t index;
   uint32_t frequency;
@@ -342,7 +342,7 @@ void show_logo(void);
  */
 #define SAVEAREA_MAX 5
 
-typedef struct {
+typedef struct properties {
   uint32_t magic;
   uint32_t _frequency0;
   uint32_t _frequency1;
@@ -409,16 +409,16 @@ void clear_all_config_prop_data(void);
  */
 
 // lever_mode
-enum {
+enum lever_mode {
   LM_MARKER, LM_SEARCH, LM_CENTER, LM_SPAN
 };
 
 // marker smith value format
-enum {
+enum marker_smithvalue {
   MS_LIN, MS_LOG, MS_REIM, MS_RX, MS_RLC
 };
 
-typedef struct {
+typedef struct uistat {
   int8_t digit; /* 0~5 */
   int8_t digit_mode;
   int8_t current_trace; /* 0..3 */

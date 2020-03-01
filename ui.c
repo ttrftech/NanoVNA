@@ -1731,6 +1731,23 @@ lever_move(int status, int mode)
   }
 }
 
+#define STEPRATIO 0.2
+
+static void
+lever_edelay(int status)
+{
+  float value = get_electrical_delay();
+  float ratio = STEPRATIO;
+  if (value < 0)
+    ratio = -ratio;
+  if (status & EVT_UP) {
+    value = (1 - ratio) * value;
+  } else if (status & EVT_DOWN) {
+    value = (1 + ratio) * value;
+  }
+  set_electrical_delay(value);
+}
+
 static void
 ui_process_normal(void)
 {
@@ -1749,7 +1766,10 @@ ui_process_normal(void)
         if (FREQ_IS_STARTSTOP())
           lever_move(status, ST_STOP);
         else
-         lever_zoom_span(status);
+        lever_zoom_span(status);
+        break;
+      case LM_EDELAY:
+        lever_edelay(status);
         break;
       }
     }
@@ -2120,7 +2140,10 @@ touch_lever_mode_select(void)
     return TRUE;
   }
   if (touch_y < 15) {
-    select_lever_mode(LM_MARKER);
+    if (touch_x < FREQUENCIES_XPOS2 && get_electrical_delay() != 0.0) {
+      select_lever_mode(LM_EDELAY);
+    } else 
+      select_lever_mode(LM_MARKER);
     return TRUE;
   }
   return FALSE;

@@ -1574,6 +1574,10 @@ cell_draw_marker_info(int x0, int y0)
     int xpos = 21 + CELLOFFSETX - x0;
     int ypos = 1 + ((j+1)/2)*(FONT_GET_HEIGHT+1) - y0;
 
+    if (uistat.lever_mode == LM_EDELAY)
+      cell_drawstring(S_SARROW, xpos, ypos);
+    xpos += 5;
+
     float light_speed_ps = 299792458e-12; //(m/ps)
     plot_printf(buf, sizeof buf, "Edelay %Fs %Fm", electrical_delay * 1e-12,
                                                   electrical_delay * light_speed_ps * velocity_factor);

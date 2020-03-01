@@ -1656,6 +1656,7 @@ void set_electrical_delay(float picoseconds)
     electrical_delay = picoseconds;
     force_set_markmap();
   }
+  redraw_request |= REDRAW_MARKER;
 }
 
 float get_electrical_delay(void)

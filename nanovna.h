@@ -25,6 +25,8 @@
 /*
  * main.c
  */
+#define START_MIN 50000
+#define STOP_MAX 2700000000U
 
 #define POINTS_COUNT 101
 extern float measured[2][POINTS_COUNT][2];
@@ -71,8 +73,9 @@ extern float measured[2][POINTS_COUNT][2];
 void cal_collect(int type);
 void cal_done(void);
 
+#define MAX_FREQ_TYPE 5
 enum {
-  ST_START, ST_STOP, ST_CENTER, ST_SPAN, ST_CW
+  ST_START=0, ST_STOP, ST_CENTER, ST_SPAN, ST_CW
 };
 
 void set_sweep_frequency(int type, uint32_t frequency);
@@ -81,8 +84,24 @@ uint32_t get_sweep_frequency(int type);
 double my_atof(const char *p);
 
 void toggle_sweep(void);
+void loadDefaultProps(void);
 
 extern int8_t sweep_enabled;
+
+/*
+ *  flash.c
+ */
+#define SAVEAREA_MAX 5
+// Begin addr                   0x08018000
+#define SAVE_CONFIG_AREA_SIZE   0x00008000
+// config save area
+#define SAVE_CONFIG_ADDR        0x08018000
+// properties_t save area
+#define SAVE_PROP_CONFIG_0_ADDR 0x08018800
+#define SAVE_PROP_CONFIG_1_ADDR 0x0801a000
+#define SAVE_PROP_CONFIG_2_ADDR 0x0801b800
+#define SAVE_PROP_CONFIG_3_ADDR 0x0801d000
+#define SAVE_PROP_CONFIG_4_ADDR 0x0801e800
 
 /*
  * ui.c
@@ -144,7 +163,7 @@ extern void tlv320aic3204_select(int channel);
 
 #define FREQUENCIES_XPOS1 OFFSETX
 #define FREQUENCIES_XPOS2 200
-#define FREQUENCIES_YPOS  (HEIGHT+1)
+#define FREQUENCIES_YPOS  (240-7)
 
 // GRIDX calculated depends from frequency span
 //#define GRIDY 29
@@ -167,6 +186,7 @@ extern int16_t area_height;
 extern const uint8_t x5x7_bits [];
 #define FONT_GET_DATA(ch)	(&x5x7_bits[ch*7])
 #define FONT_GET_WIDTH(ch)	(8-(x5x7_bits[ch*7]&7))
+#define FONT_MAX_WIDTH		7
 #define FONT_GET_HEIGHT		7
 
 extern const uint16_t numfont16x22[];
@@ -187,8 +207,9 @@ extern const uint16_t numfont16x22[];
 
 #define TRACES_MAX 4
 
+#define MAX_TRACE_TYPE 12
 enum {
-  TRC_LOGMAG, TRC_PHASE, TRC_DELAY, TRC_SMITH, TRC_POLAR, TRC_LINEAR, TRC_SWR, TRC_REAL, TRC_IMAG, TRC_R, TRC_X, TRC_OFF
+  TRC_LOGMAG=0, TRC_PHASE, TRC_DELAY, TRC_SMITH, TRC_POLAR, TRC_LINEAR, TRC_SWR, TRC_REAL, TRC_IMAG, TRC_R, TRC_X, TRC_OFF
 };
 // Mask for define rectangular plot
 #define RECTANGULAR_GRID_MASK ((1<<TRC_LOGMAG)|(1<<TRC_PHASE)|(1<<TRC_DELAY)|(1<<TRC_LINEAR)|(1<<TRC_SWR)|(1<<TRC_REAL)|(1<<TRC_IMAG)|(1<<TRC_R)|(1<<TRC_X))
@@ -219,8 +240,8 @@ typedef struct {
   uint16_t menu_normal_color;
   uint16_t menu_active_color;
   uint16_t trace_color[TRACES_MAX];
-  int16_t touch_cal[4];
-  int8_t default_loadcal;
+  int16_t  touch_cal[4];
+  int8_t   reserved_1;
   uint32_t harmonic_freq_threshold;
 
   uint8_t _reserved[24];
@@ -298,6 +319,9 @@ extern int16_t vbat;
 #define RGB565(r,g,b)  ( (((g)&0x1c)<<11) | (((b)&0xf8)<<5) | ((r)&0xf8) | (((g)&0xe0)>>5) )
 #define RGBHEX(hex) ( (((hex)&0x001c00)<<3) | (((hex)&0x0000f8)<<5) | (((hex)&0xf80000)>>16) | (((hex)&0x00e000)>>13) )
 
+// Define size of screen buffer in pixels (one pixel 16bit size)
+#define SPI_BUFFER_SIZE	            2048
+
 #define DEFAULT_FG_COLOR			RGB565(255,255,255)
 #define DEFAULT_BG_COLOR			RGB565(  0,  0,  0)
 #define DEFAULT_GRID_COLOR			RGB565(128,128,128)
@@ -315,7 +339,7 @@ extern int16_t vbat;
 extern uint16_t foreground_color;
 extern uint16_t background_color;
 
-extern uint16_t spi_buffer[2048];
+extern uint16_t spi_buffer[SPI_BUFFER_SIZE];
 
 void ili9341_init(void);
 //void ili9341_setRotation(uint8_t r);
@@ -324,6 +348,7 @@ void ili9341_bulk(int x, int y, int w, int h);
 void ili9341_fill(int x, int y, int w, int h, int color);
 void setForegroundColor(uint16_t fg);
 void setBackgroundColor(uint16_t fg);
+void clearScreen(void);
 void blit8BitWidthBitmap(uint16_t x, uint16_t y, uint16_t width, uint16_t height, const uint8_t *bitmap);
 void blit16BitWidthBitmap(uint16_t x, uint16_t y, uint16_t width, uint16_t height, const uint16_t *bitmap);
 void ili9341_drawchar(uint8_t ch, int x, int y);
@@ -458,6 +483,10 @@ int16_t adc_vbat_read(ADC_TypeDef *adc);
 /*
  * misclinous
  */
+int plot_printf(char *str, int, const char *fmt, ...);
 #define PULSE do { palClearPad(GPIOC, GPIOC_LED); palSetPad(GPIOC, GPIOC_LED);} while(0)
 
+// Speed profile definition
+#define START_PROFILE   systime_t time = chVTGetSystemTimeX();
+#define STOP_PROFILE    {char string_buf[12];plot_printf(string_buf, sizeof string_buf, "T:%06d", chVTGetSystemTimeX() - time);ili9341_drawstringV(string_buf, 1, 60);}
 /*EOF*/

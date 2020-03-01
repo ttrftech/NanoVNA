@@ -156,7 +156,7 @@
  *
  * @note    The default is @p TRUE.
  */
-#define CH_CFG_USE_WAITEXIT                 TRUE
+#define CH_CFG_USE_WAITEXIT                 FALSE
 
 /**
  * @brief   Semaphores APIs.
@@ -193,7 +193,7 @@
  * @note    The default is @p FALSE.
  * @note    Requires @p CH_CFG_USE_MUTEXES.
  */
-#define CH_CFG_USE_MUTEXES_RECURSIVE        TRUE
+#define CH_CFG_USE_MUTEXES_RECURSIVE        FALSE
 
 /**
  * @brief   Conditional Variables APIs.
@@ -221,7 +221,7 @@
  *
  * @note    The default is @p TRUE.
  */
-#define CH_CFG_USE_EVENTS                   TRUE
+#define CH_CFG_USE_EVENTS                   FALSE
 
 /**
  * @brief   Events Flags APIs with timeout.
@@ -231,7 +231,7 @@
  * @note    The default is @p TRUE.
  * @note    Requires @p CH_CFG_USE_EVENTS.
  */
-#define CH_CFG_USE_EVENTS_TIMEOUT           TRUE
+#define CH_CFG_USE_EVENTS_TIMEOUT           FALSE
 
 /**
  * @brief   Synchronous Messages APIs.

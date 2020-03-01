@@ -32,12 +32,12 @@ static int flash_wait_for_last_operation(void)
 
 static void flash_erase_page0(uint32_t page_address)
 {
-	flash_wait_for_last_operation();
-	FLASH->CR |= FLASH_CR_PER;
-	FLASH->AR = page_address;
-	FLASH->CR |= FLASH_CR_STRT;
-	flash_wait_for_last_operation();
-	FLASH->CR &= ~FLASH_CR_PER;
+  flash_wait_for_last_operation();
+  FLASH->CR |= FLASH_CR_PER;
+  FLASH->AR = page_address;
+  FLASH->CR |= FLASH_CR_STRT;
+  flash_wait_for_last_operation();
+  FLASH->CR &= ~FLASH_CR_PER;
 }
 
 int flash_erase_page(uint32_t page_address)
@@ -50,11 +50,11 @@ int flash_erase_page(uint32_t page_address)
 
 void flash_program_half_word(uint32_t address, uint16_t data)
 {
-	flash_wait_for_last_operation();
-	FLASH->CR |= FLASH_CR_PG;
-    *(__IO uint16_t*)address = data;
-	flash_wait_for_last_operation();
-	FLASH->CR &= ~FLASH_CR_PG;
+  flash_wait_for_last_operation();
+  FLASH->CR |= FLASH_CR_PG;
+  *(__IO uint16_t*)address = data;
+  flash_wait_for_last_operation();
+  FLASH->CR &= ~FLASH_CR_PG;
 }
 
 void flash_unlock(void)
@@ -64,8 +64,6 @@ void flash_unlock(void)
   FLASH->KEYR = 0xCDEF89AB;
 }
 
-#define rotate(x) (((x)<<1) | ((x)&(1<<31)?1:0))
-
 static uint32_t
 checksum(const void *start, size_t len)
 {
@@ -73,14 +71,14 @@ checksum(const void *start, size_t len)
   uint32_t *tail = (uint32_t*)(start + len);
   uint32_t value = 0;
   while (p < tail)
-    value = rotate(value) + *p++;
+    value = __ROR(value, 31) + *p++;
   return value;
 }
 
 
 #define FLASH_PAGESIZE 0x800
 
-const uint32_t save_config_area = 0x08018000;
+const uint32_t save_config_area = SAVE_CONFIG_ADDR;
 
 int
 config_save(void)
@@ -122,13 +120,14 @@ config_recall(void)
   return 0;
 }
 
-#define SAVEAREA_MAX 5
-
-const uint32_t saveareas[] =
-  { 0x08018800, 0x0801a000, 0x0801b800, 0x0801d000, 0x0801e800 };
+const uint32_t saveareas[SAVEAREA_MAX] = {
+  SAVE_PROP_CONFIG_0_ADDR,
+  SAVE_PROP_CONFIG_1_ADDR,
+  SAVE_PROP_CONFIG_2_ADDR,
+  SAVE_PROP_CONFIG_3_ADDR,
+  SAVE_PROP_CONFIG_4_ADDR };
 
 int16_t lastsaveid = 0;
-
 
 int
 caldata_save(int id)
@@ -174,15 +173,15 @@ caldata_recall(int id)
   void *dst = &current_props;
 
   if (id < 0 || id >= SAVEAREA_MAX)
-    return -1;
+    goto load_default;
 
   // point to saved area on the flash memory
   src = (properties_t*)saveareas[id];
 
   if (src->magic != CONFIG_MAGIC)
-    return -1;
+    goto load_default;
   if (checksum(src, sizeof *src - sizeof src->checksum) != src->checksum)
-    return -1;
+    goto load_default;
 
   /* active configuration points to save data on flash memory */
   active_props = src;
@@ -190,8 +189,10 @@ caldata_recall(int id)
 
   /* duplicated saved data onto sram to be able to modify marker/trace */
   memcpy(dst, src, sizeof(properties_t));
-
   return 0;
+load_default:
+  loadDefaultProps();
+  return -1;
 }
 
 const properties_t *
@@ -209,7 +210,7 @@ caldata_ref(int id)
   return src;
 }
 
-const uint32_t save_config_prop_area_size = 0x8000;
+const uint32_t save_config_prop_area_size = SAVE_CONFIG_AREA_SIZE;
 
 void
 clear_all_config_prop_data(void)

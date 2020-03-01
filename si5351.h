@@ -74,16 +74,4 @@
 
 void si5351_init(void);
 
-void si5351_setupPLL(uint8_t pll, /* SI5351_PLL_A or SI5351_PLL_B */
-                     uint8_t     mult,
-                     uint32_t    num,
-                     uint32_t    denom);
-void si5351_setupMultisynth(uint8_t     output,
-                            uint8_t	   pllSource,
-                            uint32_t    div,
-                            uint32_t    num,
-                            uint32_t    denom,
-                            uint32_t    rdiv,
-                            uint8_t drive_strength);
-
 void si5351_set_frequency(int channel, int freq, uint8_t drive_strength);

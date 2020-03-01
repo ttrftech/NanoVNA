@@ -21,7 +21,7 @@
 #include "hal.h"
 #include "nanovna.h"
 
-uint16_t spi_buffer[2048];
+uint16_t spi_buffer[SPI_BUFFER_SIZE];
 // Default foreground & background colors
 uint16_t foreground_color=DEFAULT_FG_COLOR;
 uint16_t background_color=DEFAULT_BG_COLOR;
@@ -486,6 +486,10 @@ void ili9341_read_memory(int x, int y, int w, int h, int len, uint16_t *out)
 	}
 }
 #endif
+
+void clearScreen(void){
+	ili9341_fill(0, 0, ILI9341_WIDTH, ILI9341_HEIGHT, background_color);
+}
 
 void setForegroundColor(uint16_t fg) {foreground_color = fg;}
 void setBackgroundColor(uint16_t bg) {background_color = bg;}

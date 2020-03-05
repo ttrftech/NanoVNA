@@ -25,12 +25,12 @@
 //#include <stdlib.h>
 #include <string.h>
 
-
 uistat_t uistat = {
  digit: 6,
  current_trace: 0,
  lever_mode: LM_MARKER,
  marker_delta: FALSE,
+ marker_tracking : FALSE,
 };
 
 #define NO_EVENT					0
@@ -41,9 +41,9 @@ uistat_t uistat = {
 #define EVT_DOWN				0x20
 #define EVT_REPEAT				0x40
 
-#define BUTTON_DOWN_LONG_TICKS		5000  /* 1sec */
-#define BUTTON_DOUBLE_TICKS			5000   /* 500ms */
-#define BUTTON_REPEAT_TICKS			1000   /* 100ms */
+#define BUTTON_DOWN_LONG_TICKS		5000   /* 1sec */
+#define BUTTON_DOUBLE_TICKS			2500   /* 500ms */
+#define BUTTON_REPEAT_TICKS			625    /* 125ms */
 #define BUTTON_DEBOUNCE_TICKS		200
 
 /* lever switch assignment */
@@ -59,7 +59,7 @@ static uint32_t last_button_down_ticks;
 static uint32_t last_button_repeat_ticks;
 static int8_t inhibit_until_release = FALSE;
 
-uint8_t operation_requested = OP_NONE;
+volatile uint8_t operation_requested = OP_NONE;
 
 int8_t previous_marker = -1;
 
@@ -71,8 +71,14 @@ enum {
   KM_START, KM_STOP, KM_CENTER, KM_SPAN, KM_CW, KM_SCALE, KM_REFPOS, KM_EDELAY, KM_VELOCITY_FACTOR, KM_SCALEDELAY
 };
 
+#define NUMINPUT_LEN 10
+
 static uint8_t ui_mode = UI_NORMAL;
 static uint8_t keypad_mode;
+static uint8_t keypads_last_index;
+static char    kp_buf[NUMINPUT_LEN+1];
+static int8_t  kp_index = 0;
+static uint8_t menu_current_level = 0;
 static int8_t  selection = 0;
 
 // Set structure align as WORD (save flash memory)
@@ -98,17 +104,12 @@ static int16_t last_touch_y;
 //int16_t touch_cal[4] = { 1000, 1000, 10*16, 12*16 };
 //int16_t touch_cal[4] = { 620, 600, 130, 180 };
 
-int awd_count;
+//int awd_count;
 //int touch_x, touch_y;
-
-#define NUMINPUT_LEN 10
 
 #define KP_CONTINUE 0
 #define KP_DONE 1
 #define KP_CANCEL 2
-
-static char kp_buf[NUMINPUT_LEN+1];
-static int8_t kp_index = 0;
 
 static void ui_mode_normal(void);
 static void ui_mode_menu(void);
@@ -130,33 +131,29 @@ static int btn_check(void)
     int status = 0;
     uint32_t ticks = chVTGetSystemTime();
     if (changed & (1<<BIT_PUSH)) {
-      if (ticks - last_button_down_ticks >= BUTTON_DEBOUNCE_TICKS) {
-        if (cur_button & (1<<BIT_PUSH)) {
-          // button released
-          status |= EVT_BUTTON_SINGLE_CLICK;
-          if (inhibit_until_release) {
-            status = 0;
-            inhibit_until_release = FALSE;
-          }
+      if ((cur_button & (1<<BIT_PUSH))
+          && ticks >= last_button_down_ticks + BUTTON_DEBOUNCE_TICKS) {
+        // button released
+        status |= EVT_BUTTON_SINGLE_CLICK;
+        if (inhibit_until_release) {
+          status = 0;
+          inhibit_until_release = FALSE;
         }
-        last_button_down_ticks = ticks;
       }
     }
-
     if (changed & (1<<BIT_UP1)) {
       if ((cur_button & (1<<BIT_UP1))
           && (ticks >= last_button_down_ticks + BUTTON_DEBOUNCE_TICKS)) {
         status |= EVT_UP;
       }
-      last_button_down_ticks = ticks;
     }
     if (changed & (1<<BIT_DOWN1)) {
       if ((cur_button & (1<<BIT_DOWN1))
           && (ticks >= last_button_down_ticks + BUTTON_DEBOUNCE_TICKS)) {
         status |= EVT_DOWN;
       }
-      last_button_down_ticks = ticks;
     }
+    last_button_down_ticks = ticks;
     last_button = cur_button;
 
     return status;
@@ -169,15 +166,14 @@ static int btn_wait_release(void)
     int changed = last_button ^ cur_button;
     uint32_t ticks = chVTGetSystemTime();
     int status = 0;
-
     if (!inhibit_until_release) {
       if ((cur_button & (1<<BIT_PUSH))
-          && ticks - last_button_down_ticks >= BUTTON_DOWN_LONG_TICKS) {
+          && ticks >= last_button_down_ticks + BUTTON_DOWN_LONG_TICKS) {
         inhibit_until_release = TRUE;
         return EVT_BUTTON_DOWN_LONG;
       }
       if ((changed & (1<<BIT_PUSH))
-          && ticks - last_button_down_ticks < BUTTON_DOWN_LONG_TICKS) {
+          && ticks < last_button_down_ticks + BUTTON_DOWN_LONG_TICKS) {
         return EVT_BUTTON_SINGLE_CLICK;
       }
     }
@@ -190,14 +186,12 @@ static int btn_wait_release(void)
       return 0;
     }
 
-    if (ticks - last_button_down_ticks >= BUTTON_DOWN_LONG_TICKS
-        && ticks - last_button_repeat_ticks >= BUTTON_REPEAT_TICKS) {
-      if (cur_button & (1<<BIT_DOWN1)) {
+    if (ticks >= last_button_down_ticks + BUTTON_DOWN_LONG_TICKS
+        && ticks >=  last_button_repeat_ticks + BUTTON_REPEAT_TICKS) {
+      if (cur_button & (1<<BIT_DOWN1))
         status |= EVT_DOWN | EVT_REPEAT;
-      }
-      if (cur_button & (1<<BIT_UP1)) {
+      if (cur_button & (1<<BIT_UP1))
         status |= EVT_UP | EVT_REPEAT;
-      }
       last_button_repeat_ticks = ticks;
       return status;
     }
@@ -776,7 +770,7 @@ menu_marker_search_cb(int item, uint8_t data)
     i = marker_search_right(markers[active_marker].index);
     break;
   case 4: /* tracking */
-    marker_tracking = !marker_tracking;
+    uistat.marker_tracking = !uistat.marker_tracking;
     break;
   }
   if (i != -1)
@@ -1047,7 +1041,6 @@ const menuitem_t menu_top[] = {
 };
 
 #define MENU_STACK_DEPTH_MAX 4
-uint8_t menu_current_level = 0;
 const menuitem_t *menu_stack[MENU_STACK_DEPTH_MAX] = {
   menu_top, NULL, NULL, NULL
 };
@@ -1171,7 +1164,6 @@ typedef struct {
 } keypads_t;
 
 static const keypads_t *keypads;
-static uint8_t keypads_last_index;
 
 static const keypads_t keypads_freq[] = {
   { 1, 3, KP_PERIOD },
@@ -1345,7 +1337,7 @@ menu_item_modify_attribute(const menuitem_t *menu, int item,
       }
     }
   } else if (menu == menu_marker_search) {
-    if (item == 4 && marker_tracking) {
+    if (item == 4 && uistat.marker_tracking) {
       *bg = DEFAULT_MENU_TEXT_COLOR;
       *fg = config.menu_normal_color;
     }
@@ -1535,7 +1527,7 @@ fetch_numeric_target(void)
       x /= 10;
     uistat.digit = n;
   }
-  uistat.previous_value = uistat.value;
+//  uistat.previous_value = uistat.value;
 }
 
 static void
@@ -2152,7 +2144,7 @@ touch_lever_mode_select(void)
 static
 void ui_process_touch(void)
 {
-  awd_count++;
+//  awd_count++;
   adc_stop(ADC1);
 
   int status = touch_check();
@@ -2189,14 +2181,10 @@ void ui_process_touch(void)
 void
 ui_process(void)
 {
-  switch (operation_requested) {
-  case OP_LEVER:
+  if (operation_requested&OP_LEVER)
     ui_process_lever();
-    break;
-  case OP_TOUCH:
+  if (operation_requested&OP_TOUCH)
     ui_process_touch();
-    break;
-  }
   operation_requested = OP_NONE;
 }
 
@@ -2204,7 +2192,7 @@ ui_process(void)
 static void extcb1(EXTDriver *extp, expchannel_t channel) {
   (void)extp;
   (void)channel;
-  operation_requested = OP_LEVER;
+  operation_requested|=OP_LEVER;
   //cur_button = READ_PORT() & BUTTON_MASK;
 }
 
@@ -2259,7 +2247,7 @@ test_touch(int *x, int *y)
 void
 handle_touch_interrupt(void)
 {
-  operation_requested = OP_TOUCH;
+  operation_requested|= OP_TOUCH;
 }
 
 void

@@ -1056,7 +1056,6 @@ static int greater(int x, int y) { return x > y; }
 static int lesser(int x, int y) { return x < y; }
 
 static int (*compare)(int x, int y) = lesser;
-int8_t marker_tracking = false;
 
 int
 marker_search(void)

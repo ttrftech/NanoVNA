@@ -17,8 +17,8 @@
  * the Free Software Foundation, Inc., 51 Franklin Street,
  * Boston, MA 02110-1301, USA.
  */
-#define SI5351_PLL_A	0
-#define SI5351_PLL_B	1
+//#define SI5351_PLL_A	0
+//#define SI5351_PLL_B	1
 
 #define SI5351_MULTISYNTH_DIV_4  4
 #define SI5351_MULTISYNTH_DIV_6  6
@@ -33,12 +33,16 @@
 #define SI5351_R_DIV_128	(7<<4)
 #define SI5351_DIVBY4 		(3<<2)
 
-#define SI5351_REG_3_OUTPUT_ENABLE_CONTROL 3
+#define SI5351_REG_3_OUTPUT_ENABLE_CONTROL  3
+#define SI5351_CLK0_EN     (1<<0)
+#define SI5351_CLK1_EN     (1<<2)
+#define SI5351_CLK2_EN     (1<<3)
+
 #define SI5351_REG_16_CLK0_CONTROL	16
 #define SI5351_REG_17_CLK1_CONTROL	17
 #define SI5351_REG_18_CLK2_CONTROL	18
-#define SI5351_REG_26_PLL_A 		26
-#define SI5351_REG_34_PLL_B 		34
+#define SI5351_REG_PLL_A 			26
+#define SI5351_REG_PLL_B 			34
 #define SI5351_REG_42_MULTISYNTH0	42
 #define SI5351_REG_50_MULTISYNTH1	50
 #define SI5351_REG_58_MULTISYNTH2	58
@@ -74,4 +78,7 @@
 
 void si5351_init(void);
 
-void si5351_set_frequency(int channel, int freq, uint8_t drive_strength);
+void si5351_disable_output(void);
+void si5351_enable_output(void);
+void si5351_set_frequency(int channel, uint32_t freq, uint8_t drive_strength);
+int  si5351_set_frequency_with_offset(uint32_t freq, int offset, uint8_t drive_strength);

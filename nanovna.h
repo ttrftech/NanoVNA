@@ -89,30 +89,6 @@ void loadDefaultProps(void);
 extern int8_t sweep_enabled;
 
 /*
- *  flash.c
- */
-#define SAVEAREA_MAX 5
-// Begin addr                   0x08018000
-#define SAVE_CONFIG_AREA_SIZE   0x00008000
-// config save area
-#define SAVE_CONFIG_ADDR        0x08018000
-// properties_t save area
-#define SAVE_PROP_CONFIG_0_ADDR 0x08018800
-#define SAVE_PROP_CONFIG_1_ADDR 0x0801a000
-#define SAVE_PROP_CONFIG_2_ADDR 0x0801b800
-#define SAVE_PROP_CONFIG_3_ADDR 0x0801d000
-#define SAVE_PROP_CONFIG_4_ADDR 0x0801e800
-
-/*
- * ui.c
- */
-extern void ui_init(void);
-extern void ui_process(void);
-
-enum opreq { OP_NONE = 0, OP_LEVER, OP_TOUCH, OP_FREQCHANGE };
-extern uint8_t operation_requested;
-
-/*
  * dsp.c
  */
 // 5ms @ 48kHz
@@ -133,9 +109,6 @@ void reset_dsp_accumerator(void);
 void calculate_gamma(float *gamma);
 void fetch_amplitude(float *gamma);
 void fetch_amplitude_ref(float *gamma);
-
-int si5351_set_frequency_with_offset(uint32_t freq, int offset, uint8_t drive_strength);
-
 
 /*
  * tlv320aic3204.c
@@ -249,6 +222,10 @@ typedef struct config {
 } config_t;
 
 extern config_t config;
+
+#define DRIVE_STRENGTH_AUTO (-1)
+#define FREQ_HARMONICS (config.harmonic_freq_threshold)
+#define IS_HARMONIC_MODE(f) ((f) > FREQ_HARMONICS)
 
 //extern trace_t trace[TRACES_MAX];
 
@@ -366,6 +343,16 @@ void show_logo(void);
  * flash.c
  */
 #define SAVEAREA_MAX 5
+// Begin addr                   0x08018000
+#define SAVE_CONFIG_AREA_SIZE   0x00008000
+// config save area
+#define SAVE_CONFIG_ADDR        0x08018000
+// properties_t save area
+#define SAVE_PROP_CONFIG_0_ADDR 0x08018800
+#define SAVE_PROP_CONFIG_1_ADDR 0x0801a000
+#define SAVE_PROP_CONFIG_2_ADDR 0x0801b800
+#define SAVE_PROP_CONFIG_3_ADDR 0x0801d000
+#define SAVE_PROP_CONFIG_4_ADDR 0x0801e800
 
 typedef struct properties {
   uint32_t magic;
@@ -432,6 +419,15 @@ void clear_all_config_prop_data(void);
 /*
  * ui.c
  */
+extern void ui_init(void);
+extern void ui_process(void);
+
+// Irq operation process set
+#define OP_NONE       0x00
+#define OP_LEVER      0x01
+#define OP_TOUCH      0x02
+//#define OP_FREQCHANGE 0x04
+extern volatile uint8_t operation_requested;
 
 // lever_mode
 enum lever_mode {
@@ -448,13 +444,13 @@ typedef struct uistat {
   int8_t digit_mode;
   int8_t current_trace; /* 0..3 */
   uint32_t value; // for editing at numeric input area
-  uint32_t previous_value;
+//  uint32_t previous_value;
   uint8_t lever_mode;
-  bool marker_delta;
+  uint8_t marker_delta;
+  uint8_t marker_tracking;
 } uistat_t;
 
 extern uistat_t uistat;
-  
 void ui_init(void);
 void ui_show(void);
 void ui_hide(void);

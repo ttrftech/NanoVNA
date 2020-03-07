@@ -423,9 +423,9 @@ static int getStringIndex(char *v, const char *list){
     }
     // Set new substring ptr
     while (1){
-    	// End of string, not found
-    	if (*list   ==  0 ) return -1;
-    	if (*list++ == '|') break;
+      // End of string, not found
+      if (*list   ==  0 ) return -1;
+      if (*list++ == '|') break;
     }
     i++;
   }
@@ -552,15 +552,6 @@ int16_t dump_selection = 0;
 volatile int16_t wait_count = 0;
 
 float measured[2][POINTS_COUNT][2];
-
-static void
-wait_dsp(int count)
-{
-  wait_count = count;
-  //reset_dsp_accumerator();
-  while (wait_count)
-    __WFI();
-}
 
 #ifdef ENABLED_DUMP
 static void
@@ -739,7 +730,8 @@ static const marker_t def_markers[MARKERS_MAX] = {
 
 // Load propeties default settings
 void loadDefaultProps(void){
-  current_props.magic = CONFIG_MAGIC;
+//Magic add on caldata_save
+//current_props.magic = CONFIG_MAGIC;
   current_props._frequency0   =     50000;    // start =  50kHz
   current_props._frequency1   = 900000000;    // end   = 900MHz
   current_props._sweep_points = POINTS_COUNT;
@@ -755,6 +747,8 @@ void loadDefaultProps(void){
   current_props._active_marker   = 0;
   current_props._domain_mode     = 0;
   current_props._marker_smith_format = MS_RLC;
+//Checksum add on caldata_save
+//current_props.checksum = 0;
 }
 
 void
@@ -769,6 +763,9 @@ ensure_edit_config(void)
   cal_status = 0;
 }
 
+#define DSP_START(delay) wait_count = delay;
+#define DSP_WAIT_READY   while (wait_count) __WFI();
+
 #define DELAY_CHANNEL_CHANGE 2
 
 // main loop for measurement
@@ -777,15 +774,26 @@ bool sweep(bool break_on_operation)
   int i, delay;
   // blink LED while scanning
   palClearPad(GPIOC, GPIOC_LED);
+  // Power stabilization after LED off, also align timings
+  // Also touch made some
+  DSP_START(1); DSP_WAIT_READY;
   for (i = 0; i < sweep_points; i++) {         // 5300
     delay = set_frequency(frequencies[i]);     // 700
     tlv320aic3204_select(0);                   // 60 CH0:REFLECT
-    wait_dsp(delay);                           // 1900
+    DSP_START(delay);                          // 1900
+    //================================================
+    // Place some code thats need execute while delay
+    //================================================
+    DSP_WAIT_READY;
     // calculate reflection coefficient
     (*sample_func)(measured[0][i]);            // 60
 
     tlv320aic3204_select(1);                   // 60 CH1:TRANSMISSION
-    wait_dsp(DELAY_CHANNEL_CHANGE);            // 1700
+    DSP_START(DELAY_CHANNEL_CHANGE);           // 1700
+    //================================================
+    // Place some code thats need execute while delay
+    //================================================
+    DSP_WAIT_READY;
     // calculate transmission coefficient
     (*sample_func)(measured[1][i]);            // 60
                                                // ======== 170 ===========

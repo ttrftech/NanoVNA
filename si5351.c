@@ -321,11 +321,12 @@ si5351_set_frequency(int channel, uint32_t freq, uint8_t drive_strength){
  *  +-----------------------------------------------------------------------------------------------------------------------+
  *  |     Band 1      |   Band 2     |    Band 3    |   Band 2     |                       Band 3                           |
  *  +-----------------------------------------------------------------------------------------------------------------------+
- *  |    x1 :  x1     |    x1 : x1   |    x1 : x1   |    x3 : x5   |   x3 : x5  |    x5-x7    |    x7-x9     |    x9-x11    |
+ *  |            Direct mode  x1 :  x1              |           x3 : x5         |    x5-x7    |    x7-x9     |    x9-x11    |
+ *  +-----------------------------------------------------------------------------------------------------------------------+
  *  | 50kHz - 100MHz  | 100 - 150MHz | 150 - 300MHz |  300-450MHz  | 450-900MHz | 900-1500MHz | 1500-2100MHz | 2100-2700MHz |
  *  +-----------------------------------------------------------------------------------------------------------------------+
- *  |              f = 50kHz-100MHz                 | f=100-150    | f=150-300  | f=150-300   | f=214-300    | f=233-300    |
- *  |             of = 50kHz-100MHz                 |of= 60- 90    |of= 90-180  |of=128-215   |of=166-234    |of=190-246    |
+ *  |              f = 50kHz-300MHz                 | f=100-150    | f=150-300  | f=150-300   | f=214-300    | f=233-300    |
+ *  |             of = 50kHz-300MHz                 |of= 60- 90    |of= 90-180  |of=128-215   |of=166-234    |of=190-246    |
  *  +-----------------------------------------------------------------------------------------------------------------------+
  */
 static inline uint8_t si5351_getBand(uint32_t freq){
@@ -339,8 +340,8 @@ static inline uint8_t si5351_getBand(uint32_t freq){
 // Additional delay for band 1 (remove unstable generation at begin)
 #define DELAY_BAND_1	 1
 // Band changes need additional delay after reset PLL
-#define DELAY_BANDCHANGE_1 3
-#define DELAY_BANDCHANGE_2 3
+#define DELAY_BANDCHANGE_1 2
+#define DELAY_BANDCHANGE_2 2
 
 /*
  * Maximum supported frequency = FREQ_HARMONICS * 9U

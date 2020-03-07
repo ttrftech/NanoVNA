@@ -86,7 +86,9 @@ double my_atof(const char *p);
 void toggle_sweep(void);
 void loadDefaultProps(void);
 
-extern int8_t sweep_enabled;
+#define SWEEP_MODE_ENABLED			0x01
+#define SWEEP_MODE_RUN_ONCE			0x02
+extern volatile int8_t sweep_mode;
 
 /*
  * dsp.c
@@ -279,12 +281,12 @@ int marker_search(void);
 int marker_search_left(int from);
 int marker_search_right(int from);
 
-extern uint16_t redraw_request;
-
+// _request flag for update screen
 #define REDRAW_CELLS      (1<<0)
 #define REDRAW_FREQUENCY  (1<<1)
 #define REDRAW_CAL_STATUS (1<<2)
 #define REDRAW_MARKER     (1<<3)
+extern volatile uint8_t redraw_request;
 
 extern int16_t vbat;
 

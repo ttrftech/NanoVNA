@@ -1358,7 +1358,7 @@ menu_item_modify_attribute(const menuitem_t *menu, int item,
       *fg = config.menu_normal_color;
     }
   } else if (menu == menu_stimulus) {
-    if (item == 5 /* PAUSE */ && !sweep_enabled) {
+    if (item == 5 /* PAUSE */ && !(sweep_mode&SWEEP_MODE_ENABLED)) {
       *bg = DEFAULT_MENU_TEXT_COLOR;
       *fg = config.menu_normal_color;
     }
@@ -2131,7 +2131,7 @@ touch_lever_mode_select(void)
     select_lever_mode(touch_x < FREQUENCIES_XPOS2 ? LM_CENTER : LM_SPAN);
     return TRUE;
   }
-  if (touch_y < 15) {
+  if (touch_y < 25) {
     if (touch_x < FREQUENCIES_XPOS2 && get_electrical_delay() != 0.0) {
       select_lever_mode(LM_EDELAY);
     } else 

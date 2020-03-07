@@ -69,19 +69,17 @@ static void transform_domain(void);
 
 static MUTEX_DECL(mutex);
 
-int32_t frequency_offset = 5000;
-uint32_t frequency = 10000000;
-int8_t drive_strength = DRIVE_STRENGTH_AUTO;
-int8_t sweep_enabled = TRUE;
-volatile int8_t sweep_once = FALSE;
-int8_t cal_auto_interpolate = TRUE;
-uint16_t redraw_request = 0; // contains REDRAW_XXX flags
+// Obsolete enable/disable calibration interpolation (always on)
+#define cal_auto_interpolate TRUE
+
+static int32_t frequency_offset = 5000;
+static uint32_t frequency = 10000000;
+static int8_t drive_strength = DRIVE_STRENGTH_AUTO;
+volatile int8_t sweep_mode = SWEEP_MODE_ENABLED;
+
+volatile uint8_t redraw_request = 0; // contains REDRAW_XXX flags
 int16_t vbat = 0;
 
-//
-// Profile stack usage (enable threads command by def ENABLE_THREADS_COMMAND) show:
-// Stack maximum usage = 576 bytes, free stack = 64 bytes
-//
 static THD_WORKING_AREA(waThread1, 640);
 static THD_FUNCTION(Thread1, arg)
 {
@@ -90,11 +88,10 @@ static THD_FUNCTION(Thread1, arg)
 
   while (1) {
     bool completed = false;
-    if (sweep_enabled || sweep_once) {
+    if (sweep_mode&(SWEEP_MODE_ENABLED|SWEEP_MODE_RUN_ONCE)) {
       chMtxLock(&mutex);
-      // Sweep require 8367 system tick
       completed = sweep(true);
-      sweep_once = FALSE;
+      sweep_mode&=~SWEEP_MODE_RUN_ONCE;
       chMtxUnlock(&mutex);
     } else {
       si5351_disable_output();
@@ -102,10 +99,8 @@ static THD_FUNCTION(Thread1, arg)
     }
 
     chMtxLock(&mutex);
-    // Ui and render require 800 system tick
     ui_process();
-
-    if (sweep_enabled) {
+    if (sweep_mode&SWEEP_MODE_ENABLED) {
       if (vbat != -1) {
         adc_stop(ADC1);
         vbat = adc_vbat_read(ADC1);
@@ -135,23 +130,10 @@ static THD_FUNCTION(Thread1, arg)
   }
 }
 
-static inline void
-pause_sweep(void)
-{
-  sweep_enabled = FALSE;
-}
-
-static inline void
-resume_sweep(void)
-{
-  sweep_enabled = TRUE;
-}
-
-void
-toggle_sweep(void)
-{
-  sweep_enabled = !sweep_enabled;
-}
+static inline void run_once_sweep(void) {sweep_mode|=SWEEP_MODE_RUN_ONCE;}
+static inline void pause_sweep(void) {sweep_mode&=~SWEEP_MODE_ENABLED;}
+static inline void resume_sweep(void){sweep_mode|= SWEEP_MODE_ENABLED;}
+void toggle_sweep(void){sweep_mode^= SWEEP_MODE_ENABLED;}
 
 static float
 bessel0(float x) {
@@ -316,16 +298,15 @@ const int8_t gain_table[] = {
 #define DELAY_GAIN_CHANGE 2
 
 static int
-adjust_gain(int newfreq)
+adjust_gain(uint32_t newfreq)
 {
-  int delay = 0;
   int new_order = newfreq / FREQ_HARMONICS;
   int old_order = frequency / FREQ_HARMONICS;
   if (new_order != old_order) {
     tlv320aic3204_set_gain(gain_table[new_order], gain_table[new_order]);
-    delay += DELAY_GAIN_CHANGE;
+    return DELAY_GAIN_CHANGE;
   }
-  return delay;
+  return 0;
 }
 
 int set_frequency(uint32_t freq)
@@ -778,27 +759,23 @@ ensure_edit_config(void)
 #define DELAY_CHANNEL_CHANGE 2
 
 // main loop for measurement
-bool sweep(bool break_on_operation)
+static bool sweep(bool break_on_operation)
 {
-  int i;
+  int i, delay;
   // blink LED while scanning
   palClearPad(GPIOC, GPIOC_LED);
-  systime_t time = chVTGetSystemTimeX();
-  systime_t sweep_t = 0;
   si5351_enable_output();
-  // On CW set freq once, and run
-  for (i = 0; i < sweep_points; i++) {         // 8365
-    sweep_t-= chVTGetSystemTimeX();
-    int delay = set_frequency(frequencies[i]); // 1560
-    sweep_t+= chVTGetSystemTimeX();
+  wait_dsp(1); // Wait for get optimal timings
+  for (i = 0; i < sweep_points; i++) {         // 5300
+    delay = set_frequency(frequencies[i]);     // 700
     tlv320aic3204_select(0);                   // 60 CH0:REFLECT
 
-    wait_dsp(delay+(i==0 ? 1 :0));             // 3270
+    wait_dsp(delay);                           // 1900
     // calculate reflection coefficient
     (*sample_func)(measured[0][i]);            // 60
 
     tlv320aic3204_select(1);                   // 60 CH1:TRANSMISSION
-    wait_dsp(DELAY_CHANNEL_CHANGE);            // 2700
+    wait_dsp(DELAY_CHANNEL_CHANGE);            // 1800
     // calculate transmission coefficient
     (*sample_func)(measured[1][i]);            // 60
                                                // ======== 170 ===========
@@ -813,7 +790,6 @@ bool sweep(bool break_on_operation)
       return false;
     }
   }
-  {char string_buf[18];plot_printf(string_buf, sizeof string_buf, "T:%06d:%06d", chVTGetSystemTimeX() - time, sweep_t);ili9341_drawstringV(string_buf, 1, 90);}
   // blink LED while scanning
   palSetPad(GPIOC, GPIOC_LED);
   return true;
@@ -849,11 +825,11 @@ VNA_SHELL_FUNCTION(cmd_scan)
   if (cal_auto_interpolate && (cal_status & CALSTAT_APPLY))
     cal_interpolate(lastsaveid);
 
-  sweep_once = TRUE;
+  run_once_sweep();
   chMtxUnlock(&mutex);
 
   // wait finishing sweep
-  while (sweep_once)
+  while (sweep_mode&SWEEP_MODE_RUN_ONCE)
     chThdSleepMilliseconds(10);
 }
 
@@ -1294,36 +1270,21 @@ void
 cal_collect(int type)
 {
   ensure_edit_config();
-
+  int dst, src;
   switch (type) {
-  case CAL_LOAD:
-    cal_status |= CALSTAT_LOAD;
-    memcpy(cal_data[CAL_LOAD], measured[0], sizeof measured[0]);
-    break;
-
-  case CAL_OPEN:
-    cal_status |= CALSTAT_OPEN;
-    cal_status &= ~(CALSTAT_ES|CALSTAT_APPLY);
-    memcpy(cal_data[CAL_OPEN], measured[0], sizeof measured[0]);
-    break;
-
-  case CAL_SHORT:
-    cal_status |= CALSTAT_SHORT;
-    cal_status &= ~(CALSTAT_ER|CALSTAT_APPLY);
-    memcpy(cal_data[CAL_SHORT], measured[0], sizeof measured[0]);
-    break;
-
-  case CAL_THRU:
-    cal_status |= CALSTAT_THRU;
-    memcpy(cal_data[CAL_THRU], measured[1], sizeof measured[0]);
-    break;
-
-  case CAL_ISOLN:
-    cal_status |= CALSTAT_ISOLN;
-    memcpy(cal_data[CAL_ISOLN], measured[1], sizeof measured[0]);
-    break;
+  case CAL_LOAD:  cal_status|= CALSTAT_LOAD;  dst = CAL_LOAD;  src = 0; break;
+  case CAL_OPEN:  cal_status|= CALSTAT_OPEN;  dst = CAL_OPEN;  src = 0; cal_status&= ~(CALSTAT_ES|CALSTAT_APPLY); break;
+  case CAL_SHORT: cal_status|= CALSTAT_SHORT; dst = CAL_SHORT; src = 0; cal_status&= ~(CALSTAT_ER|CALSTAT_APPLY); break;
+  case CAL_THRU:  cal_status|= CALSTAT_THRU;  dst = CAL_THRU;  src = 1; break;
+  case CAL_ISOLN: cal_status|= CALSTAT_ISOLN; dst = CAL_ISOLN; src = 1; break;
+  default:
+    return;
   }
-  redraw_request |= REDRAW_CAL_STATUS;
+  // Made sweep operation for collect calibration data
+  sweep(false);
+  // Copy calibration data
+  memcpy(cal_data[dst], measured[src], sizeof measured[0]);
+  redraw_request|= REDRAW_CAL_STATUS;
 }
 
 void
@@ -2165,24 +2126,27 @@ THD_FUNCTION(myshellThread, p) {
 #endif
 
 // I2C clock bus setting: depend from STM32_I2C1SW in mcuconf.h
-// STM32_I2C1SW = STM32_I2C1SW_HSI     (HSI=8MHz)
-// STM32_I2C1SW = STM32_I2C1SW_SYSCLK  (SYSCLK = 48MHz)
 static const I2CConfig i2ccfg = {
-  // TIMINGR register initialization. (use I2C timing configuration tool for STM32F3xx and STM32F0xx microcontrollers (AN4235))
-  // 400kHz @ SYSCLK 48MHz (Use 26.4.10 I2C_TIMINGR register configuration examples from STM32 RM0091 Reference manual)
-//  STM32_TIMINGR_PRESC(5U)  |
-//  STM32_TIMINGR_SCLDEL(3U) | STM32_TIMINGR_SDADEL(3U) |
-//  STM32_TIMINGR_SCLH(3U)   | STM32_TIMINGR_SCLL(9U),
-// 400kHz @ HSI 8MHz (Use 26.4.10 I2C_TIMINGR register configuration examples from STM32 RM0091 Reference manual)
+  .timingr =     // TIMINGR register initialization. (use I2C timing configuration tool for STM32F3xx and STM32F0xx microcontrollers (AN4235))
+#if STM32_I2C1SW == STM32_I2C1SW_HSI
+  // STM32_I2C1SW == STM32_I2C1SW_HSI     (HSI=8MHz)
+  // 400kHz @ HSI 8MHz (Use 26.4.10 I2C_TIMINGR register configuration examples from STM32 RM0091 Reference manual)
   STM32_TIMINGR_PRESC(0U)  |
   STM32_TIMINGR_SCLDEL(3U) | STM32_TIMINGR_SDADEL(1U) |
   STM32_TIMINGR_SCLH(3U)   | STM32_TIMINGR_SCLL(9U),
-// Old values voodoo magic 400kHz @ HSI 8MHz
-//  STM32_TIMINGR_PRESC(0U)  |
-//  STM32_TIMINGR_SCLDEL(3U) | STM32_TIMINGR_SDADEL(0U) |
-//  STM32_TIMINGR_SCLH(5U)   | STM32_TIMINGR_SCLL(6U),
-  0,          // CR1 register initialization.
-  0           // CR2 register initialization.
+  // Old values voodoo magic 400kHz @ HSI 8MHz
+  //0x00300506,
+#elif  STM32_I2C1SW == STM32_I2C1SW_SYSCLK
+  // STM32_I2C1SW == STM32_I2C1SW_SYSCLK  (SYSCLK = 48MHz)
+  // 400kHz @ SYSCLK 48MHz (Use 26.4.10 I2C_TIMINGR register configuration examples from STM32 RM0091 Reference manual)
+  STM32_TIMINGR_PRESC(5U)  |
+  STM32_TIMINGR_SCLDEL(3U) | STM32_TIMINGR_SDADEL(3U) |
+  STM32_TIMINGR_SCLH(3U)   | STM32_TIMINGR_SCLL(9U),
+#else
+#error "Need Define STM32_I2C1SW and set correct TIMINGR settings"
+#endif
+  .cr1 = 0,     // CR1 register initialization.
+  .cr2 = 0      // CR2 register initialization.
 };
 
 static DACConfig dac1cfg1 = {

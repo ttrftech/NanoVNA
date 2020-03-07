@@ -78,8 +78,8 @@ static MUTEX_DECL(mutex);
 static int32_t frequency_offset = 5000;
 static uint32_t frequency = 10000000;
 static int8_t drive_strength = DRIVE_STRENGTH_AUTO;
-int8_t sweep_enabled = TRUE;
-volatile int8_t sweep_once = FALSE;
+int8_t sweep_mode = SWEEP_ENABLE;
+
 volatile uint8_t redraw_request = 0; // contains REDRAW_XXX flags
 int16_t vbat = 0;
 
@@ -91,10 +91,10 @@ static THD_FUNCTION(Thread1, arg)
 
   while (1) {
     bool completed = false;
-    if (sweep_enabled || sweep_once) {
+    if (sweep_mode&(SWEEP_ENABLE|SWEEP_ONCE)) {
       chMtxLock(&mutex);
       completed = sweep(true);
-      sweep_once = FALSE;
+      sweep_mode&=~SWEEP_ONCE;
       chMtxUnlock(&mutex);
     } else {
       __WFI();
@@ -103,7 +103,7 @@ static THD_FUNCTION(Thread1, arg)
     chMtxLock(&mutex);
     ui_process();
 
-    if (sweep_enabled) {
+    if (sweep_mode&SWEEP_ENABLE) {
       if (vbat != -1) {
         adc_stop(ADC1);
         vbat = adc_vbat_read(ADC1);
@@ -136,19 +136,19 @@ static THD_FUNCTION(Thread1, arg)
 static inline void
 pause_sweep(void)
 {
-  sweep_enabled = FALSE;
+  sweep_mode&=~SWEEP_ENABLE;
 }
 
 static inline void
 resume_sweep(void)
 {
-  sweep_enabled = TRUE;
+  sweep_mode|=SWEEP_ENABLE;
 }
 
 void
 toggle_sweep(void)
 {
-  sweep_enabled = !sweep_enabled;
+  sweep_mode^=SWEEP_ENABLE;
 }
 
 static float
@@ -842,11 +842,11 @@ VNA_SHELL_FUNCTION(cmd_scan)
   if (cal_auto_interpolate && (cal_status & CALSTAT_APPLY))
     cal_interpolate(lastsaveid);
 
-  sweep_once = TRUE;
+  sweep_mode|= SWEEP_ONCE;
   chMtxUnlock(&mutex);
 
   // wait finishing sweep
-  while (sweep_once)
+  while (sweep_mode&SWEEP_ONCE)
     chThdSleepMilliseconds(10);
 }
 

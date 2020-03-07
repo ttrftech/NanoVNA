@@ -86,7 +86,9 @@ double my_atof(const char *p);
 void toggle_sweep(void);
 void loadDefaultProps(void);
 
-extern int8_t sweep_enabled;
+#define SWEEP_ENABLE  0x01
+#define SWEEP_ONCE    0x02
+extern int8_t sweep_mode;
 
 /*
  * dsp.c

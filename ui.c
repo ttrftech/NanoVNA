@@ -212,7 +212,7 @@ touch_measure_y(void)
   palSetPad(GPIOA, 6);
 
   chThdSleepMilliseconds(2);
-  v = adc_single_read(ADC1, ADC_CHSELR_CHSEL7);
+  v = adc_single_read(ADC_CHSELR_CHSEL7);
   //chThdSleepMilliseconds(2);
   //v += adc_single_read(ADC1, ADC_CHSELR_CHSEL7);
   return v;
@@ -232,7 +232,7 @@ touch_measure_x(void)
   palClearPad(GPIOA, 7);
 
   chThdSleepMilliseconds(2);
-  v = adc_single_read(ADC1, ADC_CHSELR_CHSEL6);
+  v = adc_single_read(ADC_CHSELR_CHSEL6);
   //chThdSleepMilliseconds(2);
   //v += adc_single_read(ADC1, ADC_CHSELR_CHSEL6);
   return v;
@@ -255,14 +255,14 @@ void
 touch_start_watchdog(void)
 {
   touch_prepare_sense();
-  adc_start_analog_watchdogd(ADC1, ADC_CHSELR_CHSEL7);
+  adc_start_analog_watchdogd(ADC_CHSELR_CHSEL7);
 }
 
 static int
 touch_status(void)
 {
   touch_prepare_sense();
-  return adc_single_read(ADC1, ADC_CHSELR_CHSEL7) > TOUCH_THRESHOLD;
+  return adc_single_read(ADC_CHSELR_CHSEL7) > TOUCH_THRESHOLD;
 }
 
 static int
@@ -302,7 +302,7 @@ touch_cal_exec(void)
 {
   int x1, x2, y1, y2;
   
-  adc_stop(ADC1);
+  adc_stop();
   setForegroundColor(DEFAULT_FG_COLOR);
   setBackgroundColor(DEFAULT_BG_COLOR);
   clearScreen();
@@ -338,7 +338,7 @@ touch_draw_test(void)
   int x0, y0;
   int x1, y1;
   
-  adc_stop(ADC1);
+  adc_stop();
 
   setForegroundColor(DEFAULT_FG_COLOR);
   setBackgroundColor(DEFAULT_BG_COLOR);
@@ -372,7 +372,7 @@ void
 show_version(void)
 {
   int x = 5, y = 5;
-  adc_stop(ADC1);
+  adc_stop();
   setForegroundColor(DEFAULT_FG_COLOR);
   setBackgroundColor(DEFAULT_BG_COLOR);
 
@@ -404,7 +404,7 @@ show_version(void)
 void
 enter_dfu(void)
 {
-  adc_stop(ADC1);
+  adc_stop();
 
   int x = 5, y = 5;
   setForegroundColor(DEFAULT_FG_COLOR);
@@ -2003,7 +2003,7 @@ static void
 ui_process_keypad(void)
 {
   int status;
-  adc_stop(ADC1);
+  adc_stop();
 
   kp_index = 0;
   while (TRUE) {
@@ -2145,7 +2145,7 @@ static
 void ui_process_touch(void)
 {
 //  awd_count++;
-  adc_stop(ADC1);
+  adc_stop();
 
   int status = touch_check();
   if (status == EVT_TOUCH_PRESSED || status == EVT_TOUCH_DOWN) {

@@ -28,80 +28,79 @@
 #define ADC_SMPR_SMP_239P5      7U  /**< @brief 252 cycles conversion time. */ 
 #define ADC_CFGR1_RES_12BIT             (0U << 3U)
 
+#define VNA_ADC     ADC1
+
 void adc_init(void)
 {
   rccEnableADC1(FALSE);
 
   /* Ensure flag states */
-  ADC1->IER = 0;
+  VNA_ADC->IER = 0;
 
   /* Calibration procedure.*/
   ADC->CCR = 0;
-  if (ADC1->CR & ADC_CR_ADEN) {
-      ADC1->CR |= ~ADC_CR_ADDIS; /* Disable ADC */
+  if (VNA_ADC->CR & ADC_CR_ADEN) {
+    VNA_ADC->CR |= ~ADC_CR_ADDIS; /* Disable ADC */
   }
-  while (ADC1->CR & ADC_CR_ADEN)
+  while (VNA_ADC->CR & ADC_CR_ADEN)
     ;
-  ADC1->CFGR1 &= ~ADC_CFGR1_DMAEN;
-  ADC1->CR |= ADC_CR_ADCAL;
-  while (ADC1->CR & ADC_CR_ADCAL)
+  VNA_ADC->CFGR1 &= ~ADC_CFGR1_DMAEN;
+  VNA_ADC->CR |= ADC_CR_ADCAL;
+  while (VNA_ADC->CR & ADC_CR_ADCAL)
     ;
 
-  if (ADC1->ISR & ADC_ISR_ADRDY) {
-      ADC1->ISR |= ADC_ISR_ADRDY; /* clear ADRDY */
+  if (VNA_ADC->ISR & ADC_ISR_ADRDY) {
+    VNA_ADC->ISR |= ADC_ISR_ADRDY; /* clear ADRDY */
   }
   /* Enable ADC */
-  ADC1->CR |= ADC_CR_ADEN;
-  while (!(ADC1->ISR & ADC_ISR_ADRDY))
+  VNA_ADC->CR |= ADC_CR_ADEN;
+  while (!(VNA_ADC->ISR & ADC_ISR_ADRDY))
     ;
 }
 
-uint16_t adc_single_read(ADC_TypeDef *adc, uint32_t chsel)
+uint16_t adc_single_read(uint32_t chsel)
 {
   /* ADC setup */
-  adc->ISR    = adc->ISR;
-  adc->IER    = 0;
-  adc->TR     = ADC_TR(0, 0);
-  adc->SMPR   = ADC_SMPR_SMP_239P5;
-  adc->CFGR1  = ADC_CFGR1_RES_12BIT;
-  adc->CHSELR = chsel;
+  VNA_ADC->ISR    = VNA_ADC->ISR;
+  VNA_ADC->IER    = 0;
+  VNA_ADC->TR     = ADC_TR(0, 0);
+  VNA_ADC->SMPR   = ADC_SMPR_SMP_239P5;
+  VNA_ADC->CFGR1  = ADC_CFGR1_RES_12BIT;
+  VNA_ADC->CHSELR = chsel;
 
   /* ADC conversion start.*/
-  adc->CR |= ADC_CR_ADSTART;
+  VNA_ADC->CR |= ADC_CR_ADSTART;
 
-  while (adc->CR & ADC_CR_ADSTART)
+  while (VNA_ADC->CR & ADC_CR_ADSTART)
     ;
 
-  return adc->DR;
+  return VNA_ADC->DR;
 }
 
-int16_t adc_vbat_read(ADC_TypeDef *adc)
+int16_t adc_vbat_read(void)
 {
 #define ADC_FULL_SCALE 3300
-#define VBAT_DIODE_VF 500
 #define VREFINT_CAL (*((uint16_t*)0x1FFFF7BA))
-	float vbat = 0;
-	float vrefint = 0;
-
-	ADC->CCR |= ADC_CCR_VREFEN | ADC_CCR_VBATEN;
-	// VREFINT == ADC_IN17
-	vrefint = adc_single_read(adc, ADC_CHSELR_CHSEL17);
-	// VBAT == ADC_IN18
-	// VBATEN enables resiter devider circuit. It consume vbat power.
-	vbat = adc_single_read(adc, ADC_CHSELR_CHSEL18);
-	ADC->CCR &= ~(ADC_CCR_VREFEN | ADC_CCR_VBATEN);
-
-	uint16_t vbat_raw = (ADC_FULL_SCALE * VREFINT_CAL * vbat * 2 / (vrefint * ((1<<12)-1)));
-	if (vbat_raw < 100) {
-		// maybe D2 is not installed
-		return -1;
-	}
-	
-	return vbat_raw + VBAT_DIODE_VF;
-
+  adc_stop();
+  float vbat = 0;
+  float vrefint = 0;
+  ADC->CCR |= ADC_CCR_VREFEN | ADC_CCR_VBATEN;
+  // VREFINT == ADC_IN17
+  vrefint = adc_single_read(ADC_CHSELR_CHSEL17);
+  // VBAT == ADC_IN18
+  // VBATEN enables resiter devider circuit. It consume vbat power.
+  vbat = adc_single_read(ADC_CHSELR_CHSEL18);
+  ADC->CCR &= ~(ADC_CCR_VREFEN | ADC_CCR_VBATEN);
+  touch_start_watchdog();
+  uint16_t vbat_raw = (ADC_FULL_SCALE * VREFINT_CAL * vbat * 2 / (vrefint * ((1<<12)-1)));
+  if (vbat_raw < 100) {
+    // maybe D2 is not installed
+    return -1;
+  }
+  return vbat_raw + config.vbat_offset;
 }
 
-void adc_start_analog_watchdogd(ADC_TypeDef *adc, uint32_t chsel)
+void adc_start_analog_watchdogd(uint32_t chsel)
 {
   uint32_t cfgr1;
 
@@ -111,38 +110,38 @@ void adc_start_analog_watchdogd(ADC_TypeDef *adc, uint32_t chsel)
 
   /* ADC setup, if it is defined a callback for the analog watch dog then it
      is enabled.*/
-  adc->ISR    = adc->ISR;
-  adc->IER    = ADC_IER_AWDIE;
-  adc->TR     = ADC_TR(0, TOUCH_THRESHOLD);
-  adc->SMPR   = ADC_SMPR_SMP_1P5;
-  adc->CHSELR = chsel;
+  VNA_ADC->ISR    = VNA_ADC->ISR;
+  VNA_ADC->IER    = ADC_IER_AWDIE;
+  VNA_ADC->TR     = ADC_TR(0, TOUCH_THRESHOLD);
+  VNA_ADC->SMPR   = ADC_SMPR_SMP_1P5;
+  VNA_ADC->CHSELR = chsel;
 
   /* ADC configuration and start.*/
-  adc->CFGR1  = cfgr1;
+  VNA_ADC->CFGR1  = cfgr1;
 
   /* ADC conversion start.*/
-  adc->CR |= ADC_CR_ADSTART;
+  VNA_ADC->CR |= ADC_CR_ADSTART;
 }
 
-void adc_stop(ADC_TypeDef *adc)
+void adc_stop(void)
 {
-  if (adc->CR & ADC_CR_ADEN) {
-    if (adc->CR & ADC_CR_ADSTART) {
-      adc->CR |= ADC_CR_ADSTP;
-      while (adc->CR & ADC_CR_ADSTP)
+  if (VNA_ADC->CR & ADC_CR_ADEN) {
+    if (VNA_ADC->CR & ADC_CR_ADSTART) {
+      VNA_ADC->CR |= ADC_CR_ADSTP;
+      while (VNA_ADC->CR & ADC_CR_ADSTP)
         ;
     }
 
-    /*    adc->CR |= ADC_CR_ADDIS;
-    while (adc->CR & ADC_CR_ADDIS)
+    /*    VNA_ADC->CR |= ADC_CR_ADDIS;
+    while (VNA_ADC->CR & ADC_CR_ADDIS)
     ;*/
   }
 }
 
-void adc_interrupt(ADC_TypeDef *adc)
+void adc_interrupt(void)
 {
-  uint32_t isr = adc->ISR;
-  adc->ISR = isr;
+  uint32_t isr = VNA_ADC->ISR;
+  VNA_ADC->ISR = isr;
 
   if (isr & ADC_ISR_OVR) {
     /* ADC overflow condition, this could happen only if the DMA is unable
@@ -159,7 +158,7 @@ OSAL_IRQ_HANDLER(STM32_ADC1_HANDLER)
 {
   OSAL_IRQ_PROLOGUE();
 
-  adc_interrupt(ADC1);
+  adc_interrupt();
 
   OSAL_IRQ_EPILOGUE();
 }

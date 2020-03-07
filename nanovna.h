@@ -218,8 +218,8 @@ typedef struct config {
   int16_t  touch_cal[4];
   int8_t   reserved_1;
   uint32_t harmonic_freq_threshold;
-
-  uint8_t _reserved[24];
+  uint16_t vbat_offset;
+  uint8_t _reserved[22];
   uint32_t checksum;
 } config_t;
 
@@ -234,7 +234,6 @@ void set_trace_refpos(int t, float refpos);
 float get_trace_scale(int t);
 float get_trace_refpos(int t);
 const char *get_trace_typename(int t);
-void draw_battery_status(void);
 
 void set_electrical_delay(float picoseconds);
 float get_electrical_delay(void);
@@ -282,9 +281,8 @@ int marker_search_right(int from);
 #define REDRAW_FREQUENCY  (1<<1)
 #define REDRAW_CAL_STATUS (1<<2)
 #define REDRAW_MARKER     (1<<3)
+#define REDRAW_BATTERY    (1<<4)
 extern volatile uint8_t redraw_request;
-
-extern int16_t vbat;
 
 /*
  * ili9341.c
@@ -468,11 +466,11 @@ void enter_dfu(void);
  */
 
 void adc_init(void);
-uint16_t adc_single_read(ADC_TypeDef *adc, uint32_t chsel);
-void adc_start_analog_watchdogd(ADC_TypeDef *adc, uint32_t chsel);
-void adc_stop(ADC_TypeDef *adc);
-void adc_interrupt(ADC_TypeDef *adc);
-int16_t adc_vbat_read(ADC_TypeDef *adc);
+uint16_t adc_single_read(uint32_t chsel);
+void adc_start_analog_watchdogd(uint32_t chsel);
+void adc_stop(void);
+void adc_interrupt(void);
+int16_t adc_vbat_read(void);
 
 /*
  * misclinous

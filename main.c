@@ -57,6 +57,7 @@ static char shell_line[VNA_SHELL_MAX_LENGTH];
 //#define ENABLED_DUMP
 //#define ENABLE_THREADS_COMMAND
 //#define ENABLE_TIME_COMMAND
+#define ENABLE_VBAT_OFFSET_COMMAND
 
 static void apply_error_term_at(int i);
 static void apply_edelay_at(int i);
@@ -79,9 +80,7 @@ static int32_t frequency_offset = 5000;
 static uint32_t frequency = 10000000;
 static int8_t drive_strength = DRIVE_STRENGTH_AUTO;
 int8_t sweep_mode = SWEEP_ENABLE;
-
 volatile uint8_t redraw_request = 0; // contains REDRAW_XXX flags
-int16_t vbat = 0;
 
 static THD_WORKING_AREA(waThread1, 640);
 static THD_FUNCTION(Thread1, arg)
@@ -104,19 +103,12 @@ static THD_FUNCTION(Thread1, arg)
     ui_process();
 
     if (sweep_mode&SWEEP_ENABLE) {
-      if (vbat != -1) {
-        adc_stop(ADC1);
-        vbat = adc_vbat_read(ADC1);
-        touch_start_watchdog();
-        draw_battery_status();
-      }
-
       // calculate trace coordinates and plot only if scan completed
       if (completed) {
         if ((domain_mode & DOMAIN_MODE) == DOMAIN_TIME)
           transform_domain();
         plot_into_index(measured);
-        redraw_request |= REDRAW_CELLS;
+        redraw_request |= REDRAW_CELLS|REDRAW_BATTERY;
 
         if (uistat.marker_tracking) {
           int i = marker_search();
@@ -710,7 +702,8 @@ config_t config = {
   .trace_color =       { DEFAULT_TRACE_1_COLOR, DEFAULT_TRACE_2_COLOR, DEFAULT_TRACE_3_COLOR, DEFAULT_TRACE_4_COLOR },
 //  .touch_cal =         { 693, 605, 124, 171 },  // 2.4 inch LCD panel
   .touch_cal =         { 338, 522, 153, 192 },  // 2.8 inch LCD panel
-  .harmonic_freq_threshold = 300000000
+  .harmonic_freq_threshold = 300000000,
+  .vbat_offset = 500
 };
 
 properties_t current_props;
@@ -1942,8 +1935,19 @@ VNA_SHELL_FUNCTION(cmd_vbat)
 {
   (void)argc;
   (void)argv;
-  shell_printf("%d mV\r\n", vbat);
+  shell_printf("%d mV\r\n", adc_vbat_read());
 }
+
+#ifdef ENABLE_VBAT_OFFSET_COMMAND
+VNA_SHELL_FUNCTION(cmd_vbat_offset)
+{
+  if (argc != 1) {
+    shell_printf("%d\r\n", config.vbat_offset);
+    return;
+  }
+  config.vbat_offset = (int16_t)my_atoi(argv[0]);
+}
+#endif
 
 #ifdef ENABLE_THREADS_COMMAND
 #if CH_CFG_USE_REGISTRY == FALSE
@@ -2028,6 +2032,9 @@ static const VNAShellCommand commands[] =
     {"edelay"      , cmd_edelay      , 0},
     {"capture"     , cmd_capture     , CMD_WAIT_MUTEX},
     {"vbat"        , cmd_vbat        , 0},
+#ifdef ENABLE_VBAT_OFFSET_COMMAND
+    {"vbat_offset" , cmd_vbat_offset , 0},
+#endif
     {"transform"   , cmd_transform   , 0},
     {"threshold"   , cmd_threshold   , 0},
     {"help"        , cmd_help        , 0},

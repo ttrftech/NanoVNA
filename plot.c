@@ -6,6 +6,7 @@
 #include "nanovna.h"
 
 static void cell_draw_marker_info(int x0, int y0);
+static void draw_battery_status(void);
 
 int16_t grid_offset;
 int16_t grid_width;
@@ -1388,6 +1389,8 @@ draw_all(bool flush)
     draw_frequencies();
   if (redraw_request & REDRAW_CAL_STATUS)
     draw_cal_status();
+  if (redraw_request & REDRAW_BATTERY)
+    draw_battery_status();
   redraw_request = 0;
 }
 
@@ -1661,10 +1664,10 @@ draw_cal_status(void)
 #define BATTERY_BOTTOM_LEVEL    3100
 #define BATTERY_WARNING_LEVEL   3300
 
-void
-draw_battery_status(void)
+static void draw_battery_status(void)
 {
-  if (vbat<=0)
+  int16_t vbat = adc_vbat_read();
+  if (vbat <= 0)
     return;
   uint8_t string_buf[16];
   // Set battery color

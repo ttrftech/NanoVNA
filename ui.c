@@ -1358,7 +1358,7 @@ menu_item_modify_attribute(const menuitem_t *menu, int item,
       *fg = config.menu_normal_color;
     }
   } else if (menu == menu_stimulus) {
-    if (item == 5 /* PAUSE */ && !(sweep_mode&SWEEP_MODE_ENABLED)) {
+    if (item == 5 /* PAUSE */ && !sweep_enabled) {
       *bg = DEFAULT_MENU_TEXT_COLOR;
       *fg = config.menu_normal_color;
     }

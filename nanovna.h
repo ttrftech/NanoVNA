@@ -86,9 +86,7 @@ double my_atof(const char *p);
 void toggle_sweep(void);
 void loadDefaultProps(void);
 
-#define SWEEP_MODE_ENABLED			0x01
-#define SWEEP_MODE_RUN_ONCE			0x02
-extern volatile int8_t sweep_mode;
+extern int8_t sweep_enabled;
 
 /*
  * dsp.c
@@ -224,10 +222,6 @@ typedef struct config {
 } config_t;
 
 extern config_t config;
-
-#define DRIVE_STRENGTH_AUTO (-1)
-#define FREQ_HARMONICS (config.harmonic_freq_threshold)
-#define IS_HARMONIC_MODE(f) ((f) > FREQ_HARMONICS)
 
 //extern trace_t trace[TRACES_MAX];
 

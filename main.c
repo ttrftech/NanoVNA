@@ -69,14 +69,17 @@ static void transform_domain(void);
 
 static MUTEX_DECL(mutex);
 
-// Obsolete enable/disable calibration interpolation (always on)
-#define cal_auto_interpolate TRUE
+#define DRIVE_STRENGTH_AUTO (-1)
+#define FREQ_HARMONICS (config.harmonic_freq_threshold)
+#define IS_HARMONIC_MODE(f) ((f) > FREQ_HARMONICS)
+// Obsolete, always use interpolate
+#define  cal_auto_interpolate  TRUE
 
 static int32_t frequency_offset = 5000;
 static uint32_t frequency = 10000000;
 static int8_t drive_strength = DRIVE_STRENGTH_AUTO;
-volatile int8_t sweep_mode = SWEEP_MODE_ENABLED;
-
+int8_t sweep_enabled = TRUE;
+volatile int8_t sweep_once = FALSE;
 volatile uint8_t redraw_request = 0; // contains REDRAW_XXX flags
 int16_t vbat = 0;
 
@@ -88,19 +91,19 @@ static THD_FUNCTION(Thread1, arg)
 
   while (1) {
     bool completed = false;
-    if (sweep_mode&(SWEEP_MODE_ENABLED|SWEEP_MODE_RUN_ONCE)) {
+    if (sweep_enabled || sweep_once) {
       chMtxLock(&mutex);
       completed = sweep(true);
-      sweep_mode&=~SWEEP_MODE_RUN_ONCE;
+      sweep_once = FALSE;
       chMtxUnlock(&mutex);
     } else {
-      si5351_disable_output();
       __WFI();
     }
 
     chMtxLock(&mutex);
     ui_process();
-    if (sweep_mode&SWEEP_MODE_ENABLED) {
+
+    if (sweep_enabled) {
       if (vbat != -1) {
         adc_stop(ADC1);
         vbat = adc_vbat_read(ADC1);
@@ -130,10 +133,23 @@ static THD_FUNCTION(Thread1, arg)
   }
 }
 
-static inline void run_once_sweep(void) {sweep_mode|=SWEEP_MODE_RUN_ONCE;}
-static inline void pause_sweep(void) {sweep_mode&=~SWEEP_MODE_ENABLED;}
-static inline void resume_sweep(void){sweep_mode|= SWEEP_MODE_ENABLED;}
-void toggle_sweep(void){sweep_mode^= SWEEP_MODE_ENABLED;}
+static inline void
+pause_sweep(void)
+{
+  sweep_enabled = FALSE;
+}
+
+static inline void
+resume_sweep(void)
+{
+  sweep_enabled = TRUE;
+}
+
+void
+toggle_sweep(void)
+{
+  sweep_enabled = !sweep_enabled;
+}
 
 static float
 bessel0(float x) {
@@ -723,8 +739,7 @@ static const marker_t def_markers[MARKERS_MAX] = {
 
 // Load propeties default settings
 void loadDefaultProps(void){
-//Magic add on caldata_save
-//current_props.magic = CONFIG_MAGIC;
+  current_props.magic = CONFIG_MAGIC;
   current_props._frequency0   =     50000;    // start =  50kHz
   current_props._frequency1   = 900000000;    // end   = 900MHz
   current_props._sweep_points = POINTS_COUNT;
@@ -740,8 +755,6 @@ void loadDefaultProps(void){
   current_props._active_marker   = 0;
   current_props._domain_mode     = 0;
   current_props._marker_smith_format = MS_RLC;
-//Checksum add on caldata_save
-//current_props.checksum = 0;
 }
 
 void
@@ -759,23 +772,20 @@ ensure_edit_config(void)
 #define DELAY_CHANNEL_CHANGE 2
 
 // main loop for measurement
-static bool sweep(bool break_on_operation)
+bool sweep(bool break_on_operation)
 {
   int i, delay;
   // blink LED while scanning
   palClearPad(GPIOC, GPIOC_LED);
-  si5351_enable_output();
-  wait_dsp(1); // Wait for get optimal timings
   for (i = 0; i < sweep_points; i++) {         // 5300
     delay = set_frequency(frequencies[i]);     // 700
     tlv320aic3204_select(0);                   // 60 CH0:REFLECT
-
     wait_dsp(delay);                           // 1900
     // calculate reflection coefficient
     (*sample_func)(measured[0][i]);            // 60
 
     tlv320aic3204_select(1);                   // 60 CH1:TRANSMISSION
-    wait_dsp(DELAY_CHANNEL_CHANGE);            // 1800
+    wait_dsp(DELAY_CHANNEL_CHANGE);            // 1700
     // calculate transmission coefficient
     (*sample_func)(measured[1][i]);            // 60
                                                // ======== 170 ===========
@@ -786,9 +796,8 @@ static bool sweep(bool break_on_operation)
       apply_edelay_at(i);
 
     // back to toplevel to handle ui operation
-    if (operation_requested && break_on_operation){
+    if (operation_requested && break_on_operation)
       return false;
-    }
   }
   // blink LED while scanning
   palSetPad(GPIOC, GPIOC_LED);
@@ -825,11 +834,11 @@ VNA_SHELL_FUNCTION(cmd_scan)
   if (cal_auto_interpolate && (cal_status & CALSTAT_APPLY))
     cal_interpolate(lastsaveid);
 
-  run_once_sweep();
+  sweep_once = TRUE;
   chMtxUnlock(&mutex);
 
   // wait finishing sweep
-  while (sweep_mode&SWEEP_MODE_RUN_ONCE)
+  while (sweep_once)
     chThdSleepMilliseconds(10);
 }
 
@@ -1270,21 +1279,36 @@ void
 cal_collect(int type)
 {
   ensure_edit_config();
-  int dst, src;
+
   switch (type) {
-  case CAL_LOAD:  cal_status|= CALSTAT_LOAD;  dst = CAL_LOAD;  src = 0; break;
-  case CAL_OPEN:  cal_status|= CALSTAT_OPEN;  dst = CAL_OPEN;  src = 0; cal_status&= ~(CALSTAT_ES|CALSTAT_APPLY); break;
-  case CAL_SHORT: cal_status|= CALSTAT_SHORT; dst = CAL_SHORT; src = 0; cal_status&= ~(CALSTAT_ER|CALSTAT_APPLY); break;
-  case CAL_THRU:  cal_status|= CALSTAT_THRU;  dst = CAL_THRU;  src = 1; break;
-  case CAL_ISOLN: cal_status|= CALSTAT_ISOLN; dst = CAL_ISOLN; src = 1; break;
-  default:
-    return;
+  case CAL_LOAD:
+    cal_status |= CALSTAT_LOAD;
+    memcpy(cal_data[CAL_LOAD], measured[0], sizeof measured[0]);
+    break;
+
+  case CAL_OPEN:
+    cal_status |= CALSTAT_OPEN;
+    cal_status &= ~(CALSTAT_ES|CALSTAT_APPLY);
+    memcpy(cal_data[CAL_OPEN], measured[0], sizeof measured[0]);
+    break;
+
+  case CAL_SHORT:
+    cal_status |= CALSTAT_SHORT;
+    cal_status &= ~(CALSTAT_ER|CALSTAT_APPLY);
+    memcpy(cal_data[CAL_SHORT], measured[0], sizeof measured[0]);
+    break;
+
+  case CAL_THRU:
+    cal_status |= CALSTAT_THRU;
+    memcpy(cal_data[CAL_THRU], measured[1], sizeof measured[0]);
+    break;
+
+  case CAL_ISOLN:
+    cal_status |= CALSTAT_ISOLN;
+    memcpy(cal_data[CAL_ISOLN], measured[1], sizeof measured[0]);
+    break;
   }
-  // Made sweep operation for collect calibration data
-  sweep(false);
-  // Copy calibration data
-  memcpy(cal_data[dst], measured[src], sizeof measured[0]);
-  redraw_request|= REDRAW_CAL_STATUS;
+  redraw_request |= REDRAW_CAL_STATUS;
 }
 
 void

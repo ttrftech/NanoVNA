@@ -18,10 +18,6 @@
 #define _BOARD_H_
 
 /*
- * Setup for the Strawberry Linux STbee
- */
-
-/*
  * Board identifier.
  */
 #define BOARD_NANOVNA_STM32_F072
@@ -130,8 +126,8 @@
                                      PIN_MODE_ALTERNATE(GPIOA_MCO) | \
                                      PIN_MODE_INPUT(9U) |           \
                                      PIN_MODE_OUTPUT(GPIOA_USB_DISC) | \
-                                     PIN_MODE_INPUT(GPIOA_USB_DM) |  \
-                                     PIN_MODE_INPUT(GPIOA_USB_DP) |  \
+                                     PIN_MODE_ALTERNATE(GPIOA_USB_DM) |  \
+                                     PIN_MODE_ALTERNATE(GPIOA_USB_DP) |  \
                                      PIN_MODE_ALTERNATE(GPIOA_JTMS) |    \
                                      PIN_MODE_ALTERNATE(GPIOA_JTCK) |    \
                                      PIN_MODE_OUTPUT(GPIOA_LCD_RESET))
@@ -161,7 +157,7 @@
                                      PIN_OSPEED_2M(7) |          \
                                      PIN_OSPEED_100M(GPIOA_MCO) | \
                                      PIN_OSPEED_100M(9) |          \
-                                     PIN_OSPEED_100M(10) |         \
+                                     PIN_OSPEED_100M(GPIOA_USB_DISC) |         \
                                      PIN_OSPEED_100M(GPIOA_USB_DM) |     \
                                      PIN_OSPEED_100M(GPIOA_USB_DP) |     \
                                      PIN_OSPEED_100M(GPIOA_JTMS) |         \
@@ -177,7 +173,7 @@
                                      PIN_PUPDR_FLOATING(7) |         \
                                      PIN_PUPDR_PULLUP(GPIOA_MCO) | \
                                      PIN_PUPDR_PULLUP(9) |         \
-                                     PIN_PUPDR_PULLUP(GPIOA_USB_DISC) | \
+                                     PIN_PUPDR_FLOATING(GPIOA_USB_DISC) | \
                                      PIN_PUPDR_FLOATING(GPIOA_USB_DM) | \
                                      PIN_PUPDR_FLOATING(GPIOA_USB_DP) | \
                                      PIN_PUPDR_PULLDOWN(GPIOA_JTMS) |   \

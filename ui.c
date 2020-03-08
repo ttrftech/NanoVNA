@@ -367,30 +367,21 @@ touch_position(int *x, int *y)
   *y = (last_touch_y - config.touch_cal[1]) * 16 / config.touch_cal[3];
 }
 
-
 void
 show_version(void)
 {
-  int x = 5, y = 5;
+  int x = 5, y = 5, i = 0;
   adc_stop();
   setForegroundColor(DEFAULT_FG_COLOR);
   setBackgroundColor(DEFAULT_BG_COLOR);
 
   clearScreen();
-  ili9341_drawstring_size(BOARD_NAME, x, y, 4);
-  y += 25;
-
-  ili9341_drawstring("2016-2020 Copyright @edy555", x, y += 10);
-  ili9341_drawstring("Licensed under GPL. See: https://github.com/ttrftech/NanoVNA", x, y += 10);
-  ili9341_drawstring("Version: " VERSION, x, y += 10);
-  ili9341_drawstring("Build Time: " __DATE__ " - " __TIME__, x, y += 10);
-  y += 5;
-  ili9341_drawstring("Kernel: " CH_KERNEL_VERSION, x, y += 10);
-  ili9341_drawstring("Compiler: " PORT_COMPILER_NAME, x, y += 10);
-  ili9341_drawstring("Architecture: " PORT_ARCHITECTURE_NAME " Core Variant: " PORT_CORE_VARIANT_NAME, x, y += 10);
-  ili9341_drawstring("Port Info: " PORT_INFO, x, y += 10);
-  ili9341_drawstring("Platform: " PLATFORM_NAME, x, y += 10);
-
+  uint16_t shift = 0b0000010000111110;
+  ili9341_drawstring_size(info_about[i++], x , y, 4);
+  while (info_about[i]){
+    do {shift>>=1; y+=5;} while (shift&1);
+    ili9341_drawstring(info_about[i++], x, y+=5);
+  }
   while (true) {
     if (touch_check() == EVT_TOUCH_PRESSED)
       break;

@@ -58,6 +58,7 @@ static char shell_line[VNA_SHELL_MAX_LENGTH];
 //#define ENABLE_THREADS_COMMAND
 //#define ENABLE_TIME_COMMAND
 #define ENABLE_VBAT_OFFSET_COMMAND
+#define ENABLE_INFO_COMMAND
 
 static void apply_error_term_at(int i);
 static void apply_edelay_at(int i);
@@ -81,6 +82,21 @@ static uint32_t frequency = 10000000;
 static int8_t drive_strength = DRIVE_STRENGTH_AUTO;
 int8_t sweep_mode = SWEEP_ENABLE;
 volatile uint8_t redraw_request = 0; // contains REDRAW_XXX flags
+
+// Version text, displayed in Config->Version menu, also send by info command
+const char *info_about[]={
+  BOARD_NAME,
+  "2016-2020 Copyright @edy555",
+  "Licensed under GPL. See: https://github.com/ttrftech/NanoVNA",
+  "Version: " VERSION,
+  "Build Time: " __DATE__ " - " __TIME__,
+  "Kernel: " CH_KERNEL_VERSION,
+  "Compiler: " PORT_COMPILER_NAME,
+  "Architecture: " PORT_ARCHITECTURE_NAME " Core Variant: " PORT_CORE_VARIANT_NAME,
+  "Port Info: " PORT_INFO,
+  "Platform: " PLATFORM_NAME,
+  0 // sentinel
+};
 
 static THD_WORKING_AREA(waThread1, 640);
 static THD_FUNCTION(Thread1, arg)
@@ -1949,6 +1965,17 @@ VNA_SHELL_FUNCTION(cmd_vbat_offset)
 }
 #endif
 
+#ifdef ENABLE_INFO_COMMAND
+VNA_SHELL_FUNCTION(cmd_info)
+{
+  (void)argc;
+  (void)argv;
+  int i=0;
+  while (info_about[i])
+    shell_printf("%s\r\n", info_about[i++]);
+}
+#endif
+
 #ifdef ENABLE_THREADS_COMMAND
 #if CH_CFG_USE_REGISTRY == FALSE
 #error "Threads Requite enabled CH_CFG_USE_REGISTRY in chconf.h"
@@ -1970,8 +1997,6 @@ VNA_SHELL_FUNCTION(cmd_threads) {
 #else
     uint32_t stklimit = 0U;
 #endif
-
-
     shell_printf("%08x|%08x|%08x|%08x|%4u|%4u|%9s|%12s"VNA_SHELL_NEWLINE_STR,
              stklimit, (uint32_t)tp->ctx.sp, max_stack_use, (uint32_t)tp,
              (uint32_t)tp->refs - 1, (uint32_t)tp->prio, states[tp->state],
@@ -2038,6 +2063,9 @@ static const VNAShellCommand commands[] =
     {"transform"   , cmd_transform   , 0},
     {"threshold"   , cmd_threshold   , 0},
     {"help"        , cmd_help        , 0},
+#ifdef ENABLE_INFO_COMMAND
+    {"info"        , cmd_info        , 0},
+#endif
 #ifdef ENABLE_THREADS_COMMAND
     {"threads"     , cmd_threads     , 0},
 #endif

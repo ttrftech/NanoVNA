@@ -89,6 +89,7 @@ void loadDefaultProps(void);
 #define SWEEP_ENABLE  0x01
 #define SWEEP_ONCE    0x02
 extern int8_t sweep_mode;
+extern const char *info_about[];
 
 /*
  * dsp.c

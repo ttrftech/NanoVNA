@@ -354,13 +354,13 @@ int
 si5351_set_frequency_with_offset(uint32_t freq, int offset, uint8_t drive_strength){
   uint8_t band;
   int delay = DELAY_NORMAL;
-  if (freq == current_freq)
-    return delay;
+//  if (freq == current_freq)
+//    return delay;
   uint32_t ofreq = freq + offset;
   uint32_t mul = 1, omul = 1;
   uint32_t rdiv = SI5351_R_DIV_1;
   uint32_t fdiv;
-  current_freq = freq;
+//  current_freq = freq;
   if (freq >= config.harmonic_freq_threshold * 7U) {
      mul =  9;
     omul = 11;

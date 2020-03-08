@@ -699,7 +699,7 @@ VNA_SHELL_FUNCTION(cmd_sample)
   if (argc!=1) goto usage;
   //                                         0    1   2
   static const char cmd_sample_list[] = "gamma|ampl|ref";
-  switch (getStringIndex(argv[1], cmd_sample_list)){
+  switch (getStringIndex(argv[0], cmd_sample_list)){
     case 0:sample_func = calculate_gamma; return;
     case 1:sample_func = fetch_amplitude; return;
     case 2:sample_func = fetch_amplitude_ref; return;

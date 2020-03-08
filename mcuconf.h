@@ -58,7 +58,8 @@
 #define STM32_ADCSW                         STM32_ADCSW_HSI14
 #define STM32_USBSW                         STM32_USBSW_HSI48
 #define STM32_CECSW                         STM32_CECSW_HSI
-#define STM32_I2C1SW                        STM32_I2C1SW_HSI
+//#define STM32_I2C1SW                        STM32_I2C1SW_HSI
+#define STM32_I2C1SW                        STM32_I2C1SW_SYSCLK
 #define STM32_USART1SW                      STM32_USART1SW_PCLK
 #define STM32_RTCSEL                        STM32_RTCSEL_LSI
 

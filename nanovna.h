@@ -86,31 +86,10 @@ double my_atof(const char *p);
 void toggle_sweep(void);
 void loadDefaultProps(void);
 
-extern int8_t sweep_enabled;
-
-/*
- *  flash.c
- */
-#define SAVEAREA_MAX 5
-// Begin addr                   0x08018000
-#define SAVE_CONFIG_AREA_SIZE   0x00008000
-// config save area
-#define SAVE_CONFIG_ADDR        0x08018000
-// properties_t save area
-#define SAVE_PROP_CONFIG_0_ADDR 0x08018800
-#define SAVE_PROP_CONFIG_1_ADDR 0x0801a000
-#define SAVE_PROP_CONFIG_2_ADDR 0x0801b800
-#define SAVE_PROP_CONFIG_3_ADDR 0x0801d000
-#define SAVE_PROP_CONFIG_4_ADDR 0x0801e800
-
-/*
- * ui.c
- */
-extern void ui_init(void);
-extern void ui_process(void);
-
-enum opreq { OP_NONE = 0, OP_LEVER, OP_TOUCH, OP_FREQCHANGE };
-extern uint8_t operation_requested;
+#define SWEEP_ENABLE  0x01
+#define SWEEP_ONCE    0x02
+extern int8_t sweep_mode;
+extern const char *info_about[];
 
 /*
  * dsp.c
@@ -133,9 +112,6 @@ void reset_dsp_accumerator(void);
 void calculate_gamma(float *gamma);
 void fetch_amplitude(float *gamma);
 void fetch_amplitude_ref(float *gamma);
-
-int si5351_set_frequency_with_offset(uint32_t freq, int offset, uint8_t drive_strength);
-
 
 /*
  * tlv320aic3204.c
@@ -243,8 +219,8 @@ typedef struct config {
   int16_t  touch_cal[4];
   int8_t   reserved_1;
   uint32_t harmonic_freq_threshold;
-
-  uint8_t _reserved[24];
+  uint16_t vbat_offset;
+  uint8_t _reserved[22];
   uint32_t checksum;
 } config_t;
 
@@ -259,7 +235,6 @@ void set_trace_refpos(int t, float refpos);
 float get_trace_scale(int t);
 float get_trace_refpos(int t);
 const char *get_trace_typename(int t);
-void draw_battery_status(void);
 
 void set_electrical_delay(float picoseconds);
 float get_electrical_delay(void);
@@ -302,14 +277,13 @@ int marker_search(void);
 int marker_search_left(int from);
 int marker_search_right(int from);
 
-extern uint16_t redraw_request;
-
+// _request flag for update screen
 #define REDRAW_CELLS      (1<<0)
 #define REDRAW_FREQUENCY  (1<<1)
 #define REDRAW_CAL_STATUS (1<<2)
 #define REDRAW_MARKER     (1<<3)
-
-extern int16_t vbat;
+#define REDRAW_BATTERY    (1<<4)
+extern volatile uint8_t redraw_request;
 
 /*
  * ili9341.c
@@ -366,6 +340,16 @@ void show_logo(void);
  * flash.c
  */
 #define SAVEAREA_MAX 5
+// Begin addr                   0x08018000
+#define SAVE_CONFIG_AREA_SIZE   0x00008000
+// config save area
+#define SAVE_CONFIG_ADDR        0x08018000
+// properties_t save area
+#define SAVE_PROP_CONFIG_0_ADDR 0x08018800
+#define SAVE_PROP_CONFIG_1_ADDR 0x0801a000
+#define SAVE_PROP_CONFIG_2_ADDR 0x0801b800
+#define SAVE_PROP_CONFIG_3_ADDR 0x0801d000
+#define SAVE_PROP_CONFIG_4_ADDR 0x0801e800
 
 typedef struct properties {
   uint32_t magic;
@@ -432,6 +416,15 @@ void clear_all_config_prop_data(void);
 /*
  * ui.c
  */
+extern void ui_init(void);
+extern void ui_process(void);
+
+// Irq operation process set
+#define OP_NONE       0x00
+#define OP_LEVER      0x01
+#define OP_TOUCH      0x02
+//#define OP_FREQCHANGE 0x04
+extern volatile uint8_t operation_requested;
 
 // lever_mode
 enum lever_mode {
@@ -448,13 +441,13 @@ typedef struct uistat {
   int8_t digit_mode;
   int8_t current_trace; /* 0..3 */
   uint32_t value; // for editing at numeric input area
-  uint32_t previous_value;
+//  uint32_t previous_value;
   uint8_t lever_mode;
-  bool marker_delta;
+  uint8_t marker_delta;
+  uint8_t marker_tracking;
 } uistat_t;
 
 extern uistat_t uistat;
-  
 void ui_init(void);
 void ui_show(void);
 void ui_hide(void);
@@ -474,11 +467,11 @@ void enter_dfu(void);
  */
 
 void adc_init(void);
-uint16_t adc_single_read(ADC_TypeDef *adc, uint32_t chsel);
-void adc_start_analog_watchdogd(ADC_TypeDef *adc, uint32_t chsel);
-void adc_stop(ADC_TypeDef *adc);
-void adc_interrupt(ADC_TypeDef *adc);
-int16_t adc_vbat_read(ADC_TypeDef *adc);
+uint16_t adc_single_read(uint32_t chsel);
+void adc_start_analog_watchdogd(uint32_t chsel);
+void adc_stop(void);
+void adc_interrupt(void);
+int16_t adc_vbat_read(void);
 
 /*
  * misclinous

@@ -57,6 +57,8 @@ static char shell_line[VNA_SHELL_MAX_LENGTH];
 //#define ENABLED_DUMP
 //#define ENABLE_THREADS_COMMAND
 //#define ENABLE_TIME_COMMAND
+#define ENABLE_VBAT_OFFSET_COMMAND
+#define ENABLE_INFO_COMMAND
 
 static void apply_error_term_at(int i);
 static void apply_edelay_at(int i);
@@ -72,20 +74,30 @@ static MUTEX_DECL(mutex);
 #define DRIVE_STRENGTH_AUTO (-1)
 #define FREQ_HARMONICS (config.harmonic_freq_threshold)
 #define IS_HARMONIC_MODE(f) ((f) > FREQ_HARMONICS)
+// Obsolete, always use interpolate
+#define  cal_auto_interpolate  TRUE
 
-int32_t frequency_offset = 5000;
-uint32_t frequency = 10000000;
-int8_t drive_strength = DRIVE_STRENGTH_AUTO;
-int8_t sweep_enabled = TRUE;
-volatile int8_t sweep_once = FALSE;
-int8_t cal_auto_interpolate = TRUE;
-uint16_t redraw_request = 0; // contains REDRAW_XXX flags
-int16_t vbat = 0;
+static int32_t frequency_offset = 5000;
+static uint32_t frequency = 10000000;
+static int8_t drive_strength = DRIVE_STRENGTH_AUTO;
+int8_t sweep_mode = SWEEP_ENABLE;
+volatile uint8_t redraw_request = 0; // contains REDRAW_XXX flags
 
-//
-// Profile stack usage (enable threads command by def ENABLE_THREADS_COMMAND) show:
-// Stack maximum usage = 576 bytes, free stack = 64 bytes
-//
+// Version text, displayed in Config->Version menu, also send by info command
+const char *info_about[]={
+  BOARD_NAME,
+  "2016-2020 Copyright @edy555",
+  "Licensed under GPL. See: https://github.com/ttrftech/NanoVNA",
+  "Version: " VERSION,
+  "Build Time: " __DATE__ " - " __TIME__,
+  "Kernel: " CH_KERNEL_VERSION,
+  "Compiler: " PORT_COMPILER_NAME,
+  "Architecture: " PORT_ARCHITECTURE_NAME " Core Variant: " PORT_CORE_VARIANT_NAME,
+  "Port Info: " PORT_INFO,
+  "Platform: " PLATFORM_NAME,
+  0 // sentinel
+};
+
 static THD_WORKING_AREA(waThread1, 640);
 static THD_FUNCTION(Thread1, arg)
 {
@@ -94,36 +106,27 @@ static THD_FUNCTION(Thread1, arg)
 
   while (1) {
     bool completed = false;
-    if (sweep_enabled || sweep_once) {
+    if (sweep_mode&(SWEEP_ENABLE|SWEEP_ONCE)) {
       chMtxLock(&mutex);
-      // Sweep require 8367 system tick
       completed = sweep(true);
-      sweep_once = FALSE;
+      sweep_mode&=~SWEEP_ONCE;
       chMtxUnlock(&mutex);
     } else {
       __WFI();
     }
 
     chMtxLock(&mutex);
-    // Ui and render require 800 system tick
     ui_process();
 
-    if (sweep_enabled) {
-      if (vbat != -1) {
-        adc_stop(ADC1);
-        vbat = adc_vbat_read(ADC1);
-        touch_start_watchdog();
-        draw_battery_status();
-      }
-
+    if (sweep_mode&SWEEP_ENABLE) {
       // calculate trace coordinates and plot only if scan completed
       if (completed) {
         if ((domain_mode & DOMAIN_MODE) == DOMAIN_TIME)
           transform_domain();
         plot_into_index(measured);
-        redraw_request |= REDRAW_CELLS;
+        redraw_request |= REDRAW_CELLS|REDRAW_BATTERY;
 
-        if (marker_tracking) {
+        if (uistat.marker_tracking) {
           int i = marker_search();
           if (i != -1 && active_marker != -1) {
             markers[active_marker].index = i;
@@ -141,19 +144,19 @@ static THD_FUNCTION(Thread1, arg)
 static inline void
 pause_sweep(void)
 {
-  sweep_enabled = FALSE;
+  sweep_mode&=~SWEEP_ENABLE;
 }
 
 static inline void
 resume_sweep(void)
 {
-  sweep_enabled = TRUE;
+  sweep_mode|=SWEEP_ENABLE;
 }
 
 void
 toggle_sweep(void)
 {
-  sweep_enabled = !sweep_enabled;
+  sweep_mode^=SWEEP_ENABLE;
 }
 
 static float
@@ -316,19 +319,18 @@ const int8_t gain_table[] = {
   95  // 2400MHz ~
 };
 
-#define DELAY_GAIN_CHANGE 10
+#define DELAY_GAIN_CHANGE 2
 
 static int
-adjust_gain(int newfreq)
+adjust_gain(uint32_t newfreq)
 {
-  int delay = 0;
   int new_order = newfreq / FREQ_HARMONICS;
   int old_order = frequency / FREQ_HARMONICS;
   if (new_order != old_order) {
     tlv320aic3204_set_gain(gain_table[new_order], gain_table[new_order]);
-    delay += DELAY_GAIN_CHANGE;
+    return DELAY_GAIN_CHANGE;
   }
-  return delay;
+  return 0;
 }
 
 int set_frequency(uint32_t freq)
@@ -429,9 +431,9 @@ static int getStringIndex(char *v, const char *list){
     }
     // Set new substring ptr
     while (1){
-    	// End of string, not found
-    	if (*list   ==  0 ) return -1;
-    	if (*list++ == '|') break;
+      // End of string, not found
+      if (*list   ==  0 ) return -1;
+      if (*list++ == '|') break;
     }
     i++;
   }
@@ -474,7 +476,7 @@ VNA_SHELL_FUNCTION(cmd_power)
 
 #ifdef ENABLE_TIME_COMMAND
 #if HAL_USE_RTC == FALSE
-#error "Error cmd_time require ENABLE_TIME_COMMAND = TRUE in halconf.h"
+#error "Error cmd_time require define HAL_USE_RTC = TRUE in halconf.h"
 #endif
 VNA_SHELL_FUNCTION(cmd_time)
 {
@@ -558,15 +560,6 @@ int16_t dump_selection = 0;
 volatile int16_t wait_count = 0;
 
 float measured[2][POINTS_COUNT][2];
-
-static void
-wait_dsp(int count)
-{
-  wait_count = count;
-  //reset_dsp_accumerator();
-  while (wait_count)
-    __WFI();
-}
 
 #ifdef ENABLED_DUMP
 static void
@@ -725,7 +718,8 @@ config_t config = {
   .trace_color =       { DEFAULT_TRACE_1_COLOR, DEFAULT_TRACE_2_COLOR, DEFAULT_TRACE_3_COLOR, DEFAULT_TRACE_4_COLOR },
 //  .touch_cal =         { 693, 605, 124, 171 },  // 2.4 inch LCD panel
   .touch_cal =         { 338, 522, 153, 192 },  // 2.8 inch LCD panel
-  .harmonic_freq_threshold = 300000000
+  .harmonic_freq_threshold = 300000000,
+  .vbat_offset = 500
 };
 
 properties_t current_props;
@@ -745,7 +739,8 @@ static const marker_t def_markers[MARKERS_MAX] = {
 
 // Load propeties default settings
 void loadDefaultProps(void){
-  current_props.magic = CONFIG_MAGIC;
+//Magic add on caldata_save
+//current_props.magic = CONFIG_MAGIC;
   current_props._frequency0   =     50000;    // start =  50kHz
   current_props._frequency1   = 900000000;    // end   = 900MHz
   current_props._sweep_points = POINTS_COUNT;
@@ -761,6 +756,8 @@ void loadDefaultProps(void){
   current_props._active_marker   = 0;
   current_props._domain_mode     = 0;
   current_props._marker_smith_format = MS_RLC;
+//Checksum add on caldata_save
+//current_props.checksum = 0;
 }
 
 void
@@ -775,24 +772,37 @@ ensure_edit_config(void)
   cal_status = 0;
 }
 
-#define DELAY_CHANNEL_CHANGE 3
+#define DSP_START(delay) wait_count = delay;
+#define DSP_WAIT_READY   while (wait_count) __WFI();
+
+#define DELAY_CHANNEL_CHANGE 2
 
 // main loop for measurement
 bool sweep(bool break_on_operation)
 {
-  int i;
+  int i, delay;
   // blink LED while scanning
   palClearPad(GPIOC, GPIOC_LED);
-  for (i = 0; i < sweep_points; i++) {         // 8365
-    int delay = set_frequency(frequencies[i]); // 1560
+  // Power stabilization after LED off, also align timings
+  // Also touch made some
+  DSP_START(1); DSP_WAIT_READY;
+  for (i = 0; i < sweep_points; i++) {         // 5300
+    delay = set_frequency(frequencies[i]);     // 700
     tlv320aic3204_select(0);                   // 60 CH0:REFLECT
-
-    wait_dsp(delay);                           // 3270
+    DSP_START(delay);                          // 1900
+    //================================================
+    // Place some code thats need execute while delay
+    //================================================
+    DSP_WAIT_READY;
     // calculate reflection coefficient
     (*sample_func)(measured[0][i]);            // 60
 
     tlv320aic3204_select(1);                   // 60 CH1:TRANSMISSION
-    wait_dsp(DELAY_CHANNEL_CHANGE);            // 2700
+    DSP_START(DELAY_CHANNEL_CHANGE);           // 1700
+    //================================================
+    // Place some code thats need execute while delay
+    //================================================
+    DSP_WAIT_READY;
     // calculate transmission coefficient
     (*sample_func)(measured[1][i]);            // 60
                                                // ======== 170 ===========
@@ -841,11 +851,11 @@ VNA_SHELL_FUNCTION(cmd_scan)
   if (cal_auto_interpolate && (cal_status & CALSTAT_APPLY))
     cal_interpolate(lastsaveid);
 
-  sweep_once = TRUE;
+  sweep_mode|= SWEEP_ONCE;
   chMtxUnlock(&mutex);
 
   // wait finishing sweep
-  while (sweep_once)
+  while (sweep_mode&SWEEP_ONCE)
     chThdSleepMilliseconds(10);
 }
 
@@ -912,7 +922,7 @@ update_frequencies(void)
   }
 
   set_frequencies(start, stop, sweep_points);
-  operation_requested = OP_FREQCHANGE;
+//  operation_requested|= OP_FREQCHANGE;
   
   update_marker_index();
   
@@ -1430,6 +1440,7 @@ VNA_SHELL_FUNCTION(cmd_cal)
     shell_printf("\r\n");
     return;
   }
+  redraw_request|=REDRAW_CAL_STATUS;
   //                                     0    1     2    3     4    5  6   7     8    9 10
   static const char cmd_cal_list[] = "load|open|short|thru|isoln|done|on|off|reset|data|in";
   switch (getStringIndex(argv[0], cmd_cal_list)){
@@ -1439,9 +1450,9 @@ VNA_SHELL_FUNCTION(cmd_cal)
     case  3:cal_collect(CAL_THRU ); return;
     case  4:cal_collect(CAL_ISOLN); return;
     case  5:cal_done(); return;
-    case  6:cal_status|= CALSTAT_APPLY;redraw_request|=REDRAW_CAL_STATUS; return;
-    case  7:cal_status&=~CALSTAT_APPLY;redraw_request|=REDRAW_CAL_STATUS; return;
-    case  8:cal_status = 0;            redraw_request|=REDRAW_CAL_STATUS; return;
+    case  6:cal_status|= CALSTAT_APPLY;return;
+    case  7:cal_status&=~CALSTAT_APPLY;return;
+    case  8:cal_status = 0;            return;
     case  9:
       shell_printf("%f %f\r\n", cal_data[CAL_LOAD ][0][0], cal_data[CAL_LOAD ][0][1]);
       shell_printf("%f %f\r\n", cal_data[CAL_OPEN ][0][0], cal_data[CAL_OPEN ][0][1]);
@@ -1451,11 +1462,9 @@ VNA_SHELL_FUNCTION(cmd_cal)
       return;
     case 10:
       cal_interpolate((argc > 1) ? my_atoi(argv[1]) : 0);
-      redraw_request|=REDRAW_CAL_STATUS;
       return;
     default:break;
   }
-
   shell_printf("usage: cal [%s]\r\n", cmd_cal_list);
 }
 
@@ -1687,14 +1696,13 @@ VNA_SHELL_FUNCTION(cmd_marker)
     }
     return;
   }
+  redraw_request |= REDRAW_MARKER;
   if (strcmp(argv[0], "off") == 0) {
     active_marker = -1;
     for (t = 0; t < MARKERS_MAX; t++)
       markers[t].enabled = FALSE;
-    redraw_request |= REDRAW_MARKER;
     return;
   }
-
   t = my_atoi(argv[0])-1;
   if (t < 0 || t >= MARKERS_MAX)
     goto usage;
@@ -1703,13 +1711,12 @@ VNA_SHELL_FUNCTION(cmd_marker)
     active_marker = t;
     // select active marker
     markers[t].enabled = TRUE;
-    redraw_request |= REDRAW_MARKER;
     return;
   }
   static const char cmd_marker_list[] = "on|off";
   switch (getStringIndex(argv[1], cmd_marker_list)){
-    case 0: markers[t].enabled = TRUE; active_marker = t; redraw_request |= REDRAW_MARKER; return;
-    case 1: markers[t].enabled =FALSE; if (active_marker == t) active_marker = -1; redraw_request|=REDRAW_MARKER; return;
+    case 0: markers[t].enabled = TRUE; active_marker = t; return;
+    case 1: markers[t].enabled =FALSE; if (active_marker == t) active_marker = -1; return;
     default:
       // select active marker and move to index
       markers[t].enabled = TRUE;
@@ -1717,7 +1724,6 @@ VNA_SHELL_FUNCTION(cmd_marker)
       markers[t].index = index;
       markers[t].frequency = frequencies[index];
       active_marker = t;
-      redraw_request |= REDRAW_MARKER;
       return;
   }
  usage:
@@ -1923,8 +1929,8 @@ VNA_SHELL_FUNCTION(cmd_stat)
   //shell_printf("interval cycle: %d\r\n", stat.interval_cycles);
   //shell_printf("busy cycle: %d\r\n", stat.busy_cycles);
   //shell_printf("load: %d\r\n", stat.busy_cycles * 100 / stat.interval_cycles);
-  extern int awd_count;
-  shell_printf("awd: %d\r\n", awd_count);
+//  extern int awd_count;
+//  shell_printf("awd: %d\r\n", awd_count);
 }
 
 
@@ -1945,8 +1951,30 @@ VNA_SHELL_FUNCTION(cmd_vbat)
 {
   (void)argc;
   (void)argv;
-  shell_printf("%d mV\r\n", vbat);
+  shell_printf("%d mV\r\n", adc_vbat_read());
 }
+
+#ifdef ENABLE_VBAT_OFFSET_COMMAND
+VNA_SHELL_FUNCTION(cmd_vbat_offset)
+{
+  if (argc != 1) {
+    shell_printf("%d\r\n", config.vbat_offset);
+    return;
+  }
+  config.vbat_offset = (int16_t)my_atoi(argv[0]);
+}
+#endif
+
+#ifdef ENABLE_INFO_COMMAND
+VNA_SHELL_FUNCTION(cmd_info)
+{
+  (void)argc;
+  (void)argv;
+  int i=0;
+  while (info_about[i])
+    shell_printf("%s\r\n", info_about[i++]);
+}
+#endif
 
 #ifdef ENABLE_THREADS_COMMAND
 #if CH_CFG_USE_REGISTRY == FALSE
@@ -1969,8 +1997,6 @@ VNA_SHELL_FUNCTION(cmd_threads) {
 #else
     uint32_t stklimit = 0U;
 #endif
-
-
     shell_printf("%08x|%08x|%08x|%08x|%4u|%4u|%9s|%12s"VNA_SHELL_NEWLINE_STR,
              stklimit, (uint32_t)tp->ctx.sp, max_stack_use, (uint32_t)tp,
              (uint32_t)tp->refs - 1, (uint32_t)tp->prio, states[tp->state],
@@ -2031,9 +2057,15 @@ static const VNAShellCommand commands[] =
     {"edelay"      , cmd_edelay      , 0},
     {"capture"     , cmd_capture     , CMD_WAIT_MUTEX},
     {"vbat"        , cmd_vbat        , 0},
+#ifdef ENABLE_VBAT_OFFSET_COMMAND
+    {"vbat_offset" , cmd_vbat_offset , 0},
+#endif
     {"transform"   , cmd_transform   , 0},
     {"threshold"   , cmd_threshold   , 0},
     {"help"        , cmd_help        , 0},
+#ifdef ENABLE_INFO_COMMAND
+    {"info"        , cmd_info        , 0},
+#endif
 #ifdef ENABLE_THREADS_COMMAND
     {"threads"     , cmd_threads     , 0},
 #endif
@@ -2160,10 +2192,28 @@ THD_FUNCTION(myshellThread, p) {
 }
 #endif
 
+// I2C clock bus setting: depend from STM32_I2C1SW in mcuconf.h
 static const I2CConfig i2ccfg = {
-  0x00300506, //voodoo magic 400kHz @ HSI 8MHz
-  0,
-  0
+  .timingr =     // TIMINGR register initialization. (use I2C timing configuration tool for STM32F3xx and STM32F0xx microcontrollers (AN4235))
+#if STM32_I2C1SW == STM32_I2C1SW_HSI
+  // STM32_I2C1SW == STM32_I2C1SW_HSI     (HSI=8MHz)
+  // 400kHz @ HSI 8MHz (Use 26.4.10 I2C_TIMINGR register configuration examples from STM32 RM0091 Reference manual)
+  STM32_TIMINGR_PRESC(0U)  |
+  STM32_TIMINGR_SCLDEL(3U) | STM32_TIMINGR_SDADEL(1U) |
+  STM32_TIMINGR_SCLH(3U)   | STM32_TIMINGR_SCLL(9U),
+  // Old values voodoo magic 400kHz @ HSI 8MHz
+  //0x00300506,
+#elif  STM32_I2C1SW == STM32_I2C1SW_SYSCLK
+  // STM32_I2C1SW == STM32_I2C1SW_SYSCLK  (SYSCLK = 48MHz)
+  // 400kHz @ SYSCLK 48MHz (Use 26.4.10 I2C_TIMINGR register configuration examples from STM32 RM0091 Reference manual)
+  STM32_TIMINGR_PRESC(5U)  |
+  STM32_TIMINGR_SCLDEL(3U) | STM32_TIMINGR_SDADEL(3U) |
+  STM32_TIMINGR_SCLH(3U)   | STM32_TIMINGR_SCLL(9U),
+#else
+#error "Need Define STM32_I2C1SW and set correct TIMINGR settings"
+#endif
+  .cr1 = 0,     // CR1 register initialization.
+  .cr2 = 0      // CR2 register initialization.
 };
 
 static DACConfig dac1cfg1 = {

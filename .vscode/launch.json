@@ -1,0 +1,31 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "OpenOCD-Debug",
+            "type": "cortex-debug",
+            "request": "launch",
+            "servertype": "openocd",
+            "executable": "build/ch.elf",
+            "configFiles": [
+                "interface/stlink.cfg",
+                "target/stm32f0x.cfg"
+            ],
+            "cwd": "${workspaceRoot}",
+            "svdFile": "STM32F0x2.svd",
+            "device": "stm32f0x",
+            "preLaunchTask": "build",
+        },
+        {
+            "name": "STLink-Debug",
+            "type": "cortex-debug",
+            "request": "launch",
+            "servertype": "stutil",
+            "executable": "build/ch.elf",
+            "cwd": "${workspaceRoot}",
+            "svdFile": "STM32F0x2.svd",
+            "device": "stm32f0x",
+            "preLaunchTask": "build",
+        }
+    ]
+}

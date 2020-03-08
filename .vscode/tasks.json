@@ -2,19 +2,19 @@
     "version": "2.0.0",
     "tasks": [
         {
-            "label": "make",
+            "label": "build",
             "type": "shell",
             "command": "make",
-            "group": "build"
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
         },
         {
             "label": "flash",
             "type": "shell",
             "command": "make dfu flash",
-            "group": {
-                "kind": "build",
-                "isDefault": true
-            }
+            "group": "build"
         }
     ]
 }

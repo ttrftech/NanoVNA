@@ -787,8 +787,8 @@ bool sweep(bool break_on_operation)
   // Also touch made some
   DSP_START(1); DSP_WAIT_READY;
   for (i = 0; i < sweep_points; i++) {         // 5300
-    delay = set_frequency(frequencies[i]);     // 700
     tlv320aic3204_select(0);                   // 60 CH0:REFLECT
+    delay = set_frequency(frequencies[i]);     // 700
     DSP_START(delay);                          // 1900
     //================================================
     // Place some code thats need execute while delay
@@ -1296,35 +1296,18 @@ void
 cal_collect(int type)
 {
   ensure_edit_config();
-
+  int dst, src;
   switch (type) {
-  case CAL_LOAD:
-    cal_status |= CALSTAT_LOAD;
-    memcpy(cal_data[CAL_LOAD], measured[0], sizeof measured[0]);
-    break;
-
-  case CAL_OPEN:
-    cal_status |= CALSTAT_OPEN;
-    cal_status &= ~(CALSTAT_ES|CALSTAT_APPLY);
-    memcpy(cal_data[CAL_OPEN], measured[0], sizeof measured[0]);
-    break;
-
-  case CAL_SHORT:
-    cal_status |= CALSTAT_SHORT;
-    cal_status &= ~(CALSTAT_ER|CALSTAT_APPLY);
-    memcpy(cal_data[CAL_SHORT], measured[0], sizeof measured[0]);
-    break;
-
-  case CAL_THRU:
-    cal_status |= CALSTAT_THRU;
-    memcpy(cal_data[CAL_THRU], measured[1], sizeof measured[0]);
-    break;
-
-  case CAL_ISOLN:
-    cal_status |= CALSTAT_ISOLN;
-    memcpy(cal_data[CAL_ISOLN], measured[1], sizeof measured[0]);
-    break;
+    case CAL_LOAD:  cal_status|= CALSTAT_LOAD;  dst = CAL_LOAD;  src = 0; break;
+    case CAL_OPEN:  cal_status|= CALSTAT_OPEN;  dst = CAL_OPEN;  src = 0; cal_status&= ~(CALSTAT_ES|CALSTAT_APPLY); break;
+    case CAL_SHORT: cal_status|= CALSTAT_SHORT; dst = CAL_SHORT; src = 0; cal_status&= ~(CALSTAT_ER|CALSTAT_APPLY); break;
+    case CAL_THRU:  cal_status|= CALSTAT_THRU;  dst = CAL_THRU;  src = 1; break;
+    case CAL_ISOLN: cal_status|= CALSTAT_ISOLN; dst = CAL_ISOLN; src = 1; break;
+    default:
+      return;
   }
+  // Copy calibration data
+  memcpy(cal_data[dst], measured[src], sizeof measured[0]);
   redraw_request |= REDRAW_CAL_STATUS;
 }
 
@@ -2209,6 +2192,10 @@ static const I2CConfig i2ccfg = {
   STM32_TIMINGR_PRESC(5U)  |
   STM32_TIMINGR_SCLDEL(3U) | STM32_TIMINGR_SDADEL(3U) |
   STM32_TIMINGR_SCLH(3U)   | STM32_TIMINGR_SCLL(9U),
+  // 600kHz @ SYSCLK 48MHz, manually get values, x1.5 I2C speed, but need calc timings
+//  STM32_TIMINGR_PRESC(3U)  |
+//  STM32_TIMINGR_SCLDEL(2U) | STM32_TIMINGR_SDADEL(2U) |
+//  STM32_TIMINGR_SCLH(4U)   | STM32_TIMINGR_SCLL(4U),
 #else
 #error "Need Define STM32_I2C1SW and set correct TIMINGR settings"
 #endif

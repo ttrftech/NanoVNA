@@ -338,7 +338,7 @@ static inline uint8_t si5351_getBand(uint32_t freq){
 // Minimum value is 2, freq change apply at next dsp measure, and need skip it
 #define DELAY_NORMAL 2
 // Additional delay for band 1 (remove unstable generation at begin)
-#define DELAY_BAND_1	 1
+#define DELAY_BAND_1       1
 // Band changes need additional delay after reset PLL
 #define DELAY_BANDCHANGE_1 2
 #define DELAY_BANDCHANGE_2 2

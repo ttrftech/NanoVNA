@@ -1636,27 +1636,17 @@ draw_cal_status(void)
     ili9341_drawstring(c, x, y);
     y += YSTEP;
   }
-
-  if (cal_status & CALSTAT_ED) {
-    ili9341_drawstring("D", x, y);
-    y += YSTEP;
-  }
-  if (cal_status & CALSTAT_ER) {
-    ili9341_drawstring("R", x, y);
-    y += YSTEP;
-  }
-  if (cal_status & CALSTAT_ES) {
-    ili9341_drawstring("S", x, y);
-    y += YSTEP;
-  }
-  if (cal_status & CALSTAT_ET) {
-    ili9341_drawstring("T", x, y);
-    y += YSTEP;
-  }
-  if (cal_status & CALSTAT_EX) {
-    ili9341_drawstring("X", x, y);
-    y += YSTEP;
-  }
+  int i;
+  static const struct {char text, zero, mask;} calibration_text[]={
+    {'D', 0, CALSTAT_ED},
+    {'R', 0, CALSTAT_ER},
+    {'S', 0, CALSTAT_ES},
+    {'T', 0, CALSTAT_ET},
+    {'X', 0, CALSTAT_EX}
+  };
+  for (i = 0; i < 5; i++, y+= YSTEP)
+    if (cal_status & calibration_text[i].mask)
+      ili9341_drawstring(&calibration_text[i].text, x, y);
 }
 
 // Draw battery level

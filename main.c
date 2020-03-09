@@ -718,6 +718,7 @@ config_t config = {
   .trace_color =       { DEFAULT_TRACE_1_COLOR, DEFAULT_TRACE_2_COLOR, DEFAULT_TRACE_3_COLOR, DEFAULT_TRACE_4_COLOR },
 //  .touch_cal =         { 693, 605, 124, 171 },  // 2.4 inch LCD panel
   .touch_cal =         { 338, 522, 153, 192 },  // 2.8 inch LCD panel
+  .freq_mode = FREQ_MODE_START_STOP,
   .harmonic_freq_threshold = 300000000,
   .vbat_offset = 500
 };
@@ -783,13 +784,11 @@ bool sweep(bool break_on_operation)
   int i, delay;
   // blink LED while scanning
   palClearPad(GPIOC, GPIOC_LED);
-  // Power stabilization after LED off, also align timings
-  // Also touch made some
-  DSP_START(1); DSP_WAIT_READY;
+  // Power stabilization after LED off, also align timings on i == 0
   for (i = 0; i < sweep_points; i++) {         // 5300
-    tlv320aic3204_select(0);                   // 60 CH0:REFLECT
     delay = set_frequency(frequencies[i]);     // 700
-    DSP_START(delay);                          // 1900
+    tlv320aic3204_select(0);                   // 60 CH0:REFLECT, reset and begin measure
+    DSP_START(delay+((i==0)?1:0));             // 1900
     //================================================
     // Place some code thats need execute while delay
     //================================================
@@ -797,7 +796,7 @@ bool sweep(bool break_on_operation)
     // calculate reflection coefficient
     (*sample_func)(measured[0][i]);            // 60
 
-    tlv320aic3204_select(1);                   // 60 CH1:TRANSMISSION
+    tlv320aic3204_select(1);                   // 60 CH1:TRANSMISSION, reset and begin measure
     DSP_START(DELAY_CHANNEL_CHANGE);           // 1700
     //================================================
     // Place some code thats need execute while delay
@@ -913,13 +912,8 @@ void
 update_frequencies(void)
 {
   uint32_t start, stop;
-  if (frequency0 < frequency1) {
-    start = frequency0;
-    stop = frequency1;
-  } else {
-    start = frequency1;
-    stop = frequency0;
-  }
+  start = get_sweep_frequency(ST_START);
+  stop  = get_sweep_frequency(ST_STOP);
 
   set_frequencies(start, stop, sweep_points);
 //  operation_requested|= OP_FREQCHANGE;
@@ -928,28 +922,6 @@ update_frequencies(void)
   
   // set grid layout
   update_grid();
-}
-
-static void
-freq_mode_startstop(void)
-{
-  if (frequency0 > frequency1) {
-    ensure_edit_config();
-    uint32_t f = frequency1;
-    frequency1 = frequency0;
-    frequency0 = f;
-  }
-}
-
-static void
-freq_mode_centerspan(void)
-{
-  if (frequency0 <= frequency1) {
-    ensure_edit_config();
-    uint32_t f = frequency1;
-    frequency1 = frequency0;
-    frequency0 = f;
-  }
 }
 
 void
@@ -963,11 +935,11 @@ set_sweep_frequency(int type, uint32_t freq)
   if (freq > STOP_MAX)
     freq = STOP_MAX;
 
+  ensure_edit_config();
   switch (type) {
   case ST_START:
-    freq_mode_startstop();
+    config.freq_mode&=~FREQ_MODE_CENTER_SPAN;
     if (frequency0 != freq) {
-      ensure_edit_config();
       frequency0 = freq;
       // if start > stop then make start = stop
       if (frequency1 < freq)
@@ -975,9 +947,8 @@ set_sweep_frequency(int type, uint32_t freq)
     }
     break;
   case ST_STOP:
-    freq_mode_startstop();
+    config.freq_mode&=~FREQ_MODE_CENTER_SPAN;
     if (frequency1 != freq) {
-      ensure_edit_config();
       frequency1 = freq;
       // if start > stop then make start = stop
       if (frequency0 > freq)
@@ -985,25 +956,23 @@ set_sweep_frequency(int type, uint32_t freq)
     }
     break;
   case ST_CENTER:
-    freq_mode_centerspan();
-    uint32_t center = FREQ_CENTER();
+    config.freq_mode|=FREQ_MODE_CENTER_SPAN;
+    uint32_t center = frequency0/2 + frequency1/2;
     if (center != freq) {
-      uint32_t span = FREQ_SPAN();
-      ensure_edit_config();
+      uint32_t span = frequency1 - frequency0;
       if (freq < START_MIN + span/2) {
         span = (freq - START_MIN) * 2;
       }
       if (freq > STOP_MAX - span/2) {
         span = (STOP_MAX - freq) * 2;
       }
-      frequency0 = freq + span/2;
-      frequency1 = freq - span/2;
+      frequency0 = freq - span/2;
+      frequency1 = freq + span/2;
     }
     break;
   case ST_SPAN:
-    freq_mode_centerspan();
-    if (frequency0 - frequency1 != freq) {
-      ensure_edit_config();
+    config.freq_mode|=FREQ_MODE_CENTER_SPAN;
+    if (frequency1 - frequency0 != freq) {
       uint32_t center = frequency0/2 + frequency1/2;
       if (center < START_MIN + freq/2) {
         center = START_MIN + freq/2;
@@ -1011,14 +980,13 @@ set_sweep_frequency(int type, uint32_t freq)
       if (center > STOP_MAX - freq/2) {
         center = STOP_MAX - freq/2;
       }
-      frequency1 = center - freq/2;
-      frequency0 = center + freq/2;
+      frequency0 = center - freq/2;
+      frequency1 = center + freq/2;
     }
     break;
   case ST_CW:
-    freq_mode_centerspan();
+    config.freq_mode|=FREQ_MODE_CENTER_SPAN;
     if (frequency0 != freq || frequency1 != freq) {
-      ensure_edit_config();
       frequency0 = freq;
       frequency1 = freq;
     }
@@ -1032,22 +1000,14 @@ set_sweep_frequency(int type, uint32_t freq)
 uint32_t
 get_sweep_frequency(int type)
 {
-  if (frequency0 <= frequency1) {
-    switch (type) {
-    case ST_START: return frequency0;
-    case ST_STOP: return frequency1;
+  // Obsolete, ensure correct start/stop, start always must be < stop
+  if (frequency0>frequency1) {uint32_t t=frequency0; frequency0=frequency1; frequency1=t;}
+  switch (type) {
+    case ST_START:  return frequency0;
+    case ST_STOP:   return frequency1;
     case ST_CENTER: return frequency0/2 + frequency1/2;
-    case ST_SPAN: return frequency1 - frequency0;
-    case ST_CW: return frequency0/2 + frequency1/2;
-    }
-  } else {
-    switch (type) {
-    case ST_START: return frequency1;
-    case ST_STOP: return frequency0;
-    case ST_CENTER: return frequency0/2 + frequency1/2;
-    case ST_SPAN: return frequency0 - frequency1;
-    case ST_CW: return frequency0/2 + frequency1/2;
-    }
+    case ST_SPAN:   return frequency1 - frequency0;
+    case ST_CW:     return frequency0;
   }
   return 0;
 }
@@ -1055,7 +1015,7 @@ get_sweep_frequency(int type)
 VNA_SHELL_FUNCTION(cmd_sweep)
 {
   if (argc == 0) {
-    shell_printf("%d %d %d\r\n", frequency0, frequency1, sweep_points);
+    shell_printf("%d %d %d\r\n", get_sweep_frequency(ST_START), get_sweep_frequency(ST_STOP), sweep_points);
     return;
   } else if (argc > 3) {
     goto usage;

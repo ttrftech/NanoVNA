@@ -1585,18 +1585,18 @@ draw_frequencies(void)
   char buf1[32];
   char buf2[32];buf2[0]=0;
   if ((domain_mode & DOMAIN_MODE) == DOMAIN_FREQ) {
-      if (FREQ_IS_STARTSTOP()) {
-        plot_printf(buf1, sizeof(buf1), " START %qHz", frequency0);
-        plot_printf(buf2, sizeof(buf2), " STOP %qHz", frequency1);
-      } else if (FREQ_IS_CENTERSPAN()) {
-        plot_printf(buf1, sizeof(buf1), " CENTER %qHz", FREQ_CENTER());
-        plot_printf(buf2, sizeof(buf2), " SPAN %qHz", FREQ_SPAN());
-      } else {
-        plot_printf(buf1, sizeof(buf1), " CW %qHz", frequency0);
-      }
+    if (FREQ_IS_CW()){
+      plot_printf(buf1, sizeof(buf1), " CW %qHz", get_sweep_frequency(ST_CW));
+    } else if (FREQ_IS_STARTSTOP()) {
+      plot_printf(buf1, sizeof(buf1), " START %qHz", get_sweep_frequency(ST_START));
+      plot_printf(buf2, sizeof(buf2), " STOP %qHz", get_sweep_frequency(ST_STOP));
+    } else if (FREQ_IS_CENTERSPAN()) {
+      plot_printf(buf1, sizeof(buf1), " CENTER %qHz", get_sweep_frequency(ST_CENTER));
+      plot_printf(buf2, sizeof(buf2), " SPAN %qHz", get_sweep_frequency(ST_SPAN));
+    }
   } else {
-      plot_printf(buf1, sizeof(buf1), " START 0s");
-      plot_printf(buf2, sizeof(buf2), "STOP %Fs (%Fm)", time_of_index(POINTS_COUNT-1), distance_of_index(POINTS_COUNT-1));
+    plot_printf(buf1, sizeof(buf1), " START 0s");
+    plot_printf(buf2, sizeof(buf2), "STOP %Fs (%Fm)", time_of_index(POINTS_COUNT-1), distance_of_index(POINTS_COUNT-1));
   }
   setForegroundColor(DEFAULT_FG_COLOR);
   setBackgroundColor(DEFAULT_BG_COLOR);

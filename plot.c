@@ -25,8 +25,17 @@ int16_t area_height = AREA_HEIGHT_NORMAL;
 // indicate dirty cells (not redraw if cell data not changed)
 #define MAX_MARKMAP_X    ((320+CELLWIDTH-1)/CELLWIDTH)
 #define MAX_MARKMAP_Y    ((240+CELLHEIGHT-1)/CELLHEIGHT)
-uint16_t markmap[2][MAX_MARKMAP_Y];
-uint16_t current_mappage = 0;
+// Define markmap mask size
+#if MAX_MARKMAP_X <= 8
+typedef uint8_t map_t;
+#elif MAX_MARKMAP_X <= 16
+typedef uint16_t map_t;
+#elif MAX_MARKMAP_X <= 32
+typedef uint32_t map_t;
+#endif
+
+map_t   markmap[2][MAX_MARKMAP_Y];
+uint8_t current_mappage = 0;
 
 // Trace data cache, for faster redraw cells
 //   CELL_X[16:31] x position
@@ -794,7 +803,7 @@ mark_cells_from_index(void)
 {
   int t, i, j;
   /* mark cells between each neighber points */
-  uint16_t *map = &markmap[current_mappage][0];
+  map_t *map = &markmap[current_mappage][0];
   for (t = 0; t < TRACES_MAX; t++) {
     if (!trace[t].enabled)
       continue;
@@ -1343,8 +1352,7 @@ draw_all_cells(bool flush_markmap){
 //  START_PROFILE
   for (m = 0; m < (area_width+CELLWIDTH-1) / CELLWIDTH; m++)
     for (n = 0; n < (area_height+CELLHEIGHT-1) / CELLHEIGHT; n++) {
-      uint16_t bit = 1<<m;
-      if ((markmap[0][n] & bit) || (markmap[1][n] & bit)){
+      if ((markmap[0][n]|markmap[1][n]) & (1<<m)){
         draw_cell(m, n);
 //        ili9341_fill(m*CELLWIDTH+10, n*CELLHEIGHT, 2, 2, RGB565(255,0,0));
       }

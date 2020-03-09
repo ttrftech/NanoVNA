@@ -1383,6 +1383,8 @@ draw_all(bool flush)
     draw_cal_status();
   if (redraw_request & REDRAW_BATTERY)
     draw_battery_status();
+  if (redraw_request & REDRAW_AREA)
+    force_set_markmap();
   redraw_request = 0;
 }
 
@@ -1398,6 +1400,8 @@ redraw_marker(int marker)
   markmap_upperarea();
 
   draw_all_cells(TRUE);
+  // Fores redraw all area after (disable artefacts after fast marker update area)
+  redraw_request|=REDRAW_AREA;
 }
 
 void

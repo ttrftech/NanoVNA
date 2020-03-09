@@ -284,6 +284,7 @@ int marker_search_right(int from);
 #define REDRAW_CAL_STATUS (1<<2)
 #define REDRAW_MARKER     (1<<3)
 #define REDRAW_BATTERY    (1<<4)
+#define REDRAW_AREA       (1<<5)
 extern volatile uint8_t redraw_request;
 
 /*

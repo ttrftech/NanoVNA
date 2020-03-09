@@ -2145,7 +2145,6 @@ void ui_process_touch(void)
       if (touch_pickup_marker())
         break;
       if (touch_lever_mode_select()) {
-        draw_all(FALSE);
         touch_wait_release();
         break;
       }

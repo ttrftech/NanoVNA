@@ -1373,9 +1373,11 @@ draw_all_cells(bool flush_markmap){
 void
 draw_all(bool flush)
 {
+  if (redraw_request & REDRAW_AREA)
+    force_set_markmap();
   if (redraw_request & REDRAW_MARKER)
     markmap_upperarea();
-  if (redraw_request & (REDRAW_CELLS | REDRAW_MARKER))
+  if (redraw_request & (REDRAW_CELLS | REDRAW_MARKER | REDRAW_AREA))
     draw_all_cells(flush);
   if (redraw_request & REDRAW_FREQUENCY)
     draw_frequencies();
@@ -1383,11 +1385,12 @@ draw_all(bool flush)
     draw_cal_status();
   if (redraw_request & REDRAW_BATTERY)
     draw_battery_status();
-  if (redraw_request & REDRAW_AREA)
-    force_set_markmap();
   redraw_request = 0;
 }
 
+//
+// Call this function then need fast draw marker and marker info
+// Used in ui.c for leveler move marker, drag marker and etc.
 void
 redraw_marker(int marker)
 {
@@ -1400,7 +1403,7 @@ redraw_marker(int marker)
   markmap_upperarea();
 
   draw_all_cells(TRUE);
-  // Fores redraw all area after (disable artefacts after fast marker update area)
+  // Force redraw all area after (disable artifacts after fast marker update area)
   redraw_request|=REDRAW_AREA;
 }
 

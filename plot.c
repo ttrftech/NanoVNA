@@ -792,24 +792,26 @@ invalidateRect(int x0, int y0, int x1, int y1){
 static void
 mark_cells_from_index(void)
 {
-  int t, i;
+  int t, i, j;
   /* mark cells between each neighber points */
+  uint16_t *map = &markmap[current_mappage][0];
   for (t = 0; t < TRACES_MAX; t++) {
     if (!trace[t].enabled)
       continue;
-    int m0 = CELL_X(trace_index[t][0]) / CELLWIDTH;
-    int n0 = CELL_Y(trace_index[t][0]) / CELLHEIGHT;
-    markmap[current_mappage][n0] |= 1<<m0;
+    uint32_t *index = &trace_index[t][0];
+    int m0 = CELL_X(index[0]) / CELLWIDTH;
+    int n0 = CELL_Y(index[0]) / CELLHEIGHT;
+    map[n0]|= 1<<m0;
     for (i = 1; i < sweep_points; i++) {
-      int m1 = CELL_X(trace_index[t][i]) / CELLWIDTH;
-      int n1 = CELL_Y(trace_index[t][i]) / CELLHEIGHT;
+      int m1 = CELL_X(index[i]) / CELLWIDTH;
+      int n1 = CELL_Y(index[i]) / CELLHEIGHT;
       if (m0 == m1 && n0 == n1)
         continue;
       int x0 = m0; int x1 = m1; if (x0>x1) SWAP(x0, x1); m0=m1;
       int y0 = n0; int y1 = n1; if (y0>y1) SWAP(y0, y1); n0=n1;
       for (; y0<=y1; y0++)
-        for(int j=x0;j<=x1;j++)
-          markmap[current_mappage][y0]|= 1<<x0;
+        for(j=x0; j<=x1; j++)
+         map[y0]|= 1<<x0;
     }
   }
 }

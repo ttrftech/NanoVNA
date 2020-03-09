@@ -40,9 +40,10 @@ uint8_t current_mappage = 0;
 // Trace data cache, for faster redraw cells
 //   CELL_X[16:31] x position
 //   CELL_Y[ 0:15] y position
-static uint32_t trace_index[TRACES_MAX][POINTS_COUNT];
+typedef uint32_t index_t;
+static index_t trace_index[TRACES_MAX][POINTS_COUNT];
 
-#define INDEX(x, y) ((((uint32_t)x)<<16)|(((uint32_t)y)))
+#define INDEX(x, y) ((((index_t)x)<<16)|(((index_t)y)))
 #define CELL_X(i)  (int)(((i)>>16))
 #define CELL_Y(i)  (int)(((i)&0xFFFF))
 //#define CELL_P(i, x, y) (((((x)&0x03e0UL)<<22) | (((y)&0x03e0UL)<<17)) == ((i)&0xffc00000UL))
@@ -516,7 +517,7 @@ gamma2reactance(const float v[2])
   return 2*v[1] * d;
 }
 
-static uint32_t
+static index_t
 trace_into_index(int t, int i, float array[POINTS_COUNT][2])
 {
   int y, x;
@@ -766,7 +767,7 @@ mark_map(int x, int y)
     markmap[current_mappage][y] |= 1<<x;
 }
 
-static void
+static inline void
 swap_markmap(void)
 {
   current_mappage^= 1;
@@ -807,7 +808,7 @@ mark_cells_from_index(void)
   for (t = 0; t < TRACES_MAX; t++) {
     if (!trace[t].enabled)
       continue;
-    uint32_t *index = &trace_index[t][0];
+    index_t *index = &trace_index[t][0];
     int m0 = CELL_X(index[0]) / CELLWIDTH;
     int n0 = CELL_Y(index[0]) / CELLHEIGHT;
     map[n0]|= 1<<m0;
@@ -863,7 +864,7 @@ cell_drawline(int x0, int y0, int x1, int y1, int c)
 // Give a little speedup then draw rectangular plot (50 systick on all calls, all render req 700 systick)
 // Write more difficult algoritm for seach indexes not give speedup
 static int
-search_index_range_x(int x1, int x2, uint32_t index[POINTS_COUNT], int *i0, int *i1)
+search_index_range_x(int x1, int x2, index_t index[POINTS_COUNT], int *i0, int *i1)
 {
   int i, j;
   int head = 0;
@@ -1017,7 +1018,7 @@ markmap_marker(int marker)
   for (t = 0; t < TRACES_MAX; t++) {
     if (!trace[t].enabled)
       continue;
-    uint32_t index = trace_index[t][markers[marker].index];
+    index_t index = trace_index[t][markers[marker].index];
     int x = CELL_X(index) - X_MARKER_OFFSET;
     int y = CELL_Y(index) - Y_MARKER_OFFSET;
     invalidateRect(x, y, x+MARKER_WIDTH-1, y+MARKER_HEIGHT-1);
@@ -1039,7 +1040,7 @@ markmap_all_markers(void)
 void
 marker_position(int m, int t, int *x, int *y)
 {
-  uint32_t index = trace_index[t][markers[m].index];
+  index_t index = trace_index[t][markers[m].index];
   *x = CELL_X(index);
   *y = CELL_Y(index);
 }
@@ -1060,7 +1061,7 @@ marker_search(void)
 
   int value = CELL_Y(trace_index[uistat.current_trace][0]);
   for (i = 0; i < POINTS_COUNT; i++) {
-    uint32_t index = trace_index[uistat.current_trace][i];
+    index_t index = trace_index[uistat.current_trace][i];
     if ((*compare)(value, CELL_Y(index))) {
       value = CELL_Y(index);
       found = i;
@@ -1087,14 +1088,14 @@ marker_search_left(int from)
 
   int value = CELL_Y(trace_index[uistat.current_trace][from]);
   for (i = from - 1; i >= 0; i--) {
-    uint32_t index = trace_index[uistat.current_trace][i];
+    index_t index = trace_index[uistat.current_trace][i];
     if ((*compare)(value, CELL_Y(index)))
       break;
     value = CELL_Y(index);
   }
 
   for (; i >= 0; i--) {
-    uint32_t index = trace_index[uistat.current_trace][i];
+    index_t index = trace_index[uistat.current_trace][i];
     if ((*compare)(CELL_Y(index), value)) {
       break;
     }
@@ -1115,14 +1116,14 @@ marker_search_right(int from)
 
   int value = CELL_Y(trace_index[uistat.current_trace][from]);
   for (i = from + 1; i < POINTS_COUNT; i++) {
-    uint32_t index = trace_index[uistat.current_trace][i];
+    index_t index = trace_index[uistat.current_trace][i];
     if ((*compare)(value, CELL_Y(index)))
       break;
     value = CELL_Y(index);
   }
 
   for (; i < POINTS_COUNT; i++) {
-    uint32_t index = trace_index[uistat.current_trace][i];
+    index_t index = trace_index[uistat.current_trace][i];
     if ((*compare)(CELL_Y(index), value)) {
       break;
     }
@@ -1135,7 +1136,7 @@ marker_search_right(int from)
 int
 search_nearest_index(int x, int y, int t)
 {
-  uint32_t *index = trace_index[t];
+  index_t *index = trace_index[t];
   int min_i = -1;
   int min_d = 1000;
   int i;
@@ -1164,8 +1165,9 @@ plot_into_index(float measured[2][POINTS_COUNT][2])
     if (!trace[t].enabled)
       continue;
     int ch = trace[t].channel;
+    index_t *index = trace_index[t];
     for (i = 0; i < sweep_points; i++)
-      trace_index[t][i] = trace_into_index(t, i, measured[ch]);
+      index[i] = trace_into_index(t, i, measured[ch]);
   }
 #if 0
   for (t = 0; t < TRACES_MAX; t++)
@@ -1281,7 +1283,7 @@ draw_cell(int m, int n)
       i1 = sweep_points-1;
     else // draw rectangular plot (search index range in cell, save 50-70 system ticks for all screen calls)
       search_index_range_x(x0, x0+w, trace_index[t], &i0, &i1);
-    uint32_t *index = trace_index[t];
+    index_t *index = trace_index[t];
     for (i=i0; i < i1; i++) {
       int x1 = CELL_X(index[i  ]) - x0;
       int y1 = CELL_Y(index[i  ]) - y0;
@@ -1303,7 +1305,7 @@ draw_cell(int m, int n)
     for (t = 0; t < TRACES_MAX; t++) {
       if (!trace[t].enabled)
         continue;
-      uint32_t index = trace_index[t][markers[i].index];
+      index_t index = trace_index[t][markers[i].index];
       int x = CELL_X(index) - x0 - X_MARKER_OFFSET;
       int y = CELL_Y(index) - y0 - Y_MARKER_OFFSET;
       // Check marker icon on cell
@@ -1352,7 +1354,7 @@ draw_all_cells(bool flush_markmap){
 //  START_PROFILE
   for (m = 0; m < (area_width+CELLWIDTH-1) / CELLWIDTH; m++)
     for (n = 0; n < (area_height+CELLHEIGHT-1) / CELLHEIGHT; n++) {
-      if ((markmap[0][n]|markmap[1][n]) & (1<<m)){
+      if ((markmap[0][n] | markmap[1][n]) & (1<<m)){
         draw_cell(m, n);
 //        ili9341_fill(m*CELLWIDTH+10, n*CELLHEIGHT, 2, 2, RGB565(255,0,0));
       }
@@ -1612,19 +1614,16 @@ draw_cal_status(void)
 {
   int x = 0;
   int y = 100;
-#define YSTEP 8
+  char c[3];
   setForegroundColor(DEFAULT_FG_COLOR);
   setBackgroundColor(DEFAULT_BG_COLOR);
-  ili9341_fill(0, y, 10, 6*YSTEP, DEFAULT_BG_COLOR);
+  ili9341_fill(0, y, OFFSETX, 6*(FONT_GET_HEIGHT+1), DEFAULT_BG_COLOR);
   if (cal_status & CALSTAT_APPLY) {
-    char c[3] = "C0";
-    c[1] += lastsaveid;
-    if (cal_status & CALSTAT_INTERPOLATED)
-      c[0] = 'c';
-    else if (active_props == &current_props)
-      c[1] = '*';
+    c[0] = cal_status & CALSTAT_INTERPOLATED ? 'c' : 'C';
+    c[1] = active_props == &current_props ? '*' : '0' + lastsaveid;
+    c[2] = 0;
     ili9341_drawstring(c, x, y);
-    y += YSTEP;
+    y +=FONT_GET_HEIGHT+1;
   }
   int i;
   static const struct {char text, zero, mask;} calibration_text[]={
@@ -1634,7 +1633,7 @@ draw_cal_status(void)
     {'T', 0, CALSTAT_ET},
     {'X', 0, CALSTAT_EX}
   };
-  for (i = 0; i < 5; i++, y+= YSTEP)
+  for (i = 0; i < 5; i++, y+=FONT_GET_HEIGHT+1)
     if (cal_status & calibration_text[i].mask)
       ili9341_drawstring(&calibration_text[i].text, x, y);
 }

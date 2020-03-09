@@ -767,7 +767,7 @@ menu_marker_search_cb(int item, uint8_t data)
   if (i != -1)
     markers[active_marker].index = i;
   draw_menu();
-  redraw_marker(active_marker, TRUE);
+  redraw_marker(active_marker);
   select_lever_mode(LM_SEARCH);
 }
 
@@ -776,7 +776,7 @@ menu_marker_smith_cb(int item, uint8_t data)
 {
   (void)item;
   marker_smith_format = data;
-  redraw_marker(active_marker, TRUE);
+  redraw_marker(active_marker);
   draw_menu();
 }
 
@@ -822,7 +822,7 @@ menu_marker_sel_cb(int item, uint8_t data)
   } else if (item == 5) { /* marker delta */
     uistat.marker_delta = !uistat.marker_delta;
   }
-  redraw_marker(active_marker, TRUE);
+  redraw_marker(active_marker);
   draw_menu();
 }
 
@@ -1639,18 +1639,18 @@ lever_move_marker(int status)
       if ((status & EVT_DOWN) && markers[active_marker].index > 0) {
         markers[active_marker].index--;
         markers[active_marker].frequency = frequencies[markers[active_marker].index];
-        redraw_marker(active_marker, FALSE);
+        redraw_marker(active_marker);
       }
       if ((status & EVT_UP) && markers[active_marker].index < 100) {
         markers[active_marker].index++;
         markers[active_marker].frequency = frequencies[markers[active_marker].index];
-        redraw_marker(active_marker, FALSE);
+        redraw_marker(active_marker);
       }
     }
     status = btn_wait_release();
   } while (status != 0);
   if (active_marker >= 0)
-    redraw_marker(active_marker, TRUE);
+    redraw_marker(active_marker);
 }
 
 static void
@@ -1664,7 +1664,7 @@ lever_search_marker(int status)
       i = marker_search_right(markers[active_marker].index);
     if (i != -1)
       markers[active_marker].index = i;
-    redraw_marker(active_marker, TRUE);
+    redraw_marker(active_marker);
   }
 }
 
@@ -2067,7 +2067,7 @@ drag_marker(int t, int m)
     if (index >= 0) {
       markers[m].index = index;
       markers[m].frequency = frequencies[index];
-      redraw_marker(m, TRUE);
+      redraw_marker(m);
     }
   } while(touch_check()!=EVT_TOUCH_RELEASED);
 }
@@ -2097,7 +2097,7 @@ touch_pickup_marker(void)
         if (active_marker != m) {
           previous_marker = active_marker;
           active_marker = m;
-          redraw_marker(active_marker, TRUE);
+          redraw_marker(active_marker);
         }
         // select trace
         uistat.current_trace = t;

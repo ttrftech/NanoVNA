@@ -1387,7 +1387,7 @@ draw_all(bool flush)
 }
 
 void
-redraw_marker(int marker, int update_info)
+redraw_marker(int marker)
 {
   if (marker < 0)
     return;
@@ -1395,8 +1395,7 @@ redraw_marker(int marker, int update_info)
   markmap_marker(marker);
 
   // mark cells on marker info
-  if (update_info)
-    markmap_upperarea();
+  markmap_upperarea();
 
   draw_all_cells(TRUE);
 }

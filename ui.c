@@ -2142,20 +2142,19 @@ void ui_process_touch(void)
   if (status == EVT_TOUCH_PRESSED || status == EVT_TOUCH_DOWN) {
     switch (ui_mode) {
     case UI_NORMAL:
+      // Try drag marker
       if (touch_pickup_marker())
         break;
+      // Try select lever mode (top and bottom screen)
       if (touch_lever_mode_select()) {
         touch_wait_release();
         break;
       }
-      
+      // switch menu mode after release
       touch_wait_release();
-
-      // switch menu mode
-      selection = -1;
+      selection = -1; // hide keyboard mode selection
       ui_mode_menu();
       break;
-
     case UI_MENU:
       menu_apply_touch();
       break;

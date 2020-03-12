@@ -51,8 +51,11 @@ static BaseSequentialStream *shell_stream = (BaseSequentialStream *)&SDU1;
 typedef                                         void (*vna_shellcmd_t)(int argc, char *argv[]);
 #define VNA_SHELL_FUNCTION(command_name) static void      command_name(int argc, char *argv[])
 
-// Shell command line buffer
+// Shell command line buffer, args, nargs, and function ptr
 static char shell_line[VNA_SHELL_MAX_LENGTH];
+static char    *shell_args[VNA_SHELL_MAX_ARGUMENTS + 1];
+static uint16_t shell_nargs;
+static volatile vna_shellcmd_t  shell_function = 0;
 
 //#define ENABLED_DUMP
 //#define ENABLE_THREADS_COMMAND
@@ -65,11 +68,8 @@ static void apply_edelay_at(int i);
 static void cal_interpolate(int s);
 void update_frequencies(void);
 void set_frequencies(uint32_t start, uint32_t stop, uint16_t points);
-
 static bool sweep(bool break_on_operation);
 static void transform_domain(void);
-
-static MUTEX_DECL(mutex);
 
 #define DRIVE_STRENGTH_AUTO (-1)
 #define FREQ_HARMONICS (config.harmonic_freq_threshold)
@@ -107,37 +107,36 @@ static THD_FUNCTION(Thread1, arg)
   while (1) {
     bool completed = false;
     if (sweep_mode&(SWEEP_ENABLE|SWEEP_ONCE)) {
-      chMtxLock(&mutex);
       completed = sweep(true);
       sweep_mode&=~SWEEP_ONCE;
-      chMtxUnlock(&mutex);
     } else {
       __WFI();
     }
-
-    chMtxLock(&mutex);
+    // Run Shell command in sweep thread
+    if (shell_function){
+      shell_function(shell_nargs-1, &shell_args[1]);
+      shell_function = 0;
+    }
+    // Process UI inputs
     ui_process();
+    // Process collected data, calculate trace coordinates and plot only if scan completed
+    if (sweep_mode&SWEEP_ENABLE && completed) {
+      if ((domain_mode & DOMAIN_MODE) == DOMAIN_TIME)
+        transform_domain();
+      // Prepare draw graphics, cache all lines, mark screen cells for redraw
+      plot_into_index(measured);
+      redraw_request |= REDRAW_CELLS|REDRAW_BATTERY;
 
-    if (sweep_mode&SWEEP_ENABLE) {
-      // calculate trace coordinates and plot only if scan completed
-      if (completed) {
-        if ((domain_mode & DOMAIN_MODE) == DOMAIN_TIME)
-          transform_domain();
-        plot_into_index(measured);
-        redraw_request |= REDRAW_CELLS|REDRAW_BATTERY;
-
-        if (uistat.marker_tracking) {
-          int i = marker_search();
-          if (i != -1 && active_marker != -1) {
-            markers[active_marker].index = i;
-            redraw_request |= REDRAW_MARKER;
-          }
+      if (uistat.marker_tracking) {
+        int i = marker_search();
+        if (i != -1 && active_marker != -1) {
+          markers[active_marker].index = i;
+          redraw_request |= REDRAW_MARKER;
         }
       }
     }
     // plot trace and other indications as raster
     draw_all(completed); // flush markmap only if scan completed to prevent remaining traces
-    chMtxUnlock(&mutex);
   }
 }
 
@@ -364,13 +363,30 @@ static int32_t my_atoi(const char *p){
 }
 
 // Convert string to uint32
-uint32_t my_atoui(const char *p){
-  uint32_t value = 0;
-  uint32_t c;
+//  0x - for hex radix
+//  0o - for oct radix
+//  0b - for bin radix
+//  default dec radix
+uint32_t my_atoui(const char *p) {
+  uint32_t value = 0, radix = 10, c;
   if (*p == '+') p++;
-  while ((c = *p++ - '0') < 10)
-    value = value * 10 + c;
-  return value;
+  if (*p == '0') {
+    switch (p[1]) {
+      case 'x': radix = 16; break;
+      case 'o': radix =  8; break;
+      case 'b': radix =  2; break;
+      default:  goto calculate;
+    }
+    p+=2;
+  }
+calculate:
+  while (1) {
+    c = *p++ - '0';
+    // c = to_upper(*p) - 'A' + 10
+    if (c >= 'A' - '0') c = (c&(~0x20)) - ('A' - '0') + 10;
+    if (c >= radix) return value;
+    value = value * radix + c;
+  }
 }
 
 double
@@ -442,33 +458,33 @@ static int getStringIndex(char *v, const char *list){
 
 VNA_SHELL_FUNCTION(cmd_offset)
 {
-    if (argc != 1) {
-        shell_printf("usage: offset {frequency offset(Hz)}\r\n");
-        return;
-    }
-    frequency_offset = my_atoui(argv[0]);
-    set_frequency(frequency);
+  if (argc != 1) {
+    shell_printf("usage: offset {frequency offset(Hz)}\r\n");
+    return;
+  }
+  frequency_offset = my_atoui(argv[0]);
+  set_frequency(frequency);
 }
 
 VNA_SHELL_FUNCTION(cmd_freq)
 {
-    if (argc != 1) {
-        goto usage;
-    }
-    uint32_t freq = my_atoui(argv[0]);
+  if (argc != 1) {
+    goto usage;
+  }
+  uint32_t freq = my_atoui(argv[0]);
 
-    pause_sweep();
-    set_frequency(freq);
-    return;
+  pause_sweep();
+  set_frequency(freq);
+  return;
 usage:
-    shell_printf("usage: freq {frequency(Hz)}\r\n");
+  shell_printf("usage: freq {frequency(Hz)}\r\n");
 }
 
 VNA_SHELL_FUNCTION(cmd_power)
 {
   if (argc != 1) {
-      shell_printf("usage: power {0-3|-1}\r\n");
-      return;
+    shell_printf("usage: power {0-3|-1}\r\n");
+    return;
   }
   drive_strength = my_atoi(argv[0]);
   set_frequency(frequency);
@@ -788,7 +804,7 @@ bool sweep(bool break_on_operation)
   for (i = 0; i < sweep_points; i++) {         // 5300
     delay = set_frequency(frequencies[i]);     // 700
     tlv320aic3204_select(0);                   // 60 CH0:REFLECT, reset and begin measure
-    DSP_START(delay+((i==0)?1:0));             // 1900
+    DSP_START(delay+((i==0)?2:0));             // 1900
     //================================================
     // Place some code thats need execute while delay
     //================================================
@@ -844,18 +860,11 @@ VNA_SHELL_FUNCTION(cmd_scan)
     }
   }
 
-  pause_sweep();
-  chMtxLock(&mutex);
   set_frequencies(start, stop, points);
   if (cal_auto_interpolate && (cal_status & CALSTAT_APPLY))
     cal_interpolate(lastsaveid);
-
-  sweep_mode|= SWEEP_ONCE;
-  chMtxUnlock(&mutex);
-
-  // wait finishing sweep
-  while (sweep_mode&SWEEP_ONCE)
-    chThdSleepMilliseconds(10);
+  pause_sweep();
+  sweep(false);
 }
 
 static void
@@ -1266,6 +1275,8 @@ cal_collect(int type)
     default:
       return;
   }
+  // Run sweep for collect data
+  sweep(false);
   // Copy calibration data
   memcpy(cal_data[dst], measured[src], sizeof measured[0]);
   redraw_request |= REDRAW_CAL_STATUS;
@@ -1960,7 +1971,7 @@ typedef struct {
 } VNAShellCommand;
 #pragma pack(pop)
 
-// Some commands can executed only if process thread not in main cycle
+// Some commands can executed only in sweep thread, not in main cycle
 #define CMD_WAIT_MUTEX  1
 static const VNAShellCommand commands[] =
 {
@@ -1985,7 +1996,7 @@ static const VNAShellCommand commands[] =
     {"power"       , cmd_power       , 0},
     {"sample"      , cmd_sample      , 0},
 //  {"gamma"       , cmd_gamma       , 0},
-    {"scan"        , cmd_scan        , 0}, // Wait mutex hardcoded in cmd, need wait one sweep manually
+    {"scan"        , cmd_scan        , CMD_WAIT_MUTEX},
     {"sweep"       , cmd_sweep       , 0},
     {"test"        , cmd_test        , 0},
     {"touchcal"    , cmd_touchcal    , CMD_WAIT_MUTEX},
@@ -2079,44 +2090,44 @@ static int VNAShell_readLine(char *line, int max_size){
 //
 static void VNAShell_executeLine(char *line){
   // Parse and execute line
-  char *args[VNA_SHELL_MAX_ARGUMENTS + 1];
-  int n = 0;
   char *lp = line, *ep;
+  shell_nargs = 0;
   while (*lp!=0){
     // Skipping white space and tabs at string begin.
     while (*lp==' ' || *lp=='\t') lp++;
     // If an argument starts with a double quote then its delimiter is another quote, else delimiter is white space.
     ep = (*lp == '"') ? strpbrk(++lp, "\"") : strpbrk(  lp, " \t");
     // Store in args string
-    args[n++]=lp;
+    shell_args[shell_nargs++]=lp;
     // Stop, end of input string
     if ((lp = ep) == NULL)
       break;
     // Argument limits check
-    if (n > VNA_SHELL_MAX_ARGUMENTS) {
+    if (shell_nargs > VNA_SHELL_MAX_ARGUMENTS) {
       shell_printf("too many arguments, max "define_to_STR(VNA_SHELL_MAX_ARGUMENTS)""VNA_SHELL_NEWLINE_STR);
       return;
     }
     // Set zero at the end of string and continue check
     *lp++ = 0;
   }
-  if (n == 0)
+  if (shell_nargs == 0)
     return;
   // Execute line
   const VNAShellCommand *scp;
   for (scp = commands; scp->sc_name!=NULL;scp++) {
-    if (strcmp(scp->sc_name, args[0]) == 0) {
-      if (scp->flags&CMD_WAIT_MUTEX) {
-        chMtxLock(&mutex);
-        scp->sc_function(n-1, &args[1]);
-        chMtxUnlock(&mutex);
+    if (strcmp(scp->sc_name, shell_args[0]) == 0) {
+      if (scp->flags&CMD_WAIT_MUTEX){
+        shell_function= scp->sc_function;
+        // Wait execute command in sweep thread
+        while(shell_function)
+          osalThreadSleepMilliseconds(100);
       }
       else
-        scp->sc_function(n-1, &args[1]);
+        scp->sc_function(shell_nargs-1, &shell_args[1]);
       return;
     }
   }
-  shell_printf("%s?"VNA_SHELL_NEWLINE_STR, args[0]);
+  shell_printf("%s?"VNA_SHELL_NEWLINE_STR, shell_args[0]);
 }
 
 #ifdef VNA_SHELL_THREAD
@@ -2178,8 +2189,6 @@ int main(void)
 {
   halInit();
   chSysInit();
-
-  chMtxObjectInit(&mutex);
 
   //palSetPadMode(GPIOB, 8, PAL_MODE_ALTERNATE(1) | PAL_STM32_OTYPE_OPENDRAIN);
   //palSetPadMode(GPIOB, 9, PAL_MODE_ALTERNATE(1) | PAL_STM32_OTYPE_OPENDRAIN);

@@ -151,6 +151,7 @@ pause_sweep(void)
 static inline void
 resume_sweep(void)
 {
+  sweep_log = 0;
   sweep_mode|=SWEEP_ENABLE;
 }
 

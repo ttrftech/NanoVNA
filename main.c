@@ -58,10 +58,16 @@ static uint16_t shell_nargs;
 static volatile vna_shellcmd_t  shell_function = 0;
 
 //#define ENABLED_DUMP
+// Allow get threads debug info
 //#define ENABLE_THREADS_COMMAND
+// RTC time not used
 //#define ENABLE_TIME_COMMAND
+// Enable vbat_offset command, allow change battery voltage correction in config
 #define ENABLE_VBAT_OFFSET_COMMAND
+// Info about NanoVNA, need fore soft
 #define ENABLE_INFO_COMMAND
+// Enable color command, allow change config color for traces, grid, menu
+#define ENABLE_COLOR_COMMAND
 
 static void apply_error_term_at(int i);
 static void apply_edelay_at(int i);
@@ -1930,6 +1936,55 @@ VNA_SHELL_FUNCTION(cmd_info)
 }
 #endif
 
+#ifdef ENABLE_COLOR_COMMAND
+VNA_SHELL_FUNCTION(cmd_color)
+{
+  uint32_t color;
+  int i;
+  if (argc != 2) {
+    shell_printf("usage: color {id} {rgb24}\r\n");
+    for (i=-3; i < TRACES_MAX; i++) {
+#if 0
+      switch(i){
+        case -3: color = config.grid_color; break;
+        case -2: color = config.menu_normal_color; break;
+        case -1: color = config.menu_active_color; break;
+        default: color = config.trace_color[i];break;
+      }
+#else
+      // WARNING!!! Dirty hack for size, depend from config struct
+      color = config.trace_color[i];
+#endif
+      color = ((color >>  3) & 0x001c00) |
+              ((color >>  5) & 0x0000f8) |
+              ((color << 16) & 0xf80000) |
+              ((color << 13) & 0x00e000);
+//    color = (color>>8)|(color<<8);
+//    color = ((color<<8)&0xF80000)|((color<<5)&0x00FC00)|((color<<3)&0x0000F8);
+      shell_printf("   %d: 0x%06x\r\n", i, color);
+    }
+    return;
+  }
+  i = my_atoi(argv[0]);
+  if (i < -3 && i >= TRACES_MAX)
+    return;
+  color = RGBHEX(my_atoui(argv[1]));
+#if 0
+  switch(i){
+    case -3: config.grid_color = color; break;
+    case -2: config.menu_normal_color = color; break;
+    case -1: config.menu_active_color = color; break;
+    default: config.trace_color[i] = color;break;
+  }
+#else
+  // WARNING!!! Dirty hack for size, depend from config struct
+  config.trace_color[i] = color;
+#endif
+  // Redraw all
+  redraw_request|= REDRAW_AREA;
+}
+#endif
+
 #ifdef ENABLE_THREADS_COMMAND
 #if CH_CFG_USE_REGISTRY == FALSE
 #error "Threads Requite enabled CH_CFG_USE_REGISTRY in chconf.h"
@@ -2019,6 +2074,9 @@ static const VNAShellCommand commands[] =
     {"help"        , cmd_help        , 0},
 #ifdef ENABLE_INFO_COMMAND
     {"info"        , cmd_info        , 0},
+#endif
+#ifdef ENABLE_COLOR_COMMAND
+    {"color"       , cmd_color       , 0},
 #endif
 #ifdef ENABLE_THREADS_COMMAND
     {"threads"     , cmd_threads     , 0},

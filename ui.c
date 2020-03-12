@@ -1250,9 +1250,9 @@ draw_keypad(void)
 static void
 draw_numeric_area_frame(void)
 {
-  ili9341_fill(0, 240-NUM_INPUT_HEIGHT, 320, NUM_INPUT_HEIGHT, DEFAULT_MENU_COLOR);
+  ili9341_fill(0, 240-NUM_INPUT_HEIGHT, 320, NUM_INPUT_HEIGHT, config.menu_normal_color);
   setForegroundColor(DEFAULT_MENU_TEXT_COLOR);
-  setBackgroundColor(DEFAULT_MENU_COLOR);
+  setBackgroundColor(config.menu_normal_color);
   ili9341_drawstring(keypad_mode_label[keypad_mode], 10, 240-(FONT_GET_HEIGHT+NUM_INPUT_HEIGHT)/2);
   //ili9341_drawfont(KP_KEYPAD, 300, 216);
 }
@@ -1267,7 +1267,7 @@ draw_numeric_input(const char *buf)
 
   for (i = 0, x = 64; i < 10 && buf[i]; i++, xsim<<=1) {
     uint16_t fg = DEFAULT_MENU_TEXT_COLOR;
-    uint16_t bg = DEFAULT_MENU_COLOR;
+    uint16_t bg = config.menu_normal_color;
     int c = buf[i];
     if (c == '.')
       c = KP_PERIOD;
@@ -1294,7 +1294,7 @@ draw_numeric_input(const char *buf)
     x += xsim&0x8000 ? NUM_FONT_GET_WIDTH+2+8 : NUM_FONT_GET_WIDTH+2;
   }
   // erase last
-  ili9341_fill(x, 240-NUM_INPUT_HEIGHT+4, NUM_FONT_GET_WIDTH+2+8, NUM_FONT_GET_WIDTH+2+8, DEFAULT_MENU_COLOR);
+  ili9341_fill(x, 240-NUM_INPUT_HEIGHT+4, NUM_FONT_GET_WIDTH+2+8, NUM_FONT_GET_WIDTH+2+8, config.menu_normal_color);
 }
 
 static int

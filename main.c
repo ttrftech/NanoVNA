@@ -81,6 +81,7 @@ static int32_t frequency_offset = 5000;
 static uint32_t frequency = 10000000;
 static int8_t drive_strength = DRIVE_STRENGTH_AUTO;
 int8_t sweep_mode = SWEEP_ENABLE;
+int8_t sweep_log = 0;
 volatile uint8_t redraw_request = 0; // contains REDRAW_XXX flags
 
 // Version text, displayed in Config->Version menu, also send by info command
@@ -153,6 +154,9 @@ resume_sweep(void)
   sweep_mode|=SWEEP_ENABLE;
 }
 
+void toggle_logLin(void) {
+  sweep_log = !sweep_log;
+}
 void
 toggle_sweep(void)
 {
@@ -625,8 +629,10 @@ VNA_SHELL_FUNCTION(cmd_data)
     array = cal_data[sel-2];
   else
     goto usage;
-  for (i = 0; i < sweep_points; i++)
-    shell_printf("%f %f\r\n", array[i][0], array[i][1]);
+  for (i = 0; i < sweep_points; i++) {
+    if (frequencies[i] != 0)
+      shell_printf("%f %f\r\n", array[i][0], array[i][1]);
+  }
   return;
 usage:
   shell_printf("usage: data [array]\r\n");
@@ -826,8 +832,8 @@ VNA_SHELL_FUNCTION(cmd_scan)
   uint32_t start, stop;
   int16_t points = sweep_points;
 
-  if (argc != 2 && argc != 3) {
-    shell_printf("usage: scan {start(Hz)} {stop(Hz)} [points]\r\n");
+  if (argc != 2 && argc != 3 && argc != 4) {
+    shell_printf("usage: scan {start(Hz)} {stop(Hz)} [points [log|lin]]\r\n");
     return;
   }
 
@@ -837,14 +843,22 @@ VNA_SHELL_FUNCTION(cmd_scan)
       shell_printf("frequency range is invalid\r\n");
       return;
   }
-  if (argc == 3) {
+  if ((argc == 3) || (argc == 4)) {
     points = my_atoi(argv[2]);
     if (points <= 0 || points > sweep_points) {
       shell_printf("sweep points exceeds range\r\n");
       return;
     }
   }
-
+  sweep_log = 0;
+  if (argc == 4) {
+    if (strcmp("log",argv[3]) == 0)
+      sweep_log = 1;
+    else {
+      shell_printf("arg 4 can only be 'log'\r\n");
+      return;
+    }
+  }
   pause_sweep();
   chMtxLock(&mutex);
   set_frequencies(start, stop, points);
@@ -888,7 +902,7 @@ update_marker_index(void)
 }
 
 void
-set_frequencies(uint32_t start, uint32_t stop, uint16_t points)
+set_lin_frequencies(uint32_t start, uint32_t stop, uint16_t points)
 {
   uint32_t i;
   uint32_t step = (points - 1);
@@ -907,6 +921,32 @@ set_frequencies(uint32_t start, uint32_t stop, uint16_t points)
   // disable at out of sweep range
   for (; i < sweep_points; i++)
     frequencies[i] = 0;
+}
+
+void
+set_log_frequencies(uint32_t start, uint32_t stop, uint16_t points)
+{
+  float logStart = logf((float)start);
+  float logStop  = logf((float)stop);
+  float inc = (logStop-logStart)/((float)(points));
+  uint32_t i;
+  for (i = 0; i <= points; i++) {
+    uint32_t f = (uint32_t)(exp((double)(logStart+inc*i)));
+    frequencies[i] = f;
+  }
+  frequencies[0] = start;
+  frequencies[points] = stop;
+  // disable at out of sweep range
+  for (; i < sweep_points; i++)
+    frequencies[i] = 0;
+}
+
+void
+set_frequencies(uint32_t start, uint32_t stop, uint16_t points) {
+  if (sweep_log)
+    set_log_frequencies(start, stop, points);
+  else
+    set_lin_frequencies(start, stop, points);
 }
 
 void

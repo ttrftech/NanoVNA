@@ -518,7 +518,7 @@ VNA_SHELL_FUNCTION(cmd_dac)
                  "current value: %d\r\n", config.dac_value);
     return;
   }
-  value = my_atoi(argv[0]);
+  value = my_atoui(argv[0]);
   config.dac_value = value;
   dacPutChannelX(&DACD2, 0, value);
 }
@@ -2177,8 +2177,9 @@ static void VNAShell_executeLine(char *line){
       if (scp->flags&CMD_WAIT_MUTEX){
         shell_function= scp->sc_function;
         // Wait execute command in sweep thread
-        while(shell_function)
-          osalThreadSleepMilliseconds(100);
+        do{
+          osalThreadSleepMilliseconds(100);}
+        while(shell_function);
       }
       else
         scp->sc_function(shell_nargs-1, &shell_args[1]);

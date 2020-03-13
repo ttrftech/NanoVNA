@@ -8,13 +8,17 @@
 static void cell_draw_marker_info(int x0, int y0);
 static void draw_battery_status(void);
 
-int16_t grid_offset;
-int16_t grid_width;
+static int16_t grid_offset;
+static int16_t grid_width;
 
 int16_t area_width  = AREA_WIDTH_NORMAL;
 int16_t area_height = AREA_HEIGHT_NORMAL;
 
-// Depends from spi_buffer size, CELLWIDTH*CELLHEIGHT <= sizeof(spi_buffer)
+// Cell render use spi buffer
+typedef uint16_t pixel;
+pixel *cell_buffer = (pixel *)spi_buffer;
+// Cell size
+// Depends from spi_buffer size, CELLWIDTH*CELLHEIGHT*sizeof(pixel) <= sizeof(spi_buffer)
 #define CELLWIDTH  (64)
 #define CELLHEIGHT (32)
 // Check buffer size
@@ -46,7 +50,6 @@ static index_t trace_index[TRACES_MAX][POINTS_COUNT];
 #define INDEX(x, y) ((((index_t)x)<<16)|(((index_t)y)))
 #define CELL_X(i)  (int)(((i)>>16))
 #define CELL_Y(i)  (int)(((i)&0xFFFF))
-//#define CELL_P(i, x, y) (((((x)&0x03e0UL)<<22) | (((y)&0x03e0UL)<<17)) == ((i)&0xffc00000UL))
 
 //#define floatToInt(v) ((int)(v))
 static int
@@ -755,7 +758,6 @@ static float time_of_index(int idx) {
 }
 
 static float distance_of_index(int idx) {
-#define SPEED_OF_LIGHT 299792458
    float distance = ((float)idx * (float)SPEED_OF_LIGHT) / ( (float)(frequencies[1] - frequencies[0]) * (float)FFT_SIZE * 2.0);
    return distance * velocity_factor;
 }
@@ -852,7 +854,7 @@ cell_drawline(int x0, int y0, int x1, int y1, int c)
 
   while (1){
     if (y0>=0 && y0<CELLHEIGHT && x0>=0 && x0<CELLWIDTH)
-      spi_buffer[y0*CELLWIDTH+x0]|= c;
+      cell_buffer[y0*CELLWIDTH+x0]|= c;
     if (x0 == x1 && y0 == y1)
       return;
     int e2 = err;
@@ -928,7 +930,7 @@ draw_refpos(int x, int y, int c)
     uint8_t bits = reference_bitmap[j];
     while (bits){
       if (x0 >= 0 && x0 < CELLWIDTH)
-        spi_buffer[y0*CELLWIDTH+x0] = (bits&0x80) ? c : DEFAULT_BG_COLOR;
+        cell_buffer[y0*CELLWIDTH+x0] = (bits&0x80) ? c : DEFAULT_BG_COLOR;
       x0++;
       bits<<=1;
     }
@@ -999,9 +1001,9 @@ draw_marker(int x, int y, int c, int ch)
         force_color = true;
       if (x0 >= 0 && x0 < CELLWIDTH && y0 >= 0 && y0 < CELLHEIGHT){
         if (bits&0x80)
-          spi_buffer[y0*CELLWIDTH+x0] = c;
+          cell_buffer[y0*CELLWIDTH+x0] = c;
         else if (force_color)
-          spi_buffer[y0*CELLWIDTH+x0] = DEFAULT_BG_COLOR;
+          cell_buffer[y0*CELLWIDTH+x0] = DEFAULT_BG_COLOR;
       }
       x0++;
       bits<<=1;
@@ -1153,7 +1155,6 @@ search_nearest_index(int x, int y, int t)
       min_i = i;
     }
   }
-
   return min_i;
 }
 
@@ -1210,8 +1211,8 @@ draw_cell(int m, int n)
 #error "CELLWIDTH % 8 should be == 0 for speed, or need rewrite cell cleanup"
 #endif
   // Set DEFAULT_BG_COLOR for 8 pixels in one cycle
-  int count = h*CELLWIDTH / 8;
-  uint32_t *p = (uint32_t *)spi_buffer;
+  int count = h*CELLWIDTH / (16/sizeof(pixel));
+  uint32_t *p = (uint32_t *)cell_buffer;
   while (count--) {
     p[0] = DEFAULT_BG_COLOR|(DEFAULT_BG_COLOR<<16);
     p[1] = DEFAULT_BG_COLOR|(DEFAULT_BG_COLOR<<16);
@@ -1234,14 +1235,14 @@ draw_cell(int m, int n)
     for (x = 0; x < w; x++) {
       if (rectangular_grid_x(x+x0)){
         for (y = 0; y < h; y++)
-          spi_buffer[y * CELLWIDTH + x] = c;
+          cell_buffer[y * CELLWIDTH + x] = c;
       }
     }
     for (y = 0; y < h; y++) {
       if (rectangular_grid_y(y+y0)){
         for (x = 0; x < w; x++)
           if (x+x0 >= CELLOFFSETX && x+x0 <= WIDTH+CELLOFFSETX)
-            spi_buffer[y * CELLWIDTH + x] = c;
+            cell_buffer[y * CELLWIDTH + x] = c;
       }
     }
   }
@@ -1250,22 +1251,22 @@ draw_cell(int m, int n)
     for (y = 0; y < h; y++)
       for (x = 0; x < w; x++)
         if (smith_grid(x+x0, y+y0))
-          spi_buffer[y * CELLWIDTH + x] = c;
+          cell_buffer[y * CELLWIDTH + x] = c;
   }
   // Polar greed line (800 system ticks for all screen calls)
   else if(trace_type&(1<<TRC_POLAR)){
     for (y = 0; y < h; y++)
       for (x = 0; x < w; x++)
         if (polar_grid(x+x0, y+y0))
-          spi_buffer[y * CELLWIDTH + x] = c;
+          cell_buffer[y * CELLWIDTH + x] = c;
   }
 #if 0
   else if(trace_type&(1<<TRC_ADMIT)){
     for (y = 0; y < h; y++)
       for (x = 0; x < w; x++)
         if (smith_grid3(x+x0, y+y0)
-         //   smith_grid2(x+x0, y+y0, 0.5))
-          spi_buffer[y * CELLWIDTH + x] = c;
+         // smith_grid2(x+x0, y+y0, 0.5))
+           cell_buffer[y * CELLWIDTH + x] = c;
   }
 #endif
 #endif
@@ -1294,7 +1295,7 @@ draw_cell(int m, int n)
   }
 #else
   for (x=0;x<area_width;x+=6)
-	  cell_drawline(x-x0, 0-y0, area_width-x-x0, area_height-y0, config.trace_color[0]);
+    cell_drawline(x-x0, 0-y0, area_width-x-x0, area_height-y0, config.trace_color[0]);
 #endif
 //  PULSE;
 //draw marker symbols on each trace (<10 system ticks for all screen calls)
@@ -1337,8 +1338,8 @@ draw_cell(int m, int n)
 // Need right clip cell render (25 system ticks for all screen calls)
 #if 1
   if (w < CELLWIDTH){
-    uint16_t *src = spi_buffer+CELLWIDTH;
-    uint16_t *dst = spi_buffer+w;
+    pixel *src = cell_buffer+CELLWIDTH;
+    pixel *dst = cell_buffer+w;
     for (y=h; --y; src+=CELLWIDTH-w)
       for(x=w;x--;)
         *dst++=*src++;
@@ -1440,7 +1441,7 @@ cell_drawchar(uint8_t ch, int x, int y)
       continue;
     for (r = 0; r < ch_size; r++) {
       if ((x+r) >= 0 && (x+r) < CELLWIDTH && (0x80 & bits))
-        spi_buffer[(y+c)*CELLWIDTH + (x+r)] = foreground_color;
+        cell_buffer[(y+c)*CELLWIDTH + (x+r)] = foreground_color;
       bits <<= 1;
     }
   }
@@ -1578,9 +1579,9 @@ cell_draw_marker_info(int x0, int y0)
       cell_drawstring(S_SARROW, xpos, ypos);
     xpos += 5;
 
-    float light_speed_ps = 299792458e-12; //(m/ps)
+    float light_speed_ps = SPEED_OF_LIGHT*1e-12; //(m/ps)
     plot_printf(buf, sizeof buf, "Edelay %Fs %Fm", electrical_delay * 1e-12,
-                                                  electrical_delay * light_speed_ps * velocity_factor);
+                                                   electrical_delay * light_speed_ps * velocity_factor);
     cell_drawstring(buf, xpos, ypos);
   }
 }

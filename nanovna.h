@@ -27,6 +27,7 @@
  */
 #define START_MIN 50000
 #define STOP_MAX 2700000000U
+#define SPEED_OF_LIGHT 299792458
 
 #define POINTS_COUNT 101
 extern float measured[2][POINTS_COUNT][2];
@@ -211,6 +212,7 @@ typedef struct trace {
 
 #define FREQ_MODE_START_STOP    0x0
 #define FREQ_MODE_CENTER_SPAN   0x1
+#define FREQ_MODE_DOTTED_GRID   0x2
 
 typedef struct config {
   int32_t magic;

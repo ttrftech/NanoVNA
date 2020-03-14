@@ -490,4 +490,7 @@ int plot_printf(char *str, int, const char *fmt, ...);
 // Speed profile definition
 #define START_PROFILE   systime_t time = chVTGetSystemTimeX();
 #define STOP_PROFILE    {char string_buf[12];plot_printf(string_buf, sizeof string_buf, "T:%06d", chVTGetSystemTimeX() - time);ili9341_drawstringV(string_buf, 1, 60);}
+// Macros for convert define value to string
+#define STR1(x)  #x
+#define define_to_STR(x)  STR1(x)
 /*EOF*/

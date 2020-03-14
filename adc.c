@@ -79,20 +79,23 @@ uint16_t adc_single_read(uint32_t chsel)
 
 int16_t adc_vbat_read(void)
 {
+// 13.9 Temperature sensor and internal reference voltage
+// VREFINT_CAL calibrated on 3.3V, need get value in mV
 #define ADC_FULL_SCALE 3300
 #define VREFINT_CAL (*((uint16_t*)0x1FFFF7BA))
   adc_stop();
-  float vbat = 0;
-  float vrefint = 0;
   ADC->CCR |= ADC_CCR_VREFEN | ADC_CCR_VBATEN;
   // VREFINT == ADC_IN17
-  vrefint = adc_single_read(ADC_CHSELR_CHSEL17);
+  uint32_t vrefint = adc_single_read(ADC_CHSELR_CHSEL17);
   // VBAT == ADC_IN18
   // VBATEN enables resiter devider circuit. It consume vbat power.
-  vbat = adc_single_read(ADC_CHSELR_CHSEL18);
+  uint32_t vbat = adc_single_read(ADC_CHSELR_CHSEL18);
   ADC->CCR &= ~(ADC_CCR_VREFEN | ADC_CCR_VBATEN);
   touch_start_watchdog();
-  uint16_t vbat_raw = (ADC_FULL_SCALE * VREFINT_CAL * vbat * 2 / (vrefint * ((1<<12)-1)));
+  // vbat_raw = (3300 * 2 * vbat / 4095) * (VREFINT_CAL / vrefint)
+  // uint16_t vbat_raw = (ADC_FULL_SCALE * VREFINT_CAL * (float)vbat * 2 / (vrefint * ((1<<12)-1)));
+  // For speed divide not on 4095, divide on 4096, get little error, but no matter
+  uint16_t vbat_raw = ((ADC_FULL_SCALE * 2 * vbat)>>12) * VREFINT_CAL / vrefint;
   if (vbat_raw < 100) {
     // maybe D2 is not installed
     return -1;

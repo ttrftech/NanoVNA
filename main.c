@@ -841,9 +841,9 @@ VNA_SHELL_FUNCTION(cmd_scan)
 {
   uint32_t start, stop;
   int16_t points = sweep_points;
-
-  if (argc != 2 && argc != 3) {
-    shell_printf("usage: scan {start(Hz)} {stop(Hz)} [points]\r\n");
+  int i;
+  if (argc < 2 || argc > 4) {
+    shell_printf("usage: scan {start(Hz)} {stop(Hz)} [points] [outmask]\r\n");
     return;
   }
 
@@ -866,6 +866,20 @@ VNA_SHELL_FUNCTION(cmd_scan)
     cal_interpolate(lastsaveid);
   pause_sweep();
   sweep(false);
+  // Output data after if set (faster data recive)
+  if (argc == 4){
+    uint16_t mask = my_atoui(argv[3]);
+    if (mask)
+    for (i = 0; i < points; i++){
+      if (mask&1)
+        shell_printf("%u ", frequencies[i]);
+      if (mask&2)
+        shell_printf("%f %f ", measured[0][i][0], measured[0][i][1]);
+      if (mask&4)
+        shell_printf("%f %f ", measured[1][i][0], measured[1][i][1]);
+      shell_printf("\r\n");
+    }
+  }
 }
 
 static void
@@ -1719,7 +1733,7 @@ VNA_SHELL_FUNCTION(cmd_frequencies)
   (void)argv;
   for (i = 0; i < sweep_points; i++) {
     if (frequencies[i] != 0)
-      shell_printf("%d\r\n", frequencies[i]);
+      shell_printf("%u\r\n", frequencies[i]);
   }
 }
 

@@ -856,7 +856,7 @@ VNA_SHELL_FUNCTION(cmd_scan)
   }
   if (argc >= 3) {
     points = my_atoi(argv[2]);
-    if (points <= 0 || points > sweep_points) {
+    if (points <= 0 || points > POINTS_COUNT) {
       shell_printf("sweep points exceeds range "define_to_STR(POINTS_COUNT)"\r\n");
       return;
     }
@@ -929,7 +929,7 @@ set_frequencies(uint32_t start, uint32_t stop, uint16_t points)
     }
   }
   // disable at out of sweep range
-  for (; i < sweep_points; i++)
+  for (; i < POINTS_COUNT; i++)
     frequencies[i] = 0;
 }
 
@@ -1360,7 +1360,7 @@ cal_interpolate(int s)
   for (; i < sweep_points; i++) {
     uint32_t f = frequencies[i];
 
-    for (; j < sweep_points-1; j++) {
+    for (; j < src->_sweep_points-1; j++) {
       if (src->_frequencies[j] <= f && f < src->_frequencies[j+1]) {
         // found f between freqs at j and j+1
         float k1 = (float)(f - src->_frequencies[j])
@@ -1380,7 +1380,7 @@ cal_interpolate(int s)
         break;
       }
     }
-    if (j == sweep_points-1)
+    if (j == src->_sweep_points-1)
       break;
   }
   

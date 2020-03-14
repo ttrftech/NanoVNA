@@ -499,7 +499,7 @@ float
 groupdelay_from_array(int i, float array[POINTS_COUNT][2])
 {
   int bottom = (i ==   0) ?   0 : i - 1;
-  int top    = (i == POINTS_COUNT-1) ? POINTS_COUNT-1 : i + 1;
+  int top    = (i == sweep_points-1) ? sweep_points-1 : i + 1;
   float deltaf = frequencies[top] - frequencies[bottom];
   return groupdelay(array[bottom], array[top], deltaf);
 }
@@ -1062,7 +1062,7 @@ marker_search(void)
     return -1;
 
   int value = CELL_Y(trace_index[uistat.current_trace][0]);
-  for (i = 0; i < POINTS_COUNT; i++) {
+  for (i = 0; i < sweep_points; i++) {
     index_t index = trace_index[uistat.current_trace][i];
     if ((*compare)(value, CELL_Y(index))) {
       value = CELL_Y(index);
@@ -1117,14 +1117,14 @@ marker_search_right(int from)
     return -1;
 
   int value = CELL_Y(trace_index[uistat.current_trace][from]);
-  for (i = from + 1; i < POINTS_COUNT; i++) {
+  for (i = from + 1; i < sweep_points; i++) {
     index_t index = trace_index[uistat.current_trace][i];
     if ((*compare)(value, CELL_Y(index)))
       break;
     value = CELL_Y(index);
   }
 
-  for (; i < POINTS_COUNT; i++) {
+  for (; i < sweep_points; i++) {
     index_t index = trace_index[uistat.current_trace][i];
     if ((*compare)(CELL_Y(index), value)) {
       break;
@@ -1603,7 +1603,7 @@ draw_frequencies(void)
     }
   } else {
     plot_printf(buf1, sizeof(buf1), " START 0s");
-    plot_printf(buf2, sizeof(buf2), "STOP %Fs (%Fm)", time_of_index(POINTS_COUNT-1), distance_of_index(POINTS_COUNT-1));
+    plot_printf(buf2, sizeof(buf2), "STOP %Fs (%Fm)", time_of_index(sweep_points-1), distance_of_index(sweep_points-1));
   }
   setForegroundColor(DEFAULT_FG_COLOR);
   setBackgroundColor(DEFAULT_BG_COLOR);

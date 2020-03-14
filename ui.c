@@ -1641,7 +1641,7 @@ lever_move_marker(int status)
         markers[active_marker].frequency = frequencies[markers[active_marker].index];
         redraw_marker(active_marker);
       }
-      if ((status & EVT_UP) && markers[active_marker].index < 100) {
+      if ((status & EVT_UP) && markers[active_marker].index < sweep_points-1) {
         markers[active_marker].index++;
         markers[active_marker].frequency = frequencies[markers[active_marker].index];
         redraw_marker(active_marker);

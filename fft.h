@@ -68,8 +68,8 @@ static void fft256(float array[][2], const uint8_t dir) {
 			uint16_t j, k;
 			for (j = i, k = 0; j < i + halfsize; j++, k += tablestep) {
 				uint16_t l = j + halfsize;
-				float tpre =  array[l][real] * cos(2 * M_PI * k / 256) + array[l][imag] * sin(2 * M_PI * k / 256);
-				float tpim = -array[l][real] * sin(2 * M_PI * k / 256) + array[l][imag] * cos(2 * M_PI * k / 256);
+				float tpre =  array[l][real] * cos(2 * VNA_PI * k / 256) + array[l][imag] * sin(2 * VNA_PI * k / 256);
+				float tpim = -array[l][real] * sin(2 * VNA_PI * k / 256) + array[l][imag] * cos(2 * VNA_PI * k / 256);
 				array[l][real] = array[j][real] - tpre;
 				array[l][imag] = array[j][imag] - tpim;
 				array[j][real] += tpre;

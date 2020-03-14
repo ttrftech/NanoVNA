@@ -36,8 +36,9 @@
 // I2C address on bus (only 0x60 for Si5351A in 10-Pin MSOP)
 #define SI5351_I2C_ADDR   	0x60
 
-static uint8_t  current_band = 0;
-static uint32_t current_freq = 0;
+static uint8_t  current_band   = 0;
+static uint32_t current_freq   = 0;
+static int32_t  current_offset = FREQUENCY_OFFSET;
 
 // Minimum value is 2, freq change apply at next dsp measure, and need skip it
 #define DELAY_NORMAL       2
@@ -49,6 +50,13 @@ static uint32_t current_freq = 0;
 #define DELAY_BANDCHANGE_2 3
 // Delay after set new PLL values, and send reset (on band 1 unstable if less then 900, on 4000-5000 no amplitude spike on change)
 #define DELAY_RESET_PLL    5000
+
+uint32_t si5351_getFrequency(void) {return current_freq;}
+
+void si5351_set_frequency_offset(int32_t offset) {
+  current_offset = offset;
+  current_freq = 0; // reset freq, for
+}
 
 static void
 si5351_bulk_write(const uint8_t *buf, int len)
@@ -354,15 +362,17 @@ static inline uint8_t si5351_getBand(uint32_t freq){
  * CLK2: fixed 8MHz
  */
 int
-si5351_set_frequency_with_offset(uint32_t freq, int offset, uint8_t drive_strength){
+si5351_set_frequency_with_offset(uint32_t freq, uint8_t drive_strength){
   uint8_t band;
   int delay = DELAY_NORMAL;
   if (freq == current_freq)
     return delay;
-  uint32_t ofreq = freq + offset;
+  uint32_t ofreq = freq + current_offset;
   uint32_t mul = 1, omul = 1;
   uint32_t rdiv = SI5351_R_DIV_1;
   uint32_t fdiv;
+  // Fix possible uncorrect input
+  drive_strength&=SI5351_CLK_DRIVE_STRENGTH_MASK;
   current_freq = freq;
   if (freq >= config.harmonic_freq_threshold * 7U) {
      mul =  9;
@@ -386,7 +396,6 @@ si5351_set_frequency_with_offset(uint32_t freq, int offset, uint8_t drive_streng
      freq<<= 3;
     ofreq<<= 3;
   }
-
   band = si5351_getBand(freq/mul);
   switch (band) {
   case 1:
@@ -420,7 +429,6 @@ si5351_set_frequency_with_offset(uint32_t freq, int offset, uint8_t drive_streng
     si5351_set_frequency_fixedpll(2, (uint64_t)freq*fdiv, CLK2_FREQUENCY*mul, SI5351_R_DIV_1, SI5351_CLK_DRIVE_STRENGTH_2MA|SI5351_CLK_PLL_SELECT_B);
     break;
   }
-
   if (current_band != band) {
     si5351_reset_pll(SI5351_PLL_RESET_A|SI5351_PLL_RESET_B);
     current_band = band;

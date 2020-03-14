@@ -72,8 +72,8 @@ static volatile vna_shellcmd_t  shell_function = 0;
 static void apply_error_term_at(int i);
 static void apply_edelay_at(int i);
 static void cal_interpolate(int s);
-void update_frequencies(void);
-void set_frequencies(uint32_t start, uint32_t stop, uint16_t points);
+static void update_frequencies(void);
+static void set_frequencies(uint32_t start, uint32_t stop, uint16_t points);
 static bool sweep(bool break_on_operation);
 static void transform_domain(void);
 
@@ -83,8 +83,6 @@ static void transform_domain(void);
 // Obsolete, always use interpolate
 #define  cal_auto_interpolate  TRUE
 
-static int32_t frequency_offset = 5000;
-static uint32_t frequency = 10000000;
 static int8_t drive_strength = DRIVE_STRENGTH_AUTO;
 int8_t sweep_mode = SWEEP_ENABLE;
 volatile uint8_t redraw_request = 0; // contains REDRAW_XXX flags
@@ -330,7 +328,7 @@ static int
 adjust_gain(uint32_t newfreq)
 {
   int new_order = newfreq / FREQ_HARMONICS;
-  int old_order = frequency / FREQ_HARMONICS;
+  int old_order = si5351_getFrequency() / FREQ_HARMONICS;
   if (new_order != old_order) {
     tlv320aic3204_set_gain(gain_table[new_order], gain_table[new_order]);
     return DELAY_GAIN_CHANGE;
@@ -345,9 +343,7 @@ int set_frequency(uint32_t freq)
   if (ds == DRIVE_STRENGTH_AUTO) {
     ds = freq > FREQ_HARMONICS ? SI5351_CLK_DRIVE_STRENGTH_8MA : SI5351_CLK_DRIVE_STRENGTH_2MA;
   }
-  delay += si5351_set_frequency_with_offset(freq, frequency_offset, ds);
-
-  frequency = freq;
+  delay += si5351_set_frequency_with_offset(freq, ds);
   return delay;
 }
 
@@ -468,8 +464,7 @@ VNA_SHELL_FUNCTION(cmd_offset)
     shell_printf("usage: offset {frequency offset(Hz)}\r\n");
     return;
   }
-  frequency_offset = my_atoui(argv[0]);
-  set_frequency(frequency);
+  si5351_set_frequency_offset(my_atoi(argv[0]));
 }
 
 VNA_SHELL_FUNCTION(cmd_freq)
@@ -493,7 +488,7 @@ VNA_SHELL_FUNCTION(cmd_power)
     return;
   }
   drive_strength = my_atoi(argv[0]);
-  set_frequency(frequency);
+//  set_frequency(frequency);
 }
 
 #ifdef ENABLE_TIME_COMMAND
@@ -901,7 +896,7 @@ update_marker_index(void)
   }
 }
 
-void
+static void
 set_frequencies(uint32_t start, uint32_t stop, uint16_t points)
 {
   uint32_t i;
@@ -923,7 +918,7 @@ set_frequencies(uint32_t start, uint32_t stop, uint16_t points)
     frequencies[i] = 0;
 }
 
-void
+static void
 update_frequencies(void)
 {
   uint32_t start, stop;
@@ -1100,7 +1095,7 @@ adjust_ed(void)
     // prepare 1/s11ao to avoid dividing complex
     float c = 1000e-15;
     float z0 = 50;
-    //float z = 2 * M_PI * frequencies[i] * c * z0;
+    //float z = 2 * VNA_PI * frequencies[i] * c * z0;
     float z = 0.02;
     cal_data[ETERM_ED][i][0] += z;
   }
@@ -1118,7 +1113,7 @@ eterm_calc_es(void)
     float c = 50e-15;
     //float c = 1.707e-12;
     float z0 = 50;
-    float z = 2 * M_PI * frequencies[i] * c * z0;
+    float z = 2 * VNA_PI * frequencies[i] * c * z0;
     float sq = 1 + z*z;
     float s11aor = (1 - z*z) / sq;
     float s11aoi = 2*z / sq;
@@ -1254,7 +1249,7 @@ static void apply_error_term_at(int i)
 
 static void apply_edelay_at(int i)
 {
-  float w = 2 * M_PI * electrical_delay * frequencies[i] * 1E-12;
+  float w = 2 * VNA_PI * electrical_delay * frequencies[i] * 1E-12;
   float s = sin(w);
   float c = cos(w);
   float real = measured[0][i][0];
@@ -1667,7 +1662,7 @@ VNA_SHELL_FUNCTION(cmd_marker)
   if (t < 0 || t >= MARKERS_MAX)
     goto usage;
   if (argc == 1) {
-    shell_printf("%d %d %d\r\n", t+1, markers[t].index, frequency);
+    shell_printf("%d %d %d\r\n", t+1, markers[t].index, markers[t].frequency);
     active_marker = t;
     // select active marker
     markers[t].enabled = TRUE;
@@ -1892,7 +1887,6 @@ VNA_SHELL_FUNCTION(cmd_stat)
 //  extern int awd_count;
 //  shell_printf("awd: %d\r\n", awd_count);
 }
-
 
 #ifndef VERSION
 #define VERSION "unknown"

@@ -425,7 +425,7 @@ logmag(const float *v)
 static float
 phase(const float *v)
 {
-  return 2 * atan2f(v[1], v[0]) / M_PI * 90;
+  return 2 * atan2f(v[1], v[0]) / VNA_PI * 90;
 }
 
 /*
@@ -438,9 +438,9 @@ groupdelay(const float *v, const float *w, float deltaf)
   // atan(w)-atan(v) = atan((w-v)/(1+wv))
   float r = w[0]*v[1] - w[1]*v[0];
   float i = w[0]*v[0] + w[1]*v[1];
-  return atan2f(r, i) / (2 * M_PI * deltaf);
+  return atan2f(r, i) / (2 * VNA_PI * deltaf);
 #else
-  return (atan2f(w[0], w[1]) - atan2f(v[0], v[1])) / (2 * M_PI * deltaf);
+  return (atan2f(w[0], w[1]) - atan2f(v[0], v[1])) / (2 * VNA_PI * deltaf);
 #endif
 }
 
@@ -605,11 +605,11 @@ format_smith_value(char *buf, int len, const float coeff[2], uint32_t frequency)
   case MS_RLC:
     if (zi < 0){// Capacity
       prefix = 'F';
-      value = -1 / (2 * M_PI * frequency * zi);
+      value = -1 / (2 * VNA_PI * frequency * zi);
     }
     else {
       prefix = 'H';
-      value = zi / (2 * M_PI * frequency);
+      value = zi / (2 * VNA_PI * frequency);
     }
     plot_printf(buf, len, "%F"S_OHM" %F%c", zr, value, prefix);
     break;

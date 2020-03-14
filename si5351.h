@@ -72,4 +72,8 @@ void si5351_init(void);
 void si5351_disable_output(void);
 void si5351_enable_output(void);
 //void si5351_set_frequency(int channel, uint32_t freq, uint8_t drive_strength);
-int  si5351_set_frequency_with_offset(uint32_t freq, int offset, uint8_t drive_strength);
+
+void si5351_set_frequency_offset(int32_t offset);
+int  si5351_set_frequency_with_offset(uint32_t freq, uint8_t drive_strength);
+uint32_t si5351_getFrequency(void);
+

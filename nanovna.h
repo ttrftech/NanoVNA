@@ -25,9 +25,17 @@
 /*
  * main.c
  */
-#define START_MIN 50000
-#define STOP_MAX 2700000000U
-#define SPEED_OF_LIGHT 299792458
+
+// Minimum frequency set
+#define START_MIN                50000
+// Maximum frequency set
+#define STOP_MAX                 2700000000U
+// Frequency offset (sin_cos table in dsp.c generated for this offset, if change need create new table)
+#define FREQUENCY_OFFSET         5000
+// Speed of light const
+#define SPEED_OF_LIGHT           299792458
+// pi const
+#define VNA_PI                   3.14159265358979323846
 
 #define POINTS_COUNT 101
 extern float measured[2][POINTS_COUNT][2];

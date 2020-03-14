@@ -803,6 +803,7 @@ bool sweep(bool break_on_operation)
   palClearPad(GPIOC, GPIOC_LED);
   // Power stabilization after LED off, also align timings on i == 0
   for (i = 0; i < sweep_points; i++) {         // 5300
+    if (frequencies[i] == 0) break;
     delay = set_frequency(frequencies[i]);     // 700
     tlv320aic3204_select(0);                   // 60 CH0:REFLECT, reset and begin measure
     DSP_START(delay+((i==0)?2:0));             // 1900
@@ -853,10 +854,10 @@ VNA_SHELL_FUNCTION(cmd_scan)
       shell_printf("frequency range is invalid\r\n");
       return;
   }
-  if (argc == 3) {
+  if (argc >= 3) {
     points = my_atoi(argv[2]);
     if (points <= 0 || points > sweep_points) {
-      shell_printf("sweep points exceeds range\r\n");
+      shell_printf("sweep points exceeds range "define_to_STR(POINTS_COUNT)"\r\n");
       return;
     }
   }
@@ -2148,9 +2149,6 @@ static int VNAShell_readLine(char *line, int max_size){
   return 0;
 }
 
-// Macros for convert define value to string
-#define STR1(x)  #x
-#define define_to_STR(x)  STR1(x)
 //
 // Parse and run command line
 //

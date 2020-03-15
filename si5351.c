@@ -65,13 +65,26 @@ si5351_bulk_write(const uint8_t *buf, int len)
   (void)i2cMasterTransmitTimeout(&I2CD1, SI5351_I2C_ADDR, buf, len, NULL, 0, 1000);
   i2cReleaseBus(&I2CD1);
 }
+
 #if 0
-static void si5351_bulk_read(uint8_t reg, uint8_t* buf, int len)
+static bool si5351_bulk_read(uint8_t reg, uint8_t* buf, int len)
 {
-  int addr = SI5351_I2C_ADDR>>1;
   i2cAcquireBus(&I2CD1);
-  msg_t mr = i2cMasterTransmitTimeout(&I2CD1, addr, &reg, 1, buf, len, 1000);
+  msg_t mr = i2cMasterTransmitTimeout(&I2CD1, SI5351_I2C_ADDR, &reg, 1, buf, len, 1000);
   i2cReleaseBus(&I2CD1);
+  return mr == MSG_OK;
+}
+
+static void si5351_wait_pll_lock(void)
+{
+  uint8_t status;
+  int count = 100;
+  do{
+    status=0xFF;
+    si5351_bulk_read(0, &status, 1);
+    if ((status & 0x60) == 0) // PLLA and PLLB locked
+      return;
+  }while (--count);
 }
 #endif
 

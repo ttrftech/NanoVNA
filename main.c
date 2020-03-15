@@ -804,18 +804,11 @@ bool sweep(bool break_on_operation)
   // blink LED while scanning
   palClearPad(GPIOC, GPIOC_LED);
   // Power stabilization after LED off, also align timings on i == 0
-
-  // !!!!! Don`t understand why si5351 non stable on band 2 then change from band 3
-  // It fixed if set before one band 1 frequency
-  // Possibly problem in gain, call only si5351_set_frequency_with_offset not work
-  // Also it allow align sweep timings
-  set_frequency(50000000);
-  DSP_START(1);DSP_WAIT_READY;
   for (i = 0; i < sweep_points; i++) {         // 5300
     if (frequencies[i] == 0) break;
     delay = set_frequency(frequencies[i]);     // 700
     tlv320aic3204_select(0);                   // 60 CH0:REFLECT, reset and begin measure
-    DSP_START(delay);                          // 1900
+    DSP_START(delay+((i==0)?1:0));             // 1900
     //================================================
     // Place some code thats need execute while delay
     //================================================

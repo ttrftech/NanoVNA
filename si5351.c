@@ -380,13 +380,16 @@ si5351_set_frequency_with_offset(uint32_t freq, uint8_t drive_strength){
   int delay = DELAY_NORMAL;
   if (freq == current_freq)
     return delay;
+  else if (current_freq > freq)  // Reset band on sweep begin (if set range 150-600, fix error then 600 MHz band 2 or 3 go back)
+    current_band = 0;
+  current_freq = freq;
   uint32_t ofreq = freq + current_offset;
   uint32_t mul = 1, omul = 1;
   uint32_t rdiv = SI5351_R_DIV_1;
   uint32_t fdiv;
-  // Fix possible uncorrect input
+  // Fix possible incorrect input
   drive_strength&=SI5351_CLK_DRIVE_STRENGTH_MASK;
-  current_freq = freq;
+
   if (freq >= config.harmonic_freq_threshold * 7U) {
      mul =  9;
     omul = 11;

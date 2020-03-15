@@ -81,6 +81,7 @@ static int32_t frequency_offset = 5000;
 static uint32_t frequency = 10000000;
 static int8_t drive_strength = DRIVE_STRENGTH_AUTO;
 int8_t sweep_mode = SWEEP_ENABLE;
+int8_t frequency_step_mode  = FREQUENCY_STEP_LINEAR;
 volatile uint8_t redraw_request = 0; // contains REDRAW_XXX flags
 
 // Version text, displayed in Config->Version menu, also send by info command
@@ -153,6 +154,9 @@ resume_sweep(void)
   sweep_mode|=SWEEP_ENABLE;
 }
 
+void toggle_frequency_step_mode(void) {
+  frequency_step_mode ^= (FREQUENCY_STEP_LOGARITHMIC ^ FREQUENCY_STEP_LINEAR);
+}
 void
 toggle_sweep(void)
 {
@@ -611,6 +615,17 @@ static const I2SConfig i2sconfig = {
   2 // i2spr
 };
 
+VNA_SHELL_FUNCTION(cmd_step_mode) {
+  if (argc == 0)
+    shell_printf("%s\r\n",(frequency_step_mode & FREQUENCY_STEP_LOGARITHMIC) ? "log" : "linear");
+  else if ((argc == 1) && (0 == strcmp(argv[0],"log")))
+      frequency_step_mode = FREQUENCY_STEP_LOGARITHMIC;
+  else if ((argc == 1) && (0 == strcmp(argv[0],"linear")))
+      frequency_step_mode = FREQUENCY_STEP_LINEAR;
+  else
+    shell_printf("usage: step_mode [linear|log]\r\n");
+}
+
 VNA_SHELL_FUNCTION(cmd_data)
 {
   int i;
@@ -625,8 +640,10 @@ VNA_SHELL_FUNCTION(cmd_data)
     array = cal_data[sel-2];
   else
     goto usage;
-  for (i = 0; i < sweep_points; i++)
-    shell_printf("%f %f\r\n", array[i][0], array[i][1]);
+  for (i = 0; i < sweep_points; i++) {
+    if (frequencies[i] != 0)
+      shell_printf("%f %f\r\n", array[i][0], array[i][1]);
+  }
   return;
 usage:
   shell_printf("usage: data [array]\r\n");
@@ -826,8 +843,8 @@ VNA_SHELL_FUNCTION(cmd_scan)
   uint32_t start, stop;
   int16_t points = sweep_points;
 
-  if (argc != 2 && argc != 3) {
-    shell_printf("usage: scan {start(Hz)} {stop(Hz)} [points]\r\n");
+  if (argc != 2 && argc != 3 && argc != 4) {
+    shell_printf("usage: scan {start(Hz)} {stop(Hz)} [points [log|lin]]\r\n");
     return;
   }
 
@@ -888,7 +905,7 @@ update_marker_index(void)
 }
 
 void
-set_frequencies(uint32_t start, uint32_t stop, uint16_t points)
+set_lin_frequencies(uint32_t start, uint32_t stop, uint16_t points)
 {
   uint32_t i;
   uint32_t step = (points - 1);
@@ -907,6 +924,32 @@ set_frequencies(uint32_t start, uint32_t stop, uint16_t points)
   // disable at out of sweep range
   for (; i < sweep_points; i++)
     frequencies[i] = 0;
+}
+
+void
+set_log_frequencies(uint32_t start, uint32_t stop, uint16_t points)
+{
+  uint16_t steps = points-1;
+  float logStart = logf((float)start);
+  float logStop  = logf((float)stop);
+  float inc = (logStop-logStart)/((float)(steps));
+  uint32_t i;
+  for (i = 0; i <= steps; i++) {
+    uint32_t f = (uint32_t)(exp((double)(logStart+inc*i))+.5);
+    frequencies[i] = f;
+  }
+  frequencies[steps] = stop;
+  // disable at out of sweep range
+  for (; i < sweep_points; i++)
+    frequencies[i] = 0;
+}
+
+void
+set_frequencies(uint32_t start, uint32_t stop, uint16_t points) {
+  if (frequency_step_mode & FREQUENCY_STEP_LOGARITHMIC)
+    set_log_frequencies(start, stop, points);
+  else
+    set_lin_frequencies(start, stop, points);
 }
 
 void
@@ -2043,6 +2086,7 @@ static const VNAShellCommand commands[] =
     {"sample"      , cmd_sample      , 0},
 //  {"gamma"       , cmd_gamma       , 0},
     {"scan"        , cmd_scan        , 0}, // Wait mutex hardcoded in cmd, need wait one sweep manually
+    {"step_mode"   , cmd_step_mode   , CMD_WAIT_MUTEX},
     {"sweep"       , cmd_sweep       , 0},
     {"test"        , cmd_test        , 0},
     {"touchcal"    , cmd_touchcal    , CMD_WAIT_MUTEX},

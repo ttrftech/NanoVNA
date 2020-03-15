@@ -84,11 +84,15 @@ uint32_t get_sweep_frequency(int type);
 double my_atof(const char *p);
 
 void toggle_sweep(void);
+void toggle_frequency_step_mode(void);
 void loadDefaultProps(void);
 
+#define FREQUENCY_STEP_LINEAR       0x00
+#define FREQUENCY_STEP_LOGARITHMIC  0x01
 #define SWEEP_ENABLE  0x01
 #define SWEEP_ONCE    0x02
 extern int8_t sweep_mode;
+extern int8_t frequency_step_mode;
 extern const char *info_about[];
 
 /*

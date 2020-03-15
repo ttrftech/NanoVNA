@@ -678,6 +678,12 @@ menu_stimulus_cb(int item, uint8_t data)
     //ui_mode_normal();
     draw_menu();
     break;
+  case 6: /* PAUSE */
+    toggle_frequency_step_mode();
+    //menu_move_back();
+    //ui_mode_normal();
+    draw_menu();
+    break;
   }
 }
 
@@ -940,6 +946,7 @@ const menuitem_t menu_stimulus[] = {
   { MT_CALLBACK, 0, "SPAN", menu_stimulus_cb },
   { MT_CALLBACK, 0, "CW FREQ", menu_stimulus_cb },
   { MT_CALLBACK, 0, "\2PAUSE\0SWEEP", menu_stimulus_cb },
+  { MT_CALLBACK, 0, "\2LINEAR\0LOG", menu_stimulus_cb },
   { MT_CANCEL, 0, S_LARROW" BACK", NULL },
   { MT_NONE, 0, NULL, NULL } // sentinel
 };
@@ -1113,9 +1120,10 @@ menu_invoke(int item)
   }
 }
 
+#define MAX_MENU_SIZE       8
 #define MENU_BUTTON_WIDTH  60
-#define MENU_BUTTON_HEIGHT 30
-#define NUM_INPUT_HEIGHT   30
+#define MENU_BUTTON_HEIGHT 25
+#define NUM_INPUT_HEIGHT   25
 
 #define KP_WIDTH     48
 #define KP_HEIGHT    48
@@ -1353,6 +1361,10 @@ menu_item_modify_attribute(const menuitem_t *menu, int item,
       *bg = DEFAULT_MENU_TEXT_COLOR;
       *fg = config.menu_normal_color;
     }
+    if (item == 6 /* LOG */ && (frequency_step_mode & FREQUENCY_STEP_LOGARITHMIC)) {
+      *bg = DEFAULT_MENU_TEXT_COLOR;
+      *fg = config.menu_normal_color;
+    }
   } else if (menu == menu_cal) {
     if (item == 3 /* CORRECTION */ && (cal_status & CALSTAT_APPLY)) {
       *bg = DEFAULT_MENU_TEXT_COLOR;
@@ -1382,13 +1394,14 @@ static void
 draw_menu_buttons(const menuitem_t *menu)
 {
   int i = 0;
-  for (i = 0; i < 7; i++) {
+  for (i = 0; i < MAX_MENU_SIZE; i++) {
     const char *l1, *l2;
     if (menu[i].type == MT_NONE)
       break;
     if (menu[i].type == MT_BLANK)
       continue;
     int y = MENU_BUTTON_HEIGHT*i;
+
     uint16_t bg = config.menu_normal_color;
     uint16_t fg = DEFAULT_MENU_TEXT_COLOR;
     // focus only in MENU mode but not in KEYPAD mode
@@ -1400,12 +1413,16 @@ draw_menu_buttons(const menuitem_t *menu)
     setForegroundColor(fg);
     setBackgroundColor(bg);
     if (menu_is_multiline(menu[i].label, &l1, &l2)) {
-      ili9341_fill(320-MENU_BUTTON_WIDTH+3, y+5, MENU_BUTTON_WIDTH-6, 2+FONT_GET_HEIGHT+1+FONT_GET_HEIGHT+2, bg);
-      ili9341_drawstring(l1, 320-MENU_BUTTON_WIDTH+5, y+7);
-      ili9341_drawstring(l2, 320-MENU_BUTTON_WIDTH+5, y+7+FONT_GET_HEIGHT+1);
+      int fillHeight = 2+FONT_GET_HEIGHT+1+FONT_GET_HEIGHT+2;
+      int fillOffset = (MENU_BUTTON_HEIGHT-fillHeight)/2;
+      ili9341_fill(320-MENU_BUTTON_WIDTH+3, y+fillOffset, MENU_BUTTON_WIDTH-6, fillHeight, bg);
+      ili9341_drawstring(l1, 320-MENU_BUTTON_WIDTH+5, y+fillOffset+2);
+      ili9341_drawstring(l2, 320-MENU_BUTTON_WIDTH+5, y+fillOffset+2+FONT_GET_HEIGHT+1);
     } else {
-      ili9341_fill(320-MENU_BUTTON_WIDTH+3, y+8, MENU_BUTTON_WIDTH-6, 2+FONT_GET_HEIGHT+2, bg);
-      ili9341_drawstring(menu[i].label, 320-MENU_BUTTON_WIDTH+5, y+10);
+      int fillHeight = 2+FONT_GET_HEIGHT+2;
+      int fillOffset = (MENU_BUTTON_HEIGHT-fillHeight)/2;
+      ili9341_fill(320-MENU_BUTTON_WIDTH+3, y+fillOffset, MENU_BUTTON_WIDTH-6, fillHeight, bg);
+      ili9341_drawstring(menu[i].label, 320-MENU_BUTTON_WIDTH+5, y+fillOffset+2);
     }
   }
 }
@@ -1428,7 +1445,7 @@ menu_apply_touch(void)
   int i;
 
   touch_position(&touch_x, &touch_y);
-  for (i = 0; i < 7; i++) {
+  for (i = 0; i < MAX_MENU_SIZE; i++) {
     if (menu[i].type == MT_NONE)
       break;
     if (menu[i].type == MT_BLANK) 
@@ -1453,7 +1470,7 @@ draw_menu(void)
 static void
 erase_menu_buttons(void)
 {
-  ili9341_fill(320-MENU_BUTTON_WIDTH, 0, MENU_BUTTON_WIDTH, MENU_BUTTON_HEIGHT*7, DEFAULT_BG_COLOR);
+  ili9341_fill(320-MENU_BUTTON_WIDTH, 0, MENU_BUTTON_WIDTH, MENU_BUTTON_HEIGHT*MAX_MENU_SIZE, DEFAULT_BG_COLOR);
 }
 
 static void

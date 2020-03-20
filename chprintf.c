@@ -49,17 +49,17 @@ static const uint32_t pow10[FLOAT_PRECISION+1] = {
 };
 // Prefixes for values bigger then 1000.0
 //                            1  1e3, 1e6, 1e9, 1e12, 1e15, 1e18, 1e21, 1e24
-static char bigPrefix[]  = {' ', 'k', 'M', 'G',  'T',  'P',  'E',  'Z',  'Y', 0};
+static char bigPrefix[] = {' ', 'k', 'M', 'G', 'T', 'P', 'E', 'Z', 'Y', 0};
 // Prefixes for values less   then 1.0
 //                          1e-3, 1e-6, 1e-9, 1e-12, 1e-15, 1e-18, 1e-21, 1e-24
-static char smallPrefix[]= { 'm', 0x1d,  'n',   'p',   'f',   'a',   'z',   'y', 0};
+static char smallPrefix[] = {'m', 0x1d, 'n', 'p', 'f', 'a', 'z', 'y', 0};
 
 #pragma pack(pop)
 
 static char *long_to_string_with_divisor(char *p,
                                          uint32_t num,
-										 uint32_t radix,
-										 uint32_t precision) {
+                                         uint32_t radix,
+                                         uint32_t precision) {
   char *q = p + MAX_FILLER;
   char *b = q;
   // convert to string from end buffer to begin
@@ -78,12 +78,14 @@ static char *long_to_string_with_divisor(char *p,
 
 // default prescision = 13
 // g.mmm kkk hhh
-#define MAX_FREQ_PRESCISION	13
-#define FREQ_PSET			1
-#define FREQ_NO_SPACE		2
-#define FREQ_PREFIX_SPACE	4
+#define MAX_FREQ_PRESCISION 13
+#define FREQ_PSET           1
+#define FREQ_NO_SPACE       2
+#define FREQ_PREFIX_SPACE   4
 
-static char *ulong_freq(char *p, uint32_t freq, uint32_t precision){
+static char *
+ulong_freq(char *p, uint32_t freq, uint32_t precision)
+{
   uint8_t flag = FREQ_PSET;
   if (precision == 0)
     flag|=FREQ_PREFIX_SPACE;
@@ -94,7 +96,7 @@ static char *ulong_freq(char *p, uint32_t freq, uint32_t precision){
   // Prefix counter
   uint32_t s = 0;
   // Set format (every 3 digits add ' ' up to GHz)
-  uint32_t format=0b00100100100;
+  uint32_t format = 0b00100100100;
   do {
 #if 0
     uint8_t c = freq % 10;
@@ -104,21 +106,27 @@ static char *ulong_freq(char *p, uint32_t freq, uint32_t precision){
     // c = freq % 10
     // freq = freq / 10;
     uint32_t c = freq;
-    freq>>=1;
-    freq+=freq>>1;
-    freq+=freq>>4;
-    freq+=freq>>8;
-    freq+=freq>>16; // freq = 858993459*freq/1073741824 = freq * 0,799999999813735485076904296875
-    freq>>=3;       // freq/=8; freq = freq * 0,09999999997671693563461303710938
-    c-= freq*10;    // freq*10 = (freq*4+freq)*2 = ((freq<<2)+freq)<<1
-    while (c>=10) {freq++;c-=10;}
+    freq >>= 1;
+    freq += freq >> 1;
+    freq += freq >> 4;
+    freq += freq >> 8;
+    freq += freq >> 16;  // freq = 858993459*freq/1073741824 = freq *
+                         // 0,799999999813735485076904296875
+    freq >>= 3;  // freq/=8; freq = freq * 0,09999999997671693563461303710938
+    c -= freq * 10;  // freq*10 = (freq*4+freq)*2 = ((freq<<2)+freq)<<1
+    while (c >= 10) {
+      freq++;
+      c -= 10;
+    }
 #endif
     *--q = c + '0';
-    if (freq==0)
-      break;
+    if (freq == 0) break;
     // Add spaces, calculate prefix
-    if (format&1) {*--q = ' '; s++;}
-    format>>=1;
+    if (format & 1) {
+      *--q = ' ';
+      s++;
+    }
+    format >>= 1;
   } while (1);
   s = bigPrefix[s];
 
@@ -126,26 +134,25 @@ static char *ulong_freq(char *p, uint32_t freq, uint32_t precision){
   uint32_t i = (b - q);
   // Limit string size, max size is - precision
   if (precision && i > precision) {
-	  i = precision;
-	  flag|=FREQ_NO_SPACE;
+    i = precision;
+    flag |= FREQ_NO_SPACE;
   }
   // copy string
   // Replace first ' ' by '.', remove ' ' if size too big
-  do{
+  do {
     char c = *q++;
     // replace first ' ' on '.'
     if (c == ' ') {
-      if (flag&FREQ_PSET){
+      if (flag & FREQ_PSET) {
         c = '.';
-        flag&=~FREQ_PSET;
-      }
-      else if (flag&FREQ_NO_SPACE)
+        flag &= ~FREQ_PSET;
+      } else if (flag & FREQ_NO_SPACE)
         c = *q++;
     }
     *p++ = c;
-  }while (--i);
+  } while (--i);
   // Put pref (amd space before it if need)
-  if (flag&FREQ_PREFIX_SPACE && s!=' ')
+  if (flag & FREQ_PREFIX_SPACE && s != ' ') 
     *p++ = ' ';
   *p++ = s;
   return p;
@@ -153,7 +160,7 @@ static char *ulong_freq(char *p, uint32_t freq, uint32_t precision){
 
 #if CHPRINTF_USE_FLOAT
 static char *ftoa(char *p, float num, uint32_t precision) {
- // Check precision limit
+  // Check precision limit
   if (precision > FLOAT_PRECISION)
     precision = FLOAT_PRECISION;
   uint32_t multi = pow10[precision];
@@ -163,7 +170,7 @@ static char *ftoa(char *p, float num, uint32_t precision) {
   // Fix rounding error if get
   if (k>=multi){k-=multi;l++;}
   p = long_to_string_with_divisor(p, l, 10, 0);
-  if (precision){
+  if (precision) {
     *p++ = '.';
     p=long_to_string_with_divisor(p, k, 10, precision);
 #ifndef CHPRINTF_FORCE_TRAILING_ZEROS
@@ -227,23 +234,23 @@ static char *ftoaS(char *p, float num, uint32_t precision) {
  *
  * @api
  */
-#define IS_LONG				1
-#define LEFT_ALIGN			2
-#define POSITIVE			4
-#define NEGATIVE			8
-#define PAD_ZERO			16
-#define PLUS_SPACE			32
-#define DEFAULT_PRESCISION	64
+#define IS_LONG             1
+#define LEFT_ALIGN          2
+#define POSITIVE            4
+#define NEGATIVE            8
+#define PAD_ZERO            16
+#define PLUS_SPACE          32
+#define DEFAULT_PRESCISION  64
 
 int chvprintf(BaseSequentialStream *chp, const char *fmt, va_list ap) {
   char *p, *s, c, filler=' ';
   int precision, width;
   int n = 0;
-  uint32_t	state;
+  uint32_t  state;
   union {
-	  uint32_t u;
-	  int32_t  l;
-	  float    f;
+      uint32_t u;
+      int32_t  l;
+      float    f;
   }value;
 #if CHPRINTF_USE_FLOAT
   char tmpbuf[2*MAX_FILLER + 1];
@@ -321,8 +328,8 @@ int chvprintf(BaseSequentialStream *chp, const char *fmt, va_list ap) {
       if (*fmt)
         c = *fmt++;
     }
-    else if((c >= 'A') && (c <= 'Z'))
-    	state|=IS_LONG;
+    else if ((c >= 'A') && (c <= 'Z'))
+        state|=IS_LONG;
     */
     // Parse type
     switch (c) {
@@ -377,7 +384,7 @@ int chvprintf(BaseSequentialStream *chp, const char *fmt, va_list ap) {
         *p++ = '+';
 #ifdef CHPRINTF_USE_SPACE_FLAG
       else if (state & PLUS_SPACE)
-       	*p++ = ' ';
+        *p++ = ' ';
 #endif
       if (value.f == INFINITY){
         *p++ = 0x19;

@@ -23,8 +23,8 @@
 
 uint16_t spi_buffer[SPI_BUFFER_SIZE];
 // Default foreground & background colors
-uint16_t foreground_color=0;
-uint16_t background_color=0;
+uint16_t foreground_color = 0;
+uint16_t background_color = 0;
 
 // Display width and height definition
 #define ILI9341_WIDTH     320
@@ -129,7 +129,8 @@ uint16_t background_color=0;
 #define DISPLAY_ROTATION_270   (ILI9341_MADCTL_MX | ILI9341_MADCTL_BGR)
 #define DISPLAY_ROTATION_90    (ILI9341_MADCTL_MY | ILI9341_MADCTL_BGR)
 #define DISPLAY_ROTATION_0     (ILI9341_MADCTL_MV | ILI9341_MADCTL_BGR)
-#define DISPLAY_ROTATION_180   (ILI9341_MADCTL_MX | ILI9341_MADCTL_MY | ILI9341_MADCTL_MV | ILI9341_MADCTL_BGR)
+#define DISPLAY_ROTATION_180   (ILI9341_MADCTL_MX | ILI9341_MADCTL_MY  \
+                              | ILI9341_MADCTL_MV | ILI9341_MADCTL_BGR)
 
 //
 // Pin macros
@@ -179,14 +180,17 @@ uint16_t background_color=0;
 #define SPI_READ_DATA        SPI1->DR
 
 #ifdef __USE_DISPLAY_DMA__
-static const stm32_dma_stream_t  *dmatx = STM32_DMA_STREAM(STM32_SPI_SPI1_TX_DMA_STREAM);
-static uint32_t txdmamode = STM32_DMA_CR_CHSEL(SPI1_TX_DMA_CHANNEL)    // Select SPI1 Tx DMA
-                        | STM32_DMA_CR_PL(STM32_SPI_SPI1_DMA_PRIORITY)  // Set priority
-                        | STM32_DMA_CR_DIR_M2P              // Memory to Spi
-                        | STM32_DMA_CR_DMEIE              //
-                        | STM32_DMA_CR_TEIE;
+static const stm32_dma_stream_t *dmatx =
+    STM32_DMA_STREAM(STM32_SPI_SPI1_TX_DMA_STREAM);
+static uint32_t txdmamode =
+    STM32_DMA_CR_CHSEL(SPI1_TX_DMA_CHANNEL)         // Select SPI1 Tx DMA
+    | STM32_DMA_CR_PL(STM32_SPI_SPI1_DMA_PRIORITY)  // Set priority
+    | STM32_DMA_CR_DIR_M2P                          // Memory to Spi
+    | STM32_DMA_CR_DMEIE                            //
+    | STM32_DMA_CR_TEIE;
 
-static void spi_lld_serve_tx_interrupt(SPIDriver *spip, uint32_t flags) {
+static void spi_lld_serve_tx_interrupt(SPIDriver *spip, uint32_t flags)
+{
   (void)spip;
   (void)flags;
 }
@@ -199,13 +203,15 @@ static uint32_t rxdmamode = STM32_DMA_CR_CHSEL(SPI1_RX_DMA_CHANNEL)
                         | STM32_DMA_CR_DMEIE
                         | STM32_DMA_CR_TEIE;
 
-static void spi_lld_serve_rx_interrupt(SPIDriver *spip, uint32_t flags) {
+static void spi_lld_serve_rx_interrupt(SPIDriver *spip, uint32_t flags)
+{
   (void)spip;
   (void)flags;
 }
 
-static void dmaStreamFlush(uint32_t len){
-  while (len){
+static void dmaStreamFlush(uint32_t len)
+{
+  while (len) {
     // DMA data transfer limited by 65535
     uint16_t tx_size = len > 65535 ? 65535 : len;
     dmaStreamSetTransactionSize(dmatx, tx_size);
@@ -251,11 +257,13 @@ static void __attribute__ ((noinline)) send_command(uint8_t cmd, uint8_t len, co
   DC_CMD;
   SPI_WRITE_8BIT(cmd);
   // Need wait transfer complete and set data bit
-  while (SPI_IS_BUSY);
+  while (SPI_IS_BUSY)
+    ;
   // Send command data (if need)
   DC_DATA;
   while (len-- > 0) {
-    while (SPI_TX_IS_NOT_EMPTY);
+    while (SPI_TX_IS_NOT_EMPTY)
+      ;
     SPI_WRITE_8BIT(*data++);
   }
   //CS_HIGH;
@@ -345,31 +353,33 @@ void ili9341_fill(int x, int y, int w, int h, int color)
 {
 //uint8_t xx[4] = { x >> 8, x, (x+w-1) >> 8, (x+w-1) };
 //uint8_t yy[4] = { y >> 8, y, (y+h-1) >> 8, (y+h-1) };
-  uint32_t xx = __REV16(x|((x+w-1)<<16));
-  uint32_t yy = __REV16(y|((y+h-1)<<16));
+  uint32_t xx = __REV16(x | ((x + w - 1) << 16));
+  uint32_t yy = __REV16(y | ((y + h - 1) << 16));
   send_command(ILI9341_COLUMN_ADDRESS_SET, 4, (uint8_t*)&xx);
   send_command(ILI9341_PAGE_ADDRESS_SET, 4, (uint8_t*)&yy);
   send_command(ILI9341_MEMORY_WRITE, 0, NULL);
   int32_t len = w * h;
-  while (len-- > 0){
-    while (SPI_TX_IS_NOT_EMPTY);
+  while (len-- > 0) {
+    while (SPI_TX_IS_NOT_EMPTY)
+      ;
   SPI_WRITE_16BIT(color);
   }
 }
 
 void ili9341_bulk(int x, int y, int w, int h)
 {
-//uint8_t xx[4] = { x >> 8, x, (x+w-1) >> 8, (x+w-1) };
-//uint8_t yy[4] = { y >> 8, y, (y+h-1) >> 8, (y+h-1) };
+  // uint8_t xx[4] = { x >> 8, x, (x+w-1) >> 8, (x+w-1) };
+  // uint8_t yy[4] = { y >> 8, y, (y+h-1) >> 8, (y+h-1) };
   uint16_t *buf = spi_buffer;
-  uint32_t xx = __REV16(x|((x+w-1)<<16));
-  uint32_t yy = __REV16(y|((y+h-1)<<16));
-  send_command(ILI9341_COLUMN_ADDRESS_SET, 4, (uint8_t*)&xx);
+  uint32_t xx = __REV16(x | ((x + w - 1) << 16));
+  uint32_t yy = __REV16(y | ((y + h - 1) << 16));
+  send_command(ILI9341_COLUMN_ADDRESS_SET, 4, (uint8_t *)&xx);
   send_command(ILI9341_PAGE_ADDRESS_SET, 4, (uint8_t*)&yy);
   send_command(ILI9341_MEMORY_WRITE, 0, NULL);
   int32_t len = w * h;
-  while (len-- > 0){
-    while (SPI_TX_IS_NOT_EMPTY);
+  while (len-- > 0) {
+    while (SPI_TX_IS_NOT_EMPTY)
+      ;
     SPI_WRITE_16BIT(*buf++);
   }
 }
@@ -378,18 +388,18 @@ static uint8_t ssp_sendrecvdata(void)
 {
   // Start RX clock (by sending data)
   SPI_WRITE_8BIT(0);
-  while(SPI_RX_IS_EMPTY && SPI_IS_BUSY)
+  while (SPI_RX_IS_EMPTY && SPI_IS_BUSY)
     ;
   return SPI_READ_DATA;
 }
 
 void ili9341_read_memory(int x, int y, int w, int h, int len, uint16_t *out)
 {
-//uint8_t xx[4] = { x >> 8, x, (x+w-1) >> 8, (x+w-1) };
-//uint8_t yy[4] = { y >> 8, y, (y+h-1) >> 8, (y+h-1) };
-  uint32_t xx = __REV16(x|((x+w-1)<<16));
-  uint32_t yy = __REV16(y|((y+h-1)<<16));
-  send_command(ILI9341_COLUMN_ADDRESS_SET, 4, (uint8_t*)&xx);
+  // uint8_t xx[4] = { x >> 8, x, (x+w-1) >> 8, (x+w-1) };
+  // uint8_t yy[4] = { y >> 8, y, (y+h-1) >> 8, (y+h-1) };
+  uint32_t xx = __REV16(x | ((x + w - 1) << 16));
+  uint32_t yy = __REV16(y | ((y + h - 1) << 16));
+  send_command(ILI9341_COLUMN_ADDRESS_SET, 4, (uint8_t *)&xx);
   send_command(ILI9341_PAGE_ADDRESS_SET, 4, (uint8_t*)&yy);
   send_command(ILI9341_MEMORY_READ, 0, NULL);
 
@@ -399,11 +409,11 @@ void ili9341_read_memory(int x, int y, int w, int h, int len, uint16_t *out)
   // require 8bit dummy clock
   ssp_sendrecvdata();
   while (len-- > 0) {
-  // read data is always 18bit
-  uint8_t r = ssp_sendrecvdata();
-  uint8_t g = ssp_sendrecvdata();
-  uint8_t b = ssp_sendrecvdata();
-  *out++ = RGB565(r,g,b);
+    // read data is always 18bit
+    uint8_t r = ssp_sendrecvdata();
+    uint8_t g = ssp_sendrecvdata();
+    uint8_t b = ssp_sendrecvdata();
+    *out++ = RGB565(r, g, b);
   }
   CS_HIGH;
 }
@@ -415,10 +425,10 @@ void ili9341_read_memory(int x, int y, int w, int h, int len, uint16_t *out)
 // Fill region by some color
 void ili9341_fill(int x, int y, int w, int h, int color)
 {
-  uint32_t xx = __REV16(x|((x+w-1)<<16));
-  uint32_t yy = __REV16(y|((y+h-1)<<16));
-  send_command(ILI9341_COLUMN_ADDRESS_SET, 4, (uint8_t*)&xx);
-  send_command(ILI9341_PAGE_ADDRESS_SET, 4, (uint8_t*)&yy);
+  uint32_t xx = __REV16(x | ((x + w - 1) << 16));
+  uint32_t yy = __REV16(y | ((y + h - 1) << 16));
+  send_command(ILI9341_COLUMN_ADDRESS_SET, 4, (uint8_t *)&xx);
+  send_command(ILI9341_PAGE_ADDRESS_SET, 4, (uint8_t *)&yy);
   send_command(ILI9341_MEMORY_WRITE, 0, NULL);
 
   dmaStreamSetMemory0(dmatx, &color);
@@ -426,18 +436,20 @@ void ili9341_fill(int x, int y, int w, int h, int color)
   dmaStreamFlush(w * h);
 }
 
-void ili9341_bulk_8bit(int x, int y, int w, int h, uint16_t *palette){
-  uint32_t xx = __REV16(x|((x+w-1)<<16));
-  uint32_t yy = __REV16(y|((y+h-1)<<16));
-  send_command(ILI9341_COLUMN_ADDRESS_SET, 4, (uint8_t*)&xx);
-  send_command(ILI9341_PAGE_ADDRESS_SET, 4, (uint8_t*)&yy);
+void ili9341_bulk_8bit(int x, int y, int w, int h, uint16_t *palette)
+{
+  uint32_t xx = __REV16(x | ((x + w - 1) << 16));
+  uint32_t yy = __REV16(y | ((y + h - 1) << 16));
+  send_command(ILI9341_COLUMN_ADDRESS_SET, 4, (uint8_t *)&xx);
+  send_command(ILI9341_PAGE_ADDRESS_SET, 4, (uint8_t *)&yy);
   send_command(ILI9341_MEMORY_WRITE, 0, NULL);
 
   uint8_t *buf = (uint8_t *)spi_buffer;
   int32_t len = w * h;
-  while (len-- > 0){
+  while (len-- > 0) {
     uint16_t color = palette[*buf++];
-    while (SPI_TX_IS_NOT_EMPTY);
+    while (SPI_TX_IS_NOT_EMPTY)
+      ;
     SPI_WRITE_16BIT(color);
   }
 }
@@ -445,15 +457,16 @@ void ili9341_bulk_8bit(int x, int y, int w, int h, uint16_t *palette){
 // Copy spi_buffer to region
 void ili9341_bulk(int x, int y, int w, int h)
 {
-  uint32_t xx = __REV16(x|((x+w-1)<<16));
-  uint32_t yy = __REV16(y|((y+h-1)<<16));
-  send_command(ILI9341_COLUMN_ADDRESS_SET, 4, (uint8_t*)&xx);
-  send_command(ILI9341_PAGE_ADDRESS_SET, 4, (uint8_t*)&yy);
+  uint32_t xx = __REV16(x | ((x + w - 1) << 16));
+  uint32_t yy = __REV16(y | ((y + h - 1) << 16));
+  send_command(ILI9341_COLUMN_ADDRESS_SET, 4, (uint8_t *)&xx);
+  send_command(ILI9341_PAGE_ADDRESS_SET, 4, (uint8_t *)&yy);
   send_command(ILI9341_MEMORY_WRITE, 0, NULL);
 
   // Init Tx DMA mem->spi, set size, mode (spi and mem data size is 16 bit)
   dmaStreamSetMemory0(dmatx, spi_buffer);
-  dmaStreamSetMode(dmatx, txdmamode | STM32_DMA_CR_PSIZE_HWORD | STM32_DMA_CR_MSIZE_HWORD | STM32_DMA_CR_MINC);
+  dmaStreamSetMode(dmatx, txdmamode | STM32_DMA_CR_PSIZE_HWORD |
+                              STM32_DMA_CR_MSIZE_HWORD | STM32_DMA_CR_MINC);
   dmaStreamFlush(w * h);
 }
 
@@ -462,25 +475,25 @@ void ili9341_bulk(int x, int y, int w, int h)
 void ili9341_read_memory(int x, int y, int w, int h, int len, uint16_t *out)
 {
   uint8_t dummy_tx = 0;
-  uint8_t *rgbbuf=(uint8_t *)out;
+  uint8_t *rgbbuf = (uint8_t *)out;
   uint16_t data_size = len * 3 + 1;
-  uint32_t xx = __REV16(x|((x+w-1)<<16));
-  uint32_t yy = __REV16(y|((y+h-1)<<16));
-  send_command(ILI9341_COLUMN_ADDRESS_SET, 4, (uint8_t*)&xx);
-  send_command(ILI9341_PAGE_ADDRESS_SET, 4, (uint8_t*)&yy);
+  uint32_t xx = __REV16(x | ((x + w - 1) << 16));
+  uint32_t yy = __REV16(y | ((y + h - 1) << 16));
+  send_command(ILI9341_COLUMN_ADDRESS_SET, 4, (uint8_t *)&xx);
+  send_command(ILI9341_PAGE_ADDRESS_SET, 4, (uint8_t *)&yy);
   send_command(ILI9341_MEMORY_READ, 0, NULL);
   // Skip SPI rx buffer
-  while (SPI_RX_IS_NOT_EMPTY)
-    (void) SPI_READ_DATA;
+  while (SPI_RX_IS_NOT_EMPTY) (void)SPI_READ_DATA;
   // Init Rx DMA buffer, size, mode (spi and mem data size is 8 bit)
   dmaStreamSetMemory0(dmarx, rgbbuf);
   dmaStreamSetTransactionSize(dmarx, data_size);
-  dmaStreamSetMode(dmarx, rxdmamode | STM32_DMA_CR_PSIZE_BYTE | STM32_DMA_CR_MSIZE_BYTE | STM32_DMA_CR_MINC);
+  dmaStreamSetMode(dmarx, rxdmamode | STM32_DMA_CR_PSIZE_BYTE | STM32_DMA_CR_MSIZE_BYTE |
+                              STM32_DMA_CR_MINC);
   // Init dummy Tx DMA (for rx clock), size, mode (spi and mem data size is 8 bit)
   dmaStreamSetMemory0(dmatx, &dummy_tx);
   dmaStreamSetTransactionSize(dmatx, data_size);
   dmaStreamSetMode(dmatx, txdmamode | STM32_DMA_CR_PSIZE_BYTE | STM32_DMA_CR_MSIZE_BYTE);
-  
+
   // Start DMA exchange
   dmaStreamEnable(dmatx);
   dmaStreamEnable(dmarx);
@@ -498,39 +511,53 @@ void ili9341_read_memory(int x, int y, int w, int h, int len, uint16_t *out)
     r = rgbbuf[0];
     g = rgbbuf[1];
     b = rgbbuf[2];
-    *out++ = RGB565(r,g,b);
-    rgbbuf+=3;
+    *out++ = RGB565(r, g, b);
+    rgbbuf += 3;
   }
 }
 #endif
 
-void clearScreen(void){
+void ili9341_clear_screen(void) 
+{
   ili9341_fill(0, 0, ILI9341_WIDTH, ILI9341_HEIGHT, background_color);
 }
 
-void setForegroundColor(uint16_t fg) {foreground_color = fg;}
-void setBackgroundColor(uint16_t bg) {background_color = bg;}
+void ili9341_set_foreground(uint16_t fg)
+{
+  foreground_color = fg;
+}
 
-void ili9341_setRotation(uint8_t r) {
-//  static const uint8_t rotation_const[]={DISPLAY_ROTATION_0, DISPLAY_ROTATION_90, DISPLAY_ROTATION_180, DISPLAY_ROTATION_270};
+void ili9341_set_background(uint16_t bg)
+{
+  background_color = bg; 
+}
+
+void ili9341_set_rotation(uint8_t r)
+{
+  //  static const uint8_t rotation_const[]={DISPLAY_ROTATION_0, DISPLAY_ROTATION_90,
+  //  DISPLAY_ROTATION_180, DISPLAY_ROTATION_270};
   send_command(ILI9341_MEMORY_ACCESS_CONTROL, 1, &r);
 }
 
-void blit8BitWidthBitmap(uint16_t x, uint16_t y, uint16_t width, uint16_t height, const uint8_t *bitmap){
+void blit8BitWidthBitmap(uint16_t x, uint16_t y, uint16_t width, uint16_t height,
+                         const uint8_t *bitmap) 
+{
   uint16_t *buf = spi_buffer;
-  for(uint16_t c = 0; c < height; c++) {
+  for (uint16_t c = 0; c < height; c++) {
     uint8_t bits = *bitmap++;
-      for (uint16_t r = 0; r < width; r++) {
-        *buf++ = (0x80 & bits) ? foreground_color : background_color;
-        bits <<= 1;
-      }
+    for (uint16_t r = 0; r < width; r++) {
+      *buf++ = (0x80 & bits) ? foreground_color : background_color;
+      bits <<= 1;
+    }
   }
   ili9341_bulk(x, y, width, height);
 }
 
-void blit16BitWidthBitmap(uint16_t x, uint16_t y, uint16_t width, uint16_t height, const uint16_t *bitmap){
+static void blit16BitWidthBitmap(uint16_t x, uint16_t y, uint16_t width, uint16_t height,
+                                 const uint16_t *bitmap) 
+{
   uint16_t *buf = spi_buffer;
-  for(uint16_t c = 0; c < height; c++) {
+  for (uint16_t c = 0; c < height; c++) {
     uint16_t bits = *bitmap++;
     for (uint16_t r = 0; r < width; r++) {
       *buf++ = (0x8000 & bits) ? foreground_color : background_color;
@@ -552,36 +579,38 @@ void ili9341_drawstring(const char *str, int x, int y)
     const uint8_t *char_buf = FONT_GET_DATA(ch);
     uint16_t w = FONT_GET_WIDTH(ch);
     blit8BitWidthBitmap(x, y, w, FONT_GET_HEIGHT, char_buf);
-    x+=w;
+    x += w;
   }
 }
 
-void ili9341_drawstringV(const char *str, int x, int y){
-  ili9341_setRotation(DISPLAY_ROTATION_270);
+void ili9341_drawstringV(const char *str, int x, int y)
+{
+  ili9341_set_rotation(DISPLAY_ROTATION_270);
   ili9341_drawstring(str, ILI9341_HEIGHT-y, x);
-  ili9341_setRotation(DISPLAY_ROTATION_0);
+  ili9341_set_rotation(DISPLAY_ROTATION_0);
 }
 
 int ili9341_drawchar_size(uint8_t ch, int x, int y, uint8_t size)
 {
   uint16_t *buf = spi_buffer;
   const uint8_t *char_buf = FONT_GET_DATA(ch);
-  uint16_t w=FONT_GET_WIDTH(ch);
-  for(int c = 0; c < FONT_GET_HEIGHT; c++, char_buf++){
-    for (int i=0;i<size;i++){
-    uint8_t bits = *char_buf;
-    for (int r = 0; r < w; r++, bits<<=1)
-      for (int j=0; j<size; j++)
-        *buf++ = (0x80 & bits) ? foreground_color : background_color;
+  uint16_t w = FONT_GET_WIDTH(ch);
+  for (int c = 0; c < FONT_GET_HEIGHT; c++, char_buf++) {
+    for (int i = 0; i < size; i++) {
+      uint8_t bits = *char_buf;
+      for (int r = 0; r < w; r++, bits <<= 1)
+        for (int j = 0; j < size; j++)
+          *buf++ = (0x80 & bits) ? foreground_color : background_color;
     }
   }
-  ili9341_bulk(x, y, w*size, FONT_GET_HEIGHT*size);
+  ili9341_bulk(x, y, w * size, FONT_GET_HEIGHT * size);
   return w*size;
 }
 
 void ili9341_drawfont(uint8_t ch, int x, int y)
 {
-  blit16BitWidthBitmap(x, y, NUM_FONT_GET_WIDTH, NUM_FONT_GET_HEIGHT, NUM_FONT_GET_DATA(ch));
+  blit16BitWidthBitmap(x, y, NUM_FONT_GET_WIDTH, NUM_FONT_GET_HEIGHT,
+                       NUM_FONT_GET_DATA(ch));
 }
 
 void ili9341_drawstring_size(const char *str, int x, int y, uint8_t size)
@@ -600,7 +629,8 @@ static void ili9341_pixel(int x, int y, uint16_t color)
 }
 #endif
 
-#define SWAP(x,y) { int z=x; x = y; y = z; }
+#define SWAP(x, y) { int z = x; x = y; y = z; }
+
 void ili9341_line(int x0, int y0, int x1, int y1)
 {
 #if 0
@@ -608,7 +638,7 @@ void ili9341_line(int x0, int y0, int x1, int y1)
   int dx = x1 - x0, sx = 1; if (dx < 0) {dx = -dx; sx = -1;}
   int dy = y1 - y0, sy = 1; if (dy < 0) {dy = -dy; sy = -1;}
   int err = (dx > dy ? dx : -dy) / 2;
-  while (1){
+  while (1) {
     ili9341_pixel(x0, y0, DEFAULT_FG_COLOR);
     if (x0 == x1 && y0 == y1)
       break;

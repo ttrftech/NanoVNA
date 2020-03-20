@@ -96,7 +96,7 @@ config_save(void)
   flash_erase_page((uint32_t)dst);
 
   /* write to flahs */
-  while(count-- > 0) {
+  while (count-- > 0) {
     flash_program_half_word((uint32_t)dst, *src++);
     dst++;
   }
@@ -141,7 +141,8 @@ caldata_save(int id)
   dst = (uint16_t*)saveareas[id];
 
   current_props.magic = CONFIG_MAGIC;
-  current_props.checksum = checksum(&current_props, sizeof current_props - sizeof current_props.checksum);
+  current_props.checksum = checksum(
+      &current_props, sizeof current_props - sizeof current_props.checksum);
 
   flash_unlock();
 
@@ -154,7 +155,7 @@ caldata_save(int id)
   }
 
   /* write to flahs */
-  while(count-- > 0) {
+  while (count-- > 0) {
     flash_program_half_word((uint32_t)dst, *src++);
     dst++;
   }
@@ -191,7 +192,7 @@ caldata_recall(int id)
   memcpy(dst, src, sizeof(properties_t));
   return 0;
 load_default:
-  loadDefaultProps();
+  load_default_properties();
   return -1;
 }
 

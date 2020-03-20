@@ -116,7 +116,7 @@ static void
 tlv320aic3204_config(const uint8_t *data, int len)
 {
   i2cAcquireBus(&I2CD1);
-  for (;len--;data+=2)
+  for (; len--; data += 2)
     tlv320aic3204_bulk_write(data, 2);
   i2cReleaseBus(&I2CD1);
 }

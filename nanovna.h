@@ -93,7 +93,7 @@ uint32_t get_sweep_frequency(int type);
 double my_atof(const char *p);
 
 void toggle_sweep(void);
-void loadDefaultProps(void);
+void load_default_properties(void);
 
 #define SWEEP_ENABLE  0x01
 #define SWEEP_ONCE    0x02
@@ -169,15 +169,15 @@ extern int16_t area_height;
 
 // font
 extern const uint8_t x5x7_bits [];
-#define FONT_GET_DATA(ch)	(&x5x7_bits[ch*7])
-#define FONT_GET_WIDTH(ch)	(8-(x5x7_bits[ch*7]&7))
-#define FONT_MAX_WIDTH		7
-#define FONT_GET_HEIGHT		7
+#define FONT_GET_DATA(ch)   (&x5x7_bits[ch*7])
+#define FONT_GET_WIDTH(ch)  (8-(x5x7_bits[ch*7]&7))
+#define FONT_MAX_WIDTH      7
+#define FONT_GET_HEIGHT     7
 
 extern const uint16_t numfont16x22[];
-#define NUM_FONT_GET_DATA(ch)	(&numfont16x22[ch*22])
-#define NUM_FONT_GET_WIDTH  	16
-#define NUM_FONT_GET_HEIGHT		22
+#define NUM_FONT_GET_DATA(ch)   (&numfont16x22[ch*22])
+#define NUM_FONT_GET_WIDTH      16
+#define NUM_FONT_GET_HEIGHT     22
 
 #define S_DELTA "\004"
 #define S_DEGREE "\037"
@@ -306,21 +306,21 @@ extern volatile uint8_t redraw_request;
 #define RGBHEX(hex) ( (((hex)&0x001c00)<<3) | (((hex)&0x0000f8)<<5) | (((hex)&0xf80000)>>16) | (((hex)&0x00e000)>>13) )
 
 // Define size of screen buffer in pixels (one pixel 16bit size)
-#define SPI_BUFFER_SIZE	            2048
+#define SPI_BUFFER_SIZE             2048
 
-#define DEFAULT_FG_COLOR			RGB565(255,255,255)
-#define DEFAULT_BG_COLOR			RGB565(  0,  0,  0)
-#define DEFAULT_GRID_COLOR			RGB565(128,128,128)
-#define DEFAULT_MENU_COLOR			RGB565(255,255,255)
-#define DEFAULT_MENU_TEXT_COLOR		RGB565(  0,  0,  0)
-#define DEFAULT_MENU_ACTIVE_COLOR	RGB565(180,255,180)
-#define DEFAULT_TRACE_1_COLOR		RGB565(255,255,  0)
-#define DEFAULT_TRACE_2_COLOR		RGB565(  0,255,255)
-#define DEFAULT_TRACE_3_COLOR		RGB565(  0,255,  0)
-#define DEFAULT_TRACE_4_COLOR		RGB565(255,  0,255)
-#define DEFAULT_NORMAL_BAT_COLOR	RGB565( 31,227,  0)
-#define DEFAULT_LOW_BAT_COLOR		RGB565(255,  0,  0)
-#define	DEFAULT_SPEC_INPUT_COLOR	RGB565(128,255,128);
+#define DEFAULT_FG_COLOR            RGB565(255,255,255)
+#define DEFAULT_BG_COLOR            RGB565(  0,  0,  0)
+#define DEFAULT_GRID_COLOR          RGB565(128,128,128)
+#define DEFAULT_MENU_COLOR          RGB565(255,255,255)
+#define DEFAULT_MENU_TEXT_COLOR     RGB565(  0,  0,  0)
+#define DEFAULT_MENU_ACTIVE_COLOR   RGB565(180,255,180)
+#define DEFAULT_TRACE_1_COLOR       RGB565(255,255,  0)
+#define DEFAULT_TRACE_2_COLOR       RGB565(  0,255,255)
+#define DEFAULT_TRACE_3_COLOR       RGB565(  0,255,  0)
+#define DEFAULT_TRACE_4_COLOR       RGB565(255,  0,255)
+#define DEFAULT_NORMAL_BAT_COLOR    RGB565( 31,227,  0)
+#define DEFAULT_LOW_BAT_COLOR       RGB565(255,  0,  0)
+#define DEFAULT_SPEC_INPUT_COLOR    RGB565(128,255,128);
 
 extern uint16_t foreground_color;
 extern uint16_t background_color;
@@ -328,15 +328,13 @@ extern uint16_t background_color;
 extern uint16_t spi_buffer[SPI_BUFFER_SIZE];
 
 void ili9341_init(void);
-//void ili9341_setRotation(uint8_t r);
 void ili9341_test(int mode);
 void ili9341_bulk(int x, int y, int w, int h);
 void ili9341_fill(int x, int y, int w, int h, int color);
-void setForegroundColor(uint16_t fg);
-void setBackgroundColor(uint16_t fg);
-void clearScreen(void);
+void ili9341_set_foreground(uint16_t fg);
+void ili9341_set_background(uint16_t fg);
+void ili9341_clear_screen(void);
 void blit8BitWidthBitmap(uint16_t x, uint16_t y, uint16_t width, uint16_t height, const uint8_t *bitmap);
-void blit16BitWidthBitmap(uint16_t x, uint16_t y, uint16_t width, uint16_t height, const uint16_t *bitmap);
 void ili9341_drawchar(uint8_t ch, int x, int y);
 void ili9341_drawstring(const char *str, int x, int y);
 void ili9341_drawstringV(const char *str, int x, int y);

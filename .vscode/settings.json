@@ -1,3 +1,4 @@
 {
-    "C_Cpp.errorSquiggles": "Disabled"
+    "C_Cpp.errorSquiggles": "Disabled",
+    "cpplint.filters": ["-build/include_subdir", "-build/include_order", "-readability/casting", "-whitespace/comments"]
 }

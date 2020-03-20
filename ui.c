@@ -33,23 +33,23 @@ uistat_t uistat = {
  marker_tracking : FALSE,
 };
 
-#define NO_EVENT					0
-#define EVT_BUTTON_SINGLE_CLICK		0x01
-#define EVT_BUTTON_DOUBLE_CLICK		0x02
-#define EVT_BUTTON_DOWN_LONG		0x04
-#define EVT_UP					0x10
-#define EVT_DOWN				0x20
-#define EVT_REPEAT				0x40
+#define NO_EVENT                    0
+#define EVT_BUTTON_SINGLE_CLICK     0x01
+#define EVT_BUTTON_DOUBLE_CLICK     0x02
+#define EVT_BUTTON_DOWN_LONG        0x04
+#define EVT_UP                  0x10
+#define EVT_DOWN                0x20
+#define EVT_REPEAT              0x40
 
-#define BUTTON_DOWN_LONG_TICKS		5000   /* 1sec */
-#define BUTTON_DOUBLE_TICKS			2500   /* 500ms */
-#define BUTTON_REPEAT_TICKS			625    /* 125ms */
-#define BUTTON_DEBOUNCE_TICKS		200
+#define BUTTON_DOWN_LONG_TICKS      5000   /* 1sec */
+#define BUTTON_DOUBLE_TICKS         2500   /* 500ms */
+#define BUTTON_REPEAT_TICKS         625    /* 125ms */
+#define BUTTON_DEBOUNCE_TICKS       200
 
 /* lever switch assignment */
-#define BIT_UP1 	3
-#define BIT_PUSH	2
-#define BIT_DOWN1	1
+#define BIT_UP1     3
+#define BIT_PUSH    2
+#define BIT_DOWN1   1
 
 #define READ_PORT() palReadPort(GPIOA)
 #define BUTTON_MASK 0b1111
@@ -288,24 +288,28 @@ touch_check(void)
 }
 
 static inline void
-touch_wait_release(void) {
-  while(touch_check()!=EVT_TOUCH_RELEASED);
+touch_wait_release(void)
+{
+  while (touch_check() != EVT_TOUCH_RELEASED)
+    ;
 }
 
 static inline void
-touch_wait_pressed(void) {
-  while(touch_check()!=EVT_TOUCH_PRESSED);
+touch_wait_pressed(void)
+{
+  while (touch_check() != EVT_TOUCH_PRESSED)
+    ;
 }
 
 void
 touch_cal_exec(void)
 {
   int x1, x2, y1, y2;
-  
+
   adc_stop();
-  setForegroundColor(DEFAULT_FG_COLOR);
-  setBackgroundColor(DEFAULT_BG_COLOR);
-  clearScreen();
+  ili9341_set_foreground(DEFAULT_FG_COLOR);
+  ili9341_set_background(DEFAULT_BG_COLOR);
+  ili9341_clear_screen();
   ili9341_line(0, 0, 0, 32);
   ili9341_line(0, 0, 32, 0);
   ili9341_drawstring("TOUCH UPPER LEFT", 10, 10);
@@ -314,7 +318,7 @@ touch_cal_exec(void)
   x1 = last_touch_x;
   y1 = last_touch_y;
 
-  clearScreen();
+  ili9341_clear_screen();
   ili9341_line(320-1, 240-1, 320-1, 240-32);
   ili9341_line(320-1, 240-1, 320-32, 240-1);
   ili9341_drawstring("TOUCH LOWER RIGHT", 230, 220);
@@ -340,9 +344,9 @@ touch_draw_test(void)
   
   adc_stop();
 
-  setForegroundColor(DEFAULT_FG_COLOR);
-  setBackgroundColor(DEFAULT_BG_COLOR);
-  clearScreen();
+  ili9341_set_foreground(DEFAULT_FG_COLOR);
+  ili9341_set_background(DEFAULT_BG_COLOR);
+  ili9341_clear_screen();
   ili9341_drawstring("TOUCH TEST: DRAG PANEL", OFFSETX, 233);
 
   touch_wait_pressed();
@@ -354,7 +358,7 @@ touch_draw_test(void)
     x0 = x1;
     y0 = y1;
     chThdSleepMilliseconds(50);
-  } while(touch_check()!=EVT_TOUCH_RELEASED);
+  } while (touch_check() != EVT_TOUCH_RELEASED);
 
   touch_start_watchdog();
 }
@@ -372,13 +376,13 @@ show_version(void)
 {
   int x = 5, y = 5, i = 0;
   adc_stop();
-  setForegroundColor(DEFAULT_FG_COLOR);
-  setBackgroundColor(DEFAULT_BG_COLOR);
+  ili9341_set_foreground(DEFAULT_FG_COLOR);
+  ili9341_set_background(DEFAULT_BG_COLOR);
 
-  clearScreen();
+  ili9341_clear_screen();
   uint16_t shift = 0b0000010000111110;
   ili9341_drawstring_size(info_about[i++], x , y, 4);
-  while (info_about[i]){
+  while (info_about[i]) {
     do {shift>>=1; y+=5;} while (shift&1);
     ili9341_drawstring(info_about[i++], x, y+=5);
   }
@@ -398,10 +402,10 @@ enter_dfu(void)
   adc_stop();
 
   int x = 5, y = 5;
-  setForegroundColor(DEFAULT_FG_COLOR);
-  setBackgroundColor(DEFAULT_BG_COLOR);
+  ili9341_set_foreground(DEFAULT_FG_COLOR);
+  ili9341_set_background(DEFAULT_BG_COLOR);
   // leave a last message 
-  clearScreen();
+  ili9341_clear_screen();
   ili9341_drawstring("DFU: Device Firmware Update Mode", x, y += 10);
   ili9341_drawstring("To exit DFU mode, please reset device yourself.", x, y += 10);
 
@@ -606,7 +610,8 @@ menu_transform_cb(int item, uint8_t data)
 }
 
 static void
-menu_velocity_cb(int item, uint8_t data){
+menu_velocity_cb(int item, uint8_t data)
+{
   (void)item;
   (void)data;
   if (btn_wait_release() & EVT_BUTTON_DOWN_LONG) {
@@ -1233,16 +1238,18 @@ static void
 draw_keypad(void)
 {
   int i = 0;
-  while (keypads[i].c>=0) {
+  while (keypads[i].c >= 0) {
     uint16_t bg = config.menu_normal_color;
     if (i == selection)
       bg = config.menu_active_color;
-    setForegroundColor(DEFAULT_MENU_TEXT_COLOR);
-    setBackgroundColor(bg);
+    ili9341_set_foreground(DEFAULT_MENU_TEXT_COLOR);
+    ili9341_set_background(bg);
     int x = KP_GET_X(keypads[i].x);
     int y = KP_GET_Y(keypads[i].y);
     ili9341_fill(x+2, y+2, KP_WIDTH-4, KP_HEIGHT-4, bg);
-    ili9341_drawfont(keypads[i].c, x+(KP_WIDTH-NUM_FONT_GET_WIDTH)/2, y+(KP_HEIGHT-NUM_FONT_GET_HEIGHT)/2);
+    ili9341_drawfont(keypads[i].c,
+                     x + (KP_WIDTH - NUM_FONT_GET_WIDTH) / 2,
+                     y + (KP_HEIGHT - NUM_FONT_GET_HEIGHT) / 2);
     i++;
   }
 }
@@ -1251,8 +1258,8 @@ static void
 draw_numeric_area_frame(void)
 {
   ili9341_fill(0, 240-NUM_INPUT_HEIGHT, 320, NUM_INPUT_HEIGHT, config.menu_normal_color);
-  setForegroundColor(DEFAULT_MENU_TEXT_COLOR);
-  setBackgroundColor(config.menu_normal_color);
+  ili9341_set_foreground(DEFAULT_MENU_TEXT_COLOR);
+  ili9341_set_background(config.menu_normal_color);
   ili9341_drawstring(keypad_mode_label[keypad_mode], 10, 240-(FONT_GET_HEIGHT+NUM_INPUT_HEIGHT)/2);
   //ili9341_drawfont(KP_KEYPAD, 300, 216);
 }
@@ -1282,15 +1289,15 @@ draw_numeric_input(const char *buf)
 //      if (uistat.digit_mode)
 //        bg = DEFAULT_MENU_COLOR;
     }
-    setForegroundColor(fg);
-    setBackgroundColor(bg);
+    ili9341_set_foreground(fg);
+    ili9341_set_background(bg);
     if (c >= 0) // c is number
       ili9341_drawfont(c, x, 240-NUM_INPUT_HEIGHT+4);
     else if (focused) // c not number, but focused
       ili9341_drawfont(0, x, 240-NUM_INPUT_HEIGHT+4);
     else // erase
       ili9341_fill(x, 240-NUM_INPUT_HEIGHT+4, NUM_FONT_GET_HEIGHT, NUM_FONT_GET_WIDTH+2+8, bg);
-      
+
     x += xsim&0x8000 ? NUM_FONT_GET_WIDTH+2+8 : NUM_FONT_GET_WIDTH+2;
   }
   // erase last
@@ -1397,8 +1404,8 @@ draw_menu_buttons(const menuitem_t *menu)
     ili9341_fill(320-MENU_BUTTON_WIDTH, y, MENU_BUTTON_WIDTH, MENU_BUTTON_HEIGHT-2, bg);
     
     menu_item_modify_attribute(menu, i, &fg, &bg);
-    setForegroundColor(fg);
-    setBackgroundColor(bg);
+    ili9341_set_foreground(fg);
+    ili9341_set_background(bg);
     if (menu_is_multiline(menu[i].label, &l1, &l2)) {
       ili9341_fill(320-MENU_BUTTON_WIDTH+3, y+5, MENU_BUTTON_WIDTH-6, 2+FONT_GET_HEIGHT+1+FONT_GET_HEIGHT+2, bg);
       ili9341_drawstring(l1, 320-MENU_BUTTON_WIDTH+5, y+7);
@@ -1431,7 +1438,7 @@ menu_apply_touch(void)
   for (i = 0; i < 7; i++) {
     if (menu[i].type == MT_NONE)
       break;
-    if (menu[i].type == MT_BLANK) 
+    if (menu[i].type == MT_BLANK)
       continue;
     int y = MENU_BUTTON_HEIGHT*i;
     if (y < touch_y && touch_y < y+MENU_BUTTON_HEIGHT && 320-MENU_BUTTON_WIDTH < touch_x) {
@@ -1510,7 +1517,7 @@ fetch_numeric_target(void)
     uistat.value = get_trace_scale(uistat.current_trace) * 1e12;
     break;
   }
-  
+
   {
     uint32_t x = uistat.value;
     int n = 0;
@@ -1566,7 +1573,7 @@ draw_numeric_area(void)
 static void
 ui_mode_menu(void)
 {
-  if (ui_mode == UI_MENU) 
+  if (ui_mode == UI_MENU)
     return;
 
   ui_mode = UI_MENU;
@@ -1580,11 +1587,11 @@ ui_mode_menu(void)
 static void
 ui_mode_numeric(int _keypad_mode)
 {
-  if (ui_mode == UI_NUMERIC) 
+  if (ui_mode == UI_NUMERIC)
     return;
 
   leave_ui_mode();
-  
+
   // keypads array
   keypad_mode = _keypad_mode;
   ui_mode = UI_NUMERIC;
@@ -1599,7 +1606,7 @@ ui_mode_numeric(int _keypad_mode)
 static void
 ui_mode_keypad(int _keypad_mode)
 {
-  if (ui_mode == UI_KEYPAD) 
+  if (ui_mode == UI_KEYPAD)
     return;
 
   // keypads array
@@ -1622,7 +1629,7 @@ ui_mode_keypad(int _keypad_mode)
 static void
 ui_mode_normal(void)
 {
-  if (ui_mode == UI_NORMAL) 
+  if (ui_mode == UI_NORMAL)
     return;
 
   area_width  = AREA_WIDTH_NORMAL;
@@ -1678,13 +1685,13 @@ step_round(uint32_t v)
   uint32_t x = 1;
   for (x = 1; x*10 < v; x*= 10)
     ;
-  
+
   // 1-2-5 step
   if (x * 2 > v)
     return x;
   else if (x * 5 > v)
     return x * 2;
-  else 
+  else
     return x * 5;
 }
 
@@ -1791,7 +1798,7 @@ menuclose:
 }
 
 static int
-keypad_click(int key) 
+keypad_click(int key)
 {
   int c = keypads[key].c;
   if ((c >= KP_X1 && c <= KP_G) || c == KP_N || c == KP_P) {
@@ -1839,9 +1846,9 @@ keypad_click(int key)
     }
 
     return KP_DONE;
-  } else if (c <= 9 && kp_index < NUMINPUT_LEN)
+  } else if (c <= 9 && kp_index < NUMINPUT_LEN) {
     kp_buf[kp_index++] = '0' + c;
-  else if (c == KP_PERIOD && kp_index < NUMINPUT_LEN) {
+  } else if (c == KP_PERIOD && kp_index < NUMINPUT_LEN) {
     // check period in former input
     int j;
     for (j = 0; j < kp_index && kp_buf[j] != '.'; j++)
@@ -1871,7 +1878,7 @@ keypad_apply_touch(void)
 
   touch_position(&touch_x, &touch_y);
 
-  while (keypads[i].c>=0) {
+  while (keypads[i].c >= 0) {
     int x = KP_GET_X(keypads[i].x);
     int y = KP_GET_Y(keypads[i].y);
     if (x < touch_x && touch_x < x+KP_WIDTH && y < touch_y && touch_y < y+KP_HEIGHT) {
@@ -1922,11 +1929,11 @@ numeric_apply_touch(void)
     uistat.value += step;
   }
   draw_numeric_area();
-  
+
   touch_wait_release();
   uistat.digit_mode = FALSE;
   draw_numeric_area();
-  
+
   return;
 }
 
@@ -2016,7 +2023,7 @@ ui_process_keypad(void)
     if (status == EVT_BUTTON_SINGLE_CLICK) {
       if (keypad_click(selection))
         /* exit loop on done or cancel */
-        break; 
+        break;
     }
 
     if (touch_check() == EVT_TOUCH_PRESSED) {
@@ -2040,16 +2047,16 @@ ui_process_lever(void)
   switch (ui_mode) {
   case UI_NORMAL:
     ui_process_normal();
-    break;    
+    break;
   case UI_MENU:
     ui_process_menu();
-    break;    
+    break;
   case UI_NUMERIC:
     ui_process_numeric();
-    break;    
+    break;
   case UI_KEYPAD:
     ui_process_keypad();
-    break;    
+    break;
   }
 }
 
@@ -2069,7 +2076,7 @@ drag_marker(int t, int m)
       markers[m].frequency = frequencies[index];
       redraw_marker(m);
     }
-  } while(touch_check()!=EVT_TOUCH_RELEASED);
+  } while (touch_check()!= EVT_TOUCH_RELEASED);
 }
 
 static int
@@ -2091,9 +2098,9 @@ touch_pickup_marker(void)
         continue;
 
       marker_position(m, t, &x, &y);
-      x-=touch_x;
-      y-=touch_y;
-      if ((x*x+y*y) < 20*20) {
+      x -= touch_x;
+      y -= touch_y;
+      if ((x * x + y * y) < 20 * 20) {
         if (active_marker != m) {
           previous_marker = active_marker;
           active_marker = m;
@@ -2102,7 +2109,7 @@ touch_pickup_marker(void)
         // select trace
         uistat.current_trace = t;
         select_lever_mode(LM_MARKER);
-       
+
         // drag marker until release
         drag_marker(t, m);
         return TRUE;
@@ -2125,8 +2132,9 @@ touch_lever_mode_select(void)
   if (touch_y < 25) {
     if (touch_x < FREQUENCIES_XPOS2 && get_electrical_delay() != 0.0) {
       select_lever_mode(LM_EDELAY);
-    } else 
+    } else {
       select_lever_mode(LM_MARKER);
+    }
     return TRUE;
   }
   return FALSE;
@@ -2178,7 +2186,8 @@ ui_process(void)
 }
 
 /* Triggered when the button is pressed or released. The LED4 is set to ON.*/
-static void extcb1(EXTDriver *extp, expchannel_t channel) {
+static void extcb1(EXTDriver *extp, expchannel_t channel)
+{
   (void)extp;
   (void)channel;
   operation_requested|=OP_LEVER;
@@ -2243,7 +2252,7 @@ void
 ui_init()
 {
   adc_init();
-  
+
   /*
    * Activates the EXT driver 1.
    */

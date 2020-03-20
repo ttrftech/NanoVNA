@@ -9,10 +9,10 @@
  * Check 1 byte of char bitmap data for get width
  */
 
-#define FONT_GET_DATA(ch)	(&x5x7_bits[ch*7])
-#define FONT_GET_WIDTH(ch)	(8-x5x7_bits[ch*7]&7)
-#define FONT_MAX_WIDTH		7
-#define FONT_GET_HEIGHT		7
+#define FONT_GET_DATA(ch)   (&x5x7_bits[ch*7])
+#define FONT_GET_WIDTH(ch)  (8-x5x7_bits[ch*7]&7)
+#define FONT_MAX_WIDTH      7
+#define FONT_GET_HEIGHT     7
 
 #define CHAR5x7_WIDTH_1px  0x07
 #define CHAR5x7_WIDTH_2px  0x06

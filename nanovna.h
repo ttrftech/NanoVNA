@@ -25,8 +25,17 @@
 /*
  * main.c
  */
-#define START_MIN 50000
-#define STOP_MAX 2700000000U
+
+// Minimum frequency set
+#define START_MIN                50000
+// Maximum frequency set
+#define STOP_MAX                 2700000000U
+// Frequency offset (sin_cos table in dsp.c generated for this offset, if change need create new table)
+#define FREQUENCY_OFFSET         5000
+// Speed of light const
+#define SPEED_OF_LIGHT           299792458
+// pi const
+#define VNA_PI                   3.14159265358979323846
 
 #define POINTS_COUNT 101
 extern float measured[2][POINTS_COUNT][2];
@@ -209,6 +218,10 @@ typedef struct trace {
   float refpos;
 } trace_t;
 
+#define FREQ_MODE_START_STOP    0x0
+#define FREQ_MODE_CENTER_SPAN   0x1
+#define FREQ_MODE_DOTTED_GRID   0x2
+
 typedef struct config {
   int32_t magic;
   uint16_t dac_value;
@@ -217,7 +230,7 @@ typedef struct config {
   uint16_t menu_active_color;
   uint16_t trace_color[TRACES_MAX];
   int16_t  touch_cal[4];
-  int8_t   reserved_1;
+  int8_t   freq_mode;
   uint32_t harmonic_freq_threshold;
   uint16_t vbat_offset;
   uint8_t _reserved[22];
@@ -225,8 +238,6 @@ typedef struct config {
 } config_t;
 
 extern config_t config;
-
-//extern trace_t trace[TRACES_MAX];
 
 void set_trace_type(int t, int type);
 void set_trace_channel(int t, int channel);
@@ -260,7 +271,7 @@ void redraw_frame(void);
 //void redraw_all(void);
 void request_to_draw_cells_behind_menu(void);
 void request_to_draw_cells_behind_numeric_input(void);
-void redraw_marker(int marker, int update_info);
+void redraw_marker(int marker);
 void plot_into_index(float measured[2][POINTS_COUNT][2]);
 void force_set_markmap(void);
 void draw_frequencies(void);
@@ -283,6 +294,7 @@ int marker_search_right(int from);
 #define REDRAW_CAL_STATUS (1<<2)
 #define REDRAW_MARKER     (1<<3)
 #define REDRAW_BATTERY    (1<<4)
+#define REDRAW_AREA       (1<<5)
 extern volatile uint8_t redraw_request;
 
 /*
@@ -396,13 +408,9 @@ extern properties_t current_props;
 #define velocity_factor current_props._velocity_factor
 #define marker_smith_format current_props._marker_smith_format
 
-#define FREQ_IS_STARTSTOP() (frequency0 < frequency1)
-#define FREQ_IS_CENTERSPAN() (frequency0 > frequency1)
+#define FREQ_IS_STARTSTOP() (!(config.freq_mode&FREQ_MODE_CENTER_SPAN))
+#define FREQ_IS_CENTERSPAN() (config.freq_mode&FREQ_MODE_CENTER_SPAN)
 #define FREQ_IS_CW() (frequency0 == frequency1)
-#define FREQ_START() (frequency0)
-#define FREQ_STOP() (frequency1)
-#define FREQ_CENTER() (frequency0/2 + frequency1/2)
-#define FREQ_SPAN() (frequency0 - frequency1)
 
 int caldata_save(int id);
 int caldata_recall(int id);
@@ -482,4 +490,7 @@ int plot_printf(char *str, int, const char *fmt, ...);
 // Speed profile definition
 #define START_PROFILE   systime_t time = chVTGetSystemTimeX();
 #define STOP_PROFILE    {char string_buf[12];plot_printf(string_buf, sizeof string_buf, "T:%06d", chVTGetSystemTimeX() - time);ili9341_drawstringV(string_buf, 1, 60);}
+// Macros for convert define value to string
+#define STR1(x)  #x
+#define define_to_STR(x)  STR1(x)
 /*EOF*/

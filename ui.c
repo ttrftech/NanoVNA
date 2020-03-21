@@ -767,7 +767,7 @@ menu_marker_search_cb(int item, uint8_t data)
   if (i != -1)
     markers[active_marker].index = i;
   draw_menu();
-  redraw_marker(active_marker, TRUE);
+  redraw_marker(active_marker);
   select_lever_mode(LM_SEARCH);
 }
 
@@ -776,7 +776,7 @@ menu_marker_smith_cb(int item, uint8_t data)
 {
   (void)item;
   marker_smith_format = data;
-  redraw_marker(active_marker, TRUE);
+  redraw_marker(active_marker);
   draw_menu();
 }
 
@@ -822,7 +822,7 @@ menu_marker_sel_cb(int item, uint8_t data)
   } else if (item == 5) { /* marker delta */
     uistat.marker_delta = !uistat.marker_delta;
   }
-  redraw_marker(active_marker, TRUE);
+  redraw_marker(active_marker);
   draw_menu();
 }
 
@@ -1250,9 +1250,9 @@ draw_keypad(void)
 static void
 draw_numeric_area_frame(void)
 {
-  ili9341_fill(0, 240-NUM_INPUT_HEIGHT, 320, NUM_INPUT_HEIGHT, DEFAULT_MENU_COLOR);
+  ili9341_fill(0, 240-NUM_INPUT_HEIGHT, 320, NUM_INPUT_HEIGHT, config.menu_normal_color);
   setForegroundColor(DEFAULT_MENU_TEXT_COLOR);
-  setBackgroundColor(DEFAULT_MENU_COLOR);
+  setBackgroundColor(config.menu_normal_color);
   ili9341_drawstring(keypad_mode_label[keypad_mode], 10, 240-(FONT_GET_HEIGHT+NUM_INPUT_HEIGHT)/2);
   //ili9341_drawfont(KP_KEYPAD, 300, 216);
 }
@@ -1267,7 +1267,7 @@ draw_numeric_input(const char *buf)
 
   for (i = 0, x = 64; i < 10 && buf[i]; i++, xsim<<=1) {
     uint16_t fg = DEFAULT_MENU_TEXT_COLOR;
-    uint16_t bg = DEFAULT_MENU_COLOR;
+    uint16_t bg = config.menu_normal_color;
     int c = buf[i];
     if (c == '.')
       c = KP_PERIOD;
@@ -1294,7 +1294,7 @@ draw_numeric_input(const char *buf)
     x += xsim&0x8000 ? NUM_FONT_GET_WIDTH+2+8 : NUM_FONT_GET_WIDTH+2;
   }
   // erase last
-  ili9341_fill(x, 240-NUM_INPUT_HEIGHT+4, NUM_FONT_GET_WIDTH+2+8, NUM_FONT_GET_WIDTH+2+8, DEFAULT_MENU_COLOR);
+  ili9341_fill(x, 240-NUM_INPUT_HEIGHT+4, NUM_FONT_GET_WIDTH+2+8, NUM_FONT_GET_WIDTH+2+8, config.menu_normal_color);
 }
 
 static int
@@ -1639,18 +1639,18 @@ lever_move_marker(int status)
       if ((status & EVT_DOWN) && markers[active_marker].index > 0) {
         markers[active_marker].index--;
         markers[active_marker].frequency = frequencies[markers[active_marker].index];
-        redraw_marker(active_marker, FALSE);
+        redraw_marker(active_marker);
       }
-      if ((status & EVT_UP) && markers[active_marker].index < 100) {
+      if ((status & EVT_UP) && markers[active_marker].index < sweep_points-1) {
         markers[active_marker].index++;
         markers[active_marker].frequency = frequencies[markers[active_marker].index];
-        redraw_marker(active_marker, FALSE);
+        redraw_marker(active_marker);
       }
     }
     status = btn_wait_release();
   } while (status != 0);
   if (active_marker >= 0)
-    redraw_marker(active_marker, TRUE);
+    redraw_marker(active_marker);
 }
 
 static void
@@ -1664,7 +1664,7 @@ lever_search_marker(int status)
       i = marker_search_right(markers[active_marker].index);
     if (i != -1)
       markers[active_marker].index = i;
-    redraw_marker(active_marker, TRUE);
+    redraw_marker(active_marker);
   }
 }
 
@@ -2067,7 +2067,7 @@ drag_marker(int t, int m)
     if (index >= 0) {
       markers[m].index = index;
       markers[m].frequency = frequencies[index];
-      redraw_marker(m, TRUE);
+      redraw_marker(m);
     }
   } while(touch_check()!=EVT_TOUCH_RELEASED);
 }
@@ -2097,7 +2097,7 @@ touch_pickup_marker(void)
         if (active_marker != m) {
           previous_marker = active_marker;
           active_marker = m;
-          redraw_marker(active_marker, TRUE);
+          redraw_marker(active_marker);
         }
         // select trace
         uistat.current_trace = t;
@@ -2142,21 +2142,19 @@ void ui_process_touch(void)
   if (status == EVT_TOUCH_PRESSED || status == EVT_TOUCH_DOWN) {
     switch (ui_mode) {
     case UI_NORMAL:
+      // Try drag marker
       if (touch_pickup_marker())
         break;
+      // Try select lever mode (top and bottom screen)
       if (touch_lever_mode_select()) {
-        draw_all(FALSE);
         touch_wait_release();
         break;
       }
-      
+      // switch menu mode after release
       touch_wait_release();
-
-      // switch menu mode
-      selection = -1;
+      selection = -1; // hide keyboard mode selection
       ui_mode_menu();
       break;
-
     case UI_MENU:
       menu_apply_touch();
       break;

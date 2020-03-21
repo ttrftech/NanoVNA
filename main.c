@@ -92,7 +92,6 @@ volatile uint8_t redraw_request = 0; // contains REDRAW_XXX flags
 
 // sweep operation variables
 volatile uint8_t wait_count = 0;
-static   uint8_t accumerate_count = 0;
 
 static uint16_t p_sweep = 0;
 // ChibiOS i2s buffer must be 2x size (for process one while next buffer filled by DMA)
@@ -745,7 +744,7 @@ void load_default_properties(void)
   current_props._active_marker   = 0;
   current_props._domain_mode     = 0;
   current_props._marker_smith_format = MS_RLC;
-  current_props._bandwidth = 0;
+  current_props._bandwidth = BANDWIDTH_1000;
 //Checksum add on caldata_save
 //current_props.checksum = 0;
 }
@@ -791,8 +790,8 @@ void i2s_end_callback(I2SDriver *i2sp, size_t offset, size_t n)
   int16_t *p = &rx_buffer[offset];
   (void)i2sp;
   if (wait_count > 0){
-    if (wait_count <= accumerate_count){
-      if (wait_count == accumerate_count)
+    if (wait_count <= bandwidth+1){
+      if (wait_count == bandwidth+1)
         reset_dsp_accumerator();
       dsp_process(p, n);
     }
@@ -810,16 +809,6 @@ void i2s_end_callback(I2SDriver *i2sp, size_t offset, size_t n)
   stat.callback_count++;
 }
 
-// Bandwidth depend from AUDIO_SAMPLES_COUNT and audio ADC frequency
-// for AUDIO_SAMPLES_COUNT = 48 and ADC = 48kHz one measure give 48000/48=1000Hz
-static const int8_t bandwidth_accumerate_count[MAX_BANDWIDTH_IDX+1] = {
-   1, // 1kHz
-   3, // 300Hz
-  10, // 100Hz
-  33, // 30Hz
-  100 // 10Hz
-};
-
 static const I2SConfig i2sconfig = {
   NULL,                   // TX Buffer
   rx_buffer,              // RX Buffer
@@ -830,7 +819,7 @@ static const I2SConfig i2sconfig = {
   0                       // i2spr
 };
 
-#define DSP_START(delay) {wait_count = delay-1 + accumerate_count;}
+#define DSP_START(delay) {wait_count = delay + bandwidth;}
 #define DSP_WAIT_READY   while (wait_count) {if (operation_requested && break_on_operation) return false; __WFI();}
 #define DSP_WAIT         while (wait_count) {__WFI();}
 #define RESET_SWEEP      {p_sweep = 0;}
@@ -841,10 +830,9 @@ bool sweep(bool break_on_operation)
 {
   int delay=1;
   if (p_sweep>=sweep_points || break_on_operation == false) RESET_SWEEP;
-  accumerate_count = bandwidth_accumerate_count[bandwidth];
+
   // blink LED while scanning
   palClearPad(GPIOC, GPIOC_LED);
-  START_PROFILE
   // Power stabilization after LED off, also align timings on delay == 0
   for (; p_sweep < sweep_points; p_sweep++) {         // 5300
     if (frequencies[p_sweep] == 0) break;
@@ -874,7 +862,6 @@ bool sweep(bool break_on_operation)
 // Display SPI made noise on measurement (can see in CW mode)
 //    ili9341_fill(OFFSETX+CELLOFFSETX, OFFSETY, (p_sweep * WIDTH)/(sweep_points-1), 1, RGB565(0,0,255));
   }
-  STOP_PROFILE
   // blink LED while scanning
   palSetPad(GPIOC, GPIOC_LED);
   return true;
@@ -882,14 +869,11 @@ bool sweep(bool break_on_operation)
 
 VNA_SHELL_FUNCTION(cmd_bandwidth)
 {
-  if (argc != 1) {
-    shell_printf("bandwidth %d\r\n", bandwidth);
-    return;
-  }
-  uint8_t v = my_atoui(argv[0]);
-  if (v>=sizeof(bandwidth_accumerate_count))
-    return;
-  bandwidth = v;
+  if (argc != 1)
+    goto result;
+  bandwidth = my_atoui(argv[0]);
+result:
+  shell_printf("bandwidth %d (%dHz)\r\n", bandwidth, (AUDIO_ADC_FREQ/AUDIO_SAMPLES_COUNT)/(bandwidth+1));
 }
 
 VNA_SHELL_FUNCTION(cmd_scan)
@@ -1346,9 +1330,9 @@ cal_collect(int type)
     default:
       return;
   }
-  // Run sweep for collect data (use naximum bandwidth setting)
+  // Run sweep for collect data (use maximum bandwidth setting)
   uint8_t bw = bandwidth;  // store current setting
-  bandwidth = MAX_BANDWIDTH_IDX;
+  bandwidth = BANDWIDTH_10;
   sweep(false);
   bandwidth = bw;          // restore
   // Copy calibration data

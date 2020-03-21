@@ -42,7 +42,7 @@ const int16_t sincos_tbl[48][2] = {
 };
 #if 0
 void generate_DSP_Table(int offset){
-  float audio_freq  = 48000.0;
+  float audio_freq  = AUDIO_ADC_FREQ;
   // N = offset * AUDIO_SAMPLES_COUNT / audio_freq; should be integer
   // AUDIO_SAMPLES_COUNT = N * audio_freq / offset; N - minimum integer value for get integer AUDIO_SAMPLES_COUNT
   // Bandwidth on one step = audio_freq / AUDIO_SAMPLES_COUNT

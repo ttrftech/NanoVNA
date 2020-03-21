@@ -937,12 +937,12 @@ const menuitem_t menu_transform[] = {
 };
 
 const menuitem_t menu_bandwidth[] = {
-  { MT_CALLBACK, 0, "1 kHz", menu_bandwidth_cb },
-  { MT_CALLBACK, 1, "300 Hz", menu_bandwidth_cb },
-  { MT_CALLBACK, 2, "100 Hz", menu_bandwidth_cb },
-  { MT_CALLBACK, 3, "30 Hz", menu_bandwidth_cb },
-  { MT_CALLBACK, 4, "10 Hz", menu_bandwidth_cb },
-  { MT_CANCEL, 0, S_LARROW" BACK", NULL },
+  { MT_CALLBACK, BANDWIDTH_1000, "1 kHz", menu_bandwidth_cb },
+  { MT_CALLBACK, BANDWIDTH_300, "300 Hz", menu_bandwidth_cb },
+  { MT_CALLBACK, BANDWIDTH_100, "100 Hz", menu_bandwidth_cb },
+  { MT_CALLBACK, BANDWIDTH_30,   "30 Hz", menu_bandwidth_cb },
+  { MT_CALLBACK, BANDWIDTH_10,   "10 Hz", menu_bandwidth_cb },
+  { MT_CANCEL, 255, S_LARROW" BACK", NULL },
   { MT_NONE, 0, NULL, NULL } // sentinel
 };
 
@@ -1385,7 +1385,7 @@ menu_item_modify_attribute(const menuitem_t *menu, int item,
       *fg = config.menu_normal_color;
     }
   } else if (menu == menu_bandwidth) {
-    if (item == bandwidth) {
+    if (menu_bandwidth[item].data == bandwidth) {
        *bg = 0x0000;
        *fg = 0xffff;
      }

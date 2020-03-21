@@ -38,7 +38,16 @@
 #define VNA_PI                   3.14159265358979323846
 
 #define POINTS_COUNT 101
-#define MAX_BANDWIDTH_IDX    4
+
+// Bandwidth depend from AUDIO_SAMPLES_COUNT and audio ADC frequency
+// for AUDIO_SAMPLES_COUNT = 48 and ADC = 48kHz one measure give 48000/48=1000Hz
+// define additional measure count
+#define BANDWIDTH_1000            (  1 - 1)
+#define BANDWIDTH_300             (  3 - 1)
+#define BANDWIDTH_100             ( 10 - 1)
+#define BANDWIDTH_30              ( 33 - 1)
+#define BANDWIDTH_10              (100 - 1)
+
 extern float measured[2][POINTS_COUNT][2];
 
 #define CAL_LOAD 0
@@ -105,6 +114,7 @@ extern const char *info_about[];
  * dsp.c
  */
 // 5ms @ 48kHz
+#define AUDIO_ADC_FREQ        48000
 #define AUDIO_SAMPLES_COUNT   48
 // Buffer contain left and right channel samples (need x2)
 #define AUDIO_BUFFER_LEN      (AUDIO_SAMPLES_COUNT*2)

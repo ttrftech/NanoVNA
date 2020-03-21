@@ -812,7 +812,7 @@ void i2s_end_callback(I2SDriver *i2sp, size_t offset, size_t n)
 
 // Bandwidth depend from AUDIO_SAMPLES_COUNT and audio ADC frequency
 // for AUDIO_SAMPLES_COUNT = 48 and ADC = 48kHz one measure give 48000/48=1000Hz
-static const int8_t bandwidth_accumerate_count[] = {
+static const int8_t bandwidth_accumerate_count[MAX_BANDWIDTH_IDX+1] = {
    1, // 1kHz
    3, // 300Hz
   10, // 100Hz
@@ -844,6 +844,7 @@ bool sweep(bool break_on_operation)
   accumerate_count = bandwidth_accumerate_count[bandwidth];
   // blink LED while scanning
   palClearPad(GPIOC, GPIOC_LED);
+  START_PROFILE
   // Power stabilization after LED off, also align timings on delay == 0
   for (; p_sweep < sweep_points; p_sweep++) {         // 5300
     if (frequencies[p_sweep] == 0) break;
@@ -873,6 +874,7 @@ bool sweep(bool break_on_operation)
 // Display SPI made noise on measurement (can see in CW mode)
 //    ili9341_fill(OFFSETX+CELLOFFSETX, OFFSETY, (p_sweep * WIDTH)/(sweep_points-1), 1, RGB565(0,0,255));
   }
+  STOP_PROFILE
   // blink LED while scanning
   palSetPad(GPIOC, GPIOC_LED);
   return true;
@@ -1344,8 +1346,11 @@ cal_collect(int type)
     default:
       return;
   }
-  // Run sweep for collect data
+  // Run sweep for collect data (use naximum bandwidth setting)
+  uint8_t bw = bandwidth;  // store current setting
+  bandwidth = MAX_BANDWIDTH_IDX;
   sweep(false);
+  bandwidth = bw;          // restore
   // Copy calibration data
   memcpy(cal_data[dst], measured[src], sizeof measured[0]);
   redraw_request |= REDRAW_CAL_STATUS;

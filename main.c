@@ -584,9 +584,33 @@ int16_t dump_buffer[AUDIO_BUFFER_LEN];
 int16_t dump_selection = 0;
 #endif
 
-volatile int16_t wait_count = 0;
+volatile uint8_t wait_count = 0;
+volatile uint8_t accumerate_count = 0;
+
+const int8_t bandwidth_accumerate_count[] = {
+  1, // 1kHz
+  3, // 300Hz
+  10, // 100Hz
+  33, // 30Hz
+  100 // 10Hz
+};
 
 float measured[2][POINTS_COUNT][2];
+
+static inline void
+dsp_start(int count)
+{
+  wait_count = count;
+  accumerate_count = bandwidth_accumerate_count[bandwidth];
+  reset_dsp_accumerator();
+}
+
+static inline void
+dsp_wait(void)
+{
+  while (accumerate_count > 0)
+    __WFI();
+}
 
 #ifdef ENABLED_DUMP
 static void
@@ -610,13 +634,16 @@ void i2s_end_callback(I2SDriver *i2sp, size_t offset, size_t n)
   (void)i2sp;
   (void)n;
 
-  if (wait_count > 0) {
-    if (wait_count == 1) 
-      dsp_process(p, n);
-#ifdef ENABLED_DUMP
-      duplicate_buffer_to_dump(p);
-#endif
+  if (wait_count > 1) {
     --wait_count;
+  } else if (wait_count > 0) {
+    if (accumerate_count > 0) {
+      dsp_process(p, n);
+      accumerate_count--;
+    }
+#ifdef ENABLED_DUMP
+    duplicate_buffer_to_dump(p);
+#endif
   }
 
 #if PORT_SUPPORTS_RT
@@ -808,9 +835,6 @@ ensure_edit_config(void)
   cal_status = 0;
 }
 
-#define DSP_START(delay) wait_count = delay;
-#define DSP_WAIT_READY   while (wait_count) __WFI();
-
 #define DELAY_CHANNEL_CHANGE 2
 
 // main loop for measurement
@@ -824,20 +848,20 @@ bool sweep(bool break_on_operation)
     if (frequencies[i] == 0) break;
     delay = set_frequency(frequencies[i]);     // 700
     tlv320aic3204_select(0);                   // 60 CH0:REFLECT, reset and begin measure
-    DSP_START(delay + ((i == 0) ? 1 : 0));     // 1900
+    dsp_start(delay + ((i == 0) ? 1 : 0));     // 1900
     //================================================
     // Place some code thats need execute while delay
     //================================================
-    DSP_WAIT_READY;
+    dsp_wait();
     // calculate reflection coefficient
     (*sample_func)(measured[0][i]);            // 60
 
     tlv320aic3204_select(1);                   // 60 CH1:TRANSMISSION, reset and begin measure
-    DSP_START(DELAY_CHANNEL_CHANGE);           // 1700
+    dsp_start(DELAY_CHANNEL_CHANGE);           // 1700
     //================================================
     // Place some code thats need execute while delay
     //================================================
-    DSP_WAIT_READY;
+    dsp_wait();
     // calculate transmission coefficient
     (*sample_func)(measured[1][i]);            // 60
                                                // ======== 170 ===========

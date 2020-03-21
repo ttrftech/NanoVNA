@@ -41,10 +41,10 @@ const int16_t sincos_tbl[48][2] = {
   {-24636, -21605 }, {-32698,  -2143 }, {-27246,  18205 }, {-10533,  31029 }
 };
 
-int32_t acc_samp_s;
-int32_t acc_samp_c;
-int32_t acc_ref_s;
-int32_t acc_ref_c;
+float acc_samp_s;
+float acc_samp_c;
+float acc_ref_s;
+float acc_ref_c;
 
 void
 dsp_process(int16_t *capture, size_t length)
@@ -79,10 +79,10 @@ dsp_process(int16_t *capture, size_t length)
     ref_c = __SMLATT(sr, sc, ref_c);
 #endif
   }
-  acc_samp_s = samp_s;
-  acc_samp_c = samp_c;
-  acc_ref_s = ref_s;
-  acc_ref_c = ref_c;
+  acc_samp_s += samp_s;
+  acc_samp_c += samp_c;
+  acc_ref_s += ref_s;
+  acc_ref_c += ref_c;
 }
 
 void

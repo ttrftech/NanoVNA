@@ -823,7 +823,7 @@ static const int8_t bandwidth_accumerate_count[] = {
 static const I2SConfig i2sconfig = {
   NULL,                   // TX Buffer
   rx_buffer,              // RX Buffer
-  sizeof(rx_buffer),      // RX Buffer size
+  AUDIO_BUFFER_LEN * 2,   // RX Buffer size
   NULL,                   // tx callback
   i2s_end_callback,       // rx callback
   0,                      // i2scfgr
@@ -847,7 +847,7 @@ bool sweep(bool break_on_operation)
   for (; p_sweep < sweep_points; p_sweep++) {         // 5300
     if (frequencies[p_sweep] == 0) break;
     delay+= set_frequency(frequencies[p_sweep]);
-    tlv320aic3204_select(0);                   // 60 CH0:REFLECT, reset and begin measure
+    tlv320aic3204_select(0);                   // CH0:REFLECTION, reset and begin measure
     DSP_START(delay);
     delay = 0;
     //================================================
@@ -856,7 +856,7 @@ bool sweep(bool break_on_operation)
     DSP_WAIT_READY;
     (*sample_func)(measured[0][p_sweep]);      // calculate reflection coefficient
 
-    tlv320aic3204_select(1);                   // 60 CH1:TRANSMISSION, reset and begin measure
+    tlv320aic3204_select(1);                   // CH1:TRANSMISSION, reset and begin measure
     DSP_START(DELAY_CHANNEL_CHANGE);
     //================================================
     // Place some code thats need execute while delay
@@ -864,7 +864,6 @@ bool sweep(bool break_on_operation)
     DSP_WAIT_READY;
     (*sample_func)(measured[1][p_sweep]);      // calculate transmission coefficient
 
-                                               // ======== 170 ===========
     if (cal_status & CALSTAT_APPLY)
       apply_error_term_at(p_sweep);
 

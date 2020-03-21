@@ -44,7 +44,7 @@ static int32_t  current_offset = FREQUENCY_OFFSET;
 #define DELAY_NORMAL       2
 // Delay for bands (depend set band 1 more fast (can change before next dsp buffer ready, need wait additional interval)
 #define DELAY_BAND_1       3
-#define DELAY_BAND_2       2
+#define DELAY_BAND_2       3
 // Band changes need set delay after reset PLL
 #define DELAY_BANDCHANGE_1 3
 #define DELAY_BANDCHANGE_2 3

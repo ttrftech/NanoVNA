@@ -25,6 +25,90 @@
 
 #define wait_ms(ms)     chThdSleepMilliseconds(ms)
 
+// Register - 0x01 / 0x34 (P1_R52): Left MICPGA Positive Terminal Input Routing Configuration
+#define REG_34_IN1L_TO_LEFT_P_NO    (0<<6)
+#define REG_34_IN1L_TO_LEFT_P_10k   (1<<6)
+#define REG_34_IN1L_TO_LEFT_P_20k   (2<<6)
+#define REG_34_IN1L_TO_LEFT_P_40k   (3<<6)
+
+#define REG_34_IN2L_TO_LEFT_P_NO    (0<<4)
+#define REG_34_IN2L_TO_LEFT_P_10k   (1<<4)
+#define REG_34_IN2L_TO_LEFT_P_20k   (2<<4)
+#define REG_34_IN2L_TO_LEFT_P_40k   (3<<4)
+
+#define REG_34_IN3L_TO_LEFT_P_NO    (0<<2)
+#define REG_34_IN3L_TO_LEFT_P_10k   (1<<2)
+#define REG_34_IN3L_TO_LEFT_P_20k   (2<<2)
+#define REG_34_IN3L_TO_LEFT_P_40k   (3<<2)
+
+#define REG_34_IN1R_TO_LEFT_P_NO    (0<<0)
+#define REG_34_IN1R_TO_LEFT_P_10k   (1<<0)
+#define REG_34_IN1R_TO_LEFT_P_20k   (2<<0)
+#define REG_34_IN1R_TO_LEFT_P_40k   (3<<0)
+
+// Register - 0x01 / 0x36 (P1_R54): Left MICPGA Negative Terminal Input Routing Configuration
+#define REG_36_CM1L_TO_LEFT_N_NO    (0<<6)
+#define REG_36_CM1L_TO_LEFT_N_10k   (1<<6)
+#define REG_36_CM1L_TO_LEFT_N_20k   (2<<6)
+#define REG_36_CM1L_TO_LEFT_N_40k   (3<<6)
+
+#define REG_36_IN2R_TO_LEFT_N_NO    (0<<4)
+#define REG_36_IN2R_TO_LEFT_N_10k   (1<<4)
+#define REG_36_IN2R_TO_LEFT_N_20k   (2<<4)
+#define REG_36_IN2R_TO_LEFT_N_40k   (3<<4)
+
+#define REG_36_IN3R_TO_LEFT_N_NO    (0<<2)
+#define REG_36_IN3R_TO_LEFT_N_10k   (1<<2)
+#define REG_36_IN3R_TO_LEFT_N_20k   (2<<2)
+#define REG_36_IN3R_TO_LEFT_N_40k   (3<<2)
+
+#define REG_36_CM2L_TO_LEFT_N_NO    (0<<0)
+#define REG_36_CM2L_TO_LEFT_N_10k   (1<<0)
+#define REG_36_CM2L_TO_LEFT_N_20k   (2<<0)
+#define REG_36_CM2L_TO_LEFT_N_40k   (3<<0)
+
+// Register - 0x01 / 0x37 (P1_R55): Right MICPGA Positive Terminal Input Routing Configuration
+#define REG_37_IN1R_TO_RIGHT_P_NO    (0<<6)
+#define REG_37_IN1R_TO_RIGHT_P_10k   (1<<6)
+#define REG_37_IN1R_TO_RIGHT_P_20k   (2<<6)
+#define REG_37_IN1R_TO_RIGHT_P_40k   (3<<6)
+
+#define REG_37_IN2R_TO_RIGHT_P_NO    (0<<4)
+#define REG_37_IN2R_TO_RIGHT_P_10k   (1<<4)
+#define REG_37_IN2R_TO_RIGHT_P_20k   (2<<4)
+#define REG_37_IN2R_TO_RIGHT_P_40k   (3<<4)
+
+#define REG_37_IN3R_TO_RIGHT_P_NO    (0<<2)
+#define REG_37_IN3R_TO_RIGHT_P_10k   (1<<2)
+#define REG_37_IN3R_TO_RIGHT_P_20k   (2<<2)
+#define REG_37_IN3R_TO_RIGHT_P_40k   (3<<2)
+
+#define REG_37_IN2L_TO_RIGHT_P_NO    (0<<0)
+#define REG_37_IN2L_TO_RIGHT_P_10k   (1<<0)
+#define REG_37_IN2L_TO_RIGHT_P_20k   (2<<0)
+#define REG_37_IN2L_TO_RIGHT_P_40k   (3<<0)
+
+// Register - 0x01 / 0x39 (P1_R57): Right MICPGA Negative Terminal Input Routing Configuration
+#define REG_39_CM1R_TO_RIGHT_N_NO    (0<<6)
+#define REG_39_CM1R_TO_RIGHT_N_10k   (1<<6)
+#define REG_39_CM1R_TO_RIGHT_N_20k   (2<<6)
+#define REG_39_CM1R_TO_RIGHT_N_40k   (3<<6)
+
+#define REG_39_IN1L_TO_RIGHT_N_NO    (0<<4)
+#define REG_39_IN1L_TO_RIGHT_N_10k   (1<<4)
+#define REG_39_IN1L_TO_RIGHT_N_20k   (2<<4)
+#define REG_39_IN1L_TO_RIGHT_N_40k   (3<<4)
+
+#define REG_39_IN3L_TO_RIGHT_N_NO    (0<<2)
+#define REG_39_IN3L_TO_RIGHT_N_10k   (1<<2)
+#define REG_39_IN3L_TO_RIGHT_N_20k   (2<<2)
+#define REG_39_IN3L_TO_RIGHT_N_40k   (3<<2)
+
+#define REG_39_CM2R_TO_RIGHT_N_NO    (0<<0)
+#define REG_39_CM2R_TO_RIGHT_N_10k   (1<<0)
+#define REG_39_CM2R_TO_RIGHT_N_20k   (2<<0)
+#define REG_39_CM2R_TO_RIGHT_N_40k   (3<<0)
+
 static const uint8_t conf_data[] = {
 // reg, data,
 // PLL clock config
@@ -62,10 +146,10 @@ static const uint8_t conf_data[] = {
   0x0a, 0x33, /* Set the Input Common Mode to 0.9V and Output Common Mode for Headphone to 1.65V */
 
   0x3d, 0x00, /* Select ADC PTM_R4 */
-  0x47, 0x32, /* Set MicPGA startup delay to 3.1ms */
+  0x47, 0x32, /* Set MicPGA startup delay to 6.4ms */
   0x7b, 0x01, /* Set the REF charging time to 40ms */
-  0x34, 0x10, /* Route IN2L to LEFT_P with 10K */
-  0x36, 0x10, /* Route IN2R to LEFT_N with 10K */
+  0x34, REG_34_IN2L_TO_LEFT_P_10k, /* Route IN2L to LEFT_P with 10K */
+  0x36, REG_36_IN2R_TO_LEFT_N_10k, /* Route IN2R to LEFT_N with 10K */
 //0x37, 0x04, /* Route IN3R to RIGHT_P with 10K */
 //0x39, 0x04, /* Route IN3L to RIGHT_N with 10K */
 //0x3b, 0x00, /* Unmute Left MICPGA, Gain selection of 32dB to make channel gain 0dB */
@@ -82,15 +166,15 @@ static const uint8_t conf_data_unmute[] = {
 static const uint8_t conf_data_ch3_select[] = {
 // reg, data,
   0x00, 0x01, /* Select Page 1 */
-  0x37, 0x04, /* Route IN3R to RIGHT_P with input impedance of 10K */
-  0x39, 0x04, /* Route IN3L to RIGHT_N with input impedance of 10K */
+  0x37, REG_37_IN3R_TO_RIGHT_P_10k, /* Route IN3R to RIGHT_P with input impedance of 10K */
+  0x39, REG_39_IN3L_TO_RIGHT_N_10k, /* Route IN3L to RIGHT_N with input impedance of 10K */
 };
 
 static const uint8_t conf_data_ch1_select[] = {
 // reg, data,
   0x00, 0x01, /* Select Page 1 */
-  0x37, 0x40, /* Route IN1R to RIGHT_P with input impedance of 10K */
-  0x39, 0x10, /* Route IN1L to RIGHT_N with input impedance of 10K */
+  0x37, REG_37_IN1R_TO_RIGHT_P_10k, /* Route IN1R to RIGHT_P with input impedance of 10K */
+  0x39, REG_39_IN1L_TO_RIGHT_N_10k, /* Route IN1L to RIGHT_N with input impedance of 10K */
 };
 
 static inline void

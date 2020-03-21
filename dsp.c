@@ -40,11 +40,27 @@ const int16_t sincos_tbl[48][2] = {
   { 32138,   6393 }, { 29389, -14493 }, { 14493, -29389 }, { -6393, -32138 },
   {-24636, -21605 }, {-32698,  -2143 }, {-27246,  18205 }, {-10533,  31029 }
 };
+#if 0
+void generate_DSP_Table(int offset){
+  float audio_freq  = 48000.0;
+  // N = offset * AUDIO_SAMPLES_COUNT / audio_freq; should be integer
+  // AUDIO_SAMPLES_COUNT = N * audio_freq / offset; N - minimum integer value for get integer SAMPLE_LEN
+  // Bandwidth on one step = audio_freq / AUDIO_SAMPLES_COUNT
+  float step = 2 * VNA_PI * offset / audio_freq;
+  float v = step/2;
+  for (int i=0; i<AUDIO_SAMPLES_COUNT; i++){
+    sincos_tbl[i][0] = sin(v)*32768.0 + 0.5;
+    sincos_tbl[i][1] = cos(v)*32768.0 + 0.5;
+    v+=step;
+  }
+}
+#endif
 
-float acc_samp_s;
-float acc_samp_c;
-float acc_ref_s;
-float acc_ref_c;
+typedef float acc_t;
+acc_t acc_samp_s;
+acc_t acc_samp_c;
+acc_t acc_ref_s;
+acc_t acc_ref_c;
 
 void
 dsp_process(int16_t *capture, size_t length)
@@ -67,10 +83,10 @@ dsp_process(int16_t *capture, size_t length)
 #endif
     int32_t s = sincos_tbl[i][0];
     int32_t c = sincos_tbl[i][1];
-    samp_s += smp * s / 16;
-    samp_c += smp * c / 16;
-    ref_s += ref * s / 16;
-    ref_c += ref * c / 16;
+    samp_s += (smp * s)>>4;
+    samp_c += (smp * c)>>4;
+    ref_s  += (ref * s)>>4;
+    ref_c  += (ref * c)>>4;
 #if 0
     uint32_t sc = *(uint32_t)&sincos_tbl[i];
     samp_s = __SMLABB(sr, sc, samp_s);

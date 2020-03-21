@@ -70,6 +70,8 @@ static volatile vna_shellcmd_t  shell_function = 0;
 // Enable color command, allow change config color for traces, grid, menu
 #define ENABLE_COLOR_COMMAND
 
+//#define ENABLE_I2C_COMMAND
+
 static void apply_error_term_at(int i);
 static void apply_edelay_at(int i);
 static void cal_interpolate(int s);
@@ -87,6 +89,16 @@ static void transform_domain(void);
 static int8_t drive_strength = DRIVE_STRENGTH_AUTO;
 int8_t sweep_mode = SWEEP_ENABLE;
 volatile uint8_t redraw_request = 0; // contains REDRAW_XXX flags
+
+// sweep operation variables
+volatile uint8_t wait_count = 0;
+static   uint8_t accumerate_count = 0;
+
+static uint16_t p_sweep = 0;
+// ChibiOS i2s buffer must be 2x size (for process one while next buffer filled by DMA)
+static int16_t rx_buffer[AUDIO_BUFFER_LEN * 2];
+// Sweep measured data
+float measured[2][POINTS_COUNT][2];
 
 // Version text, displayed in Config->Version menu, also send by info command
 const char *info_about[]={
@@ -474,7 +486,9 @@ VNA_SHELL_FUNCTION(cmd_offset)
     shell_printf("usage: offset {frequency offset(Hz)}\r\n");
     return;
   }
-  si5351_set_frequency_offset(my_atoi(argv[0]));
+  int32_t offset = my_atoi(argv[0]);
+//  generate_DSP_Table(offset);
+  si5351_set_frequency_offset(offset);
 }
 
 VNA_SHELL_FUNCTION(cmd_freq)
@@ -576,94 +590,6 @@ static struct {
   int32_t busy_cycles;
 #endif
 } stat;
-
-int16_t rx_buffer[AUDIO_BUFFER_LEN * 2];
-
-#ifdef ENABLED_DUMP
-int16_t dump_buffer[AUDIO_BUFFER_LEN];
-int16_t dump_selection = 0;
-#endif
-
-volatile uint8_t wait_count = 0;
-volatile uint8_t accumerate_count = 0;
-
-const int8_t bandwidth_accumerate_count[] = {
-  1, // 1kHz
-  3, // 300Hz
-  10, // 100Hz
-  33, // 30Hz
-  100 // 10Hz
-};
-
-float measured[2][POINTS_COUNT][2];
-
-static inline void
-dsp_start(int count)
-{
-  wait_count = count;
-  accumerate_count = bandwidth_accumerate_count[bandwidth];
-  reset_dsp_accumerator();
-}
-
-static inline void
-dsp_wait(void)
-{
-  while (accumerate_count > 0)
-    __WFI();
-}
-
-#ifdef ENABLED_DUMP
-static void
-duplicate_buffer_to_dump(int16_t *p)
-{
-  if (dump_selection == 1)
-    p = samp_buf;
-  else if (dump_selection == 2)
-    p = ref_buf;
-  memcpy(dump_buffer, p, sizeof dump_buffer);
-}
-#endif
-
-void i2s_end_callback(I2SDriver *i2sp, size_t offset, size_t n)
-{
-#if PORT_SUPPORTS_RT
-  int32_t cnt_s = port_rt_get_counter_value();
-  int32_t cnt_e;
-#endif
-  int16_t *p = &rx_buffer[offset];
-  (void)i2sp;
-  (void)n;
-
-  if (wait_count > 1) {
-    --wait_count;
-  } else if (wait_count > 0) {
-    if (accumerate_count > 0) {
-      dsp_process(p, n);
-      accumerate_count--;
-    }
-#ifdef ENABLED_DUMP
-    duplicate_buffer_to_dump(p);
-#endif
-  }
-
-#if PORT_SUPPORTS_RT
-  cnt_e = port_rt_get_counter_value();
-  stat.interval_cycles = cnt_s - stat.last_counter_value;
-  stat.busy_cycles = cnt_e - cnt_s;
-  stat.last_counter_value = cnt_s;
-#endif
-  stat.callback_count++;
-}
-
-static const I2SConfig i2sconfig = {
-  NULL, // TX Buffer
-  rx_buffer, // RX Buffer
-  AUDIO_BUFFER_LEN * 2,
-  NULL, // tx callback
-  i2s_end_callback, // rx callback
-  0, // i2scfgr
-  2 // i2spr
-};
 
 VNA_SHELL_FUNCTION(cmd_data)
 {
@@ -819,6 +745,7 @@ void load_default_properties(void)
   current_props._active_marker   = 0;
   current_props._domain_mode     = 0;
   current_props._marker_smith_format = MS_RLC;
+  current_props._bandwidth = 0;
 //Checksum add on caldata_save
 //current_props.checksum = 0;
 }
@@ -835,45 +762,116 @@ ensure_edit_config(void)
   cal_status = 0;
 }
 
+#ifdef ENABLED_DUMP
+int16_t dump_buffer[AUDIO_BUFFER_LEN];
+int16_t dump_selection = 0;
+#endif
+
+#ifdef ENABLED_DUMP
+static void
+duplicate_buffer_to_dump(int16_t *p)
+{
+  if (dump_selection == 1)
+    p = samp_buf;
+  else if (dump_selection == 2)
+    p = ref_buf;
+  memcpy(dump_buffer, p, sizeof dump_buffer);
+}
+#endif
+
+//
+// DMA i2s callback function, called on get 'half' and 'full' buffer size data
+// need for process data, while DMA fill next buffer
+void i2s_end_callback(I2SDriver *i2sp, size_t offset, size_t n)
+{
+#if PORT_SUPPORTS_RT
+  int32_t cnt_s = port_rt_get_counter_value();
+  int32_t cnt_e;
+#endif
+  int16_t *p = &rx_buffer[offset];
+  (void)i2sp;
+  if (wait_count > 0){
+    if (wait_count <= accumerate_count){
+      if (wait_count == accumerate_count)
+        reset_dsp_accumerator();
+      dsp_process(p, n);
+    }
+#ifdef ENABLED_DUMP
+    duplicate_buffer_to_dump(p);
+#endif
+    --wait_count;
+  }
+#if PORT_SUPPORTS_RT
+  cnt_e = port_rt_get_counter_value();
+  stat.interval_cycles = cnt_s - stat.last_counter_value;
+  stat.busy_cycles = cnt_e - cnt_s;
+  stat.last_counter_value = cnt_s;
+#endif
+  stat.callback_count++;
+}
+
+// Bandwidth depend from AUDIO_SAMPLES_COUNT and audio ADC frequency
+// for AUDIO_SAMPLES_COUNT = 48 and ADC = 48kHz one measure give 48000/48=1000Hz
+static const int8_t bandwidth_accumerate_count[] = {
+   1, // 1kHz
+   3, // 300Hz
+  10, // 100Hz
+  33, // 30Hz
+  100 // 10Hz
+};
+
+static const I2SConfig i2sconfig = {
+  NULL,                   // TX Buffer
+  rx_buffer,              // RX Buffer
+  sizeof(rx_buffer),      // RX Buffer size
+  NULL,                   // tx callback
+  i2s_end_callback,       // rx callback
+  0,                      // i2scfgr
+  0                       // i2spr
+};
+
+#define DSP_START(delay) {accumerate_count = bandwidth_accumerate_count[bandwidth]; wait_count = delay-1 + accumerate_count;}
+#define DSP_WAIT_READY   while (wait_count) {if (operation_requested && break_on_operation) return false; __WFI();}
+#define DSP_WAIT         while (wait_count) {__WFI();}
+#define RESET_SWEEP      {p_sweep = 0;}
 #define DELAY_CHANNEL_CHANGE 2
 
 // main loop for measurement
 bool sweep(bool break_on_operation)
 {
-  int i, delay;
+  int delay=1;
+  if (p_sweep>=sweep_points || break_on_operation == false) RESET_SWEEP;
   // blink LED while scanning
   palClearPad(GPIOC, GPIOC_LED);
   // Power stabilization after LED off, also align timings on i == 0
-  for (i = 0; i < sweep_points; i++) {         // 5300
-    if (frequencies[i] == 0) break;
-    delay = set_frequency(frequencies[i]);     // 700
+  for (; p_sweep < sweep_points; p_sweep++) {         // 5300
+    if (frequencies[p_sweep] == 0) break;
+    delay+= set_frequency(frequencies[p_sweep]);
     tlv320aic3204_select(0);                   // 60 CH0:REFLECT, reset and begin measure
-    dsp_start(delay + ((i == 0) ? 1 : 0));     // 1900
+    DSP_START(delay);
+    delay = 0;
     //================================================
     // Place some code thats need execute while delay
     //================================================
-    dsp_wait();
-    // calculate reflection coefficient
-    (*sample_func)(measured[0][i]);            // 60
+    DSP_WAIT_READY;
+    (*sample_func)(measured[0][p_sweep]);      // calculate reflection coefficient
 
     tlv320aic3204_select(1);                   // 60 CH1:TRANSMISSION, reset and begin measure
-    dsp_start(DELAY_CHANNEL_CHANGE);           // 1700
+    DSP_START(DELAY_CHANNEL_CHANGE);
     //================================================
     // Place some code thats need execute while delay
     //================================================
-    dsp_wait();
-    // calculate transmission coefficient
-    (*sample_func)(measured[1][i]);            // 60
+    DSP_WAIT_READY;
+    (*sample_func)(measured[1][p_sweep]);      // calculate transmission coefficient
+
                                                // ======== 170 ===========
     if (cal_status & CALSTAT_APPLY)
-      apply_error_term_at(i);
+      apply_error_term_at(p_sweep);
 
     if (electrical_delay != 0)
-      apply_edelay_at(i);
-
-    // back to toplevel to handle ui operation
-    if (operation_requested && break_on_operation)
-      return false;
+      apply_edelay_at(p_sweep);
+// Display SPI made noise on measurement (can see in CW mode)
+//    ili9341_fill(OFFSETX+CELLOFFSETX, OFFSETY, (p_sweep * WIDTH)/(sweep_points-1), 1, RGB565(0,0,255));
   }
   // blink LED while scanning
   palSetPad(GPIOC, GPIOC_LED);
@@ -987,6 +985,7 @@ update_frequencies(void)
 
   // set grid layout
   update_grid();
+  RESET_SWEEP;
 }
 
 void
@@ -1537,7 +1536,7 @@ static const struct {
   const char *name;
   uint16_t refpos;
   float scale_unit;
-} trace_info[] = {
+} trace_info[MAX_TRACE_TYPE-1] = {
   { "LOGMAG", NGRIDY-1,  10.0 },
   { "PHASE",  NGRIDY/2,  90.0 },
   { "DELAY",  NGRIDY/2,  1e-9 },
@@ -1950,30 +1949,49 @@ VNA_SHELL_FUNCTION(cmd_stat)
   int16_t *p = &rx_buffer[0];
   int32_t acc0, acc1;
   int32_t ave0, ave1;
+//  float sample[2], ref[2];
+//  minr, maxr,  mins, maxs;
   int32_t count = AUDIO_BUFFER_LEN;
   int i;
   (void)argc;
   (void)argv;
-  acc0 = acc1 = 0;
-  for (i = 0; i < AUDIO_BUFFER_LEN*2; i += 2) {
-    acc0 += p[i];
-    acc1 += p[i+1];
-  }
-  ave0 = acc0 / count;
-  ave1 = acc1 / count;
-  acc0 = acc1 = 0;
-  for (i = 0; i < AUDIO_BUFFER_LEN*2; i += 2) {
-    acc0 += (p[i] - ave0)*(p[i] - ave0);
-    acc1 += (p[i+1] - ave1)*(p[i+1] - ave1);
-  }
-  stat.rms[0] = sqrtf(acc0 / count);
-  stat.rms[1] = sqrtf(acc1 / count);
-  stat.ave[0] = ave0;
-  stat.ave[1] = ave1;
+  for (int ch=0;ch<2;ch++){
+    tlv320aic3204_select(ch);
+    DSP_START(4);
+    DSP_WAIT;
+//    reset_dsp_accumerator();
+//    dsp_process(&p[               0], AUDIO_BUFFER_LEN);
+//    dsp_process(&p[AUDIO_BUFFER_LEN], AUDIO_BUFFER_LEN);
 
-  shell_printf("average: %d %d\r\n", stat.ave[0], stat.ave[1]);
-  shell_printf("rms: %d %d\r\n", stat.rms[0], stat.rms[1]);
-  shell_printf("callback count: %d\r\n", stat.callback_count);
+    acc0 = acc1 = 0;
+    for (i = 0; i < AUDIO_BUFFER_LEN*2; i += 2) {
+      acc0 += p[i  ];
+      acc1 += p[i+1];
+    }
+    ave0 = acc0 / count;
+    ave1 = acc1 / count;
+    acc0 = acc1 = 0;
+//    minr  = maxr = 0;
+//    mins  = maxs = 0;
+    for (i = 0; i < AUDIO_BUFFER_LEN*2; i += 2) {
+      acc0 += (p[i  ] - ave0)*(p[i  ] - ave0);
+      acc1 += (p[i+1] - ave1)*(p[i+1] - ave1);
+//      if (minr < p[i  ]) minr = p[i  ];
+//      if (maxr > p[i  ]) maxr = p[i  ];
+//      if (mins < p[i+1]) mins = p[i+1];
+//      if (maxs > p[i+1]) maxs = p[i+1];
+    }
+    stat.rms[0] = sqrtf(acc0 / count);
+    stat.rms[1] = sqrtf(acc1 / count);
+    stat.ave[0] = ave0;
+    stat.ave[1] = ave1;
+    shell_printf("Ch: %d\r\n", ch);
+    shell_printf("average:   r: %6d s: %6d\r\n", stat.ave[0], stat.ave[1]);
+    shell_printf("rms:       r: %6d s: %6d\r\n", stat.rms[0], stat.rms[1]);
+//    shell_printf("min:     ref %6d ch %6d\r\n", minr, mins);
+//    shell_printf("max:     ref %6d ch %6d\r\n", maxr, maxs);
+  }
+  //shell_printf("callback count: %d\r\n", stat.callback_count);
   //shell_printf("interval cycle: %d\r\n", stat.interval_cycles);
   //shell_printf("busy cycle: %d\r\n", stat.busy_cycles);
   //shell_printf("load: %d\r\n", stat.busy_cycles * 100 / stat.interval_cycles);
@@ -2072,6 +2090,20 @@ VNA_SHELL_FUNCTION(cmd_color)
 }
 #endif
 
+#ifdef ENABLE_I2C_COMMAND
+VNA_SHELL_FUNCTION(cmd_i2c){
+  uint8_t page = my_atoui(argv[0]);
+  uint8_t reg  = my_atoui(argv[1]);
+  uint8_t data = my_atoui(argv[2]);
+  uint8_t d1[] = {0x00, page};
+  uint8_t d2[] = { reg, data};
+  i2cAcquireBus(&I2CD1);
+  (void)i2cMasterTransmitTimeout(&I2CD1, 0x18, d1, 2, NULL, 0, 1000);
+  (void)i2cMasterTransmitTimeout(&I2CD1, 0x18, d2, 2, NULL, 0, 1000);
+  i2cReleaseBus(&I2CD1);
+}
+#endif
+
 #ifdef ENABLE_THREADS_COMMAND
 #if CH_CFG_USE_REGISTRY == FALSE
 #error "Threads Requite enabled CH_CFG_USE_REGISTRY in chconf.h"
@@ -2121,7 +2153,7 @@ static const VNAShellCommand commands[] =
     {"version"     , cmd_version     , 0},
     {"reset"       , cmd_reset       , 0},
     {"freq"        , cmd_freq        , CMD_WAIT_MUTEX},
-    {"offset"      , cmd_offset      , 0},
+    {"offset"      , cmd_offset      , CMD_WAIT_MUTEX},
 #ifdef ENABLE_TIME_COMMAND
     {"time"        , cmd_time        , 0},
 #endif
@@ -2134,8 +2166,8 @@ static const VNAShellCommand commands[] =
 #endif
     {"frequencies" , cmd_frequencies , 0},
     {"port"        , cmd_port        , 0},
-    {"stat"        , cmd_stat        , 0},
-    {"gain"        , cmd_gain        , 0},
+    {"stat"        , cmd_stat        , CMD_WAIT_MUTEX},
+    {"gain"        , cmd_gain        , CMD_WAIT_MUTEX},
     {"power"       , cmd_power       , 0},
     {"sample"      , cmd_sample      , 0},
 //  {"gamma"       , cmd_gamma       , 0},
@@ -2165,6 +2197,9 @@ static const VNAShellCommand commands[] =
 #endif
 #ifdef ENABLE_COLOR_COMMAND
     {"color"       , cmd_color       , 0},
+#endif
+#ifdef ENABLE_I2C_COMMAND
+    {"i2c"         , cmd_i2c         , CMD_WAIT_MUTEX},
 #endif
 #ifdef ENABLE_THREADS_COMMAND
     {"threads"     , cmd_threads     , 0},
@@ -2307,13 +2342,13 @@ static const I2CConfig i2ccfg = {
 #elif  STM32_I2C1SW == STM32_I2C1SW_SYSCLK
   // STM32_I2C1SW == STM32_I2C1SW_SYSCLK  (SYSCLK = 48MHz)
   // 400kHz @ SYSCLK 48MHz (Use 26.4.10 I2C_TIMINGR register configuration examples from STM32 RM0091 Reference manual)
-  STM32_TIMINGR_PRESC(5U)  |
-  STM32_TIMINGR_SCLDEL(3U) | STM32_TIMINGR_SDADEL(3U) |
-  STM32_TIMINGR_SCLH(3U)   | STM32_TIMINGR_SCLL(9U),
+//  STM32_TIMINGR_PRESC(5U)  |
+//  STM32_TIMINGR_SCLDEL(3U) | STM32_TIMINGR_SDADEL(3U) |
+//  STM32_TIMINGR_SCLH(3U)   | STM32_TIMINGR_SCLL(9U),
   // 600kHz @ SYSCLK 48MHz, manually get values, x1.5 I2C speed, but need calc timings
-//  STM32_TIMINGR_PRESC(3U)  |
-//  STM32_TIMINGR_SCLDEL(2U) | STM32_TIMINGR_SDADEL(2U) |
-//  STM32_TIMINGR_SCLH(4U)   | STM32_TIMINGR_SCLL(4U),
+  STM32_TIMINGR_PRESC(3U)  |
+  STM32_TIMINGR_SCLDEL(2U) | STM32_TIMINGR_SDADEL(2U) |
+  STM32_TIMINGR_SCLH(4U)   | STM32_TIMINGR_SCLL(4U),
 #else
 #error "Need Define STM32_I2C1SW and set correct TIMINGR settings"
 #endif
@@ -2336,7 +2371,7 @@ int main(void)
 {
   halInit();
   chSysInit();
-
+//  generate_DSP_Table(FREQUENCY_OFFSET);
   //palSetPadMode(GPIOB, 8, PAL_MODE_ALTERNATE(1) | PAL_STM32_OTYPE_OPENDRAIN);
   //palSetPadMode(GPIOB, 9, PAL_MODE_ALTERNATE(1) | PAL_STM32_OTYPE_OPENDRAIN);
   i2cStart(&I2CD1, &i2ccfg);

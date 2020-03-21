@@ -104,12 +104,9 @@ extern const char *info_about[];
  * dsp.c
  */
 // 5ms @ 48kHz
-#define AUDIO_BUFFER_LEN 96
-
-extern int16_t rx_buffer[];
-
-#define STATE_LEN 32
-#define SAMPLE_LEN 48
+#define AUDIO_SAMPLES_COUNT   48
+// Buffer contain left and right channel samples (need x2)
+#define AUDIO_BUFFER_LEN      (AUDIO_SAMPLES_COUNT*2)
 
 #ifdef ENABLED_DUMP
 extern int16_t ref_buf[];
@@ -121,6 +118,7 @@ void reset_dsp_accumerator(void);
 void calculate_gamma(float *gamma);
 void fetch_amplitude(float *gamma);
 void fetch_amplitude_ref(float *gamma);
+void generate_DSP_Table(int offset);
 
 /*
  * tlv320aic3204.c

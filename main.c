@@ -844,7 +844,7 @@ bool sweep(bool break_on_operation)
   accumerate_count = bandwidth_accumerate_count[bandwidth];
   // blink LED while scanning
   palClearPad(GPIOC, GPIOC_LED);
-  // Power stabilization after LED off, also align timings on i == 0
+  // Power stabilization after LED off, also align timings on delay == 0
   for (; p_sweep < sweep_points; p_sweep++) {         // 5300
     if (frequencies[p_sweep] == 0) break;
     delay+= set_frequency(frequencies[p_sweep]);
@@ -876,6 +876,18 @@ bool sweep(bool break_on_operation)
   // blink LED while scanning
   palSetPad(GPIOC, GPIOC_LED);
   return true;
+}
+
+VNA_SHELL_FUNCTION(cmd_bandwidth)
+{
+  if (argc != 1) {
+    shell_printf("bandwidth %d\r\n", bandwidth);
+    return;
+  }
+  uint8_t v = my_atoui(argv[0]);
+  if (v>=sizeof(bandwidth_accumerate_count))
+    return;
+  bandwidth = v;
 }
 
 VNA_SHELL_FUNCTION(cmd_scan)
@@ -2154,6 +2166,7 @@ static const VNAShellCommand commands[] =
     {"reset"       , cmd_reset       , 0},
     {"freq"        , cmd_freq        , CMD_WAIT_MUTEX},
     {"offset"      , cmd_offset      , CMD_WAIT_MUTEX},
+    {"bandwidth"   , cmd_bandwidth   , CMD_WAIT_MUTEX},
 #ifdef ENABLE_TIME_COMMAND
     {"time"        , cmd_time        , 0},
 #endif

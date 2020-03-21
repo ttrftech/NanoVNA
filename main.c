@@ -830,7 +830,7 @@ static const I2SConfig i2sconfig = {
   0                       // i2spr
 };
 
-#define DSP_START(delay) {accumerate_count = bandwidth_accumerate_count[bandwidth]; wait_count = delay-1 + accumerate_count;}
+#define DSP_START(delay) {wait_count = delay-1 + accumerate_count;}
 #define DSP_WAIT_READY   while (wait_count) {if (operation_requested && break_on_operation) return false; __WFI();}
 #define DSP_WAIT         while (wait_count) {__WFI();}
 #define RESET_SWEEP      {p_sweep = 0;}
@@ -841,6 +841,7 @@ bool sweep(bool break_on_operation)
 {
   int delay=1;
   if (p_sweep>=sweep_points || break_on_operation == false) RESET_SWEEP;
+  accumerate_count = bandwidth_accumerate_count[bandwidth];
   // blink LED while scanning
   palClearPad(GPIOC, GPIOC_LED);
   // Power stabilization after LED off, also align timings on i == 0

@@ -1330,9 +1330,10 @@ cal_collect(int type)
     default:
       return;
   }
-  // Run sweep for collect data (use maximum bandwidth setting)
+  // Run sweep for collect data (use minimum BANDWIDTH_100, or bigger if set)
   uint8_t bw = bandwidth;  // store current setting
-  bandwidth = BANDWIDTH_10;
+  if (bw < BANDWIDTH_100)
+    bandwidth = BANDWIDTH_100;
   sweep(false);
   bandwidth = bw;          // restore
   // Copy calibration data

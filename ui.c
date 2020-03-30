@@ -335,7 +335,7 @@ touch_draw_test(void)
   ili9341_set_foreground(DEFAULT_FG_COLOR);
   ili9341_set_background(DEFAULT_BG_COLOR);
   ili9341_clear_screen();
-  ili9341_drawstring("TOUCH TEST: DRAG PANEL", OFFSETX, 233);
+  ili9341_drawstring("TOUCH TEST: DRAG PANEL", OFFSETX, LCD_HEIGHT - FONT_GET_HEIGHT);
 
   touch_wait_pressed();
   touch_position(&x0, &y0);

@@ -640,15 +640,15 @@ VNA_SHELL_FUNCTION(cmd_capture)
   (void)argc;
   (void)argv;
   int i, y;
-#if SPI_BUFFER_SIZE < (3*320 + 1)
+#if SPI_BUFFER_SIZE < (3*LCD_WIDTH + 1)
 #error "Low size of spi_buffer for cmd_capture"
 #endif
   // read 2 row pixel time (read buffer limit by 2/3 + 1 from spi_buffer size)
-  for (y = 0; y < 240; y += 2) {
+  for (y = 0; y < LCD_HEIGHT; y += 2) {
     // use uint16_t spi_buffer[2048] (defined in ili9341) for read buffer
     uint8_t *buf = (uint8_t *)spi_buffer;
-    ili9341_read_memory(0, y, 320, 2, 2 * 320, spi_buffer);
-    for (i = 0; i < 4 * 320; i++) {
+    ili9341_read_memory(0, y, LCD_WIDTH, 2, 2 * LCD_WIDTH, spi_buffer);
+    for (i = 0; i < 4 * LCD_WIDTH; i++) {
       streamPut(shell_stream, *buf++);
     }
   }
@@ -704,6 +704,7 @@ config_t config = {
   .trace_color =       { DEFAULT_TRACE_1_COLOR, DEFAULT_TRACE_2_COLOR, DEFAULT_TRACE_3_COLOR, DEFAULT_TRACE_4_COLOR },
 //  .touch_cal =         { 693, 605, 124, 171 },  // 2.4 inch LCD panel
   .touch_cal =         { 338, 522, 153, 192 },  // 2.8 inch LCD panel
+//  .touch_cal =         { 252, 450, 111, 150 },  //4.0" LCD
   .freq_mode = FREQ_MODE_START_STOP,
   .harmonic_freq_threshold = 300000000,
   .vbat_offset = 500
@@ -783,10 +784,6 @@ duplicate_buffer_to_dump(int16_t *p)
 // need for process data, while DMA fill next buffer
 void i2s_end_callback(I2SDriver *i2sp, size_t offset, size_t n)
 {
-#if PORT_SUPPORTS_RT
-  int32_t cnt_s = port_rt_get_counter_value();
-  int32_t cnt_e;
-#endif
   int16_t *p = &rx_buffer[offset];
   (void)i2sp;
   if (wait_count > 0){
@@ -800,12 +797,6 @@ void i2s_end_callback(I2SDriver *i2sp, size_t offset, size_t n)
 #endif
     --wait_count;
   }
-#if PORT_SUPPORTS_RT
-  cnt_e = port_rt_get_counter_value();
-  stat.interval_cycles = cnt_s - stat.last_counter_value;
-  stat.busy_cycles = cnt_e - cnt_s;
-  stat.last_counter_value = cnt_s;
-#endif
   stat.callback_count++;
 }
 
@@ -828,7 +819,8 @@ static const I2SConfig i2sconfig = {
 // main loop for measurement
 bool sweep(bool break_on_operation)
 {
-  int delay=1;
+  int delay;
+  int st_delay = 3;
   if (p_sweep>=sweep_points || break_on_operation == false) RESET_SWEEP;
 
   // blink LED while scanning
@@ -836,10 +828,9 @@ bool sweep(bool break_on_operation)
   // Power stabilization after LED off, also align timings on delay == 0
   for (; p_sweep < sweep_points; p_sweep++) {         // 5300
     if (frequencies[p_sweep] == 0) break;
-    delay+= set_frequency(frequencies[p_sweep]);
+    delay = set_frequency(frequencies[p_sweep]);
     tlv320aic3204_select(0);                   // CH0:REFLECTION, reset and begin measure
-    DSP_START(delay);
-    delay = 0;
+    DSP_START(delay+st_delay);
     //================================================
     // Place some code thats need execute while delay
     //================================================
@@ -847,13 +838,13 @@ bool sweep(bool break_on_operation)
     (*sample_func)(measured[0][p_sweep]);      // calculate reflection coefficient
 
     tlv320aic3204_select(1);                   // CH1:TRANSMISSION, reset and begin measure
-    DSP_START(DELAY_CHANNEL_CHANGE);
+    DSP_START(DELAY_CHANNEL_CHANGE+st_delay);
     //================================================
     // Place some code thats need execute while delay
     //================================================
     DSP_WAIT_READY;
     (*sample_func)(measured[1][p_sweep]);      // calculate transmission coefficient
-
+    st_delay = 0;
     if (cal_status & CALSTAT_APPLY)
       apply_error_term_at(p_sweep);
 

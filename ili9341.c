@@ -349,7 +349,7 @@ void ili9341_init(void)
 }
 
 #ifndef __USE_DISPLAY_DMA__
-void ili9341_fill(int x, int y, int w, int h, int color)
+void ili9341_fill(int x, int y, int w, int h, uint16_t color)
 {
 //uint8_t xx[4] = { x >> 8, x, (x+w-1) >> 8, (x+w-1) };
 //uint8_t yy[4] = { y >> 8, y, (y+h-1) >> 8, (y+h-1) };
@@ -423,7 +423,7 @@ void ili9341_read_memory(int x, int y, int w, int h, int len, uint16_t *out)
 //
 
 // Fill region by some color
-void ili9341_fill(int x, int y, int w, int h, int color)
+void ili9341_fill(int x, int y, int w, int h, uint16_t color)
 {
   uint32_t xx = __REV16(x | ((x + w - 1) << 16));
   uint32_t yy = __REV16(y | ((y + h - 1) << 16));

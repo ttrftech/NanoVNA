@@ -95,7 +95,6 @@ static void fft256(float array[][2], const uint8_t dir) {
 	const uint8_t real =   dir & 1;
 	const uint8_t imag = ~real & 1;
 	uint16_t i;
-	uint16_t size;
 
 	for (i = 0; i < n; i++) {
 		uint16_t j = reverse_bits(i, levels);
@@ -108,39 +107,22 @@ static void fft256(float array[][2], const uint8_t dir) {
 			array[j][imag] = temp;
 		}
 	}
-#ifdef FFT_USE_SIN_COS_TABLE
+	const uint16_t size = 2;
+	uint16_t halfsize = size / 2;
+	uint16_t tablestep = n / size;
+	uint16_t j, k;
 	// Cooley-Tukey decimation-in-time radix-2 FFT
-	for (size = 2; size <= n; size *= 2) {
-		uint16_t halfsize = size / 2;
-		uint16_t tablestep = n / size;
-		for (i = 0; i < n; i += size) {
-			uint16_t j, k;
+	for (;tablestep; tablestep>>=1, halfsize<<=1) {
+		for (i = 0; i < n; i+=2*halfsize) {
 			for (j = i, k = 0; j < i + halfsize; j++, k += tablestep) {
 				uint16_t l = j + halfsize;
+#ifdef FFT_USE_SIN_COS_TABLE
 				float s = SIN(k);
 				float c = COS(k);
-				float tpre =  array[l][real] * c + array[l][imag] * s;
-				float tpim = -array[l][real] * s + array[l][imag] * c;
-				array[l][real] = array[j][real] - tpre;
-				array[l][imag] = array[j][imag] - tpim;
-				array[j][real] += tpre;
-				array[j][imag] += tpim;
-			}
-		}
-//		if (size == n)  // Prevent overflow in 'size *= 2'
-//			break;
-	}
 #else
-	// Cooley-Tukey decimation-in-time radix-2 FFT
-	for (size = 2; size <= n; size *= 2) {
-		uint16_t halfsize = size / 2;
-		uint16_t tablestep = n / size;
-		for (i = 0; i < n; i += size) {
-			uint16_t j, k;
-			for (j = i, k = 0; j < i + halfsize; j++, k += tablestep) {
-				uint16_t l = j + halfsize;
-				float c = cos((2 * VNA_PI / 256) * k);
-				float s = sin((2 * VNA_PI / 256) * k);
+				float c = cos(2 * VNA_PI * k / 256);
+				float s = sin(2 * VNA_PI * k / 256);
+#endif
 				float tpre =  array[l][real] * c + array[l][imag] * s;
 				float tpim = -array[l][real] * s + array[l][imag] * c;
 				array[l][real] = array[j][real] - tpre;
@@ -149,10 +131,7 @@ static void fft256(float array[][2], const uint8_t dir) {
 				array[j][imag] += tpim;
 			}
 		}
-//		if (size == n)  // Prevent overflow in 'size *= 2'
-//			break;
 	}
-#endif
 }
 
 static inline void fft256_forward(float array[][2]) {

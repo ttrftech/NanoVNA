@@ -47,8 +47,8 @@ pixel_t *cell_buffer = (pixel_t *)spi_buffer;
 #endif
 
 // indicate dirty cells (not redraw if cell data not changed)
-#define MAX_MARKMAP_X    ((320+CELLWIDTH-1)/CELLWIDTH)
-#define MAX_MARKMAP_Y    ((240+CELLHEIGHT-1)/CELLHEIGHT)
+#define MAX_MARKMAP_X    ((LCD_WIDTH+CELLWIDTH-1)/CELLWIDTH)
+#define MAX_MARKMAP_Y    ((LCD_HEIGHT+CELLHEIGHT-1)/CELLHEIGHT)
 // Define markmap mask size
 #if MAX_MARKMAP_X <= 8
 typedef uint8_t map_t;
@@ -845,7 +845,7 @@ static inline void
 markmap_upperarea(void)
 {
   // Hardcoded, Text info from upper area
-  invalidate_rect(0, 0, AREA_WIDTH_NORMAL, 31);
+  invalidate_rect(0, 0, AREA_WIDTH_NORMAL, 3*FONT_STR_HEIGHT);
 }
 
 //
@@ -1332,7 +1332,7 @@ draw_cell(int m, int n)
 #endif
 // Draw trace and marker info on the top (50 system ticks for all screen calls)
 #if 1
-  if (n == 0)
+  if (n <= (3*FONT_STR_HEIGHT)/CELLHEIGHT)
     cell_draw_marker_info(x0, y0);
 #endif
 //  PULSE;
@@ -1373,10 +1373,10 @@ draw_all_cells(bool flush_markmap)
     for (n = 0; n < (area_height+CELLHEIGHT-1) / CELLHEIGHT; n++) {
       if ((markmap[0][n] | markmap[1][n]) & (1 << m)) {
         draw_cell(m, n);
-//        ili9341_fill(m*CELLWIDTH+10, n*CELLHEIGHT, 2, 2, RGB565(255,0,0));
+        //ili9341_fill(m*CELLWIDTH+OFFSETX, n*CELLHEIGHT, 2, 2, RGB565(255,0,0));
       }
 //      else
-//        ili9341_fill(m*CELLWIDTH+10, n*CELLHEIGHT, 2, 2, RGB565(0,255,0));
+        //ili9341_fill(m*CELLWIDTH+OFFSETX, n*CELLHEIGHT, 2, 2, RGB565(0,255,0));
     }
 //  STOP_PROFILE
   if (flush_markmap) {
@@ -1428,7 +1428,7 @@ void
 request_to_draw_cells_behind_menu(void)
 {
   // Values Hardcoded from ui.c
-  invalidate_rect(320-70, 0, 319, 239);
+  invalidate_rect(LCD_WIDTH-70, 0, LCD_WIDTH-1, LCD_HEIGHT-1);
   redraw_request |= REDRAW_CELLS;
 }
 
@@ -1436,7 +1436,7 @@ void
 request_to_draw_cells_behind_numeric_input(void)
 {
   // Values Hardcoded from ui.c
-  invalidate_rect(0, 240-32, 319, 239);
+  invalidate_rect(0, LCD_HEIGHT-32, LCD_WIDTH-1, LCD_HEIGHT-1);
   redraw_request |= REDRAW_CELLS;
 }
 
@@ -1492,7 +1492,7 @@ cell_draw_marker_info(int x0, int y0)
       if (!markers[mk].enabled)
         continue;
       int xpos = 1 + (j%2)*(WIDTH/2) + CELLOFFSETX - x0;
-      int ypos = 1 + (j/2)*(FONT_GET_HEIGHT+1) - y0;
+      int ypos = 1 + (j/2)*(FONT_STR_HEIGHT) - y0;
 
       ili9341_set_foreground(config.trace_color[t]);
       if (mk == active_marker)
@@ -1525,7 +1525,7 @@ cell_draw_marker_info(int x0, int y0)
     if (!uistat.marker_delta && previous_marker >= 0 && active_marker != previous_marker && markers[previous_marker].enabled) {
       int idx0 = markers[previous_marker].index;
       int xpos = (WIDTH/2+30) + CELLOFFSETX - x0;
-      int ypos = 1 + (j/2)*(FONT_GET_HEIGHT+1) - y0;
+      int ypos = 1 + (j/2)*(FONT_STR_HEIGHT) - y0;
 
       plot_printf(buf, sizeof buf, S_DELTA"%d-%d:", active_marker+1, previous_marker+1);
       ili9341_set_foreground(DEFAULT_FG_COLOR);
@@ -1546,7 +1546,7 @@ cell_draw_marker_info(int x0, int y0)
       if (!trace[t].enabled)
         continue;
       int xpos = 1 + (j%2)*(WIDTH/2) + CELLOFFSETX - x0;
-      int ypos = 1 + (j/2)*(FONT_GET_HEIGHT+1) - y0;
+      int ypos = 1 + (j/2)*(FONT_STR_HEIGHT) - y0;
 
       ili9341_set_foreground(config.trace_color[t]);
       if (t == uistat.current_trace)
@@ -1568,7 +1568,7 @@ cell_draw_marker_info(int x0, int y0)
 
     // draw marker frequency
     int xpos = (WIDTH/2+40) + CELLOFFSETX - x0;
-    int ypos = 1 + (j/2)*(FONT_GET_HEIGHT+1) - y0;
+    int ypos = 1 + (j/2)*(FONT_STR_HEIGHT) - y0;
 
     ili9341_set_foreground(DEFAULT_FG_COLOR);
     if (uistat.lever_mode == LM_MARKER)
@@ -1589,7 +1589,7 @@ cell_draw_marker_info(int x0, int y0)
   if (electrical_delay != 0) {
     // draw electrical delay
     int xpos = 21 + CELLOFFSETX - x0;
-    int ypos = 1 + ((j+1)/2)*(FONT_GET_HEIGHT+1) - y0;
+    int ypos = 1 + ((j+1)/2)*(FONT_STR_HEIGHT) - y0;
 
     if (uistat.lever_mode == LM_EDELAY)
       cell_drawstring(S_SARROW, xpos, ypos);
@@ -1623,7 +1623,7 @@ draw_frequencies(void)
   }
   ili9341_set_foreground(DEFAULT_FG_COLOR);
   ili9341_set_background(DEFAULT_BG_COLOR);
-  ili9341_fill(0, FREQUENCIES_YPOS, 320, FONT_GET_HEIGHT, DEFAULT_BG_COLOR);
+  ili9341_fill(0, FREQUENCIES_YPOS, LCD_WIDTH, FONT_GET_HEIGHT, DEFAULT_BG_COLOR);
   if (uistat.lever_mode == LM_CENTER)
     buf1[0] = S_SARROW[0];
   if (uistat.lever_mode == LM_SPAN)
@@ -1640,13 +1640,13 @@ draw_cal_status(void)
   char c[3];
   ili9341_set_foreground(DEFAULT_FG_COLOR);
   ili9341_set_background(DEFAULT_BG_COLOR);
-  ili9341_fill(0, y, OFFSETX, 6*(FONT_GET_HEIGHT+1), DEFAULT_BG_COLOR);
+  ili9341_fill(0, y, OFFSETX, 6*(FONT_STR_HEIGHT), DEFAULT_BG_COLOR);
   if (cal_status & CALSTAT_APPLY) {
     c[0] = cal_status & CALSTAT_INTERPOLATED ? 'c' : 'C';
     c[1] = active_props == &current_props ? '*' : '0' + lastsaveid;
     c[2] = 0;
     ili9341_drawstring(c, x, y);
-    y +=FONT_GET_HEIGHT+1;
+    y +=FONT_STR_HEIGHT;
   }
   int i;
   static const struct {char text, zero, mask;} calibration_text[]={
@@ -1656,7 +1656,7 @@ draw_cal_status(void)
     {'T', 0, CALSTAT_ET},
     {'X', 0, CALSTAT_EX}
   };
-  for (i = 0; i < 5; i++, y+=FONT_GET_HEIGHT+1)
+  for (i = 0; i < 5; i++, y+=FONT_STR_HEIGHT)
     if (cal_status & calibration_text[i].mask)
       ili9341_drawstring(&calibration_text[i].text, x, y);
 }

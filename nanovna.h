@@ -181,7 +181,9 @@ extern const uint8_t x5x7_bits [];
 #define FONT_GET_DATA(ch)   (&x5x7_bits[ch*7])
 #define FONT_GET_WIDTH(ch)  (8-(x5x7_bits[ch*7]&7))
 #define FONT_MAX_WIDTH      7
+#define FONT_WIDTH          5
 #define FONT_GET_HEIGHT     7
+#define FONT_STR_HEIGHT     8
 
 extern const uint16_t numfont16x22[];
 #define NUM_FONT_GET_DATA(ch)   (&numfont16x22[ch*22])
@@ -317,6 +319,9 @@ extern volatile uint8_t redraw_request;
 // Define size of screen buffer in pixels (one pixel 16bit size)
 #define SPI_BUFFER_SIZE             2048
 
+#define LCD_WIDTH                   320
+#define LCD_HEIGHT                  240
+
 #define DEFAULT_FG_COLOR            RGB565(255,255,255)
 #define DEFAULT_BG_COLOR            RGB565(  0,  0,  0)
 #define DEFAULT_GRID_COLOR          RGB565(128,128,128)
@@ -339,7 +344,7 @@ extern uint16_t spi_buffer[SPI_BUFFER_SIZE];
 void ili9341_init(void);
 void ili9341_test(int mode);
 void ili9341_bulk(int x, int y, int w, int h);
-void ili9341_fill(int x, int y, int w, int h, int color);
+void ili9341_fill(int x, int y, int w, int h, uint16_t color);
 void ili9341_set_foreground(uint16_t fg);
 void ili9341_set_background(uint16_t fg);
 void ili9341_clear_screen(void);

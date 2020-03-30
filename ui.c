@@ -309,7 +309,7 @@ touch_cal_exec(void)
   ili9341_clear_screen();
   ili9341_line(LCD_WIDTH-1, LCD_HEIGHT-1, LCD_WIDTH-1, LCD_HEIGHT-32);
   ili9341_line(LCD_WIDTH-1, LCD_HEIGHT-1, LCD_WIDTH-32, LCD_HEIGHT-1);
-  ili9341_drawstring("TOUCH LOWER RIGHT", LCD_HEIGHT-FONT_GET_HEIGHT-10, LCD_WIDTH-17*(FONT_WIDTH)-10);
+  ili9341_drawstring("TOUCH LOWER RIGHT", LCD_WIDTH-17*(FONT_WIDTH)-10, LCD_HEIGHT-FONT_GET_HEIGHT-10);
 
   touch_wait_release();
   x2 = last_touch_x;

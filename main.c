@@ -91,7 +91,7 @@ int8_t sweep_mode = SWEEP_ENABLE;
 volatile uint8_t redraw_request = 0; // contains REDRAW_XXX flags
 
 // sweep operation variables
-volatile uint8_t wait_count = 0;
+volatile uint16_t wait_count = 0;
 
 static uint16_t p_sweep = 0;
 // ChibiOS i2s buffer must be 2x size (for process one while next buffer filled by DMA)
@@ -209,7 +209,7 @@ transform_domain(void)
   // and calculate ifft for time domain
   float* tmp = (float*)spi_buffer;
 
-  uint8_t window_size = POINTS_COUNT, offset = 0;
+  uint16_t window_size = POINTS_COUNT, offset = 0;
   uint8_t is_lowpass = FALSE;
   switch (domain_mode & TD_FUNC) {
     case TD_FUNC_BANDPASS:
@@ -2147,7 +2147,7 @@ static const VNAShellCommand commands[] =
     {"reset"       , cmd_reset       , 0},
     {"freq"        , cmd_freq        , CMD_WAIT_MUTEX},
     {"offset"      , cmd_offset      , CMD_WAIT_MUTEX},
-    {"bandwidth"   , cmd_bandwidth   , CMD_WAIT_MUTEX},
+    {"bandwidth"   , cmd_bandwidth   , 0},
 #ifdef ENABLE_TIME_COMMAND
     {"time"        , cmd_time        , 0},
 #endif

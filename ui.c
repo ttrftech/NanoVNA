@@ -1283,7 +1283,7 @@ draw_numeric_input(const char *buf)
   int focused = FALSE;
   uint16_t xsim = 0b0010010000000000;
 
-  for (i = 0, x = 64; i < 10 && buf[i]; i++, xsim<<=1) {
+  for (i = 0, x = 10 + 10 * FONT_WIDTH + 4; i < 10 && buf[i]; i++, xsim<<=1) {
     uint16_t fg = DEFAULT_MENU_TEXT_COLOR;
     uint16_t bg = config.menu_normal_color;
     int c = buf[i];

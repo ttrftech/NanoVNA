@@ -21,6 +21,9 @@
 #include "hal.h"
 #include "nanovna.h"
 
+// Allow enable DMA for read display data
+//#define __USE_DISPLAY_DMA_RX__
+
 uint16_t spi_buffer[SPI_BUFFER_SIZE];
 // Default foreground & background colors
 uint16_t foreground_color = 0;
@@ -195,6 +198,7 @@ static void spi_lld_serve_tx_interrupt(SPIDriver *spip, uint32_t flags)
   (void)flags;
 }
 
+#ifdef __USE_DISPLAY_DMA_RX__
 static const stm32_dma_stream_t  *dmarx = STM32_DMA_STREAM(STM32_SPI_SPI1_RX_DMA_STREAM);
 static uint32_t rxdmamode = STM32_DMA_CR_CHSEL(SPI1_RX_DMA_CHANNEL)
                         | STM32_DMA_CR_PL(STM32_SPI_SPI1_DMA_PRIORITY)
@@ -208,6 +212,7 @@ static void spi_lld_serve_rx_interrupt(SPIDriver *spip, uint32_t flags)
   (void)spip;
   (void)flags;
 }
+#endif
 
 static void dmaStreamFlush(uint32_t len)
 {
@@ -239,12 +244,14 @@ static void spi_init(void)
   // Tx DMA init
   dmaStreamAllocate(dmatx, STM32_SPI_SPI1_IRQ_PRIORITY, (stm32_dmaisr_t)spi_lld_serve_tx_interrupt, NULL);
   dmaStreamSetPeripheral(dmatx, &SPI1->DR);
+  SPI1->CR2|= SPI_CR2_TXDMAEN;    // Tx DMA enable
+#ifdef __USE_DISPLAY_DMA_RX__
   // Rx DMA init
   dmaStreamAllocate(dmarx, STM32_SPI_SPI1_IRQ_PRIORITY, (stm32_dmaisr_t)spi_lld_serve_rx_interrupt, NULL);
   dmaStreamSetPeripheral(dmarx, &SPI1->DR);
   // Enable DMA on SPI
-  SPI1->CR2|= SPI_CR2_TXDMAEN    // Tx DMA enable
-           |  SPI_CR2_RXDMAEN;   // Rx DMA enable
+  SPI1->CR2|= SPI_CR2_RXDMAEN;   // Rx DMA enable
+#endif
 #endif
   SPI1->CR1|= SPI_CR1_SPE;       //SPI enable
 }
@@ -253,7 +260,7 @@ static void spi_init(void)
 static void __attribute__ ((noinline)) send_command(uint8_t cmd, uint8_t len, const uint8_t *data)
 {
   CS_LOW;
-  //while (SPI_TX_IS_NOT_EMPTY);
+//  while (SPI_IS_BUSY);
   DC_CMD;
   SPI_WRITE_8BIT(cmd);
   // Need wait transfer complete and set data bit
@@ -348,6 +355,24 @@ void ili9341_init(void)
   }
 }
 
+void ili9341_bulk_8bit(int x, int y, int w, int h, uint16_t *palette)
+{
+  uint32_t xx = __REV16(x | ((x + w - 1) << 16));
+  uint32_t yy = __REV16(y | ((y + h - 1) << 16));
+  send_command(ILI9341_COLUMN_ADDRESS_SET, 4, (uint8_t *)&xx);
+  send_command(ILI9341_PAGE_ADDRESS_SET, 4, (uint8_t *)&yy);
+  send_command(ILI9341_MEMORY_WRITE, 0, NULL);
+
+  uint8_t *buf = (uint8_t *)spi_buffer;
+  int32_t len = w * h;
+  while (len-- > 0) {
+    uint16_t color = palette[*buf++];
+    while (SPI_TX_IS_NOT_EMPTY)
+      ;
+    SPI_WRITE_16BIT(color);
+  }
+}
+
 #ifndef __USE_DISPLAY_DMA__
 void ili9341_fill(int x, int y, int w, int h, uint16_t color)
 {
@@ -368,8 +393,8 @@ void ili9341_fill(int x, int y, int w, int h, uint16_t color)
 
 void ili9341_bulk(int x, int y, int w, int h)
 {
-  // uint8_t xx[4] = { x >> 8, x, (x+w-1) >> 8, (x+w-1) };
-  // uint8_t yy[4] = { y >> 8, y, (y+h-1) >> 8, (y+h-1) };
+//uint8_t xx[4] = { x >> 8, x, (x+w-1) >> 8, (x+w-1) };
+//uint8_t yy[4] = { y >> 8, y, (y+h-1) >> 8, (y+h-1) };
   uint16_t *buf = spi_buffer;
   uint32_t xx = __REV16(x | ((x + w - 1) << 16));
   uint32_t yy = __REV16(y | ((y + h - 1) << 16));
@@ -383,45 +408,10 @@ void ili9341_bulk(int x, int y, int w, int h)
     SPI_WRITE_16BIT(*buf++);
   }
 }
-
-static uint8_t ssp_sendrecvdata(void)
-{
-  // Start RX clock (by sending data)
-  SPI_WRITE_8BIT(0);
-  while (SPI_RX_IS_EMPTY && SPI_IS_BUSY)
-    ;
-  return SPI_READ_DATA;
-}
-
-void ili9341_read_memory(int x, int y, int w, int h, int len, uint16_t *out)
-{
-  // uint8_t xx[4] = { x >> 8, x, (x+w-1) >> 8, (x+w-1) };
-  // uint8_t yy[4] = { y >> 8, y, (y+h-1) >> 8, (y+h-1) };
-  uint32_t xx = __REV16(x | ((x + w - 1) << 16));
-  uint32_t yy = __REV16(y | ((y + h - 1) << 16));
-  send_command(ILI9341_COLUMN_ADDRESS_SET, 4, (uint8_t *)&xx);
-  send_command(ILI9341_PAGE_ADDRESS_SET, 4, (uint8_t*)&yy);
-  send_command(ILI9341_MEMORY_READ, 0, NULL);
-
-  // Skip data from rx buffer
-  while (SPI_RX_IS_NOT_EMPTY)
-    (void) SPI_READ_DATA;
-  // require 8bit dummy clock
-  ssp_sendrecvdata();
-  while (len-- > 0) {
-    // read data is always 18bit
-    uint8_t r = ssp_sendrecvdata();
-    uint8_t g = ssp_sendrecvdata();
-    uint8_t b = ssp_sendrecvdata();
-    *out++ = RGB565(r, g, b);
-  }
-  CS_HIGH;
-}
 #else
 //
 // Use DMA for send data
 //
-
 // Fill region by some color
 void ili9341_fill(int x, int y, int w, int h, uint16_t color)
 {
@@ -434,24 +424,6 @@ void ili9341_fill(int x, int y, int w, int h, uint16_t color)
   dmaStreamSetMemory0(dmatx, &color);
   dmaStreamSetMode(dmatx, txdmamode | STM32_DMA_CR_PSIZE_HWORD | STM32_DMA_CR_MSIZE_HWORD);
   dmaStreamFlush(w * h);
-}
-
-void ili9341_bulk_8bit(int x, int y, int w, int h, uint16_t *palette)
-{
-  uint32_t xx = __REV16(x | ((x + w - 1) << 16));
-  uint32_t yy = __REV16(y | ((y + h - 1) << 16));
-  send_command(ILI9341_COLUMN_ADDRESS_SET, 4, (uint8_t *)&xx);
-  send_command(ILI9341_PAGE_ADDRESS_SET, 4, (uint8_t *)&yy);
-  send_command(ILI9341_MEMORY_WRITE, 0, NULL);
-
-  uint8_t *buf = (uint8_t *)spi_buffer;
-  int32_t len = w * h;
-  while (len-- > 0) {
-    uint16_t color = palette[*buf++];
-    while (SPI_TX_IS_NOT_EMPTY)
-      ;
-    SPI_WRITE_16BIT(color);
-  }
 }
 
 // Copy spi_buffer to region
@@ -469,12 +441,50 @@ void ili9341_bulk(int x, int y, int w, int h)
                               STM32_DMA_CR_MSIZE_HWORD | STM32_DMA_CR_MINC);
   dmaStreamFlush(w * h);
 }
+#endif
 
+#ifndef __USE_DISPLAY_DMA_RX__
+static uint8_t ssp_sendrecvdata(void)
+{
+  // Start RX clock (by sending data)
+  SPI_WRITE_8BIT(0);
+  while (SPI_RX_IS_EMPTY && SPI_IS_BUSY)
+    ;
+  return SPI_READ_DATA;
+}
+
+void ili9341_read_memory(int x, int y, int w, int h, int len, uint16_t *out)
+{
+//uint8_t xx[4] = { x >> 8, x, (x+w-1) >> 8, (x+w-1) };
+//uint8_t yy[4] = { y >> 8, y, (y+h-1) >> 8, (y+h-1) };
+  uint32_t xx = __REV16(x | ((x + w - 1) << 16));
+  uint32_t yy = __REV16(y | ((y + h - 1) << 16));
+  send_command(ILI9341_COLUMN_ADDRESS_SET, 4, (uint8_t *)&xx);
+  send_command(ILI9341_PAGE_ADDRESS_SET, 4, (uint8_t*)&yy);
+  send_command(ILI9341_MEMORY_READ, 0, NULL);
+
+  // Skip data from rx buffer
+  while (SPI_RX_IS_NOT_EMPTY)
+    (void) SPI_READ_DATA;
+  // require 8bit dummy clock
+  ssp_sendrecvdata();
+  while (len-- > 0) {
+    uint8_t r, g, b;
+    // read data is always 18bit
+    r = ssp_sendrecvdata();
+    g = ssp_sendrecvdata();
+    b = ssp_sendrecvdata();
+    *out++ = RGB565(r, g, b);
+  }
+  CS_HIGH;
+}
+
+#else
 // Copy screen data to buffer
 // Warning!!! buffer size must be greater then 3*len + 1 bytes
 void ili9341_read_memory(int x, int y, int w, int h, int len, uint16_t *out)
 {
-  uint8_t dummy_tx = 0;
+  uint16_t dummy_tx = 0;
   uint8_t *rgbbuf = (uint8_t *)out;
   uint16_t data_size = len * 3 + 1;
   uint32_t xx = __REV16(x | ((x + w - 1) << 16));
@@ -540,7 +550,7 @@ void ili9341_set_rotation(uint8_t r)
 }
 
 void blit8BitWidthBitmap(uint16_t x, uint16_t y, uint16_t width, uint16_t height,
-                         const uint8_t *bitmap) 
+                         const uint8_t *bitmap)
 {
   uint16_t *buf = spi_buffer;
   for (uint16_t c = 0; c < height; c++) {
@@ -554,7 +564,7 @@ void blit8BitWidthBitmap(uint16_t x, uint16_t y, uint16_t width, uint16_t height
 }
 
 static void blit16BitWidthBitmap(uint16_t x, uint16_t y, uint16_t width, uint16_t height,
-                                 const uint16_t *bitmap) 
+                                 const uint16_t *bitmap)
 {
   uint16_t *buf = spi_buffer;
   for (uint16_t c = 0; c < height; c++) {
@@ -693,15 +703,15 @@ void ili9341_test(int mode)
   switch (mode) {
     default:
 #if 1
-    ili9341_fill(0, 0, 320, 240, 0);
-    for (y = 0; y < 240; y++) {
-      ili9341_fill(0, y, 320, 1, RGB(240-y, y, (y + 120) % 256));
+    ili9341_fill(0, 0, LCD_WIDTH, LCD_HEIGHT, 0);
+    for (y = 0; y < LCD_HEIGHT; y++) {
+      ili9341_fill(0, y, LCD_WIDTH, 1, RGB(LCD_HEIGHT-y, y, (y + 120) % 256));
     }
     break;
     case 1:
-      ili9341_fill(0, 0, 320, 240, 0);
-      for (y = 0; y < 240; y++) {
-        for (x = 0; x < 320; x++) {
+      ili9341_fill(0, 0, LCD_WIDTH, LCD_HEIGHT, 0);
+      for (y = 0; y < LCD_HEIGHT; y++) {
+        for (x = 0; x < LCD_WIDTH; x++) {
           ili9341_pixel(x, y, (y<<8)|x);
         }
       }

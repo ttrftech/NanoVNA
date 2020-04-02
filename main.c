@@ -707,7 +707,8 @@ config_t config = {
 //  .touch_cal =         { 252, 450, 111, 150 },  //4.0" LCD
   .freq_mode = FREQ_MODE_START_STOP,
   .harmonic_freq_threshold = 300000000,
-  .vbat_offset = 500
+  .vbat_offset = 500,
+  .bandwidth = BANDWIDTH_1000
 };
 
 properties_t current_props;
@@ -745,7 +746,6 @@ void load_default_properties(void)
   current_props._active_marker   = 0;
   current_props._domain_mode     = 0;
   current_props._marker_smith_format = MS_RLC;
-  current_props._bandwidth = BANDWIDTH_1000;
 //Checksum add on caldata_save
 //current_props.checksum = 0;
 }
@@ -787,8 +787,8 @@ void i2s_end_callback(I2SDriver *i2sp, size_t offset, size_t n)
   int16_t *p = &rx_buffer[offset];
   (void)i2sp;
   if (wait_count > 0){
-    if (wait_count <= bandwidth+1){
-      if (wait_count == bandwidth+1)
+    if (wait_count <= config.bandwidth+1){
+      if (wait_count == config.bandwidth+1)
         reset_dsp_accumerator();
       dsp_process(p, n);
     }
@@ -810,7 +810,7 @@ static const I2SConfig i2sconfig = {
   0                       // i2spr
 };
 
-#define DSP_START(delay) {wait_count = delay + bandwidth;}
+#define DSP_START(delay) {wait_count = delay + config.bandwidth;}
 #define DSP_WAIT_READY   while (wait_count) {if (operation_requested && break_on_operation) return false; __WFI();}
 #define DSP_WAIT         while (wait_count) {__WFI();}
 #define RESET_SWEEP      {p_sweep = 0;}
@@ -862,9 +862,9 @@ VNA_SHELL_FUNCTION(cmd_bandwidth)
 {
   if (argc != 1)
     goto result;
-  bandwidth = my_atoui(argv[0]);
+  config.bandwidth = my_atoui(argv[0]);
 result:
-  shell_printf("bandwidth %d (%dHz)\r\n", bandwidth, (AUDIO_ADC_FREQ/AUDIO_SAMPLES_COUNT)/(bandwidth+1));
+  shell_printf("bandwidth %d (%dHz)\r\n", config.bandwidth, (AUDIO_ADC_FREQ/AUDIO_SAMPLES_COUNT)/(config.bandwidth+1));
 }
 
 VNA_SHELL_FUNCTION(cmd_scan)
@@ -1322,11 +1322,11 @@ cal_collect(int type)
       return;
   }
   // Run sweep for collect data (use minimum BANDWIDTH_100, or bigger if set)
-  uint8_t bw = bandwidth;  // store current setting
+  uint8_t bw = config.bandwidth;  // store current setting
   if (bw < BANDWIDTH_100)
-    bandwidth = BANDWIDTH_100;
+    config.bandwidth = BANDWIDTH_100;
   sweep(false);
-  bandwidth = bw;          // restore
+  config.bandwidth = bw;          // restore
   // Copy calibration data
   memcpy(cal_data[dst], measured[src], sizeof measured[0]);
   redraw_request |= REDRAW_CAL_STATUS;
@@ -2085,6 +2085,7 @@ VNA_SHELL_FUNCTION(cmd_color)
 
 #ifdef ENABLE_I2C_COMMAND
 VNA_SHELL_FUNCTION(cmd_i2c){
+  (void)argc;
   uint8_t page = my_atoui(argv[0]);
   uint8_t reg  = my_atoui(argv[1]);
   uint8_t data = my_atoui(argv[2]);

@@ -623,7 +623,7 @@ static void
 menu_bandwidth_cb(int item, uint8_t data)
 {
   (void)item;
-  bandwidth = data;
+  config.bandwidth = data;
   draw_menu();
 }
 
@@ -1377,7 +1377,7 @@ menu_item_modify_attribute(const menuitem_t *menu, int item,
       *fg = config.menu_normal_color;
     }
   } else if (menu == menu_bandwidth) {
-    if (menu_bandwidth[item].data == bandwidth) {
+    if (menu_bandwidth[item].data == config.bandwidth) {
        *bg = 0x0000;
        *fg = 0xffff;
      }

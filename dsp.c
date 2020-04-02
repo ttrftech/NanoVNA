@@ -26,6 +26,7 @@ int16_t samp_buf[SAMPLE_LEN];
 int16_t ref_buf[SAMPLE_LEN];
 #endif
 
+#if 1
 const int16_t sincos_tbl[48][2] = {
   { 10533,  31029 }, { 27246,  18205 }, { 32698,  -2143 }, { 24636, -21605 },
   {  6393, -32138 }, {-14493, -29389 }, {-29389, -14493 }, {-32138,   6393 },
@@ -40,7 +41,8 @@ const int16_t sincos_tbl[48][2] = {
   { 32138,   6393 }, { 29389, -14493 }, { 14493, -29389 }, { -6393, -32138 },
   {-24636, -21605 }, {-32698,  -2143 }, {-27246,  18205 }, {-10533,  31029 }
 };
-#if 0
+#else
+int16_t sincos_tbl[AUDIO_SAMPLES_COUNT][2];
 void generate_DSP_Table(int offset){
   float audio_freq  = AUDIO_ADC_FREQ;
   // N = offset * AUDIO_SAMPLES_COUNT / audio_freq; should be integer

@@ -64,50 +64,76 @@ acc_t acc_samp_c;
 acc_t acc_ref_s;
 acc_t acc_ref_c;
 
+#if 1
 void
 dsp_process(int16_t *capture, size_t length)
 {
-  uint32_t *p = (uint32_t*)capture;
-  uint32_t len = length / 2;
-  uint32_t i;
   int32_t samp_s = 0;
   int32_t samp_c = 0;
   int32_t ref_s = 0;
   int32_t ref_c = 0;
-
-  for (i = 0; i < len; i++) {
-    uint32_t sr = *p++;
-    int16_t ref = sr & 0xffff;
-    int16_t smp = (sr>>16) & 0xffff;
+  uint32_t i = 0;
+  do{
+    int16_t ref = capture[i+0];
+    int16_t smp = capture[i+1];
 #ifdef ENABLED_DUMP
     ref_buf[i] = ref;
     samp_buf[i] = smp;
 #endif
-    int32_t s = sincos_tbl[i][0];
-    int32_t c = sincos_tbl[i][1];
-    samp_s += (smp * s)>>4;
-    samp_c += (smp * c)>>4;
-    ref_s  += (ref * s)>>4;
-    ref_c  += (ref * c)>>4;
-#if 0
-    uint32_t sc = *(uint32_t)&sincos_tbl[i];
-    samp_s = __SMLABB(sr, sc, samp_s);
-    samp_c = __SMLABT(sr, sc, samp_c);
-    ref_s = __SMLATB(sr, sc, ref_s);
-    ref_c = __SMLATT(sr, sc, ref_c);
-#endif
-  }
+    int16_t sin = ((int16_t *)sincos_tbl)[i+0];
+    int16_t cos = ((int16_t *)sincos_tbl)[i+1];
+    samp_s+= (smp * sin)>>4;
+    samp_c+= (smp * cos)>>4;
+    ref_s += (ref * sin)>>4;
+    ref_c += (ref * cos)>>4;
+    i+=2;
+  }while (i < length);
   acc_samp_s += samp_s;
   acc_samp_c += samp_c;
   acc_ref_s += ref_s;
   acc_ref_c += ref_c;
 }
 
+#else
+// Cortex M4 DSP instruction use
+#include "dsp.h"
+void
+dsp_process(int16_t *capture, size_t length)
+{
+  uint32_t i = 0;
+  int64_t samp_s = 0;
+  int64_t samp_c = 0;
+  int64_t ref_s = 0;
+  int64_t ref_c = 0;
+  do{
+    int32_t sc = ((int32_t *)sincos_tbl)[i];
+    int32_t sr = ((int32_t *)capture)[i];
+// int32_t acc DSP functions, but int32 can overflow
+//    samp_s = __smlatb(sr, sc, samp_s); // samp_s+= smp * sin
+//    samp_c = __smlatt(sr, sc, samp_c); // samp_c+= smp * cos
+//    ref_s  = __smlabb(sr, sc, ref_s);  //  ref_s+= ref * sin
+//    ref_c  = __smlabt(sr, sc, ref_c);  //  ref_s+= ref * cos
+// int64_t acc DSP functions
+    samp_s= __smlaltb(samp_s, sr, sc ); // samp_s+= smp * sin
+    samp_c= __smlaltt(samp_c, sr, sc ); // samp_c+= smp * cos
+    ref_s = __smlalbb( ref_s, sr, sc ); //  ref_s+= ref * sin
+    ref_c = __smlalbt( ref_c, sr, sc ); //  ref_s+= ref * cos
+    i++;
+  } while (i < length/2);
+// Accumulate result, for faster calc and prevent overflow reduce size to int32_t
+  acc_samp_s+= (int32_t)(samp_s>>3);
+  acc_samp_c+= (int32_t)(samp_c>>3);
+  acc_ref_s += (int32_t)( ref_s>>3);
+  acc_ref_c += (int32_t)( ref_c>>3);
+}
+#endif
+
 void
 calculate_gamma(float gamma[2])
 {
 #if 1
   // calculate reflection coeff. by samp divide by ref
+#if 0
   float rs = acc_ref_s;
   float rc = acc_ref_c;
   float rr = rs * rs + rc * rc;
@@ -116,6 +142,14 @@ calculate_gamma(float gamma[2])
   float sc = acc_samp_c;
   gamma[0] =  (sc * rc + ss * rs) / rr;
   gamma[1] =  (ss * rc - sc * rs) / rr;
+#else
+  float rs_rc = (float) acc_ref_s / acc_ref_c;
+  float sc_rc = (float)acc_samp_c / acc_ref_c;
+  float ss_rc = (float)acc_samp_s / acc_ref_c;
+  float rr = rs_rc * rs_rc + 1.0;
+  gamma[0] = (sc_rc + ss_rc*rs_rc) / rr;
+  gamma[1] = (ss_rc - sc_rc*rs_rc) / rr;
+#endif
 #elif 0
   gamma[0] =  acc_samp_s;
   gamma[1] =  acc_samp_c;

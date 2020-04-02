@@ -412,6 +412,10 @@ si5351_set_frequency(uint32_t freq, uint8_t drive_strength)
   } else if (freq >= config.harmonic_freq_threshold) {
      mul = 3;
     omul = 5;
+  } else if (freq <= 50000U) {
+    rdiv = SI5351_R_DIV_128;
+     freq<<= 7;
+    ofreq<<= 7;
   } else if (freq <= 500000U) {
     rdiv = SI5351_R_DIV_64;
      freq<<= 6;

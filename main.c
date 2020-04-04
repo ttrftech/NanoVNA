@@ -858,19 +858,23 @@ bool sweep(bool break_on_operation)
   return true;
 }
 
+uint32_t get_bandwidth_frequency(void){
+  return (AUDIO_ADC_FREQ/AUDIO_SAMPLES_COUNT)/(config.bandwidth+1);
+}
+
 VNA_SHELL_FUNCTION(cmd_bandwidth)
 {
   if (argc != 1)
     goto result;
   config.bandwidth = my_atoui(argv[0]);
 result:
-  shell_printf("bandwidth %d (%dHz)\r\n", config.bandwidth, (AUDIO_ADC_FREQ/AUDIO_SAMPLES_COUNT)/(config.bandwidth+1));
+  shell_printf("bandwidth %d (%uHz)\r\n", config.bandwidth, get_bandwidth_frequency());
 }
 
 VNA_SHELL_FUNCTION(cmd_scan)
 {
   uint32_t start, stop;
-  int16_t points = sweep_points;
+  uint16_t points = sweep_points;
   int i;
   if (argc < 2 || argc > 4) {
     shell_printf("usage: scan {start(Hz)} {stop(Hz)} [points] [outmask]\r\n");
@@ -884,8 +888,8 @@ VNA_SHELL_FUNCTION(cmd_scan)
       return;
   }
   if (argc >= 3) {
-    points = my_atoi(argv[2]);
-    if (points <= 0 || points > POINTS_COUNT) {
+    points = my_atoui(argv[2]);
+    if (points == 0 || points > POINTS_COUNT) {
       shell_printf("sweep points exceeds range "define_to_STR(POINTS_COUNT)"\r\n");
       return;
     }
@@ -933,7 +937,7 @@ update_marker_index(void)
           markers[m].index = f < (frequencies[i] / 2 + frequencies[i + 1] / 2) ? i : i + 1;
           break;
         }
-      }      
+      }
     }
   }
 }
@@ -1070,7 +1074,7 @@ get_sweep_frequency(int type)
 VNA_SHELL_FUNCTION(cmd_sweep)
 {
   if (argc == 0) {
-    shell_printf("%d %d %d\r\n", get_sweep_frequency(ST_START), get_sweep_frequency(ST_STOP), sweep_points);
+    shell_printf("%u %u %d\r\n", get_sweep_frequency(ST_START), get_sweep_frequency(ST_STOP), sweep_points);
     return;
   } else if (argc > 3) {
     goto usage;

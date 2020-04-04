@@ -22,6 +22,8 @@
 #include "nanovna.h"
 #include <string.h>
 
+int16_t lastsaveid = 0;
+
 static int flash_wait_for_last_operation(void)
 {
   while (FLASH->SR == FLASH_SR_BSY) {
@@ -75,9 +77,6 @@ checksum(const void *start, size_t len)
   return value;
 }
 
-
-#define FLASH_PAGESIZE 0x800
-
 const uint32_t save_config_area = SAVE_CONFIG_ADDR;
 
 int
@@ -120,25 +119,16 @@ config_recall(void)
   return 0;
 }
 
-const uint32_t saveareas[SAVEAREA_MAX] = {
-  SAVE_PROP_CONFIG_0_ADDR,
-  SAVE_PROP_CONFIG_1_ADDR,
-  SAVE_PROP_CONFIG_2_ADDR,
-  SAVE_PROP_CONFIG_3_ADDR,
-  SAVE_PROP_CONFIG_4_ADDR };
-
-int16_t lastsaveid = 0;
-
 int
-caldata_save(int id)
+caldata_save(uint32_t id)
 {
+  if (id >= SAVEAREA_MAX)
+    return -1;
   uint16_t *src = (uint16_t*)&current_props;
   uint16_t *dst;
   int count = sizeof(properties_t) / sizeof(uint16_t);
 
-  if (id < 0 || id >= SAVEAREA_MAX)
-    return -1;
-  dst = (uint16_t*)saveareas[id];
+  dst = (uint16_t*)(SAVE_PROP_CONFIG_ADDR + id * SAVE_PROP_CONFIG_SIZE);
 
   current_props.magic = CONFIG_MAGIC;
   current_props.checksum = checksum(
@@ -161,23 +151,22 @@ caldata_save(int id)
   }
 
   /* after saving data, make active configuration points to flash */
-  active_props = (properties_t*)saveareas[id];
+  active_props = (properties_t*)(SAVE_PROP_CONFIG_ADDR + id * SAVE_PROP_CONFIG_SIZE);
   lastsaveid = id;
 
   return 0;
 }
 
 int
-caldata_recall(int id)
+caldata_recall(uint32_t id)
 {
+  if (id >= SAVEAREA_MAX)
+    return -1;
   properties_t *src;
   void *dst = &current_props;
 
-  if (id < 0 || id >= SAVEAREA_MAX)
-    goto load_default;
-
   // point to saved area on the flash memory
-  src = (properties_t*)saveareas[id];
+  src = (properties_t*)(SAVE_PROP_CONFIG_ADDR + id * SAVE_PROP_CONFIG_SIZE);
 
   if (src->magic != CONFIG_MAGIC)
     goto load_default;
@@ -197,12 +186,13 @@ load_default:
 }
 
 const properties_t *
-caldata_ref(int id)
+caldata_ref(uint32_t id)
 {
-  const properties_t *src;
-  if (id < 0 || id >= SAVEAREA_MAX)
+  if (id >= SAVEAREA_MAX)
     return NULL;
-  src = (const properties_t*)saveareas[id];
+  const properties_t *src;
+
+  src = (const properties_t*)(SAVE_PROP_CONFIG_ADDR + id * SAVE_PROP_CONFIG_SIZE);
 
   if (src->magic != CONFIG_MAGIC)
     return NULL;
@@ -211,8 +201,6 @@ caldata_ref(int id)
   return src;
 }
 
-const uint32_t save_config_prop_area_size = SAVE_CONFIG_AREA_SIZE;
-
 void
 clear_all_config_prop_data(void)
 {
@@ -220,7 +208,7 @@ clear_all_config_prop_data(void)
 
   /* erase flash pages */
   void *p = (void*)save_config_area;
-  void *tail = p + save_config_prop_area_size;
+  void *tail = p + SAVE_FULL_AREA_SIZE;
   while (p < tail) {
     flash_erase_page((uint32_t)p);
     p += FLASH_PAGESIZE;

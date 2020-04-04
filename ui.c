@@ -624,6 +624,7 @@ menu_bandwidth_cb(int item, uint8_t data)
 {
   (void)item;
   config.bandwidth = data;
+  draw_frequencies();
   draw_menu();
 }
 
@@ -1382,7 +1383,7 @@ menu_item_modify_attribute(const menuitem_t *menu, int item,
        *fg = 0xffff;
      }
   } else if (menu == menu_transform) {
-      if ((item == 0 && (domain_mode & DOMAIN_MODE) == DOMAIN_TIME)
+    if ((item == 0 && (domain_mode & DOMAIN_MODE) == DOMAIN_TIME)
        || (item == 1 && (domain_mode & TD_FUNC) == TD_FUNC_LOWPASS_IMPULSE)
        || (item == 2 && (domain_mode & TD_FUNC) == TD_FUNC_LOWPASS_STEP)
        || (item == 3 && (domain_mode & TD_FUNC) == TD_FUNC_BANDPASS)

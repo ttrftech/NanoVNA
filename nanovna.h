@@ -99,6 +99,7 @@ enum stimulus_type {
 
 void set_sweep_frequency(int type, uint32_t frequency);
 uint32_t get_sweep_frequency(int type);
+uint32_t get_bandwidth_frequency(void);
 
 double my_atof(const char *p);
 
@@ -157,6 +158,7 @@ extern void tlv320aic3204_select(int channel);
 
 #define FREQUENCIES_XPOS1 OFFSETX
 #define FREQUENCIES_XPOS2 200
+#define FREQUENCIES_XPOS3 140
 #define FREQUENCIES_YPOS  (240-7)
 
 // GRIDX calculated depends from frequency span
@@ -199,10 +201,8 @@ extern const uint16_t numfont16x22[];
 #define S_PI    "\034"
 #define S_MICRO "\035"
 #define S_OHM   "\036"
+
 // trace 
-
-#define TRACES_MAX 4
-
 #define MAX_TRACE_TYPE 12
 enum trace_type {
   TRC_LOGMAG=0, TRC_PHASE, TRC_DELAY, TRC_SMITH, TRC_POLAR, TRC_LINEAR, TRC_SWR, TRC_REAL, TRC_IMAG, TRC_R, TRC_X, TRC_OFF
@@ -219,7 +219,7 @@ enum trace_type {
 
 // Electrical Delay
 // Phase
-
+#define TRACES_MAX 4
 typedef struct trace {
   uint8_t enabled;
   uint8_t type;
@@ -228,6 +228,17 @@ typedef struct trace {
   float scale;
   float refpos;
 } trace_t;
+
+// marker
+#define MARKERS_MAX 4
+typedef struct marker {
+  int8_t enabled;
+  int16_t index;
+  uint32_t frequency;
+} marker_t;
+
+extern int8_t previous_marker;
+extern int8_t marker_tracking;
 
 #define FREQ_MODE_START_STOP    0x0
 #define FREQ_MODE_CENTER_SPAN   0x1
@@ -251,6 +262,33 @@ typedef struct config {
 
 extern config_t config;
 
+typedef struct properties {
+  uint32_t magic;
+  uint32_t _frequency0;
+  uint32_t _frequency1;
+  uint16_t _sweep_points;
+  uint16_t _cal_status;
+
+  uint32_t _frequencies[POINTS_COUNT];
+  float _cal_data[5][POINTS_COUNT][2];
+  float _electrical_delay; // picoseconds
+
+  trace_t _trace[TRACES_MAX];
+  marker_t _markers[MARKERS_MAX];
+
+  float _velocity_factor; // %
+  int8_t _active_marker;
+  uint8_t _domain_mode; /* 0bxxxxxffm : where ff: TD_FUNC m: DOMAIN_MODE */
+  uint8_t _marker_smith_format;
+  uint8_t _reserved[51];
+  uint32_t checksum;
+} properties_t;
+
+//sizeof(properties_t) == 0x1200
+
+extern properties_t *active_props;
+extern properties_t current_props;
+
 void set_trace_type(int t, int type);
 void set_trace_channel(int t, int channel);
 void set_trace_scale(int t, float scale);
@@ -262,19 +300,6 @@ const char *get_trace_typename(int t);
 void set_electrical_delay(float picoseconds);
 float get_electrical_delay(void);
 float groupdelay_from_array(int i, float array[POINTS_COUNT][2]);
-
-// marker
-
-#define MARKERS_MAX 4
-
-typedef struct marker {
-  int8_t enabled;
-  int16_t index;
-  uint32_t frequency;
-} marker_t;
-
-extern int8_t previous_marker;
-extern int8_t marker_tracking;
 
 void plot_init(void);
 void update_grid(void);
@@ -364,47 +389,26 @@ void show_logo(void);
 /*
  * flash.c
  */
+
+#define FLASH_PAGESIZE 0x800
+
 #define SAVEAREA_MAX 5
-// Begin addr                   0x08018000
-#define SAVE_CONFIG_AREA_SIZE   0x00008000
-// config save area
+
+// Depand from config_t size, should be aligned by FLASH_PAGESIZE
+#define SAVE_CONFIG_SIZE        0x00000800
+// Depend from properties_t size, should be aligned by FLASH_PAGESIZE
+#define SAVE_PROP_CONFIG_SIZE   0x00001800
+
+// Save config_t and properties_t flash area (see flash7  : org = 0x08018000, len = 32k from *.ld settings)
+// Properties save area follow after config
+// len = SAVE_CONFIG_SIZE + SAVEAREA_MAX * SAVE_PROP_CONFIG_SIZE   0x00008000  32k
 #define SAVE_CONFIG_ADDR        0x08018000
-// properties_t save area
-#define SAVE_PROP_CONFIG_0_ADDR 0x08018800
-#define SAVE_PROP_CONFIG_1_ADDR 0x0801a000
-#define SAVE_PROP_CONFIG_2_ADDR 0x0801b800
-#define SAVE_PROP_CONFIG_3_ADDR 0x0801d000
-#define SAVE_PROP_CONFIG_4_ADDR 0x0801e800
-
-typedef struct properties {
-  uint32_t magic;
-  uint32_t _frequency0;
-  uint32_t _frequency1;
-  uint16_t _sweep_points;
-  uint16_t _cal_status;
-
-  uint32_t _frequencies[POINTS_COUNT];
-  float _cal_data[5][POINTS_COUNT][2];
-  float _electrical_delay; // picoseconds
-  
-  trace_t _trace[TRACES_MAX];
-  marker_t _markers[MARKERS_MAX];
-
-  float _velocity_factor; // %
-  int8_t _active_marker;
-  uint8_t _domain_mode; /* 0bxxxxxffm : where ff: TD_FUNC m: DOMAIN_MODE */
-  uint8_t _marker_smith_format;
-  uint8_t _reserved[51];
-  uint32_t checksum;
-} properties_t;
-
-//sizeof(properties_t) == 0x1200
+#define SAVE_PROP_CONFIG_ADDR   (SAVE_CONFIG_ADDR + SAVE_CONFIG_SIZE)
+#define SAVE_FULL_AREA_SIZE     (SAVE_CONFIG_SIZE + SAVEAREA_MAX * SAVE_PROP_CONFIG_SIZE)
 
 #define CONFIG_MAGIC 0x434f4e45 /* 'CONF' */
 
 extern int16_t lastsaveid;
-extern properties_t *active_props;
-extern properties_t current_props;
 
 #define frequency0 current_props._frequency0
 #define frequency1 current_props._frequency1
@@ -425,9 +429,9 @@ extern properties_t current_props;
 #define FREQ_IS_CENTERSPAN() (config.freq_mode&FREQ_MODE_CENTER_SPAN)
 #define FREQ_IS_CW() (frequency0 == frequency1)
 
-int caldata_save(int id);
-int caldata_recall(int id);
-const properties_t *caldata_ref(int id);
+int caldata_save(uint32_t id);
+int caldata_recall(uint32_t id);
+const properties_t *caldata_ref(uint32_t id);
 
 int config_save(void);
 int config_recall(void);

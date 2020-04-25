@@ -474,7 +474,7 @@ swr(const float *v)
 }
 
 static float
-resitance(const float *v)
+resistance(const float *v)
 {
   float z0 = 50;
   float d = z0 / ((1-v[0])*(1-v[0])+v[1]*v[1]);
@@ -514,22 +514,6 @@ groupdelay_from_array(int i, float array[POINTS_COUNT][2])
   return groupdelay(array[bottom], array[top], deltaf);
 }
 
-static float
-gamma2resistance(const float v[2])
-{
-  float z0 = 50;
-  float d = z0 / ((1-v[0])*(1-v[0])+v[1]*v[1]);
-  return ((1+v[0])*(1-v[0]) - v[1]*v[1]) * d;
-}
-
-static float
-gamma2reactance(const float v[2])
-{
-  float z0 = 50;
-  float d = z0 / ((1-v[0])*(1-v[0])+v[1]*v[1]);
-  return 2*v[1] * d;
-}
-
 static index_t
 trace_into_index(int t, int i, float array[POINTS_COUNT][2])
 {
@@ -562,7 +546,7 @@ trace_into_index(int t, int i, float array[POINTS_COUNT][2])
     v-= coeff[1] * scale;
     break;
   case TRC_R:
-    v-= resitance(coeff) * scale;
+    v-= resistance(coeff) * scale;
     break;
   case TRC_X:
     v-= reactance(coeff) * scale;
@@ -663,11 +647,11 @@ trace_get_value_string(int t, char *buf, int len, float array[POINTS_COUNT][2], 
     break;
   case TRC_R:
     format = "%.2F"S_OHM;
-    v = gamma2resistance(coeff);
+    v = resistance(coeff);
     break;
   case TRC_X:
     format = "%.2F"S_OHM;
-    v = gamma2reactance(coeff);
+    v = reactance(coeff);
     break;
   case TRC_SMITH:
     format_smith_value(buf, len, coeff, frequencies[i]);
@@ -723,11 +707,11 @@ trace_get_value_string_delta(int t, char *buf, int len, float array[POINTS_COUNT
     break;
   case TRC_R:
     format = "%.2F"S_OHM;
-    v = gamma2resistance(coeff);
+    v = resistance(coeff);
     break;
   case TRC_X:
     format = "%.2F"S_OHM;
-    v = gamma2reactance(coeff);
+    v = reactance(coeff);
     break;
   //case TRC_ADMIT:
   case TRC_POLAR:
@@ -1666,7 +1650,7 @@ draw_cal_status(void)
 
 // Draw battery level
 #define BATTERY_TOP_LEVEL       4100
-#define BATTERY_BOTTOM_LEVEL    3100
+#define BATTERY_BOTTOM_LEVEL    3200
 #define BATTERY_WARNING_LEVEL   3300
 
 static void draw_battery_status(void)
@@ -1683,16 +1667,19 @@ static void draw_battery_status(void)
   // Prepare battery bitmap image
   // Battery top
   int x = 0;
+  string_buf[x++] = 0b00000000;
   string_buf[x++] = 0b00111100;
-  string_buf[x++] = 0b00100100;
+  string_buf[x++] = 0b00111100;
   string_buf[x++] = 0b11111111;
-//  string_buf[x++] = 0b10000001;
   // Fill battery status
-  for (int power=BATTERY_TOP_LEVEL; power > BATTERY_BOTTOM_LEVEL; power-=100)
+  for (int power=BATTERY_TOP_LEVEL; power > BATTERY_BOTTOM_LEVEL; ){
+    if ((x&3) == 0) {string_buf[x++] = 0b10000001; continue;}
     string_buf[x++] = (power > vbat) ? 0b10000001 : // Empty line
-                                       0b11111111;  // Full line
+                                       0b10111101;  // Full line
+    power-=100;
+  }
   // Battery bottom
-//  string_buf[x++] = 0b10000001;
+  string_buf[x++] = 0b10000001;
   string_buf[x++] = 0b11111111;
   // Draw battery
   blit8BitWidthBitmap(1, 1, 8, x, string_buf);

@@ -103,6 +103,7 @@ static uint16_t p_sweep = 0;
 static int16_t rx_buffer[AUDIO_BUFFER_LEN * 2];
 // Sweep measured data
 float measured[2][POINTS_COUNT][2];
+uint32_t frequencies[POINTS_COUNT];
 
 // Version text, displayed in Config->Version menu, also send by info command
 const char *info_about[]={
@@ -744,7 +745,6 @@ void load_default_properties(void)
   current_props._sweep_points = POINTS_COUNT;
   current_props._cal_status   = 0;
 //This data not loaded by default
-//current_props._frequencies[POINTS_COUNT];
 //current_props._cal_data[5][POINTS_COUNT][2];
 //=============================================
   current_props._electrical_delay = 0.0;
@@ -756,6 +756,12 @@ void load_default_properties(void)
   current_props._marker_smith_format = MS_RLC;
 //Checksum add on caldata_save
 //current_props.checksum = 0;
+}
+
+int load_properties(uint32_t id){
+  int r = caldata_recall(id);
+  update_frequencies();
+  return r;
 }
 
 void
@@ -1447,16 +1453,17 @@ static void
 cal_interpolate(int s)
 {
   const properties_t *src = caldata_ref(s);
-  int i, j;
+  uint32_t i, j;
   int eterm;
   if (src == NULL)
     return;
 
   ensure_edit_config();
 
+  uint32_t src_f = src->_frequency0;
   // lower than start freq of src range
   for (i = 0; i < sweep_points; i++) {
-    if (frequencies[i] >= src->_frequencies[0])
+    if (frequencies[i] >= src_f)
       break;
 
     // fill cal_data at head of src range
@@ -1466,31 +1473,51 @@ cal_interpolate(int s)
     }
   }
 
+  // ReBuild src freq list
+  uint32_t src_points = (src->_sweep_points - 1);
+  uint32_t span = src->_frequency1 - src->_frequency0;
+  uint32_t delta = span / src_points;
+  uint32_t error = span % src_points;
+  uint32_t df = src_points>>1;
   j = 0;
   for (; i < sweep_points; i++) {
     uint32_t f = frequencies[i];
     if (f == 0) goto interpolate_finish;
-    for (; j < src->_sweep_points-1; j++) {
-      if (src->_frequencies[j] <= f && f < src->_frequencies[j+1]) {
+    for (; j < src_points; j++) {
+      if (src_f <= f && f < src_f + delta) {
         // found f between freqs at j and j+1
-        float k1 = (float)(f - src->_frequencies[j])
-                        / (src->_frequencies[j+1] - src->_frequencies[j]);
-
+        float k1 = (delta == 0) ? 0.0 : (float)(f - src_f) / delta;
         // avoid glitch between freqs in different harmonics mode
-        if (IS_HARMONIC_MODE(src->_frequencies[j]) != IS_HARMONIC_MODE(src->_frequencies[j+1])) {
-          // assume f[j] < f[j+1]
-          k1 = IS_HARMONIC_MODE(f) ? 1.0 : 0.0;
+        uint16_t idx = j;
+        if (si5351_get_harmonic_lvl(src_f) != si5351_get_harmonic_lvl(src_f+delta)) {
+          // f in prev harmonic, need extrapolate from prev 2 points
+          if (si5351_get_harmonic_lvl(f) == si5351_get_harmonic_lvl(src_f)){
+            if (idx >=1){
+              idx--; k1+= 1.0;
+            }
+            else // point limit
+              k1 = 0.0;
+          }
+          // f in next harmonic, need extrapolate from next 2 points
+          else {
+            if (idx<src_points){
+              idx++; k1-=1.0;
+            }
+            else // point limit
+              k1 = 1.0;
+          }
         }
-
         float k0 = 1.0 - k1;
         for (eterm = 0; eterm < 5; eterm++) {
-          cal_data[eterm][i][0] = src->_cal_data[eterm][j][0] * k0 + src->_cal_data[eterm][j+1][0] * k1;
-          cal_data[eterm][i][1] = src->_cal_data[eterm][j][1] * k0 + src->_cal_data[eterm][j+1][1] * k1;
+          cal_data[eterm][i][0] = src->_cal_data[eterm][idx][0] * k0 + src->_cal_data[eterm][idx+1][0] * k1;
+          cal_data[eterm][i][1] = src->_cal_data[eterm][idx][1] * k0 + src->_cal_data[eterm][idx+1][1] * k1;
         }
         break;
       }
+      df+=error;if (df >=src_points) {src_f++;df -= src_points;}
+      src_f+=delta;
     }
-    if (j == src->_sweep_points-1)
+    if (j == src_points)
       break;
   }
 
@@ -1498,8 +1525,8 @@ cal_interpolate(int s)
   for (; i < sweep_points; i++) {
     // fill cal_data at tail of src
     for (eterm = 0; eterm < 5; eterm++) {
-      cal_data[eterm][i][0] = src->_cal_data[eterm][src->_sweep_points-1][0];
-      cal_data[eterm][i][1] = src->_cal_data[eterm][src->_sweep_points-1][1];
+      cal_data[eterm][i][0] = src->_cal_data[eterm][src_points][0];
+      cal_data[eterm][i][1] = src->_cal_data[eterm][src_points][1];
     }
   }
 interpolate_finish:
@@ -1592,9 +1619,8 @@ VNA_SHELL_FUNCTION(cmd_recall)
   if (id < 0 || id >= SAVEAREA_MAX)
     goto usage;
   // Check for success
-  if (caldata_recall(id) == -1)
+  if (load_properties(id) == -1)
     shell_printf("Err, default load\r\n");
-  update_frequencies();
   redraw_request |= REDRAW_CAL_STATUS;
   return;
  usage:
@@ -2473,7 +2499,7 @@ int main(void)
 /* restore config */
   config_recall();
 /* restore frequencies and calibration 0 slot properties from flash memory */
-  caldata_recall(0);
+  load_properties(0);
 
   dac1cfg1.init = config.dac_value;
 /*
@@ -2482,8 +2508,6 @@ int main(void)
  */
   dacStart(&DACD2, &dac1cfg1);
 
-/* initial frequencies */
-  update_frequencies();
 
 /*
  * I2S Initialize

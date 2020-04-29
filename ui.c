@@ -467,7 +467,7 @@ static void
 menu_recall_cb(int item, uint8_t data)
 {
   (void)item;
-  caldata_recall(data);
+  load_properties(data);
   menu_move_back();
   ui_mode_normal();
   update_grid();
@@ -1028,6 +1028,7 @@ const menuitem_t menu_config[] = {
   { MT_CALLBACK, 0, "TOUCH CAL", menu_config_cb },
   { MT_CALLBACK, 0, "TOUCH TEST", menu_config_cb },
   { MT_CALLBACK, 0, "SAVE", menu_config_save_cb },
+  { MT_SUBMENU,  0, "\2SWEEP\0POINTS", menu_sweep_points },
   { MT_CALLBACK, 0, "VERSION", menu_config_cb },
   { MT_SUBMENU, 0, S_RARROW"DFU", menu_dfu },
   { MT_CANCEL, 0, S_LARROW" BACK", NULL },

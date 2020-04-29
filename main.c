@@ -85,13 +85,12 @@ static void transform_domain(void);
 static  int32_t my_atoi(const char *p);
 static uint32_t my_atoui(const char *p);
 
-#define DRIVE_STRENGTH_AUTO (-1)
 #define FREQ_HARMONICS (config.harmonic_freq_threshold)
-#define IS_HARMONIC_MODE(f) ((f) > FREQ_HARMONICS)
+
 // Obsolete, always use interpolate
 #define  cal_auto_interpolate  TRUE
 
-static int8_t drive_strength = DRIVE_STRENGTH_AUTO;
+static uint8_t drive_strength = SI5351_CLK_DRIVE_STRENGTH_8MA;
 int8_t sweep_mode = SWEEP_ENABLE;
 volatile uint8_t redraw_request = 0; // contains REDRAW_XXX flags
 
@@ -336,27 +335,23 @@ VNA_SHELL_FUNCTION(cmd_reset)
     ;
 }
 
-const int8_t gain_table[] = {
-  0,  // 0 ~ 300MHz
-  40, // 300 ~ 600MHz
-  50, // 600 ~ 900MHz
-  75, // 900 ~ 1200MHz
-  85, // 1200 ~ 1500MHz
-  95, // 1500MHz ~
-  95, // 1800MHz ~
-  95, // 2100MHz ~
-  95  // 2400MHz ~
+const uint8_t gain_table[][2] = {
+    {  0,  0 },     // 1st:    0 ~  300MHz
+    { 40, 40 },     // 2nd:  300 ~  900MHz
+    { 75, 75 },     // 3th:  900 ~ 1500MHz
+    { 85, 85 },     // 4th: 1500 ~ 1800MHz
+    { 95, 95 },     // 5th: 2100 ~ 2400MHz
 };
 
-#define DELAY_GAIN_CHANGE 2
+#define DELAY_GAIN_CHANGE 4
 
 static int
 adjust_gain(uint32_t newfreq)
 {
-  int new_order = newfreq / FREQ_HARMONICS;
-  int old_order = si5351_get_frequency() / FREQ_HARMONICS;
+  int new_order = si5351_get_harmonic_lvl(newfreq);
+  int old_order = si5351_get_harmonic_lvl(si5351_get_frequency());
   if (new_order != old_order) {
-    tlv320aic3204_set_gain(gain_table[new_order], gain_table[new_order]);
+    tlv320aic3204_set_gain(gain_table[new_order][0], gain_table[new_order][1]);
     return DELAY_GAIN_CHANGE;
   }
   return 0;
@@ -365,10 +360,7 @@ adjust_gain(uint32_t newfreq)
 int set_frequency(uint32_t freq)
 {
   int delay = adjust_gain(freq);
-  int8_t ds = drive_strength;
-  if (ds == DRIVE_STRENGTH_AUTO) {
-    ds = freq > FREQ_HARMONICS ? SI5351_CLK_DRIVE_STRENGTH_8MA : SI5351_CLK_DRIVE_STRENGTH_2MA;
-  }
+  uint8_t ds = drive_strength;
   delay += si5351_set_frequency(freq, ds);
   return delay;
 }
@@ -495,7 +487,9 @@ VNA_SHELL_FUNCTION(cmd_offset)
     return;
   }
   int32_t offset = my_atoi(argv[0]);
-//  generate_DSP_Table(offset);
+#ifdef USE_VARIABLE_OFFSET
+  generate_DSP_Table(offset);
+#endif
   si5351_set_frequency_offset(offset);
 }
 
@@ -516,10 +510,10 @@ usage:
 VNA_SHELL_FUNCTION(cmd_power)
 {
   if (argc != 1) {
-    shell_printf("usage: power {0-3|-1}\r\n");
+    shell_printf("usage: power {0-3}\r\n");
     return;
   }
-  drive_strength = my_atoi(argv[0]);
+  drive_strength = my_atoui(argv[0]);
 //  set_frequency(frequency);
 }
 
@@ -715,7 +709,7 @@ config_t config = {
   .touch_cal =         { 338, 522, 153, 192 },  // 2.8 inch LCD panel
 //  .touch_cal =         { 252, 450, 111, 150 },  //4.0" LCD
   .freq_mode = FREQ_MODE_START_STOP,
-  .harmonic_freq_threshold = 300000000,
+  .harmonic_freq_threshold = FREQUENCY_THRESHOLD,
   .vbat_offset = 500,
   .bandwidth = BANDWIDTH_1000
 };
@@ -732,7 +726,7 @@ static const trace_t def_trace[TRACES_MAX] = {//enable, type, channel, reserved,
 };
 
 static const marker_t def_markers[MARKERS_MAX] = {
-  { 1, 30, 0 }, { 0, 40, 0 }, { 0, 60, 0 }, { 0, 80, 0 }
+  { 1, 0, 30, 0 }, { 0, 0, 40, 0 }, { 0, 0, 60, 0 }, { 0, 0, 80, 0 }
 };
 
 // Load propeties default settings
@@ -2016,16 +2010,20 @@ VNA_SHELL_FUNCTION(cmd_test)
 
 VNA_SHELL_FUNCTION(cmd_gain)
 {
-  int rvalue;
+  int rvalue = 0;
   int lvalue = 0;
-  if (argc != 1 && argc != 2) {
-    shell_printf("usage: gain {lgain(0-95)} [rgain(0-95)]\r\n");
+  int idx = 0;
+  if (argc < 1 && argc > 3) {
+    shell_printf("usage: gain idx {lgain(0-95)} [rgain(0-95)]\r\n");
     return;
   }
-  rvalue = my_atoi(argv[0]);
-  if (argc == 2) 
-    lvalue = my_atoi(argv[1]);
+  idx = my_atoui(argv[0]);
+  lvalue = rvalue = my_atoui(argv[1]);
+  if (argc == 3)
+    rvalue = my_atoui(argv[2]);
   tlv320aic3204_set_gain(lvalue, rvalue);
+//  gain_table[idx][0] = lvalue;
+//  gain_table[idx][1] = rvalue;
 }
 
 VNA_SHELL_FUNCTION(cmd_port)
@@ -2187,16 +2185,14 @@ VNA_SHELL_FUNCTION(cmd_color)
 
 #ifdef ENABLE_I2C_COMMAND
 VNA_SHELL_FUNCTION(cmd_i2c){
-  (void)argc;
+  if (argc != 3) {
+    shell_printf("usage: i2c page reg data\r\n");
+    return;
+  }
   uint8_t page = my_atoui(argv[0]);
   uint8_t reg  = my_atoui(argv[1]);
   uint8_t data = my_atoui(argv[2]);
-  uint8_t d1[] = {0x00, page};
-  uint8_t d2[] = { reg, data};
-  i2cAcquireBus(&I2CD1);
-  (void)i2cMasterTransmitTimeout(&I2CD1, 0x18, d1, 2, NULL, 0, 1000);
-  (void)i2cMasterTransmitTimeout(&I2CD1, 0x18, d2, 2, NULL, 0, 1000);
-  i2cReleaseBus(&I2CD1);
+  tlv320aic3204_write_reg(page, reg, data);
 }
 #endif
 
@@ -2468,7 +2464,9 @@ int main(void)
 {
   halInit();
   chSysInit();
-//  generate_DSP_Table(FREQUENCY_OFFSET);
+#ifdef USE_VARIABLE_OFFSET
+  generate_DSP_Table(FREQUENCY_OFFSET);
+#endif
   //palSetPadMode(GPIOB, 8, PAL_MODE_ALTERNATE(1) | PAL_STM32_OTYPE_OPENDRAIN);
   //palSetPadMode(GPIOB, 9, PAL_MODE_ALTERNATE(1) | PAL_STM32_OTYPE_OPENDRAIN);
   i2cStart(&I2CD1, &i2ccfg);

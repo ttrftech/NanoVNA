@@ -934,8 +934,9 @@ const menuitem_t menu_transform[] = {
 };
 
 const menuitem_t menu_bandwidth[] = {
+  { MT_CALLBACK, BANDWIDTH_2000, "2 kHz", menu_bandwidth_cb },
   { MT_CALLBACK, BANDWIDTH_1000, "1 kHz", menu_bandwidth_cb },
-  { MT_CALLBACK, BANDWIDTH_300, "300 Hz", menu_bandwidth_cb },
+  { MT_CALLBACK, BANDWIDTH_333, "333 Hz", menu_bandwidth_cb },
   { MT_CALLBACK, BANDWIDTH_100, "100 Hz", menu_bandwidth_cb },
   { MT_CALLBACK, BANDWIDTH_30,   "30 Hz", menu_bandwidth_cb },
   { MT_CALLBACK, BANDWIDTH_10,   "10 Hz", menu_bandwidth_cb },

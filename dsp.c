@@ -26,22 +26,7 @@ int16_t samp_buf[SAMPLE_LEN];
 int16_t ref_buf[SAMPLE_LEN];
 #endif
 
-#if 1
-const int16_t sincos_tbl[48][2] = {
-  { 10533,  31029 }, { 27246,  18205 }, { 32698,  -2143 }, { 24636, -21605 },
-  {  6393, -32138 }, {-14493, -29389 }, {-29389, -14493 }, {-32138,   6393 },
-  {-21605,  24636 }, { -2143,  32698 }, { 18205,  27246 }, { 31029,  10533 },
-  { 31029, -10533 }, { 18205, -27246 }, { -2143, -32698 }, {-21605, -24636 },
-  {-32138,  -6393 }, {-29389,  14493 }, {-14493,  29389 }, {  6393,  32138 },
-  { 24636,  21605 }, { 32698,   2143 }, { 27246, -18205 }, { 10533, -31029 },
-  {-10533, -31029 }, {-27246, -18205 }, {-32698,   2143 }, {-24636,  21605 },
-  { -6393,  32138 }, { 14493,  29389 }, { 29389,  14493 }, { 32138,  -6393 },
-  { 21605, -24636 }, { 2143,  -32698 }, {-18205, -27246 }, {-31029, -10533 },
-  {-31029,  10533 }, {-18205,  27246 }, {  2143,  32698 }, { 21605,  24636 },
-  { 32138,   6393 }, { 29389, -14493 }, { 14493, -29389 }, { -6393, -32138 },
-  {-24636, -21605 }, {-32698,  -2143 }, {-27246,  18205 }, {-10533,  31029 }
-};
-#else
+#ifdef USE_VARIABLE_OFFSET
 int16_t sincos_tbl[AUDIO_SAMPLES_COUNT][2];
 void generate_DSP_Table(int offset){
   float audio_freq  = AUDIO_ADC_FREQ;
@@ -56,15 +41,66 @@ void generate_DSP_Table(int offset){
     v+=step;
   }
 }
+#elif FREQUENCY_OFFSET==5000*(AUDIO_ADC_FREQ/AUDIO_SAMPLES_COUNT/1000)
+// static Table for 10kHz IF and 96kHz ADC (or 5kHz IF and 48kHz ADC) audio ADC
+const int16_t sincos_tbl[48][2] = {
+  { 10533,  31029 }, { 27246,  18205 }, { 32698,  -2143 }, { 24636, -21605 },
+  {  6393, -32138 }, {-14493, -29389 }, {-29389, -14493 }, {-32138,   6393 },
+  {-21605,  24636 }, { -2143,  32698 }, { 18205,  27246 }, { 31029,  10533 },
+  { 31029, -10533 }, { 18205, -27246 }, { -2143, -32698 }, {-21605, -24636 },
+  {-32138,  -6393 }, {-29389,  14493 }, {-14493,  29389 }, {  6393,  32138 },
+  { 24636,  21605 }, { 32698,   2143 }, { 27246, -18205 }, { 10533, -31029 },
+  {-10533, -31029 }, {-27246, -18205 }, {-32698,   2143 }, {-24636,  21605 },
+  { -6393,  32138 }, { 14493,  29389 }, { 29389,  14493 }, { 32138,  -6393 },
+  { 21605, -24636 }, { 2143,  -32698 }, {-18205, -27246 }, {-31029, -10533 },
+  {-31029,  10533 }, {-18205,  27246 }, {  2143,  32698 }, { 21605,  24636 },
+  { 32138,   6393 }, { 29389, -14493 }, { 14493, -29389 }, { -6393, -32138 },
+  {-24636, -21605 }, {-32698,  -2143 }, {-27246,  18205 }, {-10533,  31029 }
+};
+#elif FREQUENCY_OFFSET==4000*(AUDIO_ADC_FREQ/AUDIO_SAMPLES_COUNT/1000)
+// static Table for 8kHz IF and 96kHz audio ADC (or 4kHz IF and 48kHz ADC) audio ADC
+const int16_t sincos_tbl[48][2] = {
+  {  4277, 32488}, { 19948, 25997}, { 30274, 12540}, { 32488, -4277},
+  { 25997,-19948}, { 12540,-30274}, { -4277,-32488}, {-19948,-25997},
+  {-30274,-12540}, {-32488,  4277}, {-25997, 19948}, {-12540, 30274},
+  {  4277, 32488}, { 19948, 25997}, { 30274, 12540}, { 32488, -4277},
+  { 25997,-19948}, { 12540,-30274}, { -4277,-32488}, {-19948,-25997},
+  {-30274,-12540}, {-32488,  4277}, {-25997, 19948}, {-12540, 30274},
+  {  4277, 32488}, { 19948, 25997}, { 30274, 12540}, { 32488, -4277},
+  { 25997,-19948}, { 12540,-30274}, { -4277,-32488}, {-19948,-25997},
+  {-30274,-12540}, {-32488,  4277}, {-25997, 19948}, {-12540, 30274},
+  {  4277, 32488}, { 19948, 25997}, { 30274, 12540}, { 32488, -4277},
+  { 25997,-19948}, { 12540,-30274}, { -4277,-32488}, {-19948,-25997},
+  {-30274,-12540}, {-32488,  4277}, {-25997, 19948}, {-12540, 30274}
+};
+#elif FREQUENCY_OFFSET==3000*(AUDIO_ADC_FREQ/AUDIO_SAMPLES_COUNT/1000)
+// static Table for 6kHz IF and 96kHz audio ADC (or 3kHz IF and 48kHz ADC) audio ADC
+const int16_t sincos_tbl[48][2] = {
+  {  3212, 32610}, { 15447, 28899}, { 25330, 20788}, { 31357,  9512},
+  { 32610, -3212}, { 28899,-15447}, { 20788,-25330}, {  9512,-31357},
+  { -3212,-32610}, {-15447,-28899}, {-25330,-20788}, {-31357, -9512},
+  {-32610,  3212}, {-28899, 15447}, {-20788, 25330}, { -9512, 31357},
+  {  3212, 32610}, { 15447, 28899}, { 25330, 20788}, { 31357,  9512},
+  { 32610, -3212}, { 28899,-15447}, { 20788,-25330}, {  9512,-31357},
+  { -3212,-32610}, {-15447,-28899}, {-25330,-20788}, {-31357, -9512},
+  {-32610,  3212}, {-28899, 15447}, {-20788, 25330}, { -9512, 31357},
+  {  3212, 32610}, { 15447, 28899}, { 25330, 20788}, { 31357,  9512},
+  { 32610, -3212}, { 28899,-15447}, { 20788,-25330}, {  9512,-31357},
+  { -3212,-32610}, {-15447,-28899}, {-25330,-20788}, {-31357, -9512},
+  {-32610,  3212}, {-28899, 15447}, {-20788, 25330}, { -9512, 31357}
+};
+#else
+#error "Need check/rebuild sin cos table for DAC"
 #endif
 
+#if 1
+// Define DSP accumulator value type
 typedef float acc_t;
+typedef float measure_t;
 acc_t acc_samp_s;
 acc_t acc_samp_c;
 acc_t acc_ref_s;
 acc_t acc_ref_c;
-
-#if 1
 void
 dsp_process(int16_t *capture, size_t length)
 {
@@ -95,16 +131,25 @@ dsp_process(int16_t *capture, size_t length)
 }
 
 #else
+// Define DSP accumulator value type
+typedef int64_t acc_t;
+typedef float measure_t;
+acc_t acc_samp_s;
+acc_t acc_samp_c;
+acc_t acc_ref_s;
+acc_t acc_ref_c;
 // Cortex M4 DSP instruction use
 #include "dsp.h"
 void
 dsp_process(int16_t *capture, size_t length)
 {
   uint32_t i = 0;
-  int64_t samp_s = 0;
-  int64_t samp_c = 0;
-  int64_t ref_s = 0;
-  int64_t ref_c = 0;
+//  int64_t samp_s = 0;
+//  int64_t samp_c = 0;
+//  int64_t ref_s = 0;
+//  int64_t ref_c = 0;
+
+  i=0;
   do{
     int32_t sc = ((int32_t *)sincos_tbl)[i];
     int32_t sr = ((int32_t *)capture)[i];
@@ -114,17 +159,18 @@ dsp_process(int16_t *capture, size_t length)
 //    ref_s  = __smlabb(sr, sc, ref_s);  //  ref_s+= ref * sin
 //    ref_c  = __smlabt(sr, sc, ref_c);  //  ref_s+= ref * cos
 // int64_t acc DSP functions
-    samp_s= __smlaltb(samp_s, sr, sc ); // samp_s+= smp * sin
-    samp_c= __smlaltt(samp_c, sr, sc ); // samp_c+= smp * cos
-    ref_s = __smlalbb( ref_s, sr, sc ); //  ref_s+= ref * sin
-    ref_c = __smlalbt( ref_c, sr, sc ); //  ref_s+= ref * cos
+    acc_samp_s= __smlaltb(acc_samp_s, sr, sc ); // samp_s+= smp * sin
+    acc_samp_c= __smlaltt(acc_samp_c, sr, sc ); // samp_c+= smp * cos
+    acc_ref_s = __smlalbb( acc_ref_s, sr, sc ); //  ref_s+= ref * sin
+    acc_ref_c = __smlalbt( acc_ref_c, sr, sc ); //  ref_s+= ref * cos
     i++;
   } while (i < length/2);
+
 // Accumulate result, for faster calc and prevent overflow reduce size to int32_t
-  acc_samp_s+= (int32_t)(samp_s>>3);
-  acc_samp_c+= (int32_t)(samp_c>>3);
-  acc_ref_s += (int32_t)( ref_s>>3);
-  acc_ref_c += (int32_t)( ref_c>>3);
+//  acc_samp_s+= (int32_t)(samp_s>>4);
+//  acc_samp_c+= (int32_t)(samp_c>>4);
+//  acc_ref_s += (int32_t)( ref_s>>4);
+//  acc_ref_c += (int32_t)( ref_c>>4);
 }
 #endif
 
@@ -134,19 +180,19 @@ calculate_gamma(float gamma[2])
 #if 1
   // calculate reflection coeff. by samp divide by ref
 #if 0
-  float rs = acc_ref_s;
-  float rc = acc_ref_c;
-  float rr = rs * rs + rc * rc;
+  measure_t rs = acc_ref_s;
+  measure_t rc = acc_ref_c;
+  measure_t rr = rs * rs + rc * rc;
   //rr = sqrtf(rr) * 1e8;
-  float ss = acc_samp_s;
-  float sc = acc_samp_c;
+  measure_t ss = acc_samp_s;
+  measure_t sc = acc_samp_c;
   gamma[0] =  (sc * rc + ss * rs) / rr;
   gamma[1] =  (ss * rc - sc * rs) / rr;
 #else
-  float rs_rc = (float) acc_ref_s / acc_ref_c;
-  float sc_rc = (float)acc_samp_c / acc_ref_c;
-  float ss_rc = (float)acc_samp_s / acc_ref_c;
-  float rr = rs_rc * rs_rc + 1.0;
+  measure_t rs_rc = (measure_t) acc_ref_s / acc_ref_c;
+  measure_t sc_rc = (measure_t)acc_samp_c / acc_ref_c;
+  measure_t ss_rc = (measure_t)acc_samp_s / acc_ref_c;
+  measure_t rr = rs_rc * rs_rc + 1.0;
   gamma[0] = (sc_rc + ss_rc*rs_rc) / rr;
   gamma[1] = (ss_rc - sc_rc*rs_rc) / rr;
 #endif

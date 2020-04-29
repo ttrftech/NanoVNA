@@ -1614,7 +1614,7 @@ draw_frequencies(void)
     buf2[0] = S_SARROW[0];
   ili9341_drawstring(buf1, FREQUENCIES_XPOS1, FREQUENCIES_YPOS);
   ili9341_drawstring(buf2, FREQUENCIES_XPOS2, FREQUENCIES_YPOS);
-  plot_printf(buf1, sizeof(buf1), "bw:%uHz", get_bandwidth_frequency());
+  plot_printf(buf1, sizeof(buf1), "bw:%uHz %up", get_bandwidth_frequency(), sweep_points);
   ili9341_set_foreground(DEFAULT_GRID_COLOR);
   ili9341_drawstring(buf1, FREQUENCIES_XPOS3, FREQUENCIES_YPOS);
 }

@@ -43,8 +43,8 @@ uistat_t uistat = {
 
 #define BUTTON_DOWN_LONG_TICKS      5000   /* 1sec */
 #define BUTTON_DOUBLE_TICKS         2500   /* 500ms */
-#define BUTTON_REPEAT_TICKS         500    /* 100ms */
-#define BUTTON_DEBOUNCE_TICKS       400    /* 80ms */
+#define BUTTON_REPEAT_TICKS         200    /*  40ms */
+#define BUTTON_DEBOUNCE_TICKS       100    /*  20ms */
 
 /* lever switch assignment */
 #define BIT_UP1     3
@@ -485,7 +485,7 @@ menu_config_cb(int item, uint8_t data)
   case 1:
       touch_draw_test();
       break;
-  case 3:
+  case 4:
       show_version();
       break;
   }
@@ -625,6 +625,14 @@ menu_bandwidth_cb(int item, uint8_t data)
   (void)item;
   config.bandwidth = data;
   draw_frequencies();
+  draw_menu();
+}
+
+static void
+menu_points_cb(int item, uint8_t data)
+{
+  (void)item;
+  set_sweep_points(data);
   draw_menu();
 }
 
@@ -942,6 +950,13 @@ const menuitem_t menu_display[] = {
   { MT_SUBMENU, 0, "CHANNEL", menu_channel },
   { MT_SUBMENU, 0, "TRANSFORM", menu_transform },
   { MT_SUBMENU, 0, "BANDWIDTH", menu_bandwidth },
+  { MT_CANCEL, 0, S_LARROW" BACK", NULL },
+  { MT_NONE, 0, NULL, NULL } // sentinel
+};
+
+const menuitem_t menu_sweep_points[] = {
+  { MT_CALLBACK, POINTS_SET_51,  " 51 points", menu_points_cb },
+  { MT_CALLBACK, POINTS_SET_101, "101 points", menu_points_cb },
   { MT_CANCEL, 0, S_LARROW" BACK", NULL },
   { MT_NONE, 0, NULL, NULL } // sentinel
 };
@@ -1380,6 +1395,11 @@ menu_item_modify_attribute(const menuitem_t *menu, int item,
     }
   } else if (menu == menu_bandwidth) {
     if (menu_bandwidth[item].data == config.bandwidth) {
+       *bg = 0x0000;
+       *fg = 0xffff;
+     }
+  } else if (menu == menu_sweep_points) {
+    if (menu_sweep_points[item].data == sweep_points) {
        *bg = 0x0000;
        *fg = 0xffff;
      }

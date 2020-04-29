@@ -736,7 +736,7 @@ void load_default_properties(void)
 //current_props.magic = CONFIG_MAGIC;
   current_props._frequency0   =     50000;    // start =  50kHz
   current_props._frequency1   = 900000000;    // end   = 900MHz
-  current_props._sweep_points = POINTS_COUNT;
+  current_props._sweep_points = POINTS_SET_101; // Set default 101 points
   current_props._cal_status   = 0;
 //This data not loaded by default
 //current_props._cal_data[5][POINTS_COUNT][2];
@@ -900,6 +900,17 @@ result:
   shell_printf("bandwidth %d (%uHz)\r\n", config.bandwidth, get_bandwidth_frequency());
 }
 
+void set_sweep_points(uint16_t points){
+  if (points == sweep_points || points > POINTS_COUNT)
+    return;
+
+  sweep_points = points;
+  update_frequencies();
+
+  if (cal_auto_interpolate && (cal_status & CALSTAT_APPLY))
+    cal_interpolate(lastsaveid);
+}
+
 VNA_SHELL_FUNCTION(cmd_scan)
 {
   uint32_t start, stop;
@@ -922,6 +933,7 @@ VNA_SHELL_FUNCTION(cmd_scan)
       shell_printf("sweep points exceeds range "define_to_STR(POINTS_COUNT)"\r\n");
       return;
     }
+    sweep_points = points;
   }
 
   set_frequencies(start, stop, points);
@@ -1110,8 +1122,10 @@ VNA_SHELL_FUNCTION(cmd_sweep)
   }
   uint32_t value0 = 0;
   uint32_t value1 = 0;
+  uint32_t value2 = 0;
   if (argc >= 1) value0 = my_atoui(argv[0]);
   if (argc >= 2) value1 = my_atoui(argv[1]);
+  if (argc >= 3) value2 = my_atoui(argv[2]);
 #if MAX_FREQ_TYPE != 5
 #error "Sweep mode possibly changed, check cmd_sweep function"
 #endif
@@ -1130,9 +1144,11 @@ VNA_SHELL_FUNCTION(cmd_sweep)
     set_sweep_frequency(ST_START, value0);
   if (value1)
     set_sweep_frequency(ST_STOP, value1);
+  if (value2)
+    set_sweep_points(value2);
   return;
 usage:
-  shell_printf("usage: sweep {start(Hz)} [stop(Hz)]\r\n"\
+  shell_printf("usage: sweep {start(Hz)} [stop(Hz)] [points]\r\n"\
                "\tsweep {%s} {freq(Hz)}\r\n", sweep_cmd);
 }
 
@@ -1401,6 +1417,11 @@ cal_collect(int type)
   uint8_t bw = config.bandwidth;  // store current setting
   if (bw < BANDWIDTH_100)
     config.bandwidth = BANDWIDTH_100;
+
+  // Set MAX settings for sweep_points on calibrate
+//  if (sweep_points != POINTS_COUNT)
+//    set_sweep_points(POINTS_COUNT);
+
   sweep(false);
   config.bandwidth = bw;          // restore
   // Copy calibration data

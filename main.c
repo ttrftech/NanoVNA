@@ -69,16 +69,21 @@ static volatile vna_shellcmd_t  shell_function = 0;
 #define ENABLE_INFO_COMMAND
 // Enable color command, allow change config color for traces, grid, menu
 #define ENABLE_COLOR_COMMAND
-
+// Enable I2C command for send data to AIC3204, used for debug
 //#define ENABLE_I2C_COMMAND
 
-static void apply_error_term_at(int i);
-static void apply_edelay_at(int i);
+static void apply_CH0_error_term_at(int i);
+static void apply_CH1_error_term_at(int i);
+static void apply_edelay(void);
+
+static uint16_t get_sweep_mode(void);
 static void cal_interpolate(int s);
 static void update_frequencies(void);
 static void set_frequencies(uint32_t start, uint32_t stop, uint16_t points);
 static bool sweep(bool break_on_operation);
 static void transform_domain(void);
+static  int32_t my_atoi(const char *p);
+static uint32_t my_atoui(const char *p);
 
 #define DRIVE_STRENGTH_AUTO (-1)
 #define FREQ_HARMONICS (config.harmonic_freq_threshold)
@@ -137,10 +142,11 @@ static THD_FUNCTION(Thread1, arg)
     }
     // Process UI inputs
     ui_process();
-    // Process collected data, calculate trace coordinates and plot only if scan
-    // completed
+    // Process collected data, calculate trace coordinates and plot only if scan completed
     if (sweep_mode & SWEEP_ENABLE && completed) {
+      if (electrical_delay != 0) apply_edelay();
       if ((domain_mode & DOMAIN_MODE) == DOMAIN_TIME) transform_domain();
+
       // Prepare draw graphics, cache all lines, mark screen cells for redraw
       plot_into_index(measured);
       redraw_request |= REDRAW_CELLS | REDRAW_BATTERY;
@@ -237,7 +243,9 @@ transform_domain(void)
       break;
   }
 
-  for (int ch = 0; ch < 2; ch++) {
+  uint16_t ch_mask = get_sweep_mode();
+  for (int ch = 0; ch < 2; ch++,ch_mask>>=1) {
+    if ((ch_mask&1)==0) continue;
     memcpy(tmp, measured[ch], sizeof(measured[0]));
     for (int i = 0; i < POINTS_COUNT; i++) {
       float w = kaiser_window(i + offset, window_size, beta);
@@ -387,7 +395,7 @@ static int32_t my_atoi(const char *p)
 //  0o - for oct radix
 //  0b - for bin radix
 //  default dec radix
-uint32_t my_atoui(const char *p)
+static uint32_t my_atoui(const char *p)
 {
   uint32_t value = 0, radix = 10, c;
   if (*p == '+') p++;
@@ -816,40 +824,61 @@ static const I2SConfig i2sconfig = {
 #define RESET_SWEEP      {p_sweep = 0;}
 #define DELAY_CHANNEL_CHANGE 2
 
+#define SWEEP_CH0_MEASURE   1
+#define SWEEP_CH1_MEASURE   2
+
+static uint16_t get_sweep_mode(void){
+  uint16_t sweep_mode = 0;
+  int t;
+  for (t = 0; t < TRACES_MAX; t++) {
+    if (!trace[t].enabled)
+      continue;
+    if (trace[t].channel == 0) sweep_mode|=SWEEP_CH0_MEASURE;
+    if (trace[t].channel == 1) sweep_mode|=SWEEP_CH1_MEASURE;
+  }
+  return sweep_mode;
+}
+
 // main loop for measurement
 bool sweep(bool break_on_operation)
 {
   int delay;
-  int st_delay = 3;
+  uint16_t sweep_mode = SWEEP_CH0_MEASURE|SWEEP_CH1_MEASURE;
   if (p_sweep>=sweep_points || break_on_operation == false) RESET_SWEEP;
+  if (break_on_operation && (sweep_mode = get_sweep_mode()) == 0)
+    return false;
 
   // blink LED while scanning
   palClearPad(GPIOC, GPIOC_LED);
-  // Power stabilization after LED off, also align timings on delay == 0
+  // Power stabilization after LED off, before measure
+  int st_delay = 3;
   for (; p_sweep < sweep_points; p_sweep++) {         // 5300
     if (frequencies[p_sweep] == 0) break;
     delay = set_frequency(frequencies[p_sweep]);
-    tlv320aic3204_select(0);                   // CH0:REFLECTION, reset and begin measure
-    DSP_START(delay+st_delay);
-    //================================================
-    // Place some code thats need execute while delay
-    //================================================
-    DSP_WAIT_READY;
-    (*sample_func)(measured[0][p_sweep]);      // calculate reflection coefficient
-
-    tlv320aic3204_select(1);                   // CH1:TRANSMISSION, reset and begin measure
-    DSP_START(DELAY_CHANNEL_CHANGE+st_delay);
-    //================================================
-    // Place some code thats need execute while delay
-    //================================================
-    DSP_WAIT_READY;
-    (*sample_func)(measured[1][p_sweep]);      // calculate transmission coefficient
+    if (sweep_mode & SWEEP_CH0_MEASURE){
+      tlv320aic3204_select(0);                   // CH0:REFLECTION, reset and begin measure
+      DSP_START(delay+st_delay);
+      delay = DELAY_CHANNEL_CHANGE;
+      //================================================
+      // Place some code thats need execute while delay
+      //================================================
+      DSP_WAIT_READY;
+      (*sample_func)(measured[0][p_sweep]);      // calculate reflection coefficient
+      if (cal_status & CALSTAT_APPLY)
+        apply_CH0_error_term_at(p_sweep);
+    }
+    if (sweep_mode & SWEEP_CH1_MEASURE){
+      tlv320aic3204_select(1);                   // CH1:TRANSMISSION, reset and begin measure
+      DSP_START(st_delay+delay);
+      //================================================
+      // Place some code thats need execute while delay
+      //================================================
+      DSP_WAIT_READY;
+      (*sample_func)(measured[1][p_sweep]);      // calculate transmission coefficient
+      if (cal_status & CALSTAT_APPLY)
+        apply_CH1_error_term_at(p_sweep);
+    }
     st_delay = 0;
-    if (cal_status & CALSTAT_APPLY)
-      apply_error_term_at(p_sweep);
-
-    if (electrical_delay != 0)
-      apply_edelay_at(p_sweep);
 // Display SPI made noise on measurement (can see in CW mode)
 //    ili9341_fill(OFFSETX+CELLOFFSETX, OFFSETY, (p_sweep * WIDTH)/(sweep_points-1), 1, RGB565(0,0,255));
   }
@@ -866,7 +895,7 @@ VNA_SHELL_FUNCTION(cmd_bandwidth)
 {
   if (argc != 1)
     goto result;
-  config.bandwidth = my_atoui(argv[0]);
+  config.bandwidth = my_atoui(argv[0])&0xFF;
 result:
   shell_printf("bandwidth %d (%uHz)\r\n", config.bandwidth, get_bandwidth_frequency());
 }
@@ -1265,7 +1294,6 @@ void apply_error_term(void)
     measured[1][i][1] = s21ai;
   }
 }
-#endif
 
 static void apply_error_term_at(int i)
 {
@@ -1286,29 +1314,73 @@ static void apply_error_term_at(int i)
     // S21a = S21m' (1-EsS11a)Et
     float s21mr = measured[1][i][0] - cal_data[ETERM_EX][i][0];
     float s21mi = measured[1][i][1] - cal_data[ETERM_EX][i][1];
+#if 0
     float esr = 1 - (cal_data[ETERM_ES][i][0] * s11ar - cal_data[ETERM_ES][i][1] * s11ai);
-    float esi = - (cal_data[ETERM_ES][i][1] * s11ar + cal_data[ETERM_ES][i][0] * s11ai);
+    float esi = 0 - (cal_data[ETERM_ES][i][1] * s11ar + cal_data[ETERM_ES][i][0] * s11ai);
     float etr = esr * cal_data[ETERM_ET][i][0] - esi * cal_data[ETERM_ET][i][1];
     float eti = esr * cal_data[ETERM_ET][i][1] + esi * cal_data[ETERM_ET][i][0];
     float s21ar = s21mr * etr - s21mi * eti;
     float s21ai = s21mi * etr + s21mr * eti;
+#else
+    // Not made CH1 correction by CH0 data
+    float s21ar = s21mr * cal_data[ETERM_ET][i][0] - s21mi * cal_data[ETERM_ET][i][1];
+    float s21ai = s21mi * cal_data[ETERM_ET][i][0] + s21mr * cal_data[ETERM_ET][i][1];
+#endif
+    measured[1][i][0] = s21ar;
+    measured[1][i][1] = s21ai;
+}
+#endif
+
+static void apply_CH0_error_term_at(int i)
+{
+    // S11m' = S11m - Ed
+    // S11a = S11m' / (Er + Es S11m')
+    float s11mr = measured[0][i][0] - cal_data[ETERM_ED][i][0];
+    float s11mi = measured[0][i][1] - cal_data[ETERM_ED][i][1];
+    float err = cal_data[ETERM_ER][i][0] + s11mr * cal_data[ETERM_ES][i][0] - s11mi * cal_data[ETERM_ES][i][1];
+    float eri = cal_data[ETERM_ER][i][1] + s11mr * cal_data[ETERM_ES][i][1] + s11mi * cal_data[ETERM_ES][i][0];
+    float sq = err*err + eri*eri;
+    float s11ar = (s11mr * err + s11mi * eri) / sq;
+    float s11ai = (s11mi * err - s11mr * eri) / sq;
+    measured[0][i][0] = s11ar;
+    measured[0][i][1] = s11ai;
+}
+
+static void apply_CH1_error_term_at(int i)
+{
+    // CAUTION: Et is inversed for efficiency
+    // S21a = (S21m - Ex) * Et
+    float s21mr = measured[1][i][0] - cal_data[ETERM_EX][i][0];
+    float s21mi = measured[1][i][1] - cal_data[ETERM_EX][i][1];
+    // Not made CH1 correction by CH0 data
+    float s21ar = s21mr * cal_data[ETERM_ET][i][0] - s21mi * cal_data[ETERM_ET][i][1];
+    float s21ai = s21mi * cal_data[ETERM_ET][i][0] + s21mr * cal_data[ETERM_ET][i][1];
     measured[1][i][0] = s21ar;
     measured[1][i][1] = s21ai;
 }
 
-static void apply_edelay_at(int i)
+static void apply_edelay(void)
 {
-  float w = 2 * VNA_PI * electrical_delay * frequencies[i] * 1E-12;
-  float s = sin(w);
-  float c = cos(w);
-  float real = measured[0][i][0];
-  float imag = measured[0][i][1];
-  measured[0][i][0] = real * c - imag * s;
-  measured[0][i][1] = imag * c + real * s;
-  real = measured[1][i][0];
-  imag = measured[1][i][1];
-  measured[1][i][0] = real * c - imag * s;
-  measured[1][i][1] = imag * c + real * s;
+  int i;
+  uint16_t sweep_mode = get_sweep_mode();
+  for (i=0;i<sweep_points;i++){
+    float w = 2 * VNA_PI * electrical_delay * frequencies[i] * 1E-12;
+    float s = sin(w);
+    float c = cos(w);
+    float real, imag;
+    if (sweep_mode & SWEEP_CH0_MEASURE){
+      real = measured[0][i][0];
+      imag = measured[0][i][1];
+      measured[0][i][0] = real * c - imag * s;
+      measured[0][i][1] = imag * c + real * s;
+    }
+    if (sweep_mode & SWEEP_CH1_MEASURE){
+      real = measured[1][i][0];
+      imag = measured[1][i][1];
+      measured[1][i][0] = real * c - imag * s;
+      measured[1][i][1] = imag * c + real * s;
+    }
+  }
 }
 
 void

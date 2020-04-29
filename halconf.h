@@ -179,7 +179,7 @@
  * @note    Disabling this option saves both code and data space.
  */
 #if !defined(ADC_USE_WAIT) || defined(__DOXYGEN__)
-#define ADC_USE_WAIT                TRUE
+#define ADC_USE_WAIT                FALSE
 #endif
 
 /**
@@ -187,7 +187,7 @@
  * @note    Disabling this option saves both code and data space.
  */
 #if !defined(ADC_USE_MUTUAL_EXCLUSION) || defined(__DOXYGEN__)
-#define ADC_USE_MUTUAL_EXCLUSION    TRUE
+#define ADC_USE_MUTUAL_EXCLUSION    FALSE
 #endif
 
 /*===========================================================================*/
@@ -209,7 +209,7 @@
  * @brief   Enables the mutual exclusion APIs on the I2C bus.
  */
 #if !defined(I2C_USE_MUTUAL_EXCLUSION) || defined(__DOXYGEN__)
-#define I2C_USE_MUTUAL_EXCLUSION    TRUE
+#define I2C_USE_MUTUAL_EXCLUSION    FALSE
 #endif
 
 /*===========================================================================*/
@@ -227,7 +227,7 @@
  * @brief   Enables an event sources for incoming packets.
  */
 #if !defined(MAC_USE_EVENTS) || defined(__DOXYGEN__)
-#define MAC_USE_EVENTS              TRUE
+#define MAC_USE_EVENTS              FALSE
 #endif
 
 /*===========================================================================*/
@@ -333,7 +333,7 @@
  * @note    Disabling this option saves both code and data space.
  */
 #if !defined(SPI_USE_WAIT) || defined(__DOXYGEN__)
-#define SPI_USE_WAIT                TRUE
+#define SPI_USE_WAIT                FALSE
 #endif
 
 /**
@@ -341,7 +341,7 @@
  * @note    Disabling this option saves both code and data space.
  */
 #if !defined(SPI_USE_MUTUAL_EXCLUSION) || defined(__DOXYGEN__)
-#define SPI_USE_MUTUAL_EXCLUSION    TRUE
+#define SPI_USE_MUTUAL_EXCLUSION    FALSE
 #endif
 
 /**

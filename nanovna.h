@@ -27,33 +27,34 @@
  */
 
 // Minimum frequency set
-#define START_MIN                50000
+#define START_MIN                800
 // Maximum frequency set
 #define STOP_MAX                 2700000000U
-// Frequency offset (sin_cos table in dsp.c generated for this offset, if change need create new table)
-#define FREQUENCY_OFFSET         5000
+// Frequency threshold (max frequency for si5351, harmonic mode after)
+#define FREQUENCY_THRESHOLD      300000100U
+// Frequency offset (sin_cos table in dsp.c generated for 6k, 8k, 10k, if change need create new table )
+#define FREQUENCY_OFFSET         8000
+// Use real time build table (undef for use constant)
+//#define USE_VARIABLE_OFFSET
 // Speed of light const
 #define SPEED_OF_LIGHT           299792458
 // pi const
 #define VNA_PI                   3.14159265358979323846
 
-#define POINTS_COUNT 101
-
-// Bandwidth depend from AUDIO_SAMPLES_COUNT and audio ADC frequency
-// for AUDIO_SAMPLES_COUNT = 48 and ADC = 48kHz one measure give 48000/48=1000Hz
-// define additional measure count
-#define BANDWIDTH_1000            (  1 - 1)
-#define BANDWIDTH_300             (  3 - 1)
-#define BANDWIDTH_100             ( 10 - 1)
-#define BANDWIDTH_30              ( 33 - 1)
-#define BANDWIDTH_10              (100 - 1)
+// Optional sweep point
+#define POINTS_SET_51     51
+#define POINTS_SET_101   101
+//#define POINTS_SET_201   201
+// Maximum sweep point count
+#define POINTS_COUNT     101
 
 extern float measured[2][POINTS_COUNT][2];
+extern uint32_t frequencies[POINTS_COUNT];
 
-#define CAL_LOAD 0
-#define CAL_OPEN 1
+#define CAL_LOAD  0
+#define CAL_OPEN  1
 #define CAL_SHORT 2
-#define CAL_THRU 3
+#define CAL_THRU  3
 #define CAL_ISOLN 4
 
 #define CALSTAT_LOAD (1<<0)
@@ -105,6 +106,8 @@ double my_atof(const char *p);
 
 void toggle_sweep(void);
 void load_default_properties(void);
+int  load_properties(uint32_t id);
+void set_sweep_points(uint16_t points);
 
 #define SWEEP_ENABLE  0x01
 #define SWEEP_ONCE    0x02
@@ -114,11 +117,26 @@ extern const char *info_about[];
 /*
  * dsp.c
  */
-// 5ms @ 48kHz
-#define AUDIO_ADC_FREQ        48000
-#define AUDIO_SAMPLES_COUNT   48
+// 5ms @ 96kHz
+// Define aic3204 source clock frequency (for 8MHz used fractional multiplier, and possible little phase error)
+//#define AUDIO_CLOCK_REF       ( 8000000U)
+#define AUDIO_CLOCK_REF       (10752000U)
+// Define ADC sample rate
+#define AUDIO_ADC_FREQ        (96000)
+// Define sample count for one step measure
+#define AUDIO_SAMPLES_COUNT   (48)
 // Buffer contain left and right channel samples (need x2)
 #define AUDIO_BUFFER_LEN      (AUDIO_SAMPLES_COUNT*2)
+
+// Bandwidth depend from AUDIO_SAMPLES_COUNT and audio ADC frequency
+// for AUDIO_SAMPLES_COUNT = 48 and ADC = 96kHz one measure give 96000/48=2000Hz
+// define additional measure count
+#define BANDWIDTH_2000            (  1 - 1)
+#define BANDWIDTH_1000            (  2 - 1)
+#define BANDWIDTH_333             (  6 - 1)
+#define BANDWIDTH_100             ( 20 - 1)
+#define BANDWIDTH_30              ( 66 - 1)
+#define BANDWIDTH_10              (200 - 1)
 
 #ifdef ENABLED_DUMP
 extern int16_t ref_buf[];
@@ -136,9 +154,10 @@ void generate_DSP_Table(int offset);
  * tlv320aic3204.c
  */
 
-extern void tlv320aic3204_init(void);
-extern void tlv320aic3204_set_gain(int lgain, int rgain);
-extern void tlv320aic3204_select(int channel);
+void tlv320aic3204_init(void);
+void tlv320aic3204_set_gain(uint8_t lgain, uint8_t rgain);
+void tlv320aic3204_select(uint8_t channel);
+void tlv320aic3204_write_reg(uint8_t page, uint8_t reg, uint8_t data);
 
 /*
  * plot.c
@@ -157,8 +176,8 @@ extern void tlv320aic3204_select(int channel);
 #define NGRIDY 8
 
 #define FREQUENCIES_XPOS1 OFFSETX
-#define FREQUENCIES_XPOS2 200
-#define FREQUENCIES_XPOS3 140
+#define FREQUENCIES_XPOS2 206
+#define FREQUENCIES_XPOS3 135
 #define FREQUENCIES_YPOS  (240-7)
 
 // GRIDX calculated depends from frequency span
@@ -216,9 +235,14 @@ enum trace_type {
 // SMITH: SCALE, <REFPOS>, <REFVAL>
 // LINMAG: SCALE, REFPOS, REFVAL
 // SWR: SCALE, REFPOS, REFVAL
-
 // Electrical Delay
 // Phase
+
+// config.freq_mode flags
+#define FREQ_MODE_START_STOP    0x0
+#define FREQ_MODE_CENTER_SPAN   0x1
+#define FREQ_MODE_DOTTED_GRID   0x2
+
 #define TRACES_MAX 4
 typedef struct trace {
   uint8_t enabled;
@@ -232,35 +256,27 @@ typedef struct trace {
 // marker
 #define MARKERS_MAX 4
 typedef struct marker {
-  int8_t enabled;
-  int16_t index;
+  uint8_t  enabled;
+  uint8_t  reserved;
+  uint16_t index;
   uint32_t frequency;
 } marker_t;
 
-extern int8_t previous_marker;
-extern int8_t marker_tracking;
-
-#define FREQ_MODE_START_STOP    0x0
-#define FREQ_MODE_CENTER_SPAN   0x1
-#define FREQ_MODE_DOTTED_GRID   0x2
-
 typedef struct config {
-  int32_t magic;
+  uint32_t magic;
   uint16_t dac_value;
   uint16_t grid_color;
   uint16_t menu_normal_color;
   uint16_t menu_active_color;
   uint16_t trace_color[TRACES_MAX];
   int16_t  touch_cal[4];
-  int8_t   freq_mode;
   uint32_t harmonic_freq_threshold;
   uint16_t vbat_offset;
-  uint8_t  bandwidth;
-  uint8_t _reserved[21];
+  uint16_t bandwidth;
+  uint8_t  freq_mode;
+  uint8_t _reserved[87];
   uint32_t checksum;
-} config_t;
-
-extern config_t config;
+} config_t; // sizeof = 128
 
 typedef struct properties {
   uint32_t magic;
@@ -269,7 +285,6 @@ typedef struct properties {
   uint16_t _sweep_points;
   uint16_t _cal_status;
 
-  uint32_t _frequencies[POINTS_COUNT];
   float _cal_data[5][POINTS_COUNT][2];
   float _electrical_delay; // picoseconds
 
@@ -280,12 +295,13 @@ typedef struct properties {
   int8_t _active_marker;
   uint8_t _domain_mode; /* 0bxxxxxffm : where ff: TD_FUNC m: DOMAIN_MODE */
   uint8_t _marker_smith_format;
-  uint8_t _reserved[51];
+  uint8_t reserved;
   uint32_t checksum;
 } properties_t;
+//on POINTS_COUNT = 101, sizeof(properties_t) == 4152 (need reduce size on 56 bytes to 4096 for more compact save slot size)
 
-//sizeof(properties_t) == 0x1200
-
+extern int8_t previous_marker;
+extern config_t config;
 extern properties_t *active_props;
 extern properties_t current_props;
 
@@ -394,7 +410,7 @@ void show_logo(void);
 
 #define SAVEAREA_MAX 5
 
-// Depand from config_t size, should be aligned by FLASH_PAGESIZE
+// Depend from config_t size, should be aligned by FLASH_PAGESIZE
 #define SAVE_CONFIG_SIZE        0x00000800
 // Depend from properties_t size, should be aligned by FLASH_PAGESIZE
 #define SAVE_PROP_CONFIG_SIZE   0x00001800
@@ -414,7 +430,6 @@ extern int16_t lastsaveid;
 #define frequency1 current_props._frequency1
 #define sweep_points current_props._sweep_points
 #define cal_status current_props._cal_status
-#define frequencies current_props._frequencies
 #define cal_data active_props->_cal_data
 #define electrical_delay current_props._electrical_delay
 

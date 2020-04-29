@@ -147,7 +147,7 @@
  *
  * @note    The default is @p TRUE.
  */
-#define CH_CFG_USE_REGISTRY                 FALSE
+#define CH_CFG_USE_REGISTRY                 TRUE
 
 /**
  * @brief   Threads synchronization APIs.
@@ -529,7 +529,7 @@
 /**
  * ChibiOS/os/various/shell/shell_cmd.c
  */
-#define SHELL_CMD_EXIT_ENABLED TRUE
+#define SHELL_CMD_EXIT_ENABLED FALSE
 #define SHELL_CMD_INFO_ENABLED FALSE
 #define SHELL_CMD_ECHO_ENABLED FALSE
 #define SHELL_CMD_SYSTIME_ENABLED FALSE

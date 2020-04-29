@@ -75,3 +75,5 @@ void si5351_enable_output(void);
 void si5351_set_frequency_offset(int32_t offset);
 int  si5351_set_frequency(uint32_t freq, uint8_t drive_strength);
 uint32_t si5351_get_frequency(void);
+uint32_t si5351_get_harmonic_lvl(uint32_t f);
+void si5351_set_timing(int i, int v);

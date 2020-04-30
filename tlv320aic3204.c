@@ -165,7 +165,7 @@ static const uint8_t conf_data[] = {
   0x3c, 0x01,     // Set the DAC Mode to PRB_P1
   0x25, 0x00,     // DAC power up
 
-  0x12, 0x82,     // Power up the NADC divider with value 2
+  0x12, 0x81,     // Power up the NADC divider with value 1
   0x13, 0x87,     // Power up the MADC divider with value 7
   0x14, 0x40,     // ADC Oversampling (AOSR) set OSR of ADC to 64
   0x3d, 0x01,     // Select ADC PRB_R1 (AOSR = 64 (Use with PRB_R1 to PRB_R12, ADC Filter Type A or B))

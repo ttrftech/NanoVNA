@@ -337,7 +337,7 @@ VNA_SHELL_FUNCTION(cmd_reset)
 
 const uint8_t gain_table[][2] = {
     {  0,  0 },     // 1st:    0 ~  300MHz
-    { 40, 40 },     // 2nd:  300 ~  900MHz
+    { 50, 50 },     // 2nd:  300 ~  900MHz
     { 75, 75 },     // 3th:  900 ~ 1500MHz
     { 85, 85 },     // 4th: 1500 ~ 1800MHz
     { 95, 95 },     // 5th: 2100 ~ 2400MHz

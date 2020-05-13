@@ -230,7 +230,6 @@ typedef struct config {
   uint16_t menu_active_color;
   uint16_t trace_color[TRACES_MAX];
   int16_t  touch_cal[4];
-  int8_t   freq_mode;
   uint32_t harmonic_freq_threshold;
   uint16_t vbat_offset;
   uint8_t _reserved[22];
@@ -380,7 +379,8 @@ typedef struct properties {
   uint8_t _domain_mode; /* 0bxxxxxffm : where ff: TD_FUNC m: DOMAIN_MODE */
   uint8_t _marker_smith_format;
   uint8_t _bandwidth;
-  uint8_t _reserved[50];
+  int8_t _freq_mode;
+  uint8_t _reserved[49];
   uint32_t checksum;
 } properties_t;
 
@@ -407,9 +407,10 @@ extern properties_t current_props;
 #define velocity_factor current_props._velocity_factor
 #define marker_smith_format current_props._marker_smith_format
 #define bandwidth current_props._bandwidth
+#define freq_mode current_props._freq_mode
 
-#define FREQ_IS_STARTSTOP() (!(config.freq_mode&FREQ_MODE_CENTER_SPAN))
-#define FREQ_IS_CENTERSPAN() (config.freq_mode&FREQ_MODE_CENTER_SPAN)
+#define FREQ_IS_STARTSTOP() (!(freq_mode & FREQ_MODE_CENTER_SPAN))
+#define FREQ_IS_CENTERSPAN() (freq_mode & FREQ_MODE_CENTER_SPAN)
 #define FREQ_IS_CW() (frequency0 == frequency1)
 
 int caldata_save(int id);

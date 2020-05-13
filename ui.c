@@ -638,7 +638,7 @@ menu_bandwidth_cb(int item)
   draw_menu();
 }
 
-static void 
+static void
 choose_active_marker(void)
 {
   int i;
@@ -768,9 +768,11 @@ menu_marker_search_cb(int item, uint8_t data)
     break;
   case 2: /* search Left */
     i = marker_search_left(markers[active_marker].index);
+    uistat.marker_tracking = false;
     break;
   case 3: /* search right */
     i = marker_search_right(markers[active_marker].index);
+    uistat.marker_tracking = false;
     break;
   case 4: /* tracking */
     uistat.marker_tracking = !uistat.marker_tracking;

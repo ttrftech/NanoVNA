@@ -1946,6 +1946,23 @@ VNA_SHELL_FUNCTION(cmd_port)
   tlv320aic3204_select(port);
 }
 
+VNA_SHELL_FUNCTION(cmd_bandwidth)
+{
+  if (argc != 1)
+    goto usage;
+
+  static const char bw_choice[] = "1000|300|100|30|10";
+  int i = get_str_index(argv[0], bw_choice);
+  if (i < 0)
+    goto usage;
+
+  bandwidth = i;
+  return;
+
+usage:
+  shell_printf("usage: bandwidth {%s}\r\n", bw_choice);
+}
+
 VNA_SHELL_FUNCTION(cmd_stat)
 {
   int16_t *p = &rx_buffer[0];
@@ -2134,6 +2151,7 @@ static const VNAShellCommand commands[] =
     {"dump"        , cmd_dump        , 0},
 #endif
     {"frequencies" , cmd_frequencies , 0},
+    {"bandwidth"   , cmd_bandwidth   , 0},
     {"port"        , cmd_port        , 0},
     {"stat"        , cmd_stat        , 0},
     {"gain"        , cmd_gain        , 0},

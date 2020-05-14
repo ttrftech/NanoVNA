@@ -273,8 +273,7 @@ typedef struct config {
   uint32_t harmonic_freq_threshold;
   uint16_t vbat_offset;
   uint16_t bandwidth;
-  uint8_t  freq_mode;
-  uint8_t _reserved[87];
+  uint8_t _reserved[88];
   uint32_t checksum;
 } config_t; // sizeof = 128
 

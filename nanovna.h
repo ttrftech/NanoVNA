@@ -295,7 +295,7 @@ typedef struct properties {
   int8_t _active_marker;
   uint8_t _domain_mode; /* 0bxxxxxffm : where ff: TD_FUNC m: DOMAIN_MODE */
   uint8_t _marker_smith_format;
-  uint8_t reserved;
+  uint8_t _freq_mode;
   uint32_t checksum;
 } properties_t;
 //on POINTS_COUNT = 101, sizeof(properties_t) == 4152 (need reduce size on 56 bytes to 4096 for more compact save slot size)
@@ -414,7 +414,6 @@ void show_logo(void);
 #define SAVE_CONFIG_SIZE        0x00000800
 // Depend from properties_t size, should be aligned by FLASH_PAGESIZE
 #define SAVE_PROP_CONFIG_SIZE   0x00001800
-
 // Save config_t and properties_t flash area (see flash7  : org = 0x08018000, len = 32k from *.ld settings)
 // Properties save area follow after config
 // len = SAVE_CONFIG_SIZE + SAVEAREA_MAX * SAVE_PROP_CONFIG_SIZE   0x00008000  32k
@@ -439,9 +438,10 @@ extern int16_t lastsaveid;
 #define domain_mode current_props._domain_mode
 #define velocity_factor current_props._velocity_factor
 #define marker_smith_format current_props._marker_smith_format
+#define freq_mode current_props._freq_mode
 
-#define FREQ_IS_STARTSTOP() (!(config.freq_mode&FREQ_MODE_CENTER_SPAN))
-#define FREQ_IS_CENTERSPAN() (config.freq_mode&FREQ_MODE_CENTER_SPAN)
+#define FREQ_IS_STARTSTOP() (!(freq_mode & FREQ_MODE_CENTER_SPAN))
+#define FREQ_IS_CENTERSPAN() (freq_mode & FREQ_MODE_CENTER_SPAN)
 #define FREQ_IS_CW() (frequency0 == frequency1)
 
 int caldata_save(uint32_t id);

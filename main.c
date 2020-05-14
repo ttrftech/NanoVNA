@@ -708,7 +708,6 @@ config_t config = {
 //  .touch_cal =         { 693, 605, 124, 171 },  // 2.4 inch LCD panel
   .touch_cal =         { 338, 522, 153, 192 },  // 2.8 inch LCD panel
 //  .touch_cal =         { 252, 450, 111, 150 },  //4.0" LCD
-  .freq_mode = FREQ_MODE_START_STOP,
   .harmonic_freq_threshold = FREQUENCY_THRESHOLD,
   .vbat_offset = 500,
   .bandwidth = BANDWIDTH_1000
@@ -748,6 +747,8 @@ void load_default_properties(void)
   current_props._active_marker   = 0;
   current_props._domain_mode     = 0;
   current_props._marker_smith_format = MS_RLC;
+  current_props._freq_mode = FREQ_MODE_START_STOP;
+
 //Checksum add on caldata_save
 //current_props.checksum = 0;
 }
@@ -1036,7 +1037,7 @@ set_sweep_frequency(int type, uint32_t freq)
   ensure_edit_config();
   switch (type) {
     case ST_START:
-      config.freq_mode &= ~FREQ_MODE_CENTER_SPAN;
+      freq_mode &= ~FREQ_MODE_CENTER_SPAN;
       if (frequency0 != freq) {
         frequency0 = freq;
         // if start > stop then make start = stop
@@ -1044,7 +1045,7 @@ set_sweep_frequency(int type, uint32_t freq)
       }
       break;
     case ST_STOP:
-      config.freq_mode &= ~FREQ_MODE_CENTER_SPAN;
+      freq_mode &= ~FREQ_MODE_CENTER_SPAN;
       if (frequency1 != freq) {
         frequency1 = freq;
         // if start > stop then make start = stop
@@ -1052,7 +1053,7 @@ set_sweep_frequency(int type, uint32_t freq)
       }
       break;
     case ST_CENTER:
-      config.freq_mode |= FREQ_MODE_CENTER_SPAN;
+      freq_mode |= FREQ_MODE_CENTER_SPAN;
       uint32_t center = frequency0 / 2 + frequency1 / 2;
       if (center != freq) {
         uint32_t span = frequency1 - frequency0;
@@ -1067,7 +1068,7 @@ set_sweep_frequency(int type, uint32_t freq)
       }
       break;
     case ST_SPAN:
-      config.freq_mode |= FREQ_MODE_CENTER_SPAN;
+      freq_mode |= FREQ_MODE_CENTER_SPAN;
       if (frequency1 - frequency0 != freq) {
         uint32_t center = frequency0 / 2 + frequency1 / 2;
         if (center < START_MIN + freq / 2) {
@@ -1081,7 +1082,7 @@ set_sweep_frequency(int type, uint32_t freq)
       }
       break;
     case ST_CW:
-      config.freq_mode |= FREQ_MODE_CENTER_SPAN;
+      freq_mode |= FREQ_MODE_CENTER_SPAN;
       if (frequency0 != freq || frequency1 != freq) {
         frequency0 = freq;
         frequency1 = freq;

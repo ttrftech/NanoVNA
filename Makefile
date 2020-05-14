@@ -81,6 +81,10 @@ endif
 # Project, sources and paths
 #
 
+# Dvice node to flash
+DEVICE = /dev/cu.usbmodem401
+#DEVICE = /dev/ttyACM0
+
 # Define project name here
 PROJECT = ch
 
@@ -225,6 +229,4 @@ flash: build/ch.bin
 	dfu-util -d 0483:df11 -a 0 -s 0x08000000:leave -D build/ch.bin
 
 dfu:
-	-@printf "reset dfu\r" >/dev/cu.usbmodem401
-
-
+	-printf "reset dfu\r" >$(DEVICE) && sleep 1

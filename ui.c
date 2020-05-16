@@ -1011,7 +1011,7 @@ const menuitem_t menu_marker_smith[] = {
   { MT_CALLBACK, MS_LIN, "LIN", menu_marker_smith_cb },
   { MT_CALLBACK, MS_LOG, "LOG", menu_marker_smith_cb },
   { MT_CALLBACK, MS_REIM,"Re+Im", menu_marker_smith_cb },
-  { MT_CALLBACK, MS_RX,  "R+Xj", menu_marker_smith_cb },
+  { MT_CALLBACK, MS_RX,  "R+jX", menu_marker_smith_cb },
   { MT_CALLBACK, MS_RLC, "R+L/C", menu_marker_smith_cb },
   { MT_CANCEL, 0, S_LARROW" BACK", NULL },
   { MT_NONE, 0, NULL, NULL } // sentinel

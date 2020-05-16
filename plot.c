@@ -594,7 +594,7 @@ format_smith_value(char *buf, int len, const float coeff[2], uint32_t frequency)
     break;
 
   case MS_RX:
-    plot_printf(buf, len, "%F"S_OHM"%+Fj", zr, zi);
+    plot_printf(buf, len, "%F%+Fj"S_OHM, zr, zi);
     break;
 
   case MS_RLC:

@@ -504,6 +504,8 @@ void enter_dfu(void);
 /*
  * adc.c
  */
+#define ADC_TOUCH_X  ADC_CHSELR_CHSEL6
+#define ADC_TOUCH_Y  ADC_CHSELR_CHSEL7
 
 void adc_init(void);
 uint16_t adc_single_read(uint32_t chsel);

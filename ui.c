@@ -200,9 +200,9 @@ touch_measure_y(void)
   palSetPad(GPIOA, 6);
 
   chThdSleepMilliseconds(2);
-  v = adc_single_read(ADC_CHSELR_CHSEL7);
+  v = adc_single_read(ADC_TOUCH_Y);
   //chThdSleepMilliseconds(2);
-  //v += adc_single_read(ADC1, ADC_CHSELR_CHSEL7);
+  //v += adc_single_read(ADC1, ADC_TOUCH_Y);
   return v;
 }
 
@@ -220,9 +220,9 @@ touch_measure_x(void)
   palClearPad(GPIOA, 7);
 
   chThdSleepMilliseconds(2);
-  v = adc_single_read(ADC_CHSELR_CHSEL6);
+  v = adc_single_read(ADC_TOUCH_X);
   //chThdSleepMilliseconds(2);
-  //v += adc_single_read(ADC1, ADC_CHSELR_CHSEL6);
+  //v += adc_single_read(ADC1, ADC_TOUCH_X);
   return v;
 }
 
@@ -243,14 +243,14 @@ void
 touch_start_watchdog(void)
 {
   touch_prepare_sense();
-  adc_start_analog_watchdogd(ADC_CHSELR_CHSEL7);
+  adc_start_analog_watchdogd(ADC_TOUCH_Y);
 }
 
 static int
 touch_status(void)
 {
   touch_prepare_sense();
-  return adc_single_read(ADC_CHSELR_CHSEL7) > TOUCH_THRESHOLD;
+  return adc_single_read(ADC_TOUCH_Y) > TOUCH_THRESHOLD;
 }
 
 static int

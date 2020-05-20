@@ -1382,7 +1382,6 @@ menu_item_modify_attribute(const menuitem_t *menu, int item,
         || (item == 2 && (cal_status & CALSTAT_LOAD))
         || (item == 3 && (cal_status & CALSTAT_ISOLN))
         || (item == 4 && (cal_status & CALSTAT_THRU))) {
-      domain_mode = (domain_mode & ~DOMAIN_MODE) | DOMAIN_FREQ;
       *bg = DEFAULT_MENU_TEXT_COLOR;
       *fg = config.menu_normal_color;
     }
@@ -1398,14 +1397,14 @@ menu_item_modify_attribute(const menuitem_t *menu, int item,
     }
   } else if (menu == menu_bandwidth) {
     if (menu_bandwidth[item].data == config.bandwidth) {
-       *bg = 0x0000;
-       *fg = 0xffff;
-     }
+      *bg = DEFAULT_MENU_TEXT_COLOR;
+      *fg = config.menu_normal_color;
+    }
   } else if (menu == menu_sweep_points) {
     if (menu_sweep_points[item].data == sweep_points) {
-       *bg = 0x0000;
-       *fg = 0xffff;
-     }
+      *bg = DEFAULT_MENU_TEXT_COLOR;
+      *fg = config.menu_normal_color;
+    }
   } else if (menu == menu_transform) {
     if ((item == 0 && (domain_mode & DOMAIN_MODE) == DOMAIN_TIME)
        || (item == 1 && (domain_mode & TD_FUNC) == TD_FUNC_LOWPASS_IMPULSE)

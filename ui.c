@@ -1468,13 +1468,11 @@ menu_select_touch(int i)
 }
 
 static void
-menu_apply_touch(void)
+menu_apply_touch(int touch_x, int touch_y)
 {
-  int touch_x, touch_y;
   const menuitem_t *menu = menu_stack[menu_current_level];
   int i;
 
-  touch_position(&touch_x, &touch_y);
   for (i = 0; i < MENU_BUTTON_MAX; i++) {
     if (menu[i].type == MT_NONE)
       break;
@@ -1824,6 +1822,7 @@ ui_process_menu(void)
           selection--;
         }
         draw_menu();
+        chThdSleepMilliseconds(200);
         status = btn_wait_release();
       } while (status != 0);
     }
@@ -1934,11 +1933,8 @@ keypad_apply_touch(void)
 }
 
 static void
-numeric_apply_touch(void)
+numeric_apply_touch(int touch_x, int touch_y)
 {
-  int touch_x, touch_y;
-  touch_position(&touch_x, &touch_y);
-
   if (touch_x < 64) {
     ui_mode_normal();
     return;
@@ -2117,11 +2113,9 @@ drag_marker(int t, int m)
 }
 
 static int
-touch_pickup_marker(void)
+touch_pickup_marker(int touch_x, int touch_y)
 {
-  int touch_x, touch_y;
   int m, t;
-  touch_position(&touch_x, &touch_y);
   touch_x -= OFFSETX;
   touch_y -= OFFSETY;
 
@@ -2158,10 +2152,8 @@ touch_pickup_marker(void)
 }
 
 static int
-touch_lever_mode_select(void)
+touch_lever_mode_select(int touch_x, int touch_y)
 {
-  int touch_x, touch_y;
-  touch_position(&touch_x, &touch_y);
   if (touch_y > HEIGHT) {
     select_lever_mode(touch_x < FREQUENCIES_XPOS2 ? LM_CENTER : LM_SPAN);
     return TRUE;
@@ -2182,16 +2174,16 @@ void ui_process_touch(void)
 {
 //  awd_count++;
   adc_stop();
-
+  int touch_x, touch_y;
   int status = touch_check();
   if (status == EVT_TOUCH_PRESSED || status == EVT_TOUCH_DOWN) {
-    switch (ui_mode) {
+    touch_position(&touch_x, &touch_y);    switch (ui_mode) {
     case UI_NORMAL:
       // Try drag marker
-      if (touch_pickup_marker())
+      if (touch_pickup_marker(touch_x, touch_y))
         break;
       // Try select lever mode (top and bottom screen)
-      if (touch_lever_mode_select()) {
+      if (touch_lever_mode_select(touch_x, touch_y)) {
         touch_wait_release();
         break;
       }
@@ -2201,11 +2193,11 @@ void ui_process_touch(void)
       ui_mode_menu();
       break;
     case UI_MENU:
-      menu_apply_touch();
+      menu_apply_touch(touch_x, touch_y);
       break;
 
     case UI_NUMERIC:
-      numeric_apply_touch();
+      numeric_apply_touch(touch_x, touch_y);
       break;
     }
   }
@@ -2259,6 +2251,7 @@ static const EXTConfig extcfg = {
   }
 };
 
+// Touch panel timer check (check press frequency 20Hz)
 static const GPTConfig gpt3cfg = {
   20,     /* 20Hz timer clock.*/
   NULL,   /* Timer callback.*/

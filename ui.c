@@ -2177,7 +2177,8 @@ void ui_process_touch(void)
   int touch_x, touch_y;
   int status = touch_check();
   if (status == EVT_TOUCH_PRESSED || status == EVT_TOUCH_DOWN) {
-    touch_position(&touch_x, &touch_y);    switch (ui_mode) {
+    touch_position(&touch_x, &touch_y);
+    switch (ui_mode) {
     case UI_NORMAL:
       // Try drag marker
       if (touch_pickup_marker(touch_x, touch_y))

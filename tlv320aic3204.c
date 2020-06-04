@@ -112,29 +112,37 @@ static const uint8_t conf_data[] = {
 // reg, data,     // PLL clock config
   0x00, 0x00,     // Initialize to Page 0
   0x01, 0x01,     // Initialize the device through software reset
-  0x04, 0x03,     // PLL Clock Low (80MHz - 137MHz), MCLK, PLL
 //=======================================================
 // Configure PLL clock
 //            PLL_CLKIN * R * J.D
 // PLL_CLK = ---------------------
 //                     P
 #if AUDIO_CLOCK_REF == 8000000U
-  // 8.000MHz * 10.7520 = 86.016MHz,
+  // MCLK = 8.000MHz * 10.7520 = 86.016MHz,
+  0x04, 0x03,     // PLL Clock Low (80MHz - 137MHz), MCLK pin is input to PLL, PLL as CODEC_CLKIN
   0x05, 0x91,     // Power up PLL, P=1,R=1
   0x06, 0x0a,     // J=10
   0x07, 0x1D,     // D=7520 = 0x1D60
   0x08, 0x60,
 #elif AUDIO_CLOCK_REF == 10752000U
-  // 10.752MHz * 4 * 2.0 / 1 = 86.016MHz
+  // MCLK = 10.752MHz * 4 * 2.0 / 1 = 86.016MHz
+  0x04, 0x03,     // PLL Clock Low (80MHz - 137MHz),MCLK pin is input to PLL, PLL as CODEC_CLKIN
   0x05, 0x94,     // Power up PLL, P=1,R=4
   0x06, 0x02,     // J=2
   0x07, 0x00,     // D=0
   0x08, 0x00,
+#elif AUDIO_CLOCK_REF == 86016000U
+  // MCLK = 86.016MHz
+  0x04, 0x00,     // MCLK as CODEC_CLKIN
+  0x05, 0x00,     // Power down PLL
+  0x06, 0x00,     // J=0
+  0x07, 0x00,     // D=0
+  0x08, 0x00,
 #else
-#error "Need set correct PLL multiplier for aic3204"
+#error "Need set correct CODEC_CLKIN for aic3204"
 #endif
 // Configure ADC clock
-//                 PLL_CLK
+//                CODEC_CLKIN
 // ADC_fs  = --------------------
 //            NADC * MADC * AOSR
 #if AUDIO_ADC_FREQ == 48000
@@ -200,7 +208,7 @@ static const uint8_t conf_data[] = {
 static const uint8_t conf_data_unmute[] = {
 // reg, data,
   0x00, 0x00,     // Select Page 0
-  0x51, 0xc0,     // Power up Left and Right ADC Channels
+  0x51, 0xc2,     // Power up Left and Right ADC Channels, ADC Volume Control Soft-Stepping disabled
   0x52, 0x00,     // Unmute Left and Right ADC Digital Volume Control
   0x00, 0x01,     // Select Page 1 (should be set as default)
 };

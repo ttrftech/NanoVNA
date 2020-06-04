@@ -120,9 +120,13 @@ extern const char *info_about[];
 // 5ms @ 96kHz
 // Define aic3204 source clock frequency (for 8MHz used fractional multiplier, and possible little phase error)
 //#define AUDIO_CLOCK_REF       ( 8000000U)
-#define AUDIO_CLOCK_REF       (10752000U)
+//#define AUDIO_CLOCK_REF       (10752000U)
+// Disable AIC PLL clock, use input as CODEC_CLKIN
+#define AUDIO_CLOCK_REF       (86016000U)
+
 // Define ADC sample rate
 #define AUDIO_ADC_FREQ        (96000)
+//#define AUDIO_ADC_FREQ        (48000)
 // Define sample count for one step measure
 #define AUDIO_SAMPLES_COUNT   (48)
 // Buffer contain left and right channel samples (need x2)
@@ -511,7 +515,6 @@ void adc_init(void);
 uint16_t adc_single_read(uint32_t chsel);
 void adc_start_analog_watchdogd(uint32_t chsel);
 void adc_stop(void);
-void adc_interrupt(void);
 int16_t adc_vbat_read(void);
 
 /*

@@ -80,12 +80,10 @@ static uint16_t get_sweep_mode(void);
 static void cal_interpolate(int s);
 static void update_frequencies(void);
 static void set_frequencies(uint32_t start, uint32_t stop, uint16_t points);
-static bool sweep(bool break_on_operation);
+static bool sweep(bool break_on_operation, uint16_t sweep_mode);
 static void transform_domain(void);
 static  int32_t my_atoi(const char *p);
 static uint32_t my_atoui(const char *p);
-
-#define FREQ_HARMONICS (config.harmonic_freq_threshold)
 
 // Obsolete, always use interpolate
 #define  cal_auto_interpolate  TRUE
@@ -128,7 +126,7 @@ static THD_FUNCTION(Thread1, arg)
   while (1) {
     bool completed = false;
     if (sweep_mode&(SWEEP_ENABLE|SWEEP_ONCE)) {
-      completed = sweep(true);
+      completed = sweep(true, get_sweep_mode());
       sweep_mode&=~SWEEP_ONCE;
     } else {
       __WFI();
@@ -335,7 +333,7 @@ VNA_SHELL_FUNCTION(cmd_reset)
     ;
 }
 
-const uint8_t gain_table[][2] = {
+static const uint8_t gain_table[][2] = {
     {  0,  0 },     // 1st:    0 ~  300MHz
     { 50, 50 },     // 2nd:  300 ~  900MHz
     { 75, 75 },     // 3th:  900 ~ 1500MHz
@@ -642,18 +640,15 @@ VNA_SHELL_FUNCTION(cmd_capture)
 // read pixel count at one time (PART*2 bytes required for read buffer)
   (void)argc;
   (void)argv;
-  int i, y;
+  int y;
 #if SPI_BUFFER_SIZE < (3*LCD_WIDTH + 1)
 #error "Low size of spi_buffer for cmd_capture"
 #endif
   // read 2 row pixel time (read buffer limit by 2/3 + 1 from spi_buffer size)
   for (y = 0; y < LCD_HEIGHT; y += 2) {
     // use uint16_t spi_buffer[2048] (defined in ili9341) for read buffer
-    uint8_t *buf = (uint8_t *)spi_buffer;
     ili9341_read_memory(0, y, LCD_WIDTH, 2, 2 * LCD_WIDTH, spi_buffer);
-    for (i = 0; i < 4 * LCD_WIDTH; i++) {
-      streamPut(shell_stream, *buf++);
-    }
+    streamWrite(shell_stream, (void*)spi_buffer, 2 * LCD_WIDTH * sizeof(uint16_t));
   }
 }
 
@@ -841,12 +836,11 @@ static uint16_t get_sweep_mode(void){
 }
 
 // main loop for measurement
-bool sweep(bool break_on_operation)
+bool sweep(bool break_on_operation, uint16_t sweep_mode)
 {
   int delay;
-  uint16_t sweep_mode = SWEEP_CH0_MEASURE|SWEEP_CH1_MEASURE;
   if (p_sweep>=sweep_points || break_on_operation == false) RESET_SWEEP;
-  if (break_on_operation && (sweep_mode = get_sweep_mode()) == 0)
+  if (break_on_operation && sweep_mode == 0)
     return false;
 
   // blink LED while scanning
@@ -870,7 +864,7 @@ bool sweep(bool break_on_operation)
     }
     if (sweep_mode & SWEEP_CH1_MEASURE){
       tlv320aic3204_select(1);                   // CH1:TRANSMISSION, reset and begin measure
-      DSP_START(st_delay+delay);
+      DSP_START(delay+st_delay);
       //================================================
       // Place some code thats need execute while delay
       //================================================
@@ -936,22 +930,24 @@ VNA_SHELL_FUNCTION(cmd_scan)
     }
     sweep_points = points;
   }
-
+  uint16_t mask = 0;
+  uint16_t sweep_mode = SWEEP_CH0_MEASURE|SWEEP_CH1_MEASURE;
+  if (argc == 4) {
+    mask = my_atoui(argv[3]);
+    sweep_mode = (mask>>1)&3;
+  }
   set_frequencies(start, stop, points);
   if (cal_auto_interpolate && (cal_status & CALSTAT_APPLY))
     cal_interpolate(lastsaveid);
   pause_sweep();
-  sweep(false);
+  sweep(false, sweep_mode);
   // Output data after if set (faster data recive)
-  if (argc == 4) {
-    uint16_t mask = my_atoui(argv[3]);
-    if (mask) {
-      for (i = 0; i < points; i++) {
-        if (mask & 1) shell_printf("%u ", frequencies[i]);
-        if (mask & 2) shell_printf("%f %f ", measured[0][i][0], measured[0][i][1]);
-        if (mask & 4) shell_printf("%f %f ", measured[1][i][0], measured[1][i][1]);
-        shell_printf("\r\n");
-      }
+  if (mask) {
+    for (i = 0; i < points; i++) {
+      if (mask & 1) shell_printf("%u ", frequencies[i]);
+      if (mask & 2) shell_printf("%f %f ", measured[0][i][0], measured[0][i][1]);
+      if (mask & 4) shell_printf("%f %f ", measured[1][i][0], measured[1][i][1]);
+      shell_printf("\r\n");
     }
   }
 }
@@ -1403,28 +1399,30 @@ static void apply_edelay(void)
 void
 cal_collect(int type)
 {
-  ensure_edit_config();
+  //ensure_edit_config();
+  active_props = &current_props;
   int dst, src;
   switch (type) {
     case CAL_LOAD:  cal_status|= CALSTAT_LOAD;  dst = CAL_LOAD;  src = 0; break;
-    case CAL_OPEN:  cal_status|= CALSTAT_OPEN;  dst = CAL_OPEN;  src = 0; cal_status&= ~(CALSTAT_ES|CALSTAT_APPLY); break;
-    case CAL_SHORT: cal_status|= CALSTAT_SHORT; dst = CAL_SHORT; src = 0; cal_status&= ~(CALSTAT_ER|CALSTAT_APPLY); break;
+    case CAL_OPEN:  cal_status|= CALSTAT_OPEN;  dst = CAL_OPEN;  src = 0; cal_status&= ~(CALSTAT_ES); break;
+    case CAL_SHORT: cal_status|= CALSTAT_SHORT; dst = CAL_SHORT; src = 0; cal_status&= ~(CALSTAT_ER); break;
     case CAL_THRU:  cal_status|= CALSTAT_THRU;  dst = CAL_THRU;  src = 1; break;
     case CAL_ISOLN: cal_status|= CALSTAT_ISOLN; dst = CAL_ISOLN; src = 1; break;
     default:
       return;
   }
-  // Run sweep for collect data (use minimum BANDWIDTH_100, or bigger if set)
+  // Run sweep for collect data (use minimum BANDWIDTH_30, or bigger if set)
   uint8_t bw = config.bandwidth;  // store current setting
-  if (bw < BANDWIDTH_100)
-    config.bandwidth = BANDWIDTH_100;
-
+  uint16_t status = cal_status;
+  if (bw < BANDWIDTH_30)
+    config.bandwidth = BANDWIDTH_30;
+  cal_status&= ~(CALSTAT_APPLY);
   // Set MAX settings for sweep_points on calibrate
 //  if (sweep_points != POINTS_COUNT)
 //    set_sweep_points(POINTS_COUNT);
-
-  sweep(false);
+  sweep(false, src == 0 ? SWEEP_CH0_MEASURE : SWEEP_CH1_MEASURE);
   config.bandwidth = bw;          // restore
+  cal_status = status;
   // Copy calibration data
   memcpy(cal_data[dst], measured[src], sizeof measured[0]);
   redraw_request |= REDRAW_CAL_STATUS;
@@ -1448,8 +1446,9 @@ cal_done(void)
     eterm_set(ETERM_ES, 0.0, 0.0);
     cal_status &= ~CALSTAT_SHORT;
     eterm_calc_er(-1);
-  } else {
+  } else if (!(cal_status & CALSTAT_ER)){
     eterm_set(ETERM_ER, 1.0, 0.0);
+  } else if (!(cal_status & CALSTAT_ES)) {
     eterm_set(ETERM_ES, 0.0, 0.0);
   }
     
@@ -1457,7 +1456,7 @@ cal_done(void)
     eterm_set(ETERM_EX, 0.0, 0.0);
   if (cal_status & CALSTAT_THRU) {
     eterm_calc_et();
-  } else {
+  } else if (!(cal_status & CALSTAT_ET)) {
     eterm_set(ETERM_ET, 1.0, 0.0);
   }
 
@@ -2021,13 +2020,14 @@ VNA_SHELL_FUNCTION(cmd_test)
   //extern int touch_x, touch_y;
   //shell_printf("adc: %d %d\r\n", touch_x, touch_y);
 #endif
-
+#if 0
   while (argc > 1) {
-    int x, y;
+    int16_t x, y;
     touch_position(&x, &y);
     shell_printf("touch: %d %d\r\n", x, y);
     chThdSleepMilliseconds(200);
   }
+#endif
 }
 
 VNA_SHELL_FUNCTION(cmd_gain)

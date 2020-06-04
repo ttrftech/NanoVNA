@@ -27,7 +27,7 @@ int16_t ref_buf[SAMPLE_LEN];
 #endif
 
 #ifdef USE_VARIABLE_OFFSET
-int16_t sincos_tbl[AUDIO_SAMPLES_COUNT][2];
+static int16_t sincos_tbl[AUDIO_SAMPLES_COUNT][2];
 void generate_DSP_Table(int offset){
   float audio_freq  = AUDIO_ADC_FREQ;
   // N = offset * AUDIO_SAMPLES_COUNT / audio_freq; should be integer
@@ -41,9 +41,25 @@ void generate_DSP_Table(int offset){
     v+=step;
   }
 }
+#elif FREQUENCY_OFFSET==6000*(AUDIO_ADC_FREQ/AUDIO_SAMPLES_COUNT/1000)
+// static Table for 12kHz IF and 96kHz ADC (or 6kHz IF and 48kHz ADC) audio ADC
+static const int16_t sincos_tbl[48][2] = {
+  { 6393, 32138}, { 27246, 18205}, { 32138,-6393}, { 18205,-27246},
+  {-6393,-32138}, {-27246,-18205}, {-32138, 6393}, {-18205, 27246},
+  { 6393, 32138}, { 27246, 18205}, { 32138,-6393}, { 18205,-27246},
+  {-6393,-32138}, {-27246,-18205}, {-32138, 6393}, {-18205, 27246},
+  { 6393, 32138}, { 27246, 18205}, { 32138,-6393}, { 18205,-27246},
+  {-6393,-32138}, {-27246,-18205}, {-32138, 6393}, {-18205, 27246},
+  { 6393, 32138}, { 27246, 18205}, { 32138,-6393}, { 18205,-27246},
+  {-6393,-32138}, {-27246,-18205}, {-32138, 6393}, {-18205, 27246},
+  { 6393, 32138}, { 27246, 18205}, { 32138,-6393}, { 18205,-27246},
+  {-6393,-32138}, {-27246,-18205}, {-32138, 6393}, {-18205, 27246},
+  { 6393, 32138}, { 27246, 18205}, { 32138,-6393}, { 18205,-27246},
+  {-6393,-32138}, {-27246,-18205}, {-32138, 6393}, {-18205, 27246}
+};
 #elif FREQUENCY_OFFSET==5000*(AUDIO_ADC_FREQ/AUDIO_SAMPLES_COUNT/1000)
 // static Table for 10kHz IF and 96kHz ADC (or 5kHz IF and 48kHz ADC) audio ADC
-const int16_t sincos_tbl[48][2] = {
+static const int16_t sincos_tbl[48][2] = {
   { 10533,  31029 }, { 27246,  18205 }, { 32698,  -2143 }, { 24636, -21605 },
   {  6393, -32138 }, {-14493, -29389 }, {-29389, -14493 }, {-32138,   6393 },
   {-21605,  24636 }, { -2143,  32698 }, { 18205,  27246 }, { 31029,  10533 },
@@ -59,7 +75,7 @@ const int16_t sincos_tbl[48][2] = {
 };
 #elif FREQUENCY_OFFSET==4000*(AUDIO_ADC_FREQ/AUDIO_SAMPLES_COUNT/1000)
 // static Table for 8kHz IF and 96kHz audio ADC (or 4kHz IF and 48kHz ADC) audio ADC
-const int16_t sincos_tbl[48][2] = {
+static const int16_t sincos_tbl[48][2] = {
   {  4277, 32488}, { 19948, 25997}, { 30274, 12540}, { 32488, -4277},
   { 25997,-19948}, { 12540,-30274}, { -4277,-32488}, {-19948,-25997},
   {-30274,-12540}, {-32488,  4277}, {-25997, 19948}, {-12540, 30274},
@@ -75,7 +91,7 @@ const int16_t sincos_tbl[48][2] = {
 };
 #elif FREQUENCY_OFFSET==3000*(AUDIO_ADC_FREQ/AUDIO_SAMPLES_COUNT/1000)
 // static Table for 6kHz IF and 96kHz audio ADC (or 3kHz IF and 48kHz ADC) audio ADC
-const int16_t sincos_tbl[48][2] = {
+static const int16_t sincos_tbl[48][2] = {
   {  3212, 32610}, { 15447, 28899}, { 25330, 20788}, { 31357,  9512},
   { 32610, -3212}, { 28899,-15447}, { 20788,-25330}, {  9512,-31357},
   { -3212,-32610}, {-15447,-28899}, {-25330,-20788}, {-31357, -9512},

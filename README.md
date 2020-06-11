@@ -89,7 +89,7 @@ There are seveal numbers of great companion PC tools from third-party.
 
 ## Documentation
 
-* [NanoVNA User Guide](https://cho45.github.io/NanoVNA-manual/) [(google translate)](https://translate.google.com/translate?sl=ja&tl=en&u=https%3A%2F%2Fcho45.github.io%2FNanoVNA-manual%2F) by cho45
+* [NanoVNA User Guide(ja)](https://cho45.github.io/NanoVNA-manual/) by cho45. [(en:google translate)](https://translate.google.com/translate?sl=ja&tl=en&u=https%3A%2F%2Fcho45.github.io%2FNanoVNA-manual%2F)
 
 ## Reference
 
@@ -105,6 +105,7 @@ Hardware design material is disclosed to prevent bad quality clone. Please let m
 ## Authorized Distributor
 
 * [Nooelec](https://www.nooelec.com/store/nanovna-bundle.html)
+* Switch Science(ja) [NanoVNA-H](https://www.switch-science.com/catalog/6405/) [NanoVNA-H4](https://www.switch-science.com/catalog/6406/)
 
 ## Credit
 

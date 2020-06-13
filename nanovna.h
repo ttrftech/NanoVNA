@@ -119,10 +119,10 @@ extern const char *info_about[];
  */
 // 5ms @ 96kHz
 // Define aic3204 source clock frequency (for 8MHz used fractional multiplier, and possible little phase error)
-//#define AUDIO_CLOCK_REF       ( 8000000U)
+#define AUDIO_CLOCK_REF       ( 8000000U)
 //#define AUDIO_CLOCK_REF       (10752000U)
 // Disable AIC PLL clock, use input as CODEC_CLKIN
-#define AUDIO_CLOCK_REF       (86016000U)
+//#define AUDIO_CLOCK_REF       (86016000U)
 
 // Define ADC sample rate
 #define AUDIO_ADC_FREQ        (96000)

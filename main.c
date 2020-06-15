@@ -695,7 +695,8 @@ VNA_SHELL_FUNCTION(cmd_dump)
   if (argc == 1)
     dump_selection = my_atoi(argv[0]);
 
-  wait_dsp(3);
+  dsp_start(3);
+  dsp_wait();
 
   len = AUDIO_BUFFER_LEN;
   if (dump_selection == 1 || dump_selection == 2)

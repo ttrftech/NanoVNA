@@ -491,6 +491,14 @@ reactance(const float *v)
   return zi;
 }
 
+static float
+qualityfactor(const float *v)
+{
+  float i = 2*v[1];
+  float r = (1+v[0])*(1-v[0]) - v[1]*v[1];
+  return fabs(i / r);
+}
+
 static void
 cartesian_scale(float re, float im, int *xp, int *yp, float scale)
 {
@@ -566,6 +574,9 @@ trace_into_index(int t, int i, float array[POINTS_COUNT][2])
     break;
   case TRC_X:
     v-= reactance(coeff) * scale;
+    break;
+  case TRC_Q:
+    v-= qualityfactor(coeff) * scale;
     break;
   case TRC_SMITH:
   //case TRC_ADMIT:
@@ -669,6 +680,10 @@ trace_get_value_string(int t, char *buf, int len, float array[POINTS_COUNT][2], 
     format = "%.2F"S_OHM;
     v = gamma2reactance(coeff);
     break;
+  case TRC_Q:
+    format = "%.1f";
+    v = qualityfactor(coeff);
+    break;
   case TRC_SMITH:
     format_smith_value(buf, len, coeff, frequencies[i]);
     return;
@@ -728,6 +743,10 @@ trace_get_value_string_delta(int t, char *buf, int len, float array[POINTS_COUNT
   case TRC_X:
     format = "%.2F"S_OHM;
     v = gamma2reactance(coeff);
+    break;
+  case TRC_Q:
+    format = "%.1f";
+    v = qualityfactor(coeff);
     break;
   //case TRC_ADMIT:
   case TRC_POLAR:

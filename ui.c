@@ -886,6 +886,7 @@ const menuitem_t menu_format2[] = {
   { MT_CALLBACK, TRC_IMAG, "IMAG", menu_format_cb },
   { MT_CALLBACK, TRC_R, "RESISTANCE", menu_format_cb },
   { MT_CALLBACK, TRC_X, "REACTANCE", menu_format_cb },
+  { MT_CALLBACK, TRC_Q, "Q FACTOR", menu_format_cb },
   { MT_CANCEL, 0, S_LARROW" BACK", NULL },
   { MT_NONE, 0, NULL, NULL } // sentinel
 };
@@ -1140,6 +1141,7 @@ menu_invoke(int item)
 
 #define MENU_BUTTON_WIDTH  60
 #define MENU_BUTTON_HEIGHT 30
+#define MENU_BUTTON_MAX 8
 #define NUM_INPUT_HEIGHT   30
 
 #define KP_WIDTH     48
@@ -1414,7 +1416,7 @@ static void
 draw_menu_buttons(const menuitem_t *menu)
 {
   int i = 0;
-  for (i = 0; i < 7; i++) {
+  for (i = 0; i < MENU_BUTTON_MAX; i++) {
     const char *l1, *l2;
     if (menu[i].type == MT_NONE)
       break;
@@ -1460,7 +1462,7 @@ menu_apply_touch(void)
   int i;
 
   touch_position(&touch_x, &touch_y);
-  for (i = 0; i < 7; i++) {
+  for (i = 0; i < MENU_BUTTON_MAX; i++) {
     if (menu[i].type == MT_NONE)
       break;
     if (menu[i].type == MT_BLANK)
@@ -1485,7 +1487,7 @@ draw_menu(void)
 static void
 erase_menu_buttons(void)
 {
-  ili9341_fill(320-MENU_BUTTON_WIDTH, 0, MENU_BUTTON_WIDTH, MENU_BUTTON_HEIGHT*7, DEFAULT_BG_COLOR);
+  ili9341_fill(320-MENU_BUTTON_WIDTH, 0, MENU_BUTTON_WIDTH, MENU_BUTTON_HEIGHT * MENU_BUTTON_MAX, DEFAULT_BG_COLOR);
 }
 
 static void
@@ -1503,8 +1505,8 @@ leave_ui_mode()
   } else if (ui_mode == UI_NUMERIC) {
     request_to_draw_cells_behind_numeric_input();
     erase_numeric_input();
-    draw_frequencies();
   }
+  draw_frequencies();
 }
 
 static void

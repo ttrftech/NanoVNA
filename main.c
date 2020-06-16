@@ -1550,7 +1550,8 @@ static const struct {
   { "REAL",   NGRIDY/2,  0.25 },
   { "IMAG",   NGRIDY/2,  0.25 },
   { "R",      NGRIDY/2, 100.0 },
-  { "X",      NGRIDY/2, 100.0 }
+  { "X",      NGRIDY/2, 100.0 },
+  { "Q",             0,  10.0 }
 };
 
 static const char * const trc_channel_name[] = {
@@ -1654,8 +1655,8 @@ VNA_SHELL_FUNCTION(cmd_trace)
 #if MAX_TRACE_TYPE != 12
 #error "Trace type enum possibly changed, check cmd_trace function"
 #endif
-  // enum TRC_LOGMAG, TRC_PHASE, TRC_DELAY, TRC_SMITH, TRC_POLAR, TRC_LINEAR, TRC_SWR, TRC_REAL, TRC_IMAG, TRC_R, TRC_X, TRC_OFF
-  static const char cmd_type_list[] = "logmag|phase|delay|smith|polar|linear|swr|real|imag|r|x|off";
+  // enum TRC_LOGMAG, TRC_PHASE, TRC_DELAY, TRC_SMITH, TRC_POLAR, TRC_LINEAR, TRC_SWR, TRC_REAL, TRC_IMAG, TRC_R, TRC_X, TRC_Q, TRC_OFF
+  static const char cmd_type_list[] = "logmag|phase|delay|smith|polar|linear|swr|real|imag|r|x|q|off";
   int type = get_str_index(argv[1], cmd_type_list);
   if (type >= 0) {
     set_trace_type(t, type);

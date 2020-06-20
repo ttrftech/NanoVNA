@@ -908,6 +908,7 @@ const menuitem_t menu_format2[] = {
   { MT_CALLBACK, TRC_IMAG, "IMAG", menu_format_cb },
   { MT_CALLBACK, TRC_R, "RESISTANCE", menu_format_cb },
   { MT_CALLBACK, TRC_X, "REACTANCE", menu_format_cb },
+  { MT_CALLBACK, TRC_Q, "Q FACTOR", menu_format_cb },
   { MT_CANCEL, 0, S_LARROW" BACK", NULL },
   { MT_NONE, 0, NULL, NULL } // sentinel
 };
@@ -1170,7 +1171,7 @@ menu_invoke(int item)
 }
 
 // Maximum menu buttons count
-#define MENU_BUTTON_MAX     7
+#define MENU_BUTTON_MAX     8
 // Menu buttons size
 #define MENU_BUTTON_WIDTH  60
 #define MENU_BUTTON_HEIGHT 30
@@ -1540,8 +1541,8 @@ leave_ui_mode()
   } else if (ui_mode == UI_NUMERIC) {
     request_to_draw_cells_behind_numeric_input();
     erase_numeric_input();
-    draw_frequencies();
   }
+  draw_frequencies();
 }
 
 static void

@@ -21,6 +21,8 @@
 
 // Need enable HAL_USE_SPI in halconf.h
 #define __USE_DISPLAY_DMA__
+// Add RTC clock support
+//#define __USE_RTC__
 
 /*
  * main.c
@@ -404,6 +406,37 @@ void ili9341_read_memory(int x, int y, int w, int h, int len, uint16_t* out);
 void ili9341_line(int x0, int y0, int x1, int y1);
 void show_version(void);
 void show_logo(void);
+
+/*
+ * rtc.c
+ */
+#ifdef __USE_RTC__
+#define RTC_START_YEAR          2000
+
+#define RTC_DR_YEAR(dr)         (((dr)>>16)&0xFF)
+#define RTC_DR_MONTH(dr)        (((dr)>> 8)&0xFF)
+#define RTC_DR_DAY(dr)          (((dr)>> 0)&0xFF)
+
+#define RTC_TR_HOUR(dr)         (((tr)>>16)&0xFF)
+#define RTC_TR_MIN(dr)          (((tr)>> 8)&0xFF)
+#define RTC_TR_SEC(dr)          (((tr)>> 0)&0xFF)
+
+// Init RTC
+void rtc_init(void);
+// Then read time and date TR should read first, after DR !!!
+// Get RTC time as bcd structure in 0x00HHMMSS
+#define rtc_get_tr_bcd() (RTC->TR & 0x007F7F7F)
+// Get RTC date as bcd structure in 0x00YYMMDD (remove day of week information!!!!)
+#define rtc_get_dr_bcd() (RTC->DR & 0x00FF1F3F)
+// read TR as 0x00HHMMSS in bin (TR should be read first for sync)
+uint32_t rtc_get_tr_bin(void);
+// read DR as 0x00YYMMDD in bin (DR should be read second)
+uint32_t rtc_get_dr_bin(void);
+// Read time in FAT filesystem format
+uint32_t rtc_get_FAT(void);
+// Write date and time (need in bcd format!!!)
+void rtc_set_time(uint32_t dr, uint32_t tr);
+#endif
 
 /*
  * flash.c

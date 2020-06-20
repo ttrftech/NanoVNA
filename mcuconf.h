@@ -42,9 +42,7 @@
 #define STM32_HSI_ENABLED                   TRUE
 #define STM32_HSI14_ENABLED                 TRUE
 #define STM32_HSI48_ENABLED                 TRUE
-#define STM32_LSI_ENABLED                   TRUE
 #define STM32_HSE_ENABLED                   FALSE
-#define STM32_LSE_ENABLED                   FALSE
 #define STM32_SW                            STM32_SW_PLL
 #define STM32_PLLSRC                        STM32_PLLSRC_HSI_DIV2
 #define STM32_PREDIV_VALUE                  1
@@ -61,7 +59,27 @@
 //#define STM32_I2C1SW                        STM32_I2C1SW_HSI
 #define STM32_I2C1SW                        STM32_I2C1SW_SYSCLK
 #define STM32_USART1SW                      STM32_USART1SW_PCLK
+
+/*
+ * RTC driver system settings for stm32f303
+ */
+
+#ifndef VNA_USE_LSE
+// Use 40kHz LSI
+#define STM32_LSE_ENABLED                   FALSE
+#define STM32_LSI_ENABLED                   TRUE
 #define STM32_RTCSEL                        STM32_RTCSEL_LSI
+#define STM32_RTC_PRESA_VALUE               40
+#define STM32_RTC_PRESS_VALUE               1000
+#else
+// Use 32768Hz LSE
+#define STM32_LSE_ENABLED                   TRUE
+#define STM32_LSI_ENABLED                   FALSE
+#define STM32_RTCSEL                        STM32_RTCSEL_LSE
+#define STM32_RTC_PRESA_VALUE               32
+#define STM32_RTC_PRESS_VALUE               1024
+#define STM32_LSEDRV                        (3 << 3)
+#endif
 
 /*
  * ADC driver system settings.

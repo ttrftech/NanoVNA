@@ -41,10 +41,10 @@ uistat_t uistat = {
 #define EVT_DOWN                0x20
 #define EVT_REPEAT              0x40
 
-#define BUTTON_DOWN_LONG_TICKS      5000   /* 1sec */
-#define BUTTON_DOUBLE_TICKS         2500   /* 500ms */
-#define BUTTON_REPEAT_TICKS         200    /*  40ms */
-#define BUTTON_DEBOUNCE_TICKS       100    /*  20ms */
+#define BUTTON_DOWN_LONG_TICKS      5000   /* 500ms */
+#define BUTTON_DOUBLE_TICKS         2500   /* 250ms */
+#define BUTTON_REPEAT_TICKS         200    /*  20ms */
+#define BUTTON_DEBOUNCE_TICKS       400    /*  40ms */
 
 /* lever switch assignment */
 #define BIT_UP1     3
@@ -155,10 +155,11 @@ static int btn_wait_release(void)
     systime_t ticks = chVTGetSystemTimeX();
     systime_t dt = ticks - last_button_down_ticks;
     // Debounce input
-    if (dt < BUTTON_DEBOUNCE_TICKS){
-      chThdSleepMilliseconds(10);
-      continue;
-    }
+//    if (dt < BUTTON_DEBOUNCE_TICKS){
+//      chThdSleepMilliseconds(10);
+//      continue;
+//    }
+    chThdSleepMilliseconds(1);
     uint16_t cur_button = READ_PORT() & BUTTON_MASK;
     uint16_t changed = last_button ^ cur_button;
     if (dt >= BUTTON_DOWN_LONG_TICKS && (cur_button & (1<<BIT_PUSH)))
@@ -362,23 +363,46 @@ touch_position(int *x, int *y)
 void
 show_version(void)
 {
-  int x = 5, y = 5, i = 0;
+  int x = 5, y = 5, i = 1;
   adc_stop();
   ili9341_set_foreground(DEFAULT_FG_COLOR);
   ili9341_set_background(DEFAULT_BG_COLOR);
 
   ili9341_clear_screen();
-  uint16_t shift = 0b0000010000111110;
-  ili9341_drawstring_size(info_about[i++], x , y, 4);
+  uint16_t shift = 0b000100000;
+  ili9341_drawstring_size(BOARD_NAME, x , y, 3);
+  y+=FONT_GET_HEIGHT*3+3-5;
   while (info_about[i]) {
     do {shift>>=1; y+=5;} while (shift&1);
-    ili9341_drawstring(info_about[i++], x, y+=5);
+    ili9341_drawstring(info_about[i++], x, y+=FONT_STR_HEIGHT+3-5);
   }
+  // Update battery and time
+  y+=3*FONT_STR_HEIGHT;
+  uint16_t cnt = 0;
   while (true) {
     if (touch_check() == EVT_TOUCH_PRESSED)
       break;
     if (btn_check() & EVT_BUTTON_SINGLE_CLICK)
       break;
+    chThdSleepMilliseconds(40);
+    if ((cnt++)&0x07) continue; // Not update time so fast
+
+#ifdef __USE_RTC__
+    char buffer[32];
+    uint32_t tr = rtc_get_tr_bin(); // TR read first
+    uint32_t dr = rtc_get_dr_bin(); // DR read second
+    plot_printf(buffer, sizeof(buffer), "Time: 20%02d/%02d/%02d %02d:%02d:%02d",
+      RTC_DR_YEAR(dr),
+      RTC_DR_MONTH(dr),
+      RTC_DR_DAY(dr),
+      RTC_TR_HOUR(dr),
+      RTC_TR_MIN(dr),
+      RTC_TR_SEC(dr));
+    ili9341_drawstring(buffer, x, y);
+#endif
+//    uint32_t vbat = adc_vbat_read();
+//    plot_printf(buffer, sizeof(buffer), "Battery: %d.%03dV", vbat/1000, vbat%1000);
+//    ili9341_drawstring(buffer, x, y + FONT_STR_HEIGHT + 2);
   }
 
   touch_start_watchdog();
@@ -1447,12 +1471,12 @@ draw_menu_buttons(const menuitem_t *menu)
     ili9341_set_foreground(fg);
     ili9341_set_background(bg);
     if (menu_is_multiline(menu[i].label, &l1, &l2)) {
-      ili9341_fill(LCD_WIDTH-MENU_BUTTON_WIDTH+3, y+5, MENU_BUTTON_WIDTH-6, 2+FONT_GET_HEIGHT+1+FONT_GET_HEIGHT+2, bg);
-      ili9341_drawstring(l1, LCD_WIDTH-MENU_BUTTON_WIDTH+5, y+7);
-      ili9341_drawstring(l2, LCD_WIDTH-MENU_BUTTON_WIDTH+5, y+7+FONT_GET_HEIGHT+1);
+      ili9341_fill(LCD_WIDTH-MENU_BUTTON_WIDTH+3, y+MENU_BUTTON_HEIGHT/2-FONT_GET_HEIGHT-3, MENU_BUTTON_WIDTH-6, 2+FONT_GET_HEIGHT+1+FONT_GET_HEIGHT+2, bg);
+      ili9341_drawstring(l1, LCD_WIDTH-MENU_BUTTON_WIDTH+5, y+MENU_BUTTON_HEIGHT/2-FONT_GET_HEIGHT-1);
+      ili9341_drawstring(l2, LCD_WIDTH-MENU_BUTTON_WIDTH+5, y+MENU_BUTTON_HEIGHT/2);
     } else {
-      ili9341_fill(LCD_WIDTH-MENU_BUTTON_WIDTH+3, y+8, MENU_BUTTON_WIDTH-6, 2+FONT_GET_HEIGHT+2, bg);
-      ili9341_drawstring(menu[i].label, LCD_WIDTH-MENU_BUTTON_WIDTH+5, y+10);
+      ili9341_fill(LCD_WIDTH-MENU_BUTTON_WIDTH+3, y+(MENU_BUTTON_HEIGHT-FONT_GET_HEIGHT-6)/2, MENU_BUTTON_WIDTH-6, 2+FONT_GET_HEIGHT+2, bg);
+      ili9341_drawstring(menu[i].label, LCD_WIDTH-MENU_BUTTON_WIDTH+5, y+(MENU_BUTTON_HEIGHT-FONT_GET_HEIGHT-6)/2+2);
     }
   }
 }

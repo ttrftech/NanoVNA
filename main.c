@@ -61,8 +61,6 @@ static volatile vna_shellcmd_t  shell_function = 0;
 //#define ENABLED_DUMP
 // Allow get threads debug info
 //#define ENABLE_THREADS_COMMAND
-// RTC time not used
-//#define ENABLE_TIME_COMMAND
 // Enable vbat_offset command, allow change battery voltage correction in config
 #define ENABLE_VBAT_OFFSET_COMMAND
 // Info about NanoVNA, need fore soft
@@ -337,8 +335,8 @@ static const uint8_t gain_table[][2] = {
     {  0,  0 },     // 1st:    0 ~  300MHz
     { 50, 50 },     // 2nd:  300 ~  900MHz
     { 75, 75 },     // 3th:  900 ~ 1500MHz
-    { 85, 85 },     // 4th: 1500 ~ 1800MHz
-    { 95, 95 },     // 5th: 2100 ~ 2400MHz
+    { 85, 85 },     // 4th: 1500 ~ 2100MHz
+    { 95, 95 },     // 5th: 2100 ~ 2700MHz
 };
 
 #define DELAY_GAIN_CHANGE 4
@@ -515,17 +513,32 @@ VNA_SHELL_FUNCTION(cmd_power)
 //  set_frequency(frequency);
 }
 
-#ifdef ENABLE_TIME_COMMAND
-#if HAL_USE_RTC == FALSE
-#error "Error cmd_time require define HAL_USE_RTC = TRUE in halconf.h"
-#endif
+#ifdef __USE_RTC__
 VNA_SHELL_FUNCTION(cmd_time)
 {
-  RTCDateTime timespec;
   (void)argc;
   (void)argv;
-  rtcGetTime(&RTCD1, &timespec);
-  shell_printf("%d/%d/%d %d\r\n", timespec.year+1980, timespec.month, timespec.day, timespec.millisecond);
+  uint32_t  dt_buf[2];
+  dt_buf[0] = rtc_get_tr_bcd(); // TR should be read first for sync
+  dt_buf[1] = rtc_get_dr_bcd(); // DR should be read second
+  static const uint8_t idx_to_time[] = {6,5,4,2,  1,  0};
+  static const char       time_cmd[] = "y|m|d|h|min|sec";
+  //            0    1   2       4      5     6
+  // time[] ={sec, min, hr, 0, day, month, year, 0}
+  uint8_t   *time = (uint8_t*)dt_buf;
+
+  if (argc!=2) goto usage;
+  int idx = get_str_index(argv[0], time_cmd);
+  uint32_t val = my_atoui(argv[1]);
+  if (idx < 0 || val > 99)
+    goto usage;
+  // Write byte value in struct
+  time[idx_to_time[idx]] = ((val/10)<<4)|(val%10); // value in bcd format
+  rtc_set_time(dt_buf[1], dt_buf[0]);
+  return;
+usage:
+  shell_printf("20%02X/%02X/%02X %02X:%02X:%02X\r\n", time[6], time[5], time[4], time[2], time[1], time[0]);
+  shell_printf("usage: time [%s] 0-99\r\n", time_cmd);
 }
 #endif
 
@@ -2269,7 +2282,7 @@ static const VNAShellCommand commands[] =
     {"freq"        , cmd_freq        , CMD_WAIT_MUTEX},
     {"offset"      , cmd_offset      , CMD_WAIT_MUTEX},
     {"bandwidth"   , cmd_bandwidth   , 0},
-#ifdef ENABLE_TIME_COMMAND
+#ifdef __USE_RTC__
     {"time"        , cmd_time        , 0},
 #endif
     {"dac"         , cmd_dac         , 0},
@@ -2486,6 +2499,10 @@ int main(void)
 {
   halInit();
   chSysInit();
+#ifdef __USE_RTC__
+  rtc_init(); // Initialize RTC library
+#endif
+
 #ifdef USE_VARIABLE_OFFSET
   generate_DSP_Table(FREQUENCY_OFFSET);
 #endif

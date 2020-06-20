@@ -2602,7 +2602,50 @@ void HardFault_Handler(void)
 
 void hard_fault_handler_c(uint32_t *sp) 
 {
+#if 0
+  uint32_t r0  = sp[0];
+  uint32_t r1  = sp[1];
+  uint32_t r2  = sp[2];
+  uint32_t r3  = sp[3];
+  register uint32_t  r4 __asm("r4");
+  register uint32_t  r5 __asm("r5");
+  register uint32_t  r6 __asm("r6");
+  register uint32_t  r7 __asm("r7");
+  register uint32_t  r8 __asm("r8");
+  register uint32_t  r9 __asm("r9");
+  register uint32_t r10 __asm("r10");
+  register uint32_t r11 __asm("r11");
+  uint32_t r12 = sp[4];
+  uint32_t lr  = sp[5];
+  uint32_t pc  = sp[6];
+  uint32_t psr = sp[7];
+  int y = 0;
+  int x = 20;
+  char buf[16];
+  ili9341_set_background(0x0000);
+  ili9341_set_foreground(0xFFFF);
+  plot_printf(buf, sizeof(buf), "SP  0x%08x",  (uint32_t)sp);ili9341_drawstring(buf, x, y+=FONT_STR_HEIGHT);
+  plot_printf(buf, sizeof(buf), "R0  0x%08x",  r0);ili9341_drawstring(buf, x, y+=FONT_STR_HEIGHT);
+  plot_printf(buf, sizeof(buf), "R1  0x%08x",  r1);ili9341_drawstring(buf, x, y+=FONT_STR_HEIGHT);
+  plot_printf(buf, sizeof(buf), "R2  0x%08x",  r2);ili9341_drawstring(buf, x, y+=FONT_STR_HEIGHT);
+  plot_printf(buf, sizeof(buf), "R3  0x%08x",  r3);ili9341_drawstring(buf, x, y+=FONT_STR_HEIGHT);
+  plot_printf(buf, sizeof(buf), "R4  0x%08x",  r4);ili9341_drawstring(buf, x, y+=FONT_STR_HEIGHT);
+  plot_printf(buf, sizeof(buf), "R5  0x%08x",  r5);ili9341_drawstring(buf, x, y+=FONT_STR_HEIGHT);
+  plot_printf(buf, sizeof(buf), "R6  0x%08x",  r6);ili9341_drawstring(buf, x, y+=FONT_STR_HEIGHT);
+  plot_printf(buf, sizeof(buf), "R7  0x%08x",  r7);ili9341_drawstring(buf, x, y+=FONT_STR_HEIGHT);
+  plot_printf(buf, sizeof(buf), "R8  0x%08x",  r8);ili9341_drawstring(buf, x, y+=FONT_STR_HEIGHT);
+  plot_printf(buf, sizeof(buf), "R9  0x%08x",  r9);ili9341_drawstring(buf, x, y+=FONT_STR_HEIGHT);
+  plot_printf(buf, sizeof(buf), "R10 0x%08x", r10);ili9341_drawstring(buf, x, y+=FONT_STR_HEIGHT);
+  plot_printf(buf, sizeof(buf), "R11 0x%08x", r11);ili9341_drawstring(buf, x, y+=FONT_STR_HEIGHT);
+  plot_printf(buf, sizeof(buf), "R12 0x%08x", r12);ili9341_drawstring(buf, x, y+=FONT_STR_HEIGHT);
+  plot_printf(buf, sizeof(buf), "LR  0x%08x",  lr);ili9341_drawstring(buf, x, y+=FONT_STR_HEIGHT);
+  plot_printf(buf, sizeof(buf), "PC  0x%08x",  pc);ili9341_drawstring(buf, x, y+=FONT_STR_HEIGHT);
+  plot_printf(buf, sizeof(buf), "PSR 0x%08x", psr);ili9341_drawstring(buf, x, y+=FONT_STR_HEIGHT);
+
+  shell_printf("===================================\r\n");
+#else
   (void)sp;
+#endif
   while (true) {
   }
 }

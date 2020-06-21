@@ -64,6 +64,7 @@
 #define SI5351_PLL_RESET_A          (1<<5)
 
 #define SI5351_REG_183_CRYSTAL_LOAD 183
+#define SI5351_CRYSTAL_LOAD__PF     (0<<6)
 #define SI5351_CRYSTAL_LOAD_6PF     (1<<6)
 #define SI5351_CRYSTAL_LOAD_8PF     (2<<6)
 #define SI5351_CRYSTAL_LOAD_10PF    (3<<6)

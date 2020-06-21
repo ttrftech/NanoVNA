@@ -52,11 +52,11 @@ static uint8_t  clk_cache[3] = {0, 0, 0};
 #define DELAY_BANDCHANGE_3_4  4
 // Delay after set new PLL values, and send reset (on band 1 unstable if less then 900, on 2000-5000 no amplitude spike on change)
 #define DELAY_RESET_PLL_BEFORE    1000
-#define DELAY_RESET_PLL_AFTER     4000
+#define DELAY_RESET_PLL_AFTER     3500
 
 #else
 // Debug timer set
-uint16_t timings[8]={2,3,2,3,4,1000, 4000};
+uint16_t timings[8]={2,2,2,3,4,1000, 3500};
 void si5351_set_timing(int i, int v) {timings[i]=v;}
 #define DELAY_NORMAL          timings[0]
 // Delay for bands (depend set band 1 more fast (can change before next dsp buffer ready, need wait additional interval)
@@ -66,7 +66,7 @@ void si5351_set_timing(int i, int v) {timings[i]=v;}
 #define DELAY_BANDCHANGE_1_2  timings[3]
 #define DELAY_BANDCHANGE_3_4  timings[4]
 // Delay after set new PLL values, and send reset (on band 1-2 unstable if less then 900, on 2000-5000 no amplitude spike on change)
-#define DELAY_RESET_PLL_BEFORE       timings[5]
+#define DELAY_RESET_PLL_BEFORE      timings[5]
 #define DELAY_RESET_PLL_AFTER       timings[6]
 #endif
 

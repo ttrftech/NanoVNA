@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014-2020, Dmitry (DiSlord) dislordlive@gmail.com
+ * Copyright (c) 2019-2020, Dmitry (DiSlord) dislordlive@gmail.com
  * All rights reserved.
  *
  * This is free software; you can redistribute it and/or modify

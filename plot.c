@@ -665,7 +665,7 @@ trace_get_value_string(int t, char *buf, int len, float array[POINTS_COUNT][2], 
     v = reactance(coeff);
     break;
   case TRC_Q:
-    format = "%.1f";
+    format = "%.3f";
     v = qualityfactor(coeff);
     break;
   case TRC_SMITH:
@@ -729,7 +729,7 @@ trace_get_value_string_delta(int t, char *buf, int len, float array[POINTS_COUNT
     v = reactance(coeff);
     break;
   case TRC_Q:
-    format = "%.1f";
+    format = "%.3f";
     v = qualityfactor(coeff);
     break;
   //case TRC_ADMIT:

@@ -228,7 +228,7 @@ extern const uint16_t numfont16x22[];
 #define S_OHM   "\036"
 
 // trace 
-#define MAX_TRACE_TYPE 12
+#define MAX_TRACE_TYPE 13
 enum trace_type {
   TRC_LOGMAG=0, TRC_PHASE, TRC_DELAY, TRC_SMITH, TRC_POLAR, TRC_LINEAR, TRC_SWR, TRC_REAL, TRC_IMAG, TRC_R, TRC_X, TRC_Q, TRC_OFF
 };

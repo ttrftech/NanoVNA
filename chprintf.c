@@ -34,7 +34,7 @@
 
 // Enable [flags], support:
 // ' ' Prepends a space for positive signed-numeric types. positive = ' ', negative = '-'. This flag is ignored if the + flag exists.
-//#define CHPRINTF_USE_SPACE_FLAG
+#define CHPRINTF_USE_SPACE_FLAG
 
 // Force putting trailing zeros on float value
 #define CHPRINTF_FORCE_TRAILING_ZEROS
@@ -195,7 +195,9 @@ static char *ftoaS(char *p, float num, uint32_t precision) {
       ;
     prefix = num > 1e-3 ? ptr[-1] : 0;
   }
-  // Auto set prescision
+  else
+    precision++;   // Add additional digit in place of prefix
+  // Auto set precision in place of value
   uint32_t l = num;
   if (l < 10)
     precision+=2;
@@ -241,6 +243,7 @@ static char *ftoaS(char *p, float num, uint32_t precision) {
 #define PAD_ZERO            16
 #define PLUS_SPACE          32
 #define DEFAULT_PRESCISION  64
+#define COMPLEX             128
 
 int chvprintf(BaseSequentialStream *chp, const char *fmt, va_list ap) {
   char *p, *s, c, filler=' ';
@@ -286,6 +289,8 @@ int chvprintf(BaseSequentialStream *chp, const char *fmt, va_list ap) {
         state|=POSITIVE;
       else if (*fmt == '0')
         state|=PAD_ZERO;
+//      else if (*fmt == 'j')
+//        state|=COMPLEX;
 #ifdef CHPRINTF_USE_SPACE_FLAG
       else if (*fmt == ' ')
         state|=PLUS_SPACE;
@@ -365,6 +370,8 @@ int chvprintf(BaseSequentialStream *chp, const char *fmt, va_list ap) {
       else if (state & PLUS_SPACE)
         *p++ = ' ';
 #endif
+//      if (state & COMPLEX)
+//        *p++ = 'j';
       p = long_to_string_with_divisor(p, value.l, 10, 0);
       break;
     case 'q':
@@ -386,6 +393,8 @@ int chvprintf(BaseSequentialStream *chp, const char *fmt, va_list ap) {
       else if (state & PLUS_SPACE)
         *p++ = ' ';
 #endif
+//      if (state & COMPLEX)
+//        *p++ = 'j';
       if (value.f == INFINITY){
         *p++ = 0x19;
         break;

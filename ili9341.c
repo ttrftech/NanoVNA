@@ -389,13 +389,11 @@ static const uint8_t ili9341_init_seq[] = {
   // display off
   ILI9341_DISPLAY_OFF, 0,
   // Power control B
-  ILI9341_POWERB, 3, 0x00, 0x83, 0x30,
+  ILI9341_POWERB, 3, 0x00, 0xC1, 0x30,
   // Power on sequence control
   ILI9341_POWER_SEQ, 4, 0x64, 0x03, 0x12, 0x81,
-  //ILI9341_POWER_SEQ, 4, 0x55, 0x01, 0x23, 0x01,
   // Driver timing control A
-  ILI9341_DTCA, 3, 0x85, 0x01, 0x79,
-  //ILI9341_DTCA, 3, 0x84, 0x11, 0x7a,
+  ILI9341_DTCA, 3, 0x85, 0x00, 0x78,
   // Power control A
   ILI9341_POWERA, 5, 0x39, 0x2C, 0x00, 0x34, 0x02,
   // Pump ratio control
@@ -403,11 +401,11 @@ static const uint8_t ili9341_init_seq[] = {
   // Driver timing control B
   ILI9341_DTCB, 2, 0x00, 0x00,
   // POWER_CONTROL_1
-  ILI9341_POWER_CONTROL_1, 1, 0x26,
+  ILI9341_POWER_CONTROL_1, 1, 0x23,
   // POWER_CONTROL_2
-  ILI9341_POWER_CONTROL_2, 1, 0x11,
+  ILI9341_POWER_CONTROL_2, 1, 0x10,
   // VCOM_CONTROL_1
-  ILI9341_VCOM_CONTROL_1, 2, 0x35, 0x3E,
+  ILI9341_VCOM_CONTROL_1, 2, 0x3e, 0x28,
   // VCOM_CONTROL_2
   ILI9341_VCOM_CONTROL_2, 1, 0xBE,
   // MEMORY_ACCESS_CONTROL
@@ -416,29 +414,25 @@ static const uint8_t ili9341_init_seq[] = {
   // COLMOD_PIXEL_FORMAT_SET : 16 bit pixel
   ILI9341_PIXEL_FORMAT_SET, 1, 0x55,
   // Frame Rate
-  ILI9341_FRAME_RATE_CONTROL_1, 2, 0x00, 0x1B,
+  ILI9341_FRAME_RATE_CONTROL_1, 2, 0x00, 0x18,
   // Gamma Function Disable
-  ILI9341_3GAMMA_EN, 1, 0x08,
+  ILI9341_3GAMMA_EN, 1, 0x00,
   // gamma set for curve 01/2/04/08
   ILI9341_GAMMA_SET, 1, 0x01,
   // positive gamma correction
-//ILI9341_POSITIVE_GAMMA_CORRECTION, 15, 0x1F,  0x1A,  0x18,  0x0A,  0x0F,  0x06,  0x45,  0x87,  0x32,  0x0A,  0x07,  0x02,  0x07, 0x05,  0x00,
+  ILI9341_POSITIVE_GAMMA_CORRECTION, 15, 0x0F,  0x31,  0x2B,  0x0C,  0x0E,  0x08,  0x4E,  0xF1,  0x37,  0x07,  0x10,  0x03,  0x0E, 0x09,  0x00,
   // negativ gamma correction
-//ILI9341_NEGATIVE_GAMMA_CORRECTION, 15, 0x00,  0x25,  0x27,  0x05,  0x10,  0x09,  0x3A,  0x78,  0x4D,  0x05,  0x18,  0x0D,  0x38, 0x3A,  0x1F,
+  ILI9341_NEGATIVE_GAMMA_CORRECTION, 15, 0x00,  0x0E,  0x14,  0x03,  0x11,  0x07,  0x31,  0xC1,  0x48,  0x08,  0x0F,  0x0C,  0x31, 0x36,  0x0F,
   // Column Address Set
-//ILI9341_COLUMN_ADDRESS_SET, 4, 0x00, 0x00, 0x01, 0x3f, // width 320
+//  ILI9341_COLUMN_ADDRESS_SET, 4, 0x00, 0x00, 0x01, 0x3f, // width 320
   // Page Address Set
-//ILI9341_PAGE_ADDRESS_SET, 4, 0x00, 0x00, 0x00, 0xef,   // height 240
+//  ILI9341_PAGE_ADDRESS_SET, 4, 0x00, 0x00, 0x00, 0xef,   // height 240
   // entry mode
   ILI9341_ENTRY_MODE_SET, 1, 0x06,
   // display function control
-  ILI9341_DISPLAY_FUNCTION_CONTROL, 4, 0x0A, 0x82, 0x27, 0x00,
+  ILI9341_DISPLAY_FUNCTION_CONTROL, 3, 0x08, 0x82, 0x27,
   // Interface Control (set WEMODE=0)
   ILI9341_INTERFACE_CONTROL, 3, 0x00, 0x00, 0x00,
-  // control display
-  //ILI9341_WRITE_CTRL_DISPLAY, 1, 0x0c,
-  // diaplay brightness
-  //ILI9341_WRITE_BRIGHTNESS, 1, 0xff,
   // sleep out
   ILI9341_SLEEP_OUT, 0,
   // display on

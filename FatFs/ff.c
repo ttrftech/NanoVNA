@@ -684,11 +684,11 @@ static void st_qword (BYTE* ptr, QWORD val)	/* Store an 8-byte word in little-en
 	*ptr++ = (BYTE)val; val >>= 8;
 	*ptr++ = (BYTE)val;
 }
-
 #endif
 #endif	/* !FF_FS_READONLY */
 
-#endif
+#endif	/* _WORD_ACCESS */
+
 
 /*-----------------------------------------------------------------------*/
 /* String functions                                                      */
@@ -3322,6 +3322,7 @@ static UINT check_fs (	/* 0:FAT VBR, 1:exFAT VBR, 2:Valid BS but not FAT, 3:Inva
 	}
 	return 2;	/* Valid BS but not FAT */
 }
+
 
 /* Find an FAT volume */
 /* (It supports only generic partitioning rules, MBR, GPT and SFD) */

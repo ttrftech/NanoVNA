@@ -115,7 +115,7 @@ const char *info_about[]={
   0 // sentinel
 };
 
-static THD_WORKING_AREA(waThread1, 640);
+static THD_WORKING_AREA(waThread1, 768);
 static THD_FUNCTION(Thread1, arg)
 {
   (void)arg;

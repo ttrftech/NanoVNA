@@ -23,6 +23,8 @@
 #define __USE_DISPLAY_DMA__
 // Add RTC clock support
 //#define __USE_RTC__
+// Add SD card support, req enable RTC (additional settings for file system see FatFS lib ffconf.h)
+//#define __USE_SD_CARD__
 
 /*
  * main.c
@@ -99,6 +101,8 @@ void cal_done(void);
 enum stimulus_type {
   ST_START=0, ST_STOP, ST_CENTER, ST_SPAN, ST_CW
 };
+
+int shell_printf(const char *fmt, ...);
 
 void set_sweep_frequency(int type, uint32_t frequency);
 uint32_t get_sweep_frequency(int type);
@@ -406,6 +410,13 @@ void ili9341_read_memory(int x, int y, int w, int h, int len, uint16_t* out);
 void ili9341_line(int x0, int y0, int x1, int y1);
 void show_version(void);
 void show_logo(void);
+
+// SD Card support, discio functions for FatFS lib implemented in ili9341.c
+#ifdef  __USE_SD_CARD__
+#include "fatfs\ff.h"
+#include "fatfs\diskio.h"
+void testLog(void);        // debug log
+#endif
 
 /*
  * rtc.c

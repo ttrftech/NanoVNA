@@ -102,7 +102,6 @@ enum stimulus_type {
   ST_START=0, ST_STOP, ST_CENTER, ST_SPAN, ST_CW
 };
 
-int shell_printf(const char *fmt, ...);
 
 void set_sweep_frequency(int type, uint32_t frequency);
 uint32_t get_sweep_frequency(int type);

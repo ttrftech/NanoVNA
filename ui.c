@@ -505,8 +505,8 @@ menu_recall_cb(int item, uint8_t data)
 {
   (void)item;
   load_properties(data);
-  menu_move_back();
-  ui_mode_normal();
+//  menu_move_back();
+//  ui_mode_normal();
   update_grid();
   draw_cal_status();
 }

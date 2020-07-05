@@ -28,6 +28,13 @@
 #define ADC_SMPR_SMP_239P5      7U  /**< @brief 252 cycles conversion time. */ 
 #define ADC_CFGR1_RES_12BIT             (0U << 3U)
 
+// External Event Select for regular group
+#define ADC_TIM1_TRGO  0                                       // 0b000
+#define ADC_TIM1_CC4   (ADC_CFGR1_EXTSEL_0)                    // 0b001
+#define ADC_TIM2_TRGO  (ADC_CFGR1_EXTSEL_1)                    // 0b010
+#define ADC_TIM3_TRGO  (ADC_CFGR1_EXTSEL_1|ADC_CFGR1_EXTSEL_0) // 0b011
+#define ADC_TIM15_TRGO (ADC_CFGR1_EXTSEL_2)                    // 0b100
+
 #define VNA_ADC     ADC1
 
 void adc_init(void)
@@ -68,9 +75,7 @@ uint16_t adc_single_read(uint32_t chsel)
   VNA_ADC->CFGR1  = ADC_CFGR1_RES_12BIT;
   VNA_ADC->CHSELR = chsel;
 
-  /* ADC conversion start.*/
-  VNA_ADC->CR |= ADC_CR_ADSTART;
-
+  VNA_ADC->CR |= ADC_CR_ADSTART; // ADC conversion start
   while (VNA_ADC->CR & ADC_CR_ADSTART)
     ;
 
@@ -105,14 +110,7 @@ int16_t adc_vbat_read(void)
 
 void adc_start_analog_watchdogd(uint32_t chsel)
 {
-  uint32_t cfgr1;
-
-  cfgr1 = ADC_CFGR1_RES_12BIT | ADC_CFGR1_AWDEN
-    | ADC_CFGR1_EXTEN_0 // rising edge of external trigger
-    | ADC_CFGR1_EXTSEL_0 | ADC_CFGR1_EXTSEL_1; // TRG3  , /* CFGR1 */
-
-  /* ADC setup, if it is defined a callback for the analog watch dog then it
-     is enabled.*/
+  // ADC setup, if it is defined a callback for the analog watch dog then it is enabled.
   VNA_ADC->ISR    = VNA_ADC->ISR;
   VNA_ADC->IER    = ADC_IER_AWDIE;
   VNA_ADC->TR     = ADC_TR(0, TOUCH_THRESHOLD);
@@ -120,8 +118,9 @@ void adc_start_analog_watchdogd(uint32_t chsel)
   VNA_ADC->CHSELR = chsel;
 
   /* ADC configuration and start.*/
-  VNA_ADC->CFGR1  = cfgr1;
-
+  VNA_ADC->CFGR1  = ADC_CFGR1_RES_12BIT | ADC_CFGR1_AWDEN
+                  | ADC_CFGR1_EXTEN_0 // rising edge of external trigger
+                  | ADC_TIM3_TRGO; // External trigger is timer TIM3
   /* ADC conversion start.*/
   VNA_ADC->CR |= ADC_CR_ADSTART;
 }

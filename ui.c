@@ -33,6 +33,12 @@ uistat_t uistat = {
  marker_tracking : FALSE,
 };
 
+typedef struct {
+  uint8_t x:4;
+  uint8_t y:4;
+  uint8_t c;
+} keypads_t;
+
 #define NO_EVENT                    0
 #define EVT_BUTTON_SINGLE_CLICK     0x01
 #define EVT_BUTTON_DOUBLE_CLICK     0x02
@@ -80,18 +86,36 @@ enum {
 };
 
 enum {
-  KM_START, KM_STOP, KM_CENTER, KM_SPAN, KM_CW, KM_SCALE, KM_REFPOS, KM_EDELAY, KM_VELOCITY_FACTOR, KM_SCALEDELAY
+  KM_START, KM_STOP, KM_CENTER, KM_SPAN, KM_CW, KM_SCALE, KM_REFPOS, KM_EDELAY, KM_VELOCITY_FACTOR, KM_SCALEDELAY, KM_NONE
 };
 
 #define NUMINPUT_LEN 10
 
 static uint8_t ui_mode = UI_NORMAL;
+static const keypads_t *keypads;
 static uint8_t keypad_mode;
 static uint8_t keypads_last_index;
 static char    kp_buf[NUMINPUT_LEN+1];
 static int8_t  kp_index = 0;
 static uint8_t menu_current_level = 0;
 static int8_t  selection = 0;
+
+// UI menu structure
+// Type of menu item:
+#define MT_NONE            0x00
+#define MT_BLANK           0x01
+#define MT_SUBMENU         0x02
+#define MT_CALLBACK        0x03
+#define MT_CANCEL          0x04
+#define MT_CLOSE           0x05
+//#define MT_ADV_CALLBACK    0x06
+
+// Call back functions for MT_CALLBACK type
+typedef void (*menuaction_cb_t)(int item, uint16_t data);
+#define UI_FUNCTION_CALLBACK(ui_function_name) void ui_function_name(int item, uint16_t data)
+
+//typedef void (*menuaction_acb_t)(int item, uint16_t data, uint16_t cmd);
+//#define UI_FUNCTION_ADV_CALLBACK(ui_function_name) void ui_function_name(int item, uint16_t data, uint16_t cmd)
 
 // Set structure align as WORD (save flash memory)
 #pragma pack(push, 2)
@@ -133,7 +157,7 @@ static void erase_menu_buttons(void);
 static void ui_process_keypad(void);
 static void ui_process_numeric(void);
 
-static void menu_move_back(void);
+static void menu_move_back(bool leave_ui);
 static void menu_push_submenu(const menuitem_t *submenu);
 
 static int btn_check(void)
@@ -199,58 +223,79 @@ static int btn_wait_release(void)
     }
   }
 }
+#if 0
+#define SWAP_16(x,y) {uint16_t t = x;x=y;y=t;}
+static void bubbleSort(uint16_t *v, int n) {
+  bool swapped = true;
+  int i = 0, j;
+  while (i < n - 1 && swapped) { // keep going while we swap in the unordered part
+    swapped = false;
+    for (j = n - 1; j > i; j--) { // unordered part
+      if (v[j] < v[j - 1]) {
+        SWAP_16(v[j], v[j - 1]);
+        swapped = true;
+      }
+    }
+    i++;
+  }
+}
+#endif
 
+// ADC read count for measure X and Y (2^N count)
+#define TOUCH_X_N 3
+#define TOUCH_Y_N 3
 static int
 touch_measure_y(void)
 {
-  int v;
-  // open Y line
-  palSetPadMode(GPIOB, 1, PAL_MODE_INPUT_PULLDOWN );
-  palSetPadMode(GPIOA, 7, PAL_MODE_INPUT_PULLDOWN );
-  // drive low to high on X line
-  palSetPadMode(GPIOB, 0, PAL_MODE_OUTPUT_PUSHPULL );
-  palClearPad(GPIOB, 0);
-  palSetPadMode(GPIOA, 6, PAL_MODE_OUTPUT_PUSHPULL );
-  palSetPad(GPIOA, 6);
+  // drive low to high on X line (At this state after touch_prepare_sense)
+//  palSetPadMode(GPIOB, GPIOB_XN, PAL_MODE_OUTPUT_PUSHPULL); //
+//  palSetPadMode(GPIOA, GPIOA_XP, PAL_MODE_OUTPUT_PUSHPULL); //
+  // drive low to high on X line (coordinates from top to bottom)
+  palClearPad(GPIOB, GPIOB_XN);
+//  palSetPad(GPIOA, GPIOA_XP);
 
-  chThdSleepMilliseconds(2);
-  v = adc_single_read(ADC_TOUCH_Y);
-  //chThdSleepMilliseconds(2);
-  //v += adc_single_read(ADC1, ADC_TOUCH_Y);
-  return v;
+  // open Y line (At this state after touch_prepare_sense)
+//  palSetPadMode(GPIOB, GPIOB_YN, PAL_MODE_INPUT);        // Hi-z mode
+  palSetPadMode(GPIOA, GPIOA_YP, PAL_MODE_INPUT_ANALOG);   // <- ADC_TOUCH_Y channel
+
+//  chThdSleepMilliseconds(20);
+  uint32_t v = 0, cnt = 1<<TOUCH_Y_N;
+  do{v+=adc_single_read(ADC_TOUCH_Y);}while(--cnt);
+  return v>>TOUCH_Y_N;
 }
 
 static int
 touch_measure_x(void)
 {
-  int v;
-  // open X line
-  palSetPadMode(GPIOB, 0, PAL_MODE_INPUT_PULLDOWN );
-  palSetPadMode(GPIOA, 6, PAL_MODE_INPUT_PULLDOWN );
-  // drive low to high on Y line
-  palSetPadMode(GPIOB, 1, PAL_MODE_OUTPUT_PUSHPULL );
-  palSetPad(GPIOB, 1);
-  palSetPadMode(GPIOA, 7, PAL_MODE_OUTPUT_PUSHPULL );
-  palClearPad(GPIOA, 7);
+  // drive high to low on Y line (coordinates from left to right)
+  palSetPad(GPIOB, GPIOB_YN);
+  palClearPad(GPIOA, GPIOA_YP);
+  // Set Y line as output
+  palSetPadMode(GPIOB, GPIOB_YN, PAL_MODE_OUTPUT_PUSHPULL);
+  palSetPadMode(GPIOA, GPIOA_YP, PAL_MODE_OUTPUT_PUSHPULL);
+  // Set X line as input
+  palSetPadMode(GPIOB, GPIOB_XN, PAL_MODE_INPUT);        // Hi-z mode
+  palSetPadMode(GPIOA, GPIOA_XP, PAL_MODE_INPUT_ANALOG); // <- ADC_TOUCH_X channel
 
-  chThdSleepMilliseconds(2);
-  v = adc_single_read(ADC_TOUCH_X);
-  //chThdSleepMilliseconds(2);
-  //v += adc_single_read(ADC1, ADC_TOUCH_X);
-  return v;
+  uint32_t v = 0, cnt = 1<<TOUCH_X_N;
+  do{v+=adc_single_read(ADC_TOUCH_X);}while(--cnt);
+  return v>>TOUCH_X_N;
 }
 
 void
 touch_prepare_sense(void)
 {
-  // open Y line
-  palSetPadMode(GPIOB, 1, PAL_MODE_INPUT_PULLDOWN );
-  palSetPadMode(GPIOA, 7, PAL_MODE_INPUT_PULLDOWN );
+  // Set Y line as input
+  palSetPadMode(GPIOB, GPIOB_YN, PAL_MODE_INPUT);          // Hi-z mode
+  palSetPadMode(GPIOA, GPIOA_YP, PAL_MODE_INPUT_PULLDOWN); // Use pull
+  // drive high on X line (for touch sense on Y)
+  palSetPad(GPIOB, GPIOB_XN);
+  palSetPad(GPIOA, GPIOA_XP);
   // force high X line
-  palSetPadMode(GPIOB, 0, PAL_MODE_OUTPUT_PUSHPULL );
-  palSetPad(GPIOB, 0);
-  palSetPadMode(GPIOA, 6, PAL_MODE_OUTPUT_PUSHPULL );
-  palSetPad(GPIOA, 6);
+  palSetPadMode(GPIOB, GPIOB_XN, PAL_MODE_OUTPUT_PUSHPULL);
+  palSetPadMode(GPIOA, GPIOA_XP, PAL_MODE_OUTPUT_PUSHPULL);
+
+//  chThdSleepMilliseconds(10); // Wait 10ms for denounce touch
 }
 
 void
@@ -260,10 +305,10 @@ touch_start_watchdog(void)
   adc_start_analog_watchdogd(ADC_TOUCH_Y);
 }
 
-static int
+static inline int
 touch_status(void)
 {
-  touch_prepare_sense();
+//  touch_prepare_sense();
   return adc_single_read(ADC_TOUCH_Y) > TOUCH_THRESHOLD;
 }
 
@@ -272,14 +317,14 @@ touch_check(void)
 {
   int stat = touch_status();
   if (stat) {
-    chThdSleepMilliseconds(10);
-    int x = touch_measure_x();
     int y = touch_measure_y();
-    if (touch_status()) {
+    int x = touch_measure_x();
+    touch_prepare_sense();
+    if (touch_status())
+    {
       last_touch_x = x;
       last_touch_y = y;
     }
-    touch_prepare_sense();
   }
 
   if (stat != last_touch_status) {
@@ -349,19 +394,20 @@ touch_draw_test(void)
   ili9341_set_foreground(DEFAULT_FG_COLOR);
   ili9341_set_background(DEFAULT_BG_COLOR);
   ili9341_clear_screen();
-  ili9341_drawstring("TOUCH TEST: DRAG PANEL", OFFSETX, LCD_HEIGHT - FONT_GET_HEIGHT);
-
-  touch_wait_pressed();
-  touch_position(&x0, &y0);
+  ili9341_drawstring("TOUCH TEST: DRAG PANEL, PRESS BUTTON TO FINISH", OFFSETX, LCD_HEIGHT - FONT_GET_HEIGHT);
 
   do {
-    touch_position(&x1, &y1);
-    ili9341_line(x0, y0, x1, y1);
-    x0 = x1;
-    y0 = y1;
-    chThdSleepMilliseconds(50);
-  } while (touch_check() != EVT_TOUCH_RELEASED);
-
+    if (touch_check() == EVT_TOUCH_PRESSED){
+      touch_position(&x0, &y0);
+      do {
+        chThdSleepMilliseconds(50);
+        touch_position(&x1, &y1);
+        ili9341_line(x0, y0, x1, y1);
+        x0 = x1;
+        y0 = y1;
+      } while (touch_check() != EVT_TOUCH_RELEASED);
+    }
+  }while (!(btn_check() & EVT_BUTTON_SINGLE_CLICK));
   touch_start_watchdog();
 }
 
@@ -448,20 +494,7 @@ select_lever_mode(int mode)
   }
 }
 
-// type of menu item 
-enum {
-  MT_NONE,
-  MT_BLANK,
-  MT_SUBMENU,
-  MT_CALLBACK,
-  MT_CANCEL,
-  MT_CLOSE
-};
-
-typedef void (*menuaction_cb_t)(int item, uint8_t data);
-
-static void
-menu_calop_cb(int item, uint8_t data)
+static UI_FUNCTION_CALLBACK(menu_calop_cb)
 {
   cal_collect(data);
   selection = item+1;
@@ -469,8 +502,7 @@ menu_calop_cb(int item, uint8_t data)
   draw_menu();
 }
 
-static void
-menu_caldone_cb(int item, uint8_t data)
+static UI_FUNCTION_CALLBACK(menu_caldone_cb)
 {
   extern const menuitem_t menu_save[];
   //extern const menuitem_t menu_cal[];
@@ -478,12 +510,11 @@ menu_caldone_cb(int item, uint8_t data)
   (void)data;
   cal_done();
   draw_cal_status();
-  menu_move_back();
+  menu_move_back(false);
   menu_push_submenu(menu_save);
 }
 
-static void
-menu_cal2_cb(int item, uint8_t data)
+static UI_FUNCTION_CALLBACK(menu_cal2_cb)
 {
   (void)data;
   switch (item) {
@@ -500,8 +531,7 @@ menu_cal2_cb(int item, uint8_t data)
   //menu_move_back();
 }
 
-static void
-menu_recall_cb(int item, uint8_t data)
+static UI_FUNCTION_CALLBACK(menu_recall_cb)
 {
   (void)item;
   load_properties(data);
@@ -511,8 +541,7 @@ menu_recall_cb(int item, uint8_t data)
   draw_cal_status();
 }
 
-static void
-menu_config_cb(int item, uint8_t data)
+static UI_FUNCTION_CALLBACK(menu_config_cb)
 {
   (void)data;
   switch (item) {
@@ -531,31 +560,26 @@ menu_config_cb(int item, uint8_t data)
   draw_menu();
 }
 
-static void
-menu_config_save_cb(int item, uint8_t data)
+static UI_FUNCTION_CALLBACK(menu_config_save_cb)
 {
   (void)item;
   (void)data;
   config_save();
-  menu_move_back();
-  ui_mode_normal();
+  menu_move_back(true);
 }
 
-static void
-menu_dfu_cb(int item, uint8_t data)
+static UI_FUNCTION_CALLBACK(menu_dfu_cb)
 {
   (void)item;
   (void)data;
   enter_dfu();
 }
 
-static void
-menu_save_cb(int item, uint8_t data)
+static UI_FUNCTION_CALLBACK(menu_save_cb)
 {
   (void)item;
   if (caldata_save(data) == 0) {
-    menu_move_back();
-    ui_mode_normal();
+    menu_move_back(true);
     draw_cal_status();
   }
 }
@@ -574,8 +598,7 @@ choose_active_trace(void)
     }
 }
 
-static void
-menu_trace_cb(int item, uint8_t data)
+static UI_FUNCTION_CALLBACK(menu_trace_cb)
 {
   (void)item;
   if (trace[data].enabled) {
@@ -595,8 +618,7 @@ menu_trace_cb(int item, uint8_t data)
   draw_menu();
 }
 
-static void
-menu_format_cb(int item, uint8_t data)
+static UI_FUNCTION_CALLBACK(menu_format_cb)
 {
   (void)item;
   set_trace_type(uistat.current_trace, data);
@@ -605,17 +627,14 @@ menu_format_cb(int item, uint8_t data)
   //redraw_all();
 }
 
-static void
-menu_channel_cb(int item, uint8_t data)
+static UI_FUNCTION_CALLBACK(menu_channel_cb)
 {
   (void)item;
   set_trace_channel(uistat.current_trace, data);
-  menu_move_back();
-  ui_mode_normal();
+  menu_move_back(true);
 }
 
-static void
-menu_transform_window_cb(int item, uint8_t data)
+static UI_FUNCTION_CALLBACK(menu_transform_window_cb)
 {
   (void)item;
   // TODO
@@ -623,8 +642,7 @@ menu_transform_window_cb(int item, uint8_t data)
   ui_mode_normal();
 }
 
-static void
-menu_transform_cb(int item, uint8_t data)
+static UI_FUNCTION_CALLBACK(menu_transform_cb)
 {
   (void)item;
   (void)data;
@@ -634,30 +652,14 @@ menu_transform_cb(int item, uint8_t data)
   ui_mode_normal();
 }
 
-static void
-menu_velocity_cb(int item, uint8_t data)
-{
-  (void)item;
-  (void)data;
-  if (btn_wait_release() & EVT_BUTTON_DOWN_LONG) {
-      ui_mode_numeric(KM_VELOCITY_FACTOR);
-      ui_process_numeric();
-  } else {
-      ui_mode_keypad(KM_VELOCITY_FACTOR);
-      ui_process_keypad();
-  }
-}
-
-static void
-menu_transform_filter_cb(int item, uint8_t data)
+static UI_FUNCTION_CALLBACK(menu_transform_filter_cb)
 {
   (void)item;
   domain_mode = (domain_mode & ~TD_FUNC) | data;
   ui_mode_normal();
 }
 
-static void
-menu_bandwidth_cb(int item, uint8_t data)
+static UI_FUNCTION_CALLBACK(menu_bandwidth_cb)
 {
   (void)item;
   config.bandwidth = data;
@@ -665,8 +667,7 @@ menu_bandwidth_cb(int item, uint8_t data)
   draw_menu();
 }
 
-static void
-menu_points_cb(int item, uint8_t data)
+static UI_FUNCTION_CALLBACK(menu_points_cb)
 {
   (void)item;
   set_sweep_points(data);
@@ -685,8 +686,7 @@ choose_active_marker(void)
   active_marker = -1;
 }
 
-static void
-menu_scale_cb(int item, uint8_t data)
+static UI_FUNCTION_CALLBACK(menu_keyboard_cb)
 {
   (void)item;
   if (data == KM_SCALE && trace[uistat.current_trace].type == TRC_DELAY) {
@@ -694,38 +694,21 @@ menu_scale_cb(int item, uint8_t data)
   }
   if (btn_wait_release() & EVT_BUTTON_DOWN_LONG) {
     ui_mode_numeric(data);
-    ui_process_numeric();
+//    ui_process_numeric();
   } else {
     ui_mode_keypad(data);
     ui_process_keypad();
   }
 }
 
-static void
-menu_stimulus_cb(int item, uint8_t data)
+static UI_FUNCTION_CALLBACK(menu_pause_cb)
 {
+  (void)item;
   (void)data;
-  switch (item) {
-  case 0: /* START */
-  case 1: /* STOP */
-  case 2: /* CENTER */
-  case 3: /* SPAN */
-  case 4: /* CW */
-    if (btn_wait_release() & EVT_BUTTON_DOWN_LONG) {
-      ui_mode_numeric(item);
-      ui_process_numeric();
-    } else {
-      ui_mode_keypad(item);
-      ui_process_keypad();
-    }
-    break;
-  case 5: /* PAUSE */
-    toggle_sweep();
-    //menu_move_back();
-    //ui_mode_normal();
-    draw_menu();
-    break;
-  }
+  toggle_sweep();
+  //menu_move_back();
+  //ui_mode_normal();
+  draw_menu();
 }
 
 static uint32_t
@@ -738,8 +721,7 @@ get_marker_frequency(int marker)
   return frequencies[markers[marker].index];
 }
 
-static void
-menu_marker_op_cb(int item, uint8_t data)
+static UI_FUNCTION_CALLBACK(menu_marker_op_cb)
 {
   uint32_t freq = get_marker_frequency(active_marker);
   if (freq == 0)
@@ -787,8 +769,7 @@ menu_marker_op_cb(int item, uint8_t data)
   //redraw_all();
 }
 
-static void
-menu_marker_search_cb(int item, uint8_t data)
+static UI_FUNCTION_CALLBACK(menu_marker_search_cb)
 {
   (void)data;
   int i = -1;
@@ -820,8 +801,7 @@ menu_marker_search_cb(int item, uint8_t data)
   select_lever_mode(LM_SEARCH);
 }
 
-static void
-menu_marker_smith_cb(int item, uint8_t data)
+static UI_FUNCTION_CALLBACK(menu_marker_smith_cb)
 {
   (void)item;
   marker_smith_format = data;
@@ -845,8 +825,7 @@ active_marker_select(int item)
   }
 }
 
-static void
-menu_marker_sel_cb(int item, uint8_t data)
+static UI_FUNCTION_CALLBACK(menu_marker_sel_cb)
 {
   (void)data;
   int t;
@@ -893,8 +872,7 @@ static const char s2_file_header[] =
 static const char s2_file_param[] =
   "%10d % f % f % f % f 0 0 0 0\r\n";
 
-static void
-menu_sdcard_cb(int item, uint8_t data)
+static UI_FUNCTION_CALLBACK(menu_sdcard_cb)
 {
   (void)item;
   char *buf = (char *)spi_buffer;
@@ -1033,9 +1011,9 @@ const menuitem_t menu_format[] = {
 };
 
 const menuitem_t menu_scale[] = {
-  { MT_CALLBACK, KM_SCALE, "SCALE/DIV", menu_scale_cb },
-  { MT_CALLBACK, KM_REFPOS, "\2REFERENCE\0POSITION", menu_scale_cb },
-  { MT_CALLBACK, KM_EDELAY, "\2ELECTRICAL\0DELAY", menu_scale_cb },
+  { MT_CALLBACK, KM_SCALE, "SCALE/DIV", menu_keyboard_cb },
+  { MT_CALLBACK, KM_REFPOS, "\2REFERENCE\0POSITION", menu_keyboard_cb },
+  { MT_CALLBACK, KM_EDELAY, "\2ELECTRICAL\0DELAY", menu_keyboard_cb },
   { MT_CANCEL, 0, S_LARROW" BACK", NULL },
   { MT_NONE, 0, NULL, NULL } // sentinel
 };
@@ -1061,7 +1039,7 @@ const menuitem_t menu_transform[] = {
   { MT_CALLBACK, TD_FUNC_LOWPASS_STEP, "\2LOW PASS\0STEP", menu_transform_filter_cb },
   { MT_CALLBACK, TD_FUNC_BANDPASS, "BANDPASS", menu_transform_filter_cb },
   { MT_SUBMENU, 0, "WINDOW", menu_transform_window },
-  { MT_CALLBACK, 0, "\2VELOCITY\0FACTOR", menu_velocity_cb },
+  { MT_CALLBACK, KM_VELOCITY_FACTOR, "\2VELOCITY\0FACTOR", menu_keyboard_cb },
   { MT_CANCEL, 0, S_LARROW" BACK", NULL },
   { MT_NONE, 0, NULL, NULL } // sentinel
 };
@@ -1096,12 +1074,12 @@ const menuitem_t menu_sweep_points[] = {
 };
 
 const menuitem_t menu_stimulus[] = {
-  { MT_CALLBACK, 0, "START", menu_stimulus_cb },
-  { MT_CALLBACK, 0, "STOP", menu_stimulus_cb },
-  { MT_CALLBACK, 0, "CENTER", menu_stimulus_cb },
-  { MT_CALLBACK, 0, "SPAN", menu_stimulus_cb },
-  { MT_CALLBACK, 0, "CW FREQ", menu_stimulus_cb },
-  { MT_CALLBACK, 0, "\2PAUSE\0SWEEP", menu_stimulus_cb },
+  { MT_CALLBACK, KM_START, "START", menu_keyboard_cb },
+  { MT_CALLBACK, KM_STOP, "STOP",   menu_keyboard_cb },
+  { MT_CALLBACK, KM_CENTER, "CENTER", menu_keyboard_cb },
+  { MT_CALLBACK, KM_SPAN, "SPAN",  menu_keyboard_cb },
+  { MT_CALLBACK, KM_CW, "CW FREQ", menu_keyboard_cb },
+  { MT_CALLBACK, 0, "\2PAUSE\0SWEEP", menu_pause_cb },
   { MT_CANCEL, 0, S_LARROW" BACK", NULL },
   { MT_NONE, 0, NULL, NULL } // sentinel
 };
@@ -1214,14 +1192,17 @@ ensure_selection(void)
 }
 
 static void
-menu_move_back(void)
+menu_move_back(bool leave_ui)
 {
   if (menu_current_level == 0)
     return;
   menu_current_level--;
   ensure_selection();
   erase_menu_buttons();
-  draw_menu();
+  if (leave_ui)
+    ui_mode_normal();
+  else
+    draw_menu();
 }
 
 static void
@@ -1262,7 +1243,7 @@ menu_invoke(int item)
     break;
 
   case MT_CANCEL:
-    menu_move_back();
+    menu_move_back(false);
     break;
 
   case MT_CALLBACK: {
@@ -1326,14 +1307,8 @@ menu_invoke(int item)
 #define KP_KEYPAD    20
 #define KP_N         21
 #define KP_P         22
-
-typedef struct {
-  uint8_t x:4;
-  uint8_t y:4;
-  int8_t  c;
-} keypads_t;
-
-static const keypads_t *keypads;
+// Stop
+#define KP_NONE      255
 
 static const keypads_t keypads_freq[] = {
   { 1, 3, KP_PERIOD },
@@ -1352,7 +1327,7 @@ static const keypads_t keypads_freq[] = {
   { 3, 2, KP_K },
   { 3, 3, KP_X1 },
   { 2, 3, KP_BS },
-  { 0, 0, -1 }
+  { 0, 0, KP_NONE}
 };
 
 static const keypads_t keypads_scale[] = {
@@ -1369,7 +1344,7 @@ static const keypads_t keypads_scale[] = {
   { 2, 0, KP_9 },
   { 3, 3, KP_X1 },
   { 2, 3, KP_BS },
-  { 0, 0, -1 }
+  { 0, 0, KP_NONE }
 };
 
 static const keypads_t keypads_time[] = {
@@ -1388,10 +1363,10 @@ static const keypads_t keypads_time[] = {
   { 3, 2, KP_P },
   { 3, 3, KP_MINUS },
   { 2, 3, KP_BS },
-  { 0, 0, -1 }
+  { 0, 0, KP_NONE }
 };
 
-static const keypads_t * const keypads_mode_tbl[] = {
+static const keypads_t * const keypads_mode_tbl[KM_NONE] = {
   keypads_freq, // start
   keypads_freq, // stop
   keypads_freq, // center
@@ -1404,7 +1379,7 @@ static const keypads_t * const keypads_mode_tbl[] = {
   keypads_time // scale of delay
 };
 
-static const char * const keypad_mode_label[] = {
+static const char * const keypad_mode_label[KM_NONE] = {
   "START", "STOP", "CENTER", "SPAN", "CW FREQ", "SCALE", "REFPOS", "EDELAY", "VELOCITY%", "DELAY"
 };
 
@@ -1424,7 +1399,7 @@ static void
 draw_keypad(void)
 {
   int i = 0;
-  while (keypads[i].c >= 0) {
+  while (keypads[i].c != KP_NONE) {
     uint16_t bg = config.menu_normal_color;
     if (i == selection)
       bg = config.menu_active_color;
@@ -1495,9 +1470,10 @@ menu_is_multiline(const char *label, const char **l1, const char **l2)
 {
   if (label[0] != '\2')
     return FALSE;
-
-  *l1 = &label[1];
-  *l2 = &label[1] + strlen(&label[1]) + 1;
+  const char *ptr = &label[1];
+  *l1 = ptr;
+  while (*ptr++ != 0);
+  *l2 = ptr;
   return TRUE;
 }
 
@@ -1581,8 +1557,8 @@ draw_menu_buttons(const menuitem_t *menu)
     draw_button(LCD_WIDTH-MENU_BUTTON_WIDTH, y, MENU_BUTTON_WIDTH, MENU_BUTTON_HEIGHT, fg, bg);
 
     if (menu_is_multiline(menu[i].label, &l1, &l2)) {
-      ili9341_drawstring(l1, LCD_WIDTH-MENU_BUTTON_WIDTH+MENU_BUTTON_BORDER+4, y+MENU_BUTTON_HEIGHT/2-FONT_GET_HEIGHT-1);
-      ili9341_drawstring(l2, LCD_WIDTH-MENU_BUTTON_WIDTH+MENU_BUTTON_BORDER+4, y+MENU_BUTTON_HEIGHT/2);
+      ili9341_drawstring(l1, LCD_WIDTH-MENU_BUTTON_WIDTH+MENU_BUTTON_BORDER+4, y+MENU_BUTTON_HEIGHT/2-FONT_GET_HEIGHT);
+      ili9341_drawstring(l2, LCD_WIDTH-MENU_BUTTON_WIDTH+MENU_BUTTON_BORDER+4, y+MENU_BUTTON_HEIGHT/2+1);
     } else {
       ili9341_drawstring(menu[i].label, LCD_WIDTH-MENU_BUTTON_WIDTH+MENU_BUTTON_BORDER+4, y+(MENU_BUTTON_HEIGHT-FONT_GET_HEIGHT-6)/2+2);
     }
@@ -1786,7 +1762,7 @@ ui_mode_keypad(int _keypad_mode)
   keypad_mode = _keypad_mode;
   keypads = keypads_mode_tbl[_keypad_mode];
   int i;
-  for (i = 0; keypads[i+1].c >= 0; i++)
+  for (i = 0; keypads[i+1].c != KP_NONE; i++)
     ;
   keypads_last_index = i;
 
@@ -2049,7 +2025,7 @@ keypad_apply_touch(void)
 
   touch_position(&touch_x, &touch_y);
 
-  while (keypads[i].c >= 0) {
+  while (keypads[i].c != KP_NONE) {
     int x = KP_GET_X(keypads[i].x);
     int y = KP_GET_Y(keypads[i].y);
     if (x < touch_x && touch_x < x+KP_WIDTH && y < touch_y && touch_y < y+KP_HEIGHT) {
@@ -2171,30 +2147,29 @@ ui_process_keypad(void)
   int status;
   adc_stop();
 
-  kp_index = 0;
+  kp_index = 0; // Hide input index in keyboard mode
   while (TRUE) {
     status = btn_check();
     if (status & (EVT_UP|EVT_DOWN)) {
-      int s = status;
       do {
-        if (s & EVT_UP)
+        if (status & EVT_UP)
           if (--selection < 0)
             selection = keypads_last_index;
-        if (s & EVT_DOWN)
+        if (status & EVT_DOWN)
           if (++selection > keypads_last_index)
             selection = 0;
         draw_keypad();
-        s = btn_wait_release();
-      } while (s != 0);
+        status = btn_wait_release();
+      } while (status != 0);
     }
 
-    if (status == EVT_BUTTON_SINGLE_CLICK) {
+    else if (status == EVT_BUTTON_SINGLE_CLICK) {
       if (keypad_click(selection))
         /* exit loop on done or cancel */
         break;
     }
 
-    if (touch_check() == EVT_TOUCH_PRESSED) {
+    else if (touch_check() == EVT_TOUCH_PRESSED) {
       int key = keypad_apply_touch();
       if (key >= 0 && keypad_click(key))
         /* exit loop on done or cancel */

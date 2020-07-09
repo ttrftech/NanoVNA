@@ -472,14 +472,13 @@ enter_dfu(void)
 {
   adc_stop();
 
-  int x = 5, y = 5;
+  int x = 5, y = 20;
   ili9341_set_foreground(DEFAULT_FG_COLOR);
   ili9341_set_background(DEFAULT_BG_COLOR);
   // leave a last message 
   ili9341_clear_screen();
-  ili9341_drawstring("DFU: Device Firmware Update Mode", x, y += 10);
-  ili9341_drawstring("To exit DFU mode, please reset device yourself.", x, y += 10);
-
+  ili9341_drawstring("DFU: Device Firmware Update Mode\n"
+                     "To exit DFU mode, please reset device yourself.", x, y);
   // see __early_init in ./NANOVNA_STM32_F072/board.c
   *((unsigned long *)BOOT_FROM_SYTEM_MEMORY_MAGIC_ADDRESS) = BOOT_FROM_SYTEM_MEMORY_MAGIC;
   NVIC_SystemReset();
@@ -1012,15 +1011,15 @@ const menuitem_t menu_format[] = {
 
 const menuitem_t menu_scale[] = {
   { MT_CALLBACK, KM_SCALE, "SCALE/DIV", menu_keyboard_cb },
-  { MT_CALLBACK, KM_REFPOS, "\2REFERENCE\0POSITION", menu_keyboard_cb },
-  { MT_CALLBACK, KM_EDELAY, "\2ELECTRICAL\0DELAY", menu_keyboard_cb },
+  { MT_CALLBACK, KM_REFPOS, "REFERENCE\nPOSITION", menu_keyboard_cb },
+  { MT_CALLBACK, KM_EDELAY, "ELECTRICAL\nDELAY", menu_keyboard_cb },
   { MT_CANCEL, 0, S_LARROW" BACK", NULL },
   { MT_NONE, 0, NULL, NULL } // sentinel
 };
 
 const menuitem_t menu_channel[] = {
-  { MT_CALLBACK, 0, "\2CH0\0REFLECT", menu_channel_cb },
-  { MT_CALLBACK, 1, "\2CH1\0THROUGH", menu_channel_cb },
+  { MT_CALLBACK, 0, "CH0\nREFLECT", menu_channel_cb },
+  { MT_CALLBACK, 1, "CH1\nTHROUGH", menu_channel_cb },
   { MT_CANCEL, 0, S_LARROW" BACK", NULL },
   { MT_NONE, 0, NULL, NULL } // sentinel
 };
@@ -1034,12 +1033,12 @@ const menuitem_t menu_transform_window[] = {
 };
 
 const menuitem_t menu_transform[] = {
-  { MT_CALLBACK, 0, "\2TRANSFORM\0ON", menu_transform_cb },
-  { MT_CALLBACK, TD_FUNC_LOWPASS_IMPULSE, "\2LOW PASS\0IMPULSE", menu_transform_filter_cb },
-  { MT_CALLBACK, TD_FUNC_LOWPASS_STEP, "\2LOW PASS\0STEP", menu_transform_filter_cb },
+  { MT_CALLBACK, 0, "TRANSFORM\nON", menu_transform_cb },
+  { MT_CALLBACK, TD_FUNC_LOWPASS_IMPULSE, "LOW PASS\nIMPULSE", menu_transform_filter_cb },
+  { MT_CALLBACK, TD_FUNC_LOWPASS_STEP, "LOW PASS\nSTEP", menu_transform_filter_cb },
   { MT_CALLBACK, TD_FUNC_BANDPASS, "BANDPASS", menu_transform_filter_cb },
   { MT_SUBMENU, 0, "WINDOW", menu_transform_window },
-  { MT_CALLBACK, KM_VELOCITY_FACTOR, "\2VELOCITY\0FACTOR", menu_keyboard_cb },
+  { MT_CALLBACK, KM_VELOCITY_FACTOR, "VELOCITY\nFACTOR", menu_keyboard_cb },
   { MT_CANCEL, 0, S_LARROW" BACK", NULL },
   { MT_NONE, 0, NULL, NULL } // sentinel
 };
@@ -1079,7 +1078,7 @@ const menuitem_t menu_stimulus[] = {
   { MT_CALLBACK, KM_CENTER, "CENTER", menu_keyboard_cb },
   { MT_CALLBACK, KM_SPAN, "SPAN",  menu_keyboard_cb },
   { MT_CALLBACK, KM_CW, "CW FREQ", menu_keyboard_cb },
-  { MT_CALLBACK, 0, "\2PAUSE\0SWEEP", menu_pause_cb },
+  { MT_CALLBACK, 0, "PAUSE\nSWEEP", menu_pause_cb },
   { MT_CANCEL, 0, S_LARROW" BACK", NULL },
   { MT_NONE, 0, NULL, NULL } // sentinel
 };
@@ -1109,8 +1108,8 @@ const menuitem_t menu_marker_search[] = {
   //{ MT_CALLBACK, "OFF", menu_marker_search_cb },
   { MT_CALLBACK, 0, "MAXIMUM", menu_marker_search_cb },
   { MT_CALLBACK, 0, "MINIMUM", menu_marker_search_cb },
-  { MT_CALLBACK, 0, "\2SEARCH\0" S_LARROW" LEFT", menu_marker_search_cb },
-  { MT_CALLBACK, 0, "\2SEARCH\0" S_RARROW" RIGHT", menu_marker_search_cb },
+  { MT_CALLBACK, 0, "SEARCH\n" S_LARROW" LEFT", menu_marker_search_cb },
+  { MT_CALLBACK, 0, "SEARCH\n" S_RARROW" RIGHT", menu_marker_search_cb },
   { MT_CALLBACK, 0, "TRACKING", menu_marker_search_cb },
   { MT_CANCEL, 0, S_LARROW" BACK", NULL },
   { MT_NONE, 0, NULL, NULL } // sentinel
@@ -1127,10 +1126,10 @@ const menuitem_t menu_marker_smith[] = {
 };
 
 const menuitem_t menu_marker[] = {
-  { MT_SUBMENU, 0, "\2SELECT\0MARKER", menu_marker_sel },
+  { MT_SUBMENU, 0, "SELECT\nMARKER", menu_marker_sel },
   { MT_SUBMENU, 0, "SEARCH", menu_marker_search },
   { MT_SUBMENU, 0, "OPERATIONS", menu_marker_ops },
-  { MT_SUBMENU, 0, "\2SMITH\0VALUE", menu_marker_smith },
+  { MT_SUBMENU, 0, "SMITH\nVALUE", menu_marker_smith },
   { MT_CANCEL, 0, S_LARROW" BACK", NULL },
   { MT_NONE, 0, NULL, NULL } // sentinel
 };
@@ -1146,7 +1145,7 @@ const menuitem_t menu_recall[] = {
 };
 
 const menuitem_t menu_dfu[] = {
-  { MT_CALLBACK, 0, "\2RESET AND\0ENTER DFU", menu_dfu_cb },
+  { MT_CALLBACK, 0, "RESET AND\nENTER DFU", menu_dfu_cb },
   { MT_CANCEL, 0, S_LARROW"CANCEL", NULL },
   { MT_NONE, 0, NULL, NULL } // sentinel
 };
@@ -1155,7 +1154,7 @@ const menuitem_t menu_config[] = {
   { MT_CALLBACK, 0, "TOUCH CAL", menu_config_cb },
   { MT_CALLBACK, 0, "TOUCH TEST", menu_config_cb },
   { MT_CALLBACK, 0, "SAVE", menu_config_save_cb },
-  { MT_SUBMENU,  0, "\2SWEEP\0POINTS", menu_sweep_points },
+  { MT_SUBMENU,  0, "SWEEP\nPOINTS", menu_sweep_points },
   { MT_CALLBACK, 0, "VERSION", menu_config_cb },
   { MT_SUBMENU, 0, S_RARROW"DFU", menu_dfu },
   { MT_CANCEL, 0, S_LARROW" BACK", NULL },
@@ -1187,7 +1186,9 @@ ensure_selection(void)
   int i;
   for (i = 0; menu[i].type != MT_NONE; i++)
     ;
-  if (selection >= i)
+  if (selection < 0)
+    selection = -1;
+  else if (selection >= i)
     selection = i-1;
 }
 
@@ -1466,15 +1467,13 @@ draw_numeric_input(const char *buf)
 }
 
 static int
-menu_is_multiline(const char *label, const char **l1, const char **l2)
+menu_is_multiline(const char *label)
 {
-  if (label[0] != '\2')
-    return FALSE;
-  const char *ptr = &label[1];
-  *l1 = ptr;
-  while (*ptr++ != 0);
-  *l2 = ptr;
-  return TRUE;
+  int n = 1;
+  while (*label)
+    if (*label++ == '\n')
+      n++;
+  return n;
 }
 
 static void
@@ -1538,7 +1537,6 @@ draw_menu_buttons(const menuitem_t *menu)
 {
   int i = 0, y = 0;
   for (i = 0; i < MENU_BUTTON_MAX; i++, y+=MENU_BUTTON_HEIGHT) {
-    const char *l1, *l2;
     if (menu[i].type == MT_NONE)
       break;
     if (menu[i].type == MT_BLANK)
@@ -1556,12 +1554,8 @@ draw_menu_buttons(const menuitem_t *menu)
 
     draw_button(LCD_WIDTH-MENU_BUTTON_WIDTH, y, MENU_BUTTON_WIDTH, MENU_BUTTON_HEIGHT, fg, bg);
 
-    if (menu_is_multiline(menu[i].label, &l1, &l2)) {
-      ili9341_drawstring(l1, LCD_WIDTH-MENU_BUTTON_WIDTH+MENU_BUTTON_BORDER+4, y+MENU_BUTTON_HEIGHT/2-FONT_GET_HEIGHT);
-      ili9341_drawstring(l2, LCD_WIDTH-MENU_BUTTON_WIDTH+MENU_BUTTON_BORDER+4, y+MENU_BUTTON_HEIGHT/2+1);
-    } else {
-      ili9341_drawstring(menu[i].label, LCD_WIDTH-MENU_BUTTON_WIDTH+MENU_BUTTON_BORDER+4, y+(MENU_BUTTON_HEIGHT-FONT_GET_HEIGHT-6)/2+2);
-    }
+    int lines = menu_is_multiline(menu[i].label);
+    ili9341_drawstring(menu[i].label, LCD_WIDTH-MENU_BUTTON_WIDTH+MENU_BUTTON_BORDER+4, y+(MENU_BUTTON_HEIGHT-lines*FONT_GET_HEIGHT)/2);
   }
   for (; i < MENU_BUTTON_MAX; i++, y+=MENU_BUTTON_HEIGHT) {
     ili9341_fill(LCD_WIDTH-MENU_BUTTON_WIDTH, y, MENU_BUTTON_WIDTH, MENU_BUTTON_HEIGHT, DEFAULT_BG_COLOR);

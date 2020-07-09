@@ -102,7 +102,7 @@ uint32_t frequencies[POINTS_COUNT];
 
 // Version text, displayed in Config->Version menu, also send by info command
 const char *info_about[]={
-  BOARD_NAME,
+  "Board: " BOARD_NAME,
   "2016-2020 Copyright @edy555",
   "Licensed under GPL. See: https://github.com/ttrftech/NanoVNA",
   "Version: " VERSION,
@@ -715,7 +715,7 @@ config_t config = {
   .menu_active_color = DEFAULT_MENU_ACTIVE_COLOR,
   .trace_color =       { DEFAULT_TRACE_1_COLOR, DEFAULT_TRACE_2_COLOR, DEFAULT_TRACE_3_COLOR, DEFAULT_TRACE_4_COLOR },
 //  .touch_cal =         { 693, 605, 124, 171 },  // 2.4 inch LCD panel
-  .touch_cal =         { 357, 563, 159, 198 },  // 2.8 inch LCD panel
+  .touch_cal =         { 338, 522, 153, 192 },  // 2.8 inch LCD panel
 //  .touch_cal =         { 252, 450, 111, 150 },  //4.0" LCD
   .harmonic_freq_threshold = FREQUENCY_THRESHOLD,
   .vbat_offset = 500,

@@ -22,9 +22,9 @@
 // Need enable HAL_USE_SPI in halconf.h
 #define __USE_DISPLAY_DMA__
 // Add RTC clock support
-//#define __USE_RTC__
+#define __USE_RTC__
 // Add SD card support, req enable RTC (additional settings for file system see FatFS lib ffconf.h)
-//#define __USE_SD_CARD__
+#define __USE_SD_CARD__
 
 /*
  * main.c

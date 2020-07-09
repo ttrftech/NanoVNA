@@ -33,12 +33,6 @@ uistat_t uistat = {
  marker_tracking : FALSE,
 };
 
-typedef struct {
-  uint8_t x:4;
-  uint8_t y:4;
-  uint8_t c;
-} keypads_t;
-
 #define NO_EVENT                    0
 #define EVT_BUTTON_SINGLE_CLICK     0x01
 #define EVT_BUTTON_DOUBLE_CLICK     0x02
@@ -85,10 +79,23 @@ enum {
   UI_NORMAL, UI_MENU, UI_NUMERIC, UI_KEYPAD
 };
 
+// Keypad structures
+// Enum for keypads_list
 enum {
   KM_START, KM_STOP, KM_CENTER, KM_SPAN, KM_CW, KM_SCALE, KM_REFPOS, KM_EDELAY, KM_VELOCITY_FACTOR, KM_SCALEDELAY, KM_NONE
 };
 
+typedef struct {
+  uint8_t x:4;
+  uint8_t y:4;
+  uint8_t c;
+} keypads_t;
+
+typedef struct {
+  const keypads_t *keypad_type;
+  const char *name;
+} keypads_list;
+// Max keyboard input length
 #define NUMINPUT_LEN 10
 
 static uint8_t ui_mode = UI_NORMAL;
@@ -1366,21 +1373,17 @@ static const keypads_t keypads_time[] = {
   { 0, 0, KP_NONE }
 };
 
-static const keypads_t * const keypads_mode_tbl[KM_NONE] = {
-  keypads_freq, // start
-  keypads_freq, // stop
-  keypads_freq, // center
-  keypads_freq, // span
-  keypads_freq, // cw freq
-  keypads_scale, // scale
-  keypads_scale, // refpos
-  keypads_time, // electrical delay
-  keypads_scale, // velocity factor
-  keypads_time // scale of delay
-};
-
-static const char * const keypad_mode_label[KM_NONE] = {
-  "START", "STOP", "CENTER", "SPAN", "CW FREQ", "SCALE", "REFPOS", "EDELAY", "VELOCITY%", "DELAY"
+static const keypads_list keypads_mode_tbl[KM_NONE] = {
+  {keypads_freq , "START"    }, // start
+  {keypads_freq , "STOP"     }, // stop
+  {keypads_freq , "CENTER"   }, // center
+  {keypads_freq , "SPAN"     }, // span
+  {keypads_freq , "CW FREQ"  }, // cw freq
+  {keypads_scale, "SCALE"    }, // scale
+  {keypads_scale, "REFPOS"   }, // refpos
+  {keypads_time , "EDELAY"   }, // electrical delay
+  {keypads_scale, "VELOCITY%"}, // velocity factor
+  {keypads_time , "DELAY"    }  // scale of delay
 };
 
 static void
@@ -1421,7 +1424,7 @@ draw_numeric_area_frame(void)
   ili9341_fill(0, LCD_HEIGHT-NUM_INPUT_HEIGHT, LCD_WIDTH, NUM_INPUT_HEIGHT, config.menu_normal_color);
   ili9341_set_foreground(DEFAULT_MENU_TEXT_COLOR);
   ili9341_set_background(config.menu_normal_color);
-  ili9341_drawstring(keypad_mode_label[keypad_mode], 10, LCD_HEIGHT-(FONT_GET_HEIGHT+NUM_INPUT_HEIGHT)/2);
+  ili9341_drawstring(keypads_mode_tbl[keypad_mode].name, 10, LCD_HEIGHT-(FONT_GET_HEIGHT+NUM_INPUT_HEIGHT)/2);
   //ili9341_drawfont(KP_KEYPAD, 300, 216);
 }
 
@@ -1760,7 +1763,7 @@ ui_mode_keypad(int _keypad_mode)
 
   // keypads array
   keypad_mode = _keypad_mode;
-  keypads = keypads_mode_tbl[_keypad_mode];
+  keypads = keypads_mode_tbl[keypad_mode].keypad_type;
   int i;
   for (i = 0; keypads[i+1].c != KP_NONE; i++)
     ;

@@ -204,7 +204,7 @@ extern const uint16_t numfont16x22[];
 #define FREQUENCIES_XPOS1 OFFSETX
 #define FREQUENCIES_XPOS2 206
 #define FREQUENCIES_XPOS3 135
-#define FREQUENCIES_YPOS  (LCD_HEIGHT-7)
+#define FREQUENCIES_YPOS  (LCD_HEIGHT-FONT_GET_HEIGHT)
 
 // GRIDX calculated depends from frequency span
 //#define GRIDY 29

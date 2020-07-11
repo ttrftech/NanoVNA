@@ -438,8 +438,8 @@ void show_logo(void);
 
 // SD Card support, discio functions for FatFS lib implemented in ili9341.c
 #ifdef  __USE_SD_CARD__
-#include "fatfs\ff.h"
-#include "fatfs\diskio.h"
+#include "../FatFs/ff.h"
+#include "../FatFs/diskio.h"
 void testLog(void);        // debug log
 #endif
 

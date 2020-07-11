@@ -171,8 +171,25 @@ void tlv320aic3204_write_reg(uint8_t page, uint8_t reg, uint8_t data);
 /*
  * plot.c
  */
+// LCD display size settings
+#define LCD_WIDTH                   320
+#define LCD_HEIGHT                  240
 
-// Offset of plot area
+// Used font settings
+extern const uint8_t x5x7_bits [];
+#define FONT_GET_DATA(ch)   (&x5x7_bits[ch*7])
+#define FONT_GET_WIDTH(ch)  (8-(x5x7_bits[ch*7]&7))
+#define FONT_MAX_WIDTH      7
+#define FONT_WIDTH          5
+#define FONT_GET_HEIGHT     7
+#define FONT_STR_HEIGHT     8
+
+extern const uint16_t numfont16x22[];
+#define NUM_FONT_GET_DATA(ch)   (&numfont16x22[ch*22])
+#define NUM_FONT_GET_WIDTH      16
+#define NUM_FONT_GET_HEIGHT     22
+
+// Offset of plot area (size of additional info at left side)
 #define OFFSETX 10
 #define OFFSETY  0
 
@@ -187,13 +204,13 @@ void tlv320aic3204_write_reg(uint8_t page, uint8_t reg, uint8_t data);
 #define FREQUENCIES_XPOS1 OFFSETX
 #define FREQUENCIES_XPOS2 206
 #define FREQUENCIES_XPOS3 135
-#define FREQUENCIES_YPOS  (240-7)
+#define FREQUENCIES_YPOS  (LCD_HEIGHT-7)
 
 // GRIDX calculated depends from frequency span
 //#define GRIDY 29
 #define GRIDY (HEIGHT / NGRIDY)
 
-//
+// Need for reference marker draw
 #define CELLOFFSETX 5
 #define AREA_WIDTH_NORMAL  (CELLOFFSETX + WIDTH  + 1 + 4)
 #define AREA_HEIGHT_NORMAL (              HEIGHT + 1)
@@ -206,20 +223,32 @@ void tlv320aic3204_write_reg(uint8_t page, uint8_t reg, uint8_t data);
 extern int16_t area_width;
 extern int16_t area_height;
 
-// font
-extern const uint8_t x5x7_bits [];
-#define FONT_GET_DATA(ch)   (&x5x7_bits[ch*7])
-#define FONT_GET_WIDTH(ch)  (8-(x5x7_bits[ch*7]&7))
-#define FONT_MAX_WIDTH      7
-#define FONT_WIDTH          5
-#define FONT_GET_HEIGHT     7
-#define FONT_STR_HEIGHT     8
+// Maximum menu buttons count
+#define MENU_BUTTON_MAX     8
+// Menu buttons size
+#define MENU_BUTTON_WIDTH  60
+#define MENU_BUTTON_HEIGHT 29
+#define MENU_BUTTON_BORDER  1
 
-extern const uint16_t numfont16x22[];
-#define NUM_FONT_GET_DATA(ch)   (&numfont16x22[ch*22])
-#define NUM_FONT_GET_WIDTH      16
-#define NUM_FONT_GET_HEIGHT     22
+// Height of numerical input field (at bottom)
+#define NUM_INPUT_HEIGHT   32
 
+// On screen keyboard button size
+#if 1
+#define KP_WIDTH                  ((LCD_WIDTH) / 4)                     // numeric keypad button width
+#define KP_HEIGHT                 ((LCD_HEIGHT - NUM_INPUT_HEIGHT) / 4) // numeric keypad button height
+// Key x, y position (0 - 15) on screen
+#define KP_GET_X(posx)            ((posx) * KP_WIDTH)                   // numeric keypad left
+#define KP_GET_Y(posy)            ((posy) * KP_HEIGHT)                  // numeric keypad top
+#else
+#define KP_WIDTH     48
+#define KP_HEIGHT    48
+// Key x, y position (0 - 15) on screen
+#define KP_GET_X(posx) ((posx)*KP_WIDTH + (LCD_WIDTH-64-KP_WIDTH*4))
+#define KP_GET_Y(posy) ((posy)*KP_HEIGHT + 12 )
+#endif
+
+// Additional chars in fonts
 #define S_DELTA "\004"
 #define S_DEGREE "\037"
 #define S_SARROW "\030"
@@ -368,9 +397,6 @@ extern volatile uint8_t redraw_request;
 
 // Define size of screen buffer in pixels (one pixel 16bit size)
 #define SPI_BUFFER_SIZE             2048
-
-#define LCD_WIDTH                   320
-#define LCD_HEIGHT                  240
 
 #define DEFAULT_FG_COLOR            RGB565(255,255,255)
 #define DEFAULT_BG_COLOR            RGB565(  0,  0,  0)

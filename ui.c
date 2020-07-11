@@ -654,7 +654,6 @@ static UI_FUNCTION_CALLBACK(menu_transform_cb)
   (void)data;
   domain_mode ^= DOMAIN_TIME;
   select_lever_mode(LM_MARKER);
-  draw_frequencies();
   ui_mode_normal();
 }
 
@@ -1267,29 +1266,6 @@ menu_invoke(int item)
     break;
   }
 }
-
-// Maximum menu buttons count
-#define MENU_BUTTON_MAX     8
-// Menu buttons size
-#define MENU_BUTTON_WIDTH  60
-#define MENU_BUTTON_HEIGHT 29
-#define MENU_BUTTON_BORDER  1
-// Height of numerical input field (at bottom)
-#define NUM_INPUT_HEIGHT   32
-
-#if 1
-#define KP_WIDTH                  ((LCD_WIDTH) / 4)                     // numeric keypad button width
-#define KP_HEIGHT                 ((LCD_HEIGHT - NUM_INPUT_HEIGHT) / 4) // numeric keypad button height
-// Key x, y position (0 - 15) on screen
-#define KP_GET_X(posx)            ((posx) * KP_WIDTH)                   // numeric keypad left
-#define KP_GET_Y(posy)            ((posy) * KP_HEIGHT)                  // numeric keypad top
-#else
-#define KP_WIDTH     48
-#define KP_HEIGHT    48
-// Key x, y position (0 - 15) on screen
-#define KP_GET_X(posx) ((posx)*KP_WIDTH + (LCD_WIDTH-64-KP_WIDTH*4))
-#define KP_GET_Y(posy) ((posy)*KP_HEIGHT + 12 )
-#endif
 
 // Key names
 #define KP_0          0

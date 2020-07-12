@@ -223,7 +223,7 @@ static void spi_TxBuffer(uint8_t *buffer, uint16_t len) {
 static uint8_t spi_RxByte(void) {
   // Start RX clock (by sending data)
   SPI_WRITE_8BIT(LCD_SPI, 0xFF);
-  while (SPI_RX_IS_EMPTY(LCD_SPI));
+  while (SPI_RX_IS_EMPTY(LCD_SPI)||SPI_IS_BUSY(LCD_SPI));
   return SPI_READ_8BIT(LCD_SPI);
 }
 

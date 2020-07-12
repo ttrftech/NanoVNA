@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019-2020, Dmitry (DiSlord) dislordlive@gmail.com
+ * Copyright (c) 2019-2020, Dmitry Slepynin (DiSlord) dislordlive@gmail.com
  * All rights reserved.
  *
  * This is free software; you can redistribute it and/or modify
@@ -44,7 +44,7 @@
 #define	SPI_BR_DIV128 (SPI_CR1_BR_2|SPI_CR1_BR_1)
 #define	SPI_BR_DIV256 (SPI_CR1_BR_2|SPI_CR1_BR_1|SPI_CR1_BR_0)
 
-#define SPI_BR_SET(spi, br)  (spi->CR1 = (spi->CR1& ~(SPI_BR_DIV256))|br)
+#define SPI_BR_SET(spi, br)  (spi->CR1 = (spi->CR1& ~(SPI_CR1_BR))|br)
 
 //*****************************************************
 // SPI bus activity macros
@@ -77,3 +77,4 @@
 //*****************************************************
 #define SPI_READ_8BIT(spi)       *(__IO uint8_t*)(&spi->DR)
 #define SPI_READ_16BIT(spi)      *(__IO uint16_t*)(&spi->DR)
+

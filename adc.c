@@ -140,7 +140,7 @@ void adc_stop(void)
   }
 }
 
-void adc_interrupt(void)
+static void adc_interrupt(void)
 {
   uint32_t isr = VNA_ADC->ISR;
   VNA_ADC->ISR = isr;

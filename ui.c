@@ -163,7 +163,7 @@ static void leave_ui_mode(void);
 static void erase_menu_buttons(void);
 static void ui_process_keypad(void);
 static void ui_process_numeric(void);
-
+static void touch_position(int *x, int *y);
 static void menu_move_back(bool leave_ui);
 static void menu_push_submenu(const menuitem_t *submenu);
 
@@ -419,18 +419,18 @@ touch_draw_test(void)
 }
 
 
-void
+static void
 touch_position(int *x, int *y)
 {
   *x = (last_touch_x - config.touch_cal[0]) * 16 / config.touch_cal[2];
   *y = (last_touch_y - config.touch_cal[1]) * 16 / config.touch_cal[3];
 }
 
-void
+static void
 show_version(void)
 {
   int x = 5, y = 5, i = 1;
-  adc_stop();
+//  adc_stop();
   ili9341_set_foreground(DEFAULT_FG_COLOR);
   ili9341_set_background(DEFAULT_BG_COLOR);
 
@@ -471,7 +471,7 @@ show_version(void)
 //    ili9341_drawstring(buffer, x, y + FONT_STR_HEIGHT + 2);
   }
 
-  touch_start_watchdog();
+//  touch_start_watchdog();
 }
 
 void
@@ -1741,7 +1741,7 @@ ui_mode_keypad(int _keypad_mode)
 
   ui_mode = UI_KEYPAD;
   area_width = AREA_WIDTH_NORMAL - MENU_BUTTON_WIDTH;
-  area_height = HEIGHT - 32;
+  area_height = LCD_HEIGHT-NUM_INPUT_HEIGHT;
   draw_menu();
   draw_keypad();
   draw_numeric_area_frame();

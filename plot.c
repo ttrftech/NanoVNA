@@ -1431,7 +1431,7 @@ void
 request_to_draw_cells_behind_menu(void)
 {
   // Values Hardcoded from ui.c
-  invalidate_rect(LCD_WIDTH-MENU_BUTTON_WIDTH-OFFSETX, 0, MENU_BUTTON_WIDTH, LCD_HEIGHT-1);
+  invalidate_rect(LCD_WIDTH-MENU_BUTTON_WIDTH-OFFSETX, 0, LCD_WIDTH-OFFSETX, LCD_HEIGHT-1);
   redraw_request |= REDRAW_CELLS;
 }
 
@@ -1439,7 +1439,7 @@ void
 request_to_draw_cells_behind_numeric_input(void)
 {
   // Values Hardcoded from ui.c
-  invalidate_rect(0, LCD_HEIGHT-NUM_INPUT_HEIGHT, LCD_WIDTH-1, NUM_INPUT_HEIGHT);
+  invalidate_rect(0, LCD_HEIGHT-NUM_INPUT_HEIGHT, LCD_WIDTH-1, LCD_HEIGHT-1);
   redraw_request |= REDRAW_CELLS;
 }
 

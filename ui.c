@@ -974,9 +974,9 @@ const menuitem_t menu_save[] = {
 
 const menuitem_t menu_cal[] = {
   { MT_SUBMENU,  0, "CALIBRATE", menu_calop },
-  { MT_SUBMENU,  0, "SAVE", menu_save },
+  { MT_SUBMENU,  0, "SAVE",  menu_save },
   { MT_CALLBACK, 0, "RESET", menu_cal2_cb },
-  { MT_CALLBACK, 0, "CORRECTION", menu_cal2_cb },
+  { MT_CALLBACK, 0, "APPLY", menu_cal2_cb },
   { MT_CANCEL, 0, S_LARROW" BACK", NULL },
   { MT_NONE, 0, NULL, NULL } // sentinel
 };
@@ -1072,8 +1072,8 @@ const menuitem_t menu_display[] = {
 };
 
 const menuitem_t menu_sweep_points[] = {
-  { MT_CALLBACK, POINTS_SET_51,  " 51 points", menu_points_cb },
-  { MT_CALLBACK, POINTS_SET_101, "101 points", menu_points_cb },
+  { MT_CALLBACK, POINTS_SET_51,  " 51 pt", menu_points_cb },
+  { MT_CALLBACK, POINTS_SET_101, "101 pt", menu_points_cb },
   { MT_CANCEL, 0, S_LARROW" BACK", NULL },
   { MT_NONE, 0, NULL, NULL } // sentinel
 };
@@ -1171,7 +1171,7 @@ const menuitem_t menu_top[] = {
   { MT_SUBMENU, 0, "DISPLAY", menu_display },
   { MT_SUBMENU, 0, "MARKER", menu_marker },
   { MT_SUBMENU, 0, "STIMULUS", menu_stimulus },
-  { MT_SUBMENU, 0, "CAL", menu_cal },
+  { MT_SUBMENU, 0, "CALIBRATE", menu_cal },
   { MT_SUBMENU, 0, "RECALL", menu_recall },
 #ifdef __USE_SD_CARD__
   { MT_SUBMENU, 0, "SD CARD", menu_sdcard },
@@ -1363,31 +1363,51 @@ static const keypads_list keypads_mode_tbl[KM_NONE] = {
   {keypads_time , "DELAY"    }  // scale of delay
 };
 
+#define BUTTON_FLAG_NONE     0
+#define BUTTON_FLAG_CHECK    1
+#define BUTTON_FLAG_GROUP    2
+#define BUTTON_FLAG_CHECKED  4
+
+typedef struct Button{
+  uint16_t bg;
+  uint16_t fg;
+  uint16_t border_color;
+  uint8_t  border;
+  uint8_t  flag;
+} button_t;
+
 static void
-draw_button(uint16_t x, uint16_t y, uint16_t w, uint16_t h, uint16_t border_colour, uint16_t bg_colour)
+draw_button(uint16_t x, uint16_t y, uint16_t w, uint16_t h, button_t *b)
 {
 // background
-  const uint16_t bw = MENU_BUTTON_BORDER;
-  ili9341_fill(x + bw, y + bw, w - (bw * 2), h - (bw * 2), bg_colour);
-  ili9341_fill(x,          y,          w,  bw, border_colour);   // top
-  ili9341_fill(x + w - bw, y,          bw,  h, border_colour);   // right
-  ili9341_fill(x,          y,          bw,  h, border_colour);   // left
-  ili9341_fill(x,          y + h - bw, w,  bw, border_colour);   // bottom
+  uint16_t bw = b->border;
+  uint16_t bc = b->border_color;
+  ili9341_fill(x + bw, y + bw, w - (bw * 2), h - (bw * 2), b->bg);
+  ili9341_fill(x,          y,          w,  bw, bc);   // top
+  ili9341_fill(x + w - bw, y,          bw,  h, bc);   // right
+  ili9341_fill(x,          y,          bw,  h, bc);   // left
+  ili9341_fill(x,          y + h - bw, w,  bw, bc);   // bottom
 }
 
 static void
 draw_keypad(void)
 {
   int i = 0;
+  button_t button;
+  button.fg = DEFAULT_MENU_TEXT_COLOR;
+  button.border = KEYBOARD_BUTTON_BORDER;
+  button.border_color = DEFAULT_GRID_COLOR;
   while (keypads[i].c != KP_NONE) {
-    uint16_t bg = config.menu_normal_color;
+
+    button.bg = config.menu_normal_color;
+    button.border_color = DEFAULT_GRID_COLOR;
     if (i == selection)
-      bg = config.menu_active_color;
-    ili9341_set_foreground(DEFAULT_MENU_TEXT_COLOR);
-    ili9341_set_background(bg);
+      button.bg = config.menu_active_color;
+    ili9341_set_foreground(button.fg);
+    ili9341_set_background(button.bg);
     int x = KP_GET_X(keypads[i].x);
     int y = KP_GET_Y(keypads[i].y);
-    draw_button(x, y, KP_WIDTH, KP_HEIGHT, DEFAULT_BG_COLOR, bg);
+    draw_button(x, y, KP_WIDTH, KP_HEIGHT, &button);
     ili9341_drawfont(keypads[i].c,
                      x + (KP_WIDTH - NUM_FONT_GET_WIDTH) / 2,
                      y + (KP_HEIGHT - NUM_FONT_GET_HEIGHT) / 2);
@@ -1456,14 +1476,14 @@ menu_is_multiline(const char *label)
 }
 
 static void
-menu_item_modify_attribute(const menuitem_t *menu, int item,
-                           uint16_t *fg, uint16_t *bg)
+menu_item_modify_attribute(const menuitem_t *menu, int item, button_t *b)
 {
   bool swap = false;
   if (menu == menu_trace && item < TRACES_MAX) {
     if (trace[item].enabled){
-      *bg = config.trace_color[item];
-       if (item == selection) *fg = ~config.trace_color[item];
+      b->bg = config.trace_color[item];
+      if (item == selection) b->fg = ~config.trace_color[item];
+      swap = true;
     }
   } else if (menu == menu_marker_sel) {
     if ((item  < 4 && markers[item].enabled) ||
@@ -1508,8 +1528,36 @@ menu_item_modify_attribute(const menuitem_t *menu, int item,
        || (item == 2 && (domain_mode & TD_WINDOW) == TD_WINDOW_MAXIMUM)
        ) swap = true;
   }
-  if (swap) {uint16_t t = *bg;*bg=*fg;*fg = t;}
+  if (swap) b->flag|=BUTTON_FLAG_CHECK|BUTTON_FLAG_CHECKED;
 }
+
+#define CHECK_BOX_WIDTH   16
+#define CHECK_BOX_HEIGHT  11
+static const uint16_t check_box[] = {
+  0b0011111111110000,
+  0b0010000000010000,
+  0b0010000000010000,
+  0b0010000000010000,
+  0b0010000000010000,
+  0b0010000000010000,
+  0b0010000000010000,
+  0b0010000000010000,
+  0b0010000000010000,
+  0b0010000000010000,
+  0b0011111111110000,
+
+  0b0011111111110000,
+  0b0010000000001000,
+  0b0010000000011000,
+  0b0010000000110000,
+  0b0010000001100000,
+  0b0010100011010000,
+  0b0010110110010000,
+  0b0010011100010000,
+  0b0010001000010000,
+  0b0010000000010000,
+  0b0011111111110000
+};
 
 static void
 draw_menu_buttons(const menuitem_t *menu)
@@ -1521,20 +1569,29 @@ draw_menu_buttons(const menuitem_t *menu)
     if (menu[i].type == MT_BLANK)
       continue;
 
-    uint16_t bg = config.menu_normal_color;
-    uint16_t fg = DEFAULT_MENU_TEXT_COLOR;
+    button_t button;
+    button.bg = config.menu_normal_color;
+    button.fg = DEFAULT_MENU_TEXT_COLOR;
+    button.border_color = DEFAULT_GRID_COLOR;
+    button.flag = BUTTON_FLAG_NONE;
+    button.border = MENU_BUTTON_BORDER;
     // focus only in MENU mode but not in KEYPAD mode
     if (ui_mode == UI_MENU && i == selection)
-      bg = config.menu_active_color;
+      button.bg = config.menu_active_color;
 
-    menu_item_modify_attribute(menu, i, &fg, &bg);
-    ili9341_set_foreground(fg);
-    ili9341_set_background(bg);
+    menu_item_modify_attribute(menu, i, &button);
+    ili9341_set_foreground(button.fg);
+    ili9341_set_background(button.bg);
 
-    draw_button(LCD_WIDTH-MENU_BUTTON_WIDTH, y, MENU_BUTTON_WIDTH, MENU_BUTTON_HEIGHT, fg, bg);
+    draw_button(LCD_WIDTH-MENU_BUTTON_WIDTH, y, MENU_BUTTON_WIDTH, MENU_BUTTON_HEIGHT, &button);
 
     int lines = menu_is_multiline(menu[i].label);
-    ili9341_drawstring(menu[i].label, LCD_WIDTH-MENU_BUTTON_WIDTH+MENU_BUTTON_BORDER+4, y+(MENU_BUTTON_HEIGHT-lines*FONT_GET_HEIGHT)/2);
+    uint16_t text_offs = LCD_WIDTH-MENU_BUTTON_WIDTH+MENU_BUTTON_BORDER + 5;
+    if (button.flag&BUTTON_FLAG_CHECKED){
+      blit16BitWidthBitmap(LCD_WIDTH-MENU_BUTTON_WIDTH+MENU_BUTTON_BORDER + 4, y+(MENU_BUTTON_HEIGHT-CHECK_BOX_HEIGHT)/2, CHECK_BOX_WIDTH, CHECK_BOX_HEIGHT, &check_box[1*CHECK_BOX_HEIGHT]);
+      text_offs=LCD_WIDTH-MENU_BUTTON_WIDTH+MENU_BUTTON_BORDER+4+CHECK_BOX_WIDTH;
+    }
+    ili9341_drawstring(menu[i].label, text_offs, y+(MENU_BUTTON_HEIGHT-lines*FONT_GET_HEIGHT)/2);
   }
   for (; i < MENU_BUTTON_MAX; i++, y+=MENU_BUTTON_HEIGHT) {
     ili9341_fill(LCD_WIDTH-MENU_BUTTON_WIDTH, y, MENU_BUTTON_WIDTH, MENU_BUTTON_HEIGHT, DEFAULT_BG_COLOR);

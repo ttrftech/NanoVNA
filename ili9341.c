@@ -607,7 +607,7 @@ void blit8BitWidthBitmap(uint16_t x, uint16_t y, uint16_t width, uint16_t height
   ili9341_bulk(x, y, width, height);
 }
 
-static void blit16BitWidthBitmap(uint16_t x, uint16_t y, uint16_t width, uint16_t height,
+void blit16BitWidthBitmap(uint16_t x, uint16_t y, uint16_t width, uint16_t height,
                                  const uint16_t *bitmap)
 {
   uint16_t *buf = spi_buffer;

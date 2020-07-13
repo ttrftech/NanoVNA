@@ -224,11 +224,12 @@ extern int16_t area_width;
 extern int16_t area_height;
 
 // Maximum menu buttons count
-#define MENU_BUTTON_MAX     8
+#define MENU_BUTTON_MAX         8
 // Menu buttons size
-#define MENU_BUTTON_WIDTH  60
-#define MENU_BUTTON_HEIGHT 29
-#define MENU_BUTTON_BORDER  1
+#define MENU_BUTTON_WIDTH      66
+#define MENU_BUTTON_HEIGHT     29
+#define MENU_BUTTON_BORDER      1
+#define KEYBOARD_BUTTON_BORDER  2
 
 // Height of numerical input field (at bottom)
 #define NUM_INPUT_HEIGHT   32
@@ -425,6 +426,7 @@ void ili9341_set_foreground(uint16_t fg);
 void ili9341_set_background(uint16_t fg);
 void ili9341_clear_screen(void);
 void blit8BitWidthBitmap(uint16_t x, uint16_t y, uint16_t width, uint16_t height, const uint8_t *bitmap);
+void blit16BitWidthBitmap(uint16_t x, uint16_t y, uint16_t width, uint16_t height, const uint16_t *bitmap);
 void ili9341_drawchar(uint8_t ch, int x, int y);
 void ili9341_drawstring(const char *str, int x, int y);
 void ili9341_drawstringV(const char *str, int x, int y);

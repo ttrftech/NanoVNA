@@ -451,7 +451,7 @@ static void
 show_version(void)
 {
   int x = 5, y = 5, i = 1;
-//  adc_stop();
+  adc_stop();
   ili9341_set_foreground(DEFAULT_FG_COLOR);
   ili9341_set_background(DEFAULT_BG_COLOR);
 
@@ -492,7 +492,7 @@ show_version(void)
 //    ili9341_drawstring(buffer, x, y + FONT_STR_HEIGHT + 2);
   }
 
-//  touch_start_watchdog();
+  touch_start_watchdog();
 }
 
 void

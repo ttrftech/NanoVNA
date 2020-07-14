@@ -117,6 +117,7 @@ static int8_t  selection = 0;
 #define MT_CLOSE           0x05
 #define MT_ADV_CALLBACK    0x06
 
+// Button definition (used in MT_ADV_CALLBACK for custom)
 #define BUTTON_ICON_NONE            -1
 #define BUTTON_ICON_NOCHECK          0
 #define BUTTON_ICON_CHECK            1
@@ -133,7 +134,6 @@ static int8_t  selection = 0;
 typedef struct Button{
   uint16_t bg;
   uint16_t fg;
-  uint16_t border_color;
   uint8_t  border;
   int8_t   icon;
 } button_t;
@@ -164,12 +164,6 @@ typedef struct {
 static int8_t last_touch_status = EVT_TOUCH_NONE;
 static int16_t last_touch_x;
 static int16_t last_touch_y;
-
-//int16_t touch_cal[4] = { 1000, 1000, 10*16, 12*16 };
-//int16_t touch_cal[4] = { 620, 600, 130, 180 };
-
-//int awd_count;
-//int touch_x, touch_y;
 
 #define KP_CONTINUE 0
 #define KP_DONE 1
@@ -1463,13 +1457,13 @@ draw_button(uint16_t x, uint16_t y, uint16_t w, uint16_t h, button_t *b)
     case BUTTON_BORDER_FALLING: bcr = RGB565(196,196,196); bcd = RGB565(255,255,255); break;
     case BUTTON_BORDER_FLAT:
     default:
-      bcr = bcd = b->border_color;
+      bcr = bcd = b->fg;
     break;
   }
-  ili9341_fill(x,          y,          w,  bw, bcr);   // top
+  ili9341_fill(x,          y,           w, bw, bcr);   // top
   ili9341_fill(x + w - bw, y,          bw,  h, bcr);   // right
   ili9341_fill(x,          y,          bw,  h, bcd);   // left
-  ili9341_fill(x,          y + h - bw, w,  bw, bcd);   // bottom
+  ili9341_fill(x,          y + h - bw,  w, bw, bcd);   // bottom
 }
 
 static void
@@ -1478,13 +1472,10 @@ draw_keypad(void)
   int i = 0;
   button_t button;
   button.fg = DEFAULT_MENU_TEXT_COLOR;
-  button.border_color = DEFAULT_GRID_COLOR;
   while (keypads[i].c != KP_NONE) {
-
-    button.bg = RGB565(230,230,230);//config.menu_normal_color;
-    button.border_color = DEFAULT_GRID_COLOR;
+    button.bg = config.menu_normal_color;
     if (i == selection){
-      button.bg = RGB565(210,210,210);//config.menu_active_color;
+      button.bg = config.menu_active_color;
       button.border = KEYBOARD_BUTTON_BORDER|BUTTON_BORDER_FALLING;
     }
     else
@@ -1682,13 +1673,12 @@ draw_menu_buttons(const menuitem_t *menu)
       continue;
 
     button_t button;
-    button.bg = RGB565(230,230,230);//config.menu_normal_color;
+    button.bg = config.menu_normal_color;
     button.fg = DEFAULT_MENU_TEXT_COLOR;
-    button.border_color = DEFAULT_GRID_COLOR;
     button.icon = BUTTON_ICON_NONE;
     // focus only in MENU mode but not in KEYPAD mode
     if (ui_mode == UI_MENU && i == selection){
-      button.bg = RGB565(210,210,210);//config.menu_active_color;
+      button.bg = config.menu_active_color;
       button.border = MENU_BUTTON_BORDER|BUTTON_BORDER_FALLING;
     }
     else
@@ -2300,10 +2290,10 @@ ui_process_keypad(void)
     status = btn_check();
     if (status & (EVT_UP|EVT_DOWN)) {
       do {
-        if (status & EVT_UP)
+        if (status & EVT_DOWN)
           if (--selection < 0)
             selection = keypads_last_index;
-        if (status & EVT_DOWN)
+        if (status & EVT_UP)
           if (++selection > keypads_last_index)
             selection = 0;
         draw_keypad();
@@ -2510,7 +2500,6 @@ touch_lever_mode_select(int touch_x, int touch_y)
 static
 void ui_process_touch(void)
 {
-//  awd_count++;
   adc_stop();
   int touch_x, touch_y;
   int status = touch_check();

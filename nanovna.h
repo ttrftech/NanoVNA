@@ -22,9 +22,9 @@
 // Need enable HAL_USE_SPI in halconf.h
 #define __USE_DISPLAY_DMA__
 // Add RTC clock support
-//#define __USE_RTC__
+#define __USE_RTC__
 // Add SD card support, req enable RTC (additional settings for file system see FatFS lib ffconf.h)
-//#define __USE_SD_CARD__
+#define __USE_SD_CARD__
 
 /*
  * main.c
@@ -402,9 +402,9 @@ extern volatile uint8_t redraw_request;
 #define DEFAULT_FG_COLOR            RGB565(255,255,255)
 #define DEFAULT_BG_COLOR            RGB565(  0,  0,  0)
 #define DEFAULT_GRID_COLOR          RGB565(128,128,128)
-#define DEFAULT_MENU_COLOR          RGB565(255,255,255)
+#define DEFAULT_MENU_COLOR          RGB565(230,230,230)
 #define DEFAULT_MENU_TEXT_COLOR     RGB565(  0,  0,  0)
-#define DEFAULT_MENU_ACTIVE_COLOR   RGB565(180,255,180)
+#define DEFAULT_MENU_ACTIVE_COLOR   RGB565(210,210,210)
 #define DEFAULT_TRACE_1_COLOR       RGB565(255,255,  0)
 #define DEFAULT_TRACE_2_COLOR       RGB565(  0,255,255)
 #define DEFAULT_TRACE_3_COLOR       RGB565(  0,255,  0)

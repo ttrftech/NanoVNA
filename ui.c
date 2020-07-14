@@ -123,6 +123,13 @@ static int8_t  selection = 0;
 #define BUTTON_ICON_GROUP            2
 #define BUTTON_ICON_GROUP_CHECKED    3
 
+#define BUTTON_BORDER_NONE           0x00
+#define BUTTON_BORDER_WIDTH_MASK     (0x07<<0)
+#define BUTTON_BORDER_TYPE_MASK      (0x03<<3)
+#define BUTTON_BORDER_FLAT           (0x00<<3)
+#define BUTTON_BORDER_RISE           (0x01<<3)
+#define BUTTON_BORDER_FALLING        (0x02<<3)
+
 typedef struct Button{
   uint16_t bg;
   uint16_t fg;
@@ -1447,10 +1454,18 @@ static void
 draw_button(uint16_t x, uint16_t y, uint16_t w, uint16_t h, button_t *b)
 {
 // background
-  uint16_t bw = b->border;
-  uint16_t bcr = RGB565(255,255,255);//b->border_color;
-  uint16_t bcd = RGB565(196,196,196);//b->border_color;
+  uint16_t bw = b->border&BUTTON_BORDER_WIDTH_MASK;
   ili9341_fill(x + bw, y + bw, w - (bw * 2), h - (bw * 2), b->bg);
+  if (bw==0) return;
+  uint16_t bcr, bcd;
+  switch(b->border&BUTTON_BORDER_TYPE_MASK){
+    case BUTTON_BORDER_RISE:    bcr = RGB565(255,255,255); bcd = RGB565(196,196,196); break;
+    case BUTTON_BORDER_FALLING: bcr = RGB565(196,196,196); bcd = RGB565(255,255,255); break;
+    case BUTTON_BORDER_FLAT:
+    default:
+      bcr = bcd = b->border_color;
+    break;
+  }
   ili9341_fill(x,          y,          w,  bw, bcr);   // top
   ili9341_fill(x + w - bw, y,          bw,  h, bcr);   // right
   ili9341_fill(x,          y,          bw,  h, bcd);   // left
@@ -1463,14 +1478,17 @@ draw_keypad(void)
   int i = 0;
   button_t button;
   button.fg = DEFAULT_MENU_TEXT_COLOR;
-  button.border = KEYBOARD_BUTTON_BORDER;
   button.border_color = DEFAULT_GRID_COLOR;
   while (keypads[i].c != KP_NONE) {
 
     button.bg = RGB565(230,230,230);//config.menu_normal_color;
     button.border_color = DEFAULT_GRID_COLOR;
-    if (i == selection)
-      button.bg = config.menu_active_color;
+    if (i == selection){
+      button.bg = RGB565(210,210,210);//config.menu_active_color;
+      button.border = KEYBOARD_BUTTON_BORDER|BUTTON_BORDER_FALLING;
+    }
+    else
+      button.border = KEYBOARD_BUTTON_BORDER|BUTTON_BORDER_RISE;
     ili9341_set_foreground(button.fg);
     ili9341_set_background(button.bg);
     int x = KP_GET_X(keypads[i].x);
@@ -1668,11 +1686,13 @@ draw_menu_buttons(const menuitem_t *menu)
     button.fg = DEFAULT_MENU_TEXT_COLOR;
     button.border_color = DEFAULT_GRID_COLOR;
     button.icon = BUTTON_ICON_NONE;
-    button.border = MENU_BUTTON_BORDER;
     // focus only in MENU mode but not in KEYPAD mode
-    if (ui_mode == UI_MENU && i == selection)
-      button.bg = config.menu_active_color;
-
+    if (ui_mode == UI_MENU && i == selection){
+      button.bg = RGB565(210,210,210);//config.menu_active_color;
+      button.border = MENU_BUTTON_BORDER|BUTTON_BORDER_FALLING;
+    }
+    else
+      button.border = MENU_BUTTON_BORDER|BUTTON_BORDER_RISE;
 //  menu_item_modify_attribute(menu, i, &button);
     if (menu[i].type == MT_ADV_CALLBACK){
       menuaction_acb_t cb = (menuaction_acb_t)menu[i].reference;

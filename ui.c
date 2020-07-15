@@ -125,13 +125,20 @@ static int8_t  selection = 0;
 #define BUTTON_ICON_GROUP_CHECKED    3
 
 #define BUTTON_BORDER_NONE           0x00
-#define BUTTON_BORDER_WIDTH_MASK     (0x07<<0)
-#define BUTTON_BORDER_TYPE_MASK      (0x03<<3)
-#define BUTTON_BORDER_FLAT           (0x00<<3)
-#define BUTTON_BORDER_RISE           (0x01<<3)
-#define BUTTON_BORDER_FALLING        (0x02<<3)
+#define BUTTON_BORDER_WIDTH_MASK     0x0F
 
-typedef struct Button{
+// Define mask for draw border (if 1 use light color, if 0 dark)
+#define BUTTON_BORDER_TYPE_MASK      0xF0
+#define BUTTON_BORDER_TOP            0x10
+#define BUTTON_BORDER_BOTTOM         0x20
+#define BUTTON_BORDER_LEFT           0x40
+#define BUTTON_BORDER_RIGHT          0x80
+
+#define BUTTON_BORDER_FLAT           0x00
+#define BUTTON_BORDER_RISE           (BUTTON_BORDER_TOP|BUTTON_BORDER_RIGHT)
+#define BUTTON_BORDER_FALLING        (BUTTON_BORDER_BOTTOM|BUTTON_BORDER_LEFT)
+
+typedef struct {
   uint16_t bg;
   uint16_t fg;
   uint8_t  border;
@@ -1447,23 +1454,16 @@ static const keypads_list keypads_mode_tbl[KM_NONE] = {
 static void
 draw_button(uint16_t x, uint16_t y, uint16_t w, uint16_t h, button_t *b)
 {
-// background
   uint16_t bw = b->border&BUTTON_BORDER_WIDTH_MASK;
   ili9341_fill(x + bw, y + bw, w - (bw * 2), h - (bw * 2), b->bg);
   if (bw==0) return;
-  uint16_t bcr, bcd;
-  switch(b->border&BUTTON_BORDER_TYPE_MASK){
-    case BUTTON_BORDER_RISE:    bcr = RGB565(255,255,255); bcd = RGB565(196,196,196); break;
-    case BUTTON_BORDER_FALLING: bcr = RGB565(196,196,196); bcd = RGB565(255,255,255); break;
-    case BUTTON_BORDER_FLAT:
-    default:
-      bcr = bcd = b->fg;
-    break;
-  }
-  ili9341_fill(x,          y,           w, bw, bcr);   // top
-  ili9341_fill(x + w - bw, y,          bw,  h, bcr);   // right
-  ili9341_fill(x,          y,          bw,  h, bcd);   // left
-  ili9341_fill(x,          y + h - bw,  w, bw, bcd);   // bottom
+  uint16_t br = RGB565(255,255,255);
+  uint16_t bd = RGB565(196,196,196);
+  uint16_t type = b->border;
+  ili9341_fill(x,          y,           w, bw, type&BUTTON_BORDER_TOP    ? br : bd); // top
+  ili9341_fill(x + w - bw, y,          bw,  h, type&BUTTON_BORDER_RIGHT  ? br : bd); // right
+  ili9341_fill(x,          y,          bw,  h, type&BUTTON_BORDER_LEFT   ? br : bd); // left
+  ili9341_fill(x,          y + h - bw,  w, bw, type&BUTTON_BORDER_BOTTOM ? br : bd); // bottom
 }
 
 static void
@@ -1495,9 +1495,9 @@ draw_keypad(void)
 static void
 draw_numeric_area_frame(void)
 {
-  ili9341_fill(0, LCD_HEIGHT-NUM_INPUT_HEIGHT, LCD_WIDTH, NUM_INPUT_HEIGHT, config.menu_normal_color);
+  ili9341_fill(0, LCD_HEIGHT-NUM_INPUT_HEIGHT, LCD_WIDTH, NUM_INPUT_HEIGHT, DEFAULT_FG_COLOR);
   ili9341_set_foreground(DEFAULT_MENU_TEXT_COLOR);
-  ili9341_set_background(config.menu_normal_color);
+  ili9341_set_background(DEFAULT_FG_COLOR);
   ili9341_drawstring(keypads_mode_tbl[keypad_mode].name, 10, LCD_HEIGHT-(FONT_GET_HEIGHT+NUM_INPUT_HEIGHT)/2);
   //ili9341_drawfont(KP_KEYPAD, 300, 216);
 }
@@ -1512,7 +1512,7 @@ draw_numeric_input(const char *buf)
 
   for (i = 0, x = 10 + 10 * FONT_WIDTH + 4; i < 10 && buf[i]; i++, xsim<<=1) {
     uint16_t fg = DEFAULT_MENU_TEXT_COLOR;
-    uint16_t bg = config.menu_normal_color;
+    uint16_t bg = DEFAULT_FG_COLOR;
     int c = buf[i];
     if (c == '.')
       c = KP_PERIOD;
@@ -1520,26 +1520,26 @@ draw_numeric_input(const char *buf)
       c = KP_MINUS;
     else// if (c >= '0' && c <= '9')
       c = c - '0';
-
     if (ui_mode == UI_NUMERIC && uistat.digit == 8-i) {
       fg = DEFAULT_SPEC_INPUT_COLOR;
-      focused = TRUE;
-//      if (uistat.digit_mode)
-//        bg = DEFAULT_MENU_COLOR;
+        focused = true;
+      if (uistat.digit_mode){
+        bg = DEFAULT_SPEC_INPUT_COLOR;
+        fg = DEFAULT_MENU_TEXT_COLOR;
+      }
     }
     ili9341_set_foreground(fg);
     ili9341_set_background(bg);
+    if (c < 0 && focused) c = 0;
     if (c >= 0) // c is number
       ili9341_drawfont(c, x, LCD_HEIGHT-NUM_INPUT_HEIGHT+4);
-    else if (focused) // c not number, but focused
-      ili9341_drawfont(0, x, LCD_HEIGHT-NUM_INPUT_HEIGHT+4);
-    else // erase
+    else        // erase
       ili9341_fill(x, LCD_HEIGHT-NUM_INPUT_HEIGHT+4, NUM_FONT_GET_HEIGHT, NUM_FONT_GET_WIDTH+2+8, bg);
 
     x += xsim&0x8000 ? NUM_FONT_GET_WIDTH+2+8 : NUM_FONT_GET_WIDTH+2;
   }
   // erase last
-  ili9341_fill(x, LCD_HEIGHT-NUM_INPUT_HEIGHT+4, NUM_FONT_GET_WIDTH+2+8, NUM_FONT_GET_WIDTH+2+8, config.menu_normal_color);
+  ili9341_fill(x, LCD_HEIGHT-NUM_INPUT_HEIGHT+4, NUM_FONT_GET_WIDTH+2+8, NUM_FONT_GET_WIDTH+2+8, DEFAULT_FG_COLOR);
 }
 
 static int
@@ -1553,6 +1553,7 @@ menu_is_multiline(const char *label)
 }
 
 #if 0
+// Obsolete, now use ADV_CALLBACK for change settings
 static void
 menu_item_modify_attribute(const menuitem_t *menu, int item, button_t *b)
 {
@@ -1648,7 +1649,7 @@ static const uint16_t check_box[] = {
   0b0000100000010000,
   0b0000010000100000,
   0b0000001111000000,
-
+/*
   0b0000000000000000,
   0b0000001111000000,
   0b0000010000100000,
@@ -1658,6 +1659,18 @@ static const uint16_t check_box[] = {
   0b0001001111001000,
   0b0001000110001000,
   0b0000100000010000,
+  0b0000010000100000,
+  0b0000001111000000,
+*/
+  0b0000000000000000,
+  0b0000001111000000,
+  0b0000010000100000,
+  0b0000100110010000,
+  0b0001001111001000,
+  0b0001011111101000,
+  0b0001011111101000,
+  0b0001001111001000,
+  0b0000100110010000,
   0b0000010000100000,
   0b0000001111000000,
 };
@@ -1683,22 +1696,23 @@ draw_menu_buttons(const menuitem_t *menu)
     }
     else
       button.border = MENU_BUTTON_BORDER|BUTTON_BORDER_RISE;
-//  menu_item_modify_attribute(menu, i, &button);
+
     if (menu[i].type == MT_ADV_CALLBACK){
       menuaction_acb_t cb = (menuaction_acb_t)menu[i].reference;
       if (cb) (*cb)(i, menu[i].data, &button);
     }
-    ili9341_set_foreground(button.fg);
-    ili9341_set_background(button.bg);
-
     draw_button(LCD_WIDTH-MENU_BUTTON_WIDTH, y, MENU_BUTTON_WIDTH, MENU_BUTTON_HEIGHT, &button);
 
-    int lines = menu_is_multiline(menu[i].label);
+    ili9341_set_foreground(button.fg);
+    ili9341_set_background(button.bg);
     uint16_t text_offs = LCD_WIDTH-MENU_BUTTON_WIDTH+MENU_BUTTON_BORDER + 5;
+
+
     if (button.icon >=0){
       blit16BitWidthBitmap(LCD_WIDTH-MENU_BUTTON_WIDTH+MENU_BUTTON_BORDER + 1, y+(MENU_BUTTON_HEIGHT-ICON_HEIGHT)/2, ICON_WIDTH, ICON_HEIGHT, &check_box[button.icon*ICON_HEIGHT]);
       text_offs=LCD_WIDTH-MENU_BUTTON_WIDTH+MENU_BUTTON_BORDER+1+ICON_WIDTH;
     }
+    int lines = menu_is_multiline(menu[i].label);
     ili9341_drawstring(menu[i].label, text_offs, y+(MENU_BUTTON_HEIGHT-lines*FONT_GET_HEIGHT)/2);
   }
   for (; i < MENU_BUTTON_MAX; i++, y+=MENU_BUTTON_HEIGHT) {
@@ -2585,7 +2599,7 @@ static const EXTConfig extcfg = {
 
 // Touch panel timer check (check press frequency 20Hz)
 static const GPTConfig gpt3cfg = {
-  20,     /* 20Hz timer clock.*/
+  200,    /* 200Hz timer clock.*/
   NULL,   /* Timer callback.*/
   0x0020, /* CR2:MMS=02 to output TRGO */
   0

@@ -69,6 +69,7 @@ static volatile vna_shellcmd_t  shell_function = 0;
 #define ENABLE_COLOR_COMMAND
 // Enable I2C command for send data to AIC3204, used for debug
 //#define ENABLE_I2C_COMMAND
+//#define ENABLE_LCD_COMMAND
 
 static void apply_CH0_error_term_at(int i);
 static void apply_CH1_error_term_at(int i);
@@ -716,7 +717,7 @@ config_t config = {
   .trace_color =       { DEFAULT_TRACE_1_COLOR, DEFAULT_TRACE_2_COLOR, DEFAULT_TRACE_3_COLOR, DEFAULT_TRACE_4_COLOR },
 //  .touch_cal =         { 693, 605, 124, 171 },  // 2.4 inch LCD panel
   .touch_cal =         { 338, 522, 153, 192 },  // 2.8 inch LCD panel
-//  .touch_cal =         { 252, 450, 111, 150 },  //4.0" LCD
+//  .touch_cal =         { 272, 521, 114, 153 },  //4.0" LCD
   .harmonic_freq_threshold = FREQUENCY_THRESHOLD,
   .vbat_offset = 500,
   .bandwidth = BANDWIDTH_1000
@@ -2233,6 +2234,18 @@ VNA_SHELL_FUNCTION(cmd_i2c){
 }
 #endif
 
+#ifdef ENABLE_LCD_COMMAND
+VNA_SHELL_FUNCTION(cmd_lcd){
+  uint8_t d[VNA_SHELL_MAX_ARGUMENTS];
+  if (argc == 0) return;
+  for (int i=0;i<argc;i++)
+    d[i] =  my_atoui(argv[i]);
+  uint32_t ret = lcd_send_command(d[0], argc-1, &d[1]);
+  shell_printf("ret = 0x%08X\r\n", ret);
+  chThdSleepMilliseconds(5);
+}
+#endif
+
 #ifdef ENABLE_THREADS_COMMAND
 #if CH_CFG_USE_REGISTRY == FALSE
 #error "Threads Requite enabled CH_CFG_USE_REGISTRY in chconf.h"
@@ -2331,6 +2344,9 @@ static const VNAShellCommand commands[] =
 #ifdef ENABLE_I2C_COMMAND
     {"i2c"         , cmd_i2c         , CMD_WAIT_MUTEX},
 #endif
+#ifdef ENABLE_LCD_COMMAND
+    {"lcd"         , cmd_lcd         , CMD_WAIT_MUTEX},
+#endif
 #ifdef ENABLE_THREADS_COMMAND
     {"threads"     , cmd_threads     , 0},
 #endif
@@ -2402,6 +2418,11 @@ static void VNAShell_executeLine(char *line)
   // Parse and execute line
   char *lp = line, *ep;
   shell_nargs = 0;
+#if 0 // debug console log
+  ili9341_fill(0, FREQUENCIES_YPOS, LCD_WIDTH, FONT_GET_HEIGHT, DEFAULT_BG_COLOR);
+  ili9341_drawstring(lp, FREQUENCIES_XPOS1, FREQUENCIES_YPOS);
+  osalThreadSleepMilliseconds(1000);
+#endif
   while (*lp != 0) {
     // Skipping white space and tabs at string begin.
     while (*lp == ' ' || *lp == '\t') lp++;

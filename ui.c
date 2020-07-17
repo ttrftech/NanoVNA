@@ -43,8 +43,8 @@ uistat_t uistat = {
 
 #define BUTTON_DOWN_LONG_TICKS      5000   /* 500ms */
 #define BUTTON_DOUBLE_TICKS         2500   /* 250ms */
-#define BUTTON_REPEAT_TICKS         200    /*  20ms */
-#define BUTTON_DEBOUNCE_TICKS       400    /*  40ms */
+#define BUTTON_REPEAT_TICKS          100   /*  10ms */
+#define BUTTON_DEBOUNCE_TICKS        400   /*  40ms */
 
 /* lever switch assignment */
 #define BIT_UP1     3
@@ -1136,7 +1136,9 @@ const menuitem_t menu_transform[] = {
 };
 
 const menuitem_t menu_bandwidth[] = {
+#ifdef BANDWIDTH_2000
   { MT_ADV_CALLBACK, BANDWIDTH_2000, "2 kHz", menu_bandwidth_acb },
+#endif
   { MT_ADV_CALLBACK, BANDWIDTH_1000, "1 kHz", menu_bandwidth_acb },
   { MT_ADV_CALLBACK, BANDWIDTH_333, "333 Hz", menu_bandwidth_acb },
   { MT_ADV_CALLBACK, BANDWIDTH_100, "100 Hz", menu_bandwidth_acb },

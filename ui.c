@@ -188,6 +188,7 @@ static void ui_process_numeric(void);
 static void touch_position(int *x, int *y);
 static void menu_move_back(bool leave_ui);
 static void menu_push_submenu(const menuitem_t *submenu);
+void drawMessageBox(char *header, char *text, uint32_t delay);
 
 static int btn_check(void)
 {
@@ -197,7 +198,7 @@ static int btn_check(void)
     ticks = chVTGetSystemTimeX();
     if(ticks - last_button_down_ticks > BUTTON_DEBOUNCE_TICKS)
       break;
-    chThdSleepMilliseconds(10);
+    chThdSleepMilliseconds(1);
   }
   int status = 0;
   uint16_t cur_button = READ_PORT() & BUTTON_MASK;
@@ -1019,12 +1020,7 @@ static UI_FUNCTION_CALLBACK(menu_sdcard_cb)
 //    shell_printf("Total time: %dms (write %d byte/sec)\r\n", time/10, total_size*10000/time);
   }
 
-  ili9341_fill(LCD_WIDTH/2-96, LCD_HEIGHT/2-30, 96*2, 60, config.menu_normal_color);
-  ili9341_set_foreground(DEFAULT_MENU_TEXT_COLOR);
-  ili9341_set_background(config.menu_normal_color);
-  ili9341_drawstring("SAVE TRACE", LCD_WIDTH/2-5*FONT_WIDTH, LCD_HEIGHT/2-20);
-  ili9341_drawstring(res == FR_OK ? fs_filename : "  Fail write  ", LCD_WIDTH/2-76, LCD_HEIGHT/2);
-  chThdSleepMilliseconds(2000);
+  drawMessageBox("SAVE TRACE", res == FR_OK ? fs_filename : "  Fail write  ", 2000);
   request_to_redraw_grid();
   ui_mode_normal();
 }
@@ -1054,6 +1050,12 @@ const menuitem_t menu_save[] = {
   { MT_CALLBACK, 2, "SAVE 2", menu_save_cb },
   { MT_CALLBACK, 3, "SAVE 3", menu_save_cb },
   { MT_CALLBACK, 4, "SAVE 4", menu_save_cb },
+#if SAVEAREA_MAX > 5
+  { MT_CALLBACK, 5, "SAVE 5", menu_save_cb },
+#endif
+#if SAVEAREA_MAX > 6
+  { MT_CALLBACK, 6, "SAVE 6", menu_save_cb },
+#endif
   { MT_CANCEL, 0, S_LARROW" BACK", NULL },
   { MT_NONE, 0, NULL, NULL } // sentinel
 };
@@ -1162,6 +1164,9 @@ const menuitem_t menu_display[] = {
 const menuitem_t menu_sweep_points[] = {
   { MT_ADV_CALLBACK, POINTS_SET_51,  " 51 pt", menu_points_acb },
   { MT_ADV_CALLBACK, POINTS_SET_101, "101 pt", menu_points_acb },
+#ifdef POINTS_SET_201
+  { MT_ADV_CALLBACK, POINTS_SET_201, "201 pt", menu_points_acb },
+#endif
   { MT_CANCEL, 0, S_LARROW" BACK", NULL },
   { MT_NONE, 0, NULL, NULL } // sentinel
 };
@@ -1234,6 +1239,12 @@ const menuitem_t menu_recall[] = {
   { MT_CALLBACK, 2, "RECALL 2", menu_recall_cb },
   { MT_CALLBACK, 3, "RECALL 3", menu_recall_cb },
   { MT_CALLBACK, 4, "RECALL 4", menu_recall_cb },
+#if SAVEAREA_MAX > 5
+  { MT_CALLBACK, 5, "RECALL 5", menu_recall_cb },
+#endif
+#if SAVEAREA_MAX > 6
+  { MT_CALLBACK, 6, "RECALL 6", menu_recall_cb },
+#endif
   { MT_CANCEL, 0, S_LARROW" BACK", NULL },
   { MT_NONE, 0, NULL, NULL } // sentinel
 };
@@ -1459,13 +1470,28 @@ draw_button(uint16_t x, uint16_t y, uint16_t w, uint16_t h, button_t *b)
   uint16_t bw = b->border&BUTTON_BORDER_WIDTH_MASK;
   ili9341_fill(x + bw, y + bw, w - (bw * 2), h - (bw * 2), b->bg);
   if (bw==0) return;
-  uint16_t br = RGB565(255,255,255);
-  uint16_t bd = RGB565(196,196,196);
+  uint16_t br = DEFAULT_RISE_EDGE_COLOR;
+  uint16_t bd = DEFAULT_FALLEN_EDGE_COLOR;
   uint16_t type = b->border;
   ili9341_fill(x,          y,           w, bw, type&BUTTON_BORDER_TOP    ? br : bd); // top
   ili9341_fill(x + w - bw, y,          bw,  h, type&BUTTON_BORDER_RIGHT  ? br : bd); // right
   ili9341_fill(x,          y,          bw,  h, type&BUTTON_BORDER_LEFT   ? br : bd); // left
   ili9341_fill(x,          y + h - bw,  w, bw, type&BUTTON_BORDER_BOTTOM ? br : bd); // bottom
+}
+
+void drawMessageBox(char *header, char *text, uint32_t delay){
+  button_t b;
+  b.bg = config.menu_normal_color;
+  b.fg = DEFAULT_MENU_TEXT_COLOR;
+  b.border = BUTTON_BORDER_FLAT|1;
+  draw_button((LCD_WIDTH-MESSAGE_BOX_WIDTH)/2, LCD_HEIGHT/2-40, MESSAGE_BOX_WIDTH, 60, &b);
+  ili9341_fill((LCD_WIDTH-MESSAGE_BOX_WIDTH)/2+3, LCD_HEIGHT/2-40+FONT_STR_HEIGHT+8, MESSAGE_BOX_WIDTH-6, 60-FONT_STR_HEIGHT-8-3, DEFAULT_FG_COLOR);
+  ili9341_set_foreground(b.fg);
+  ili9341_set_background(b.bg);
+  ili9341_drawstring(header, (LCD_WIDTH-MESSAGE_BOX_WIDTH)/2 + 10, LCD_HEIGHT/2-40 + 5);
+  ili9341_set_background(DEFAULT_FG_COLOR);
+  ili9341_drawstring(text, (LCD_WIDTH-MESSAGE_BOX_WIDTH)/2 + 20, LCD_HEIGHT/2-40 + FONT_STR_HEIGHT + 8 + 14);
+  chThdSleepMilliseconds(delay);
 }
 
 static void
@@ -1651,19 +1677,7 @@ static const uint16_t check_box[] = {
   0b0000100000010000,
   0b0000010000100000,
   0b0000001111000000,
-/*
-  0b0000000000000000,
-  0b0000001111000000,
-  0b0000010000100000,
-  0b0000100000010000,
-  0b0001000110001000,
-  0b0001001111001000,
-  0b0001001111001000,
-  0b0001000110001000,
-  0b0000100000010000,
-  0b0000010000100000,
-  0b0000001111000000,
-*/
+
   0b0000000000000000,
   0b0000001111000000,
   0b0000010000100000,
@@ -2484,13 +2498,8 @@ made_screenshot(int touch_x, int touch_y)
   }
 //  time = chVTGetSystemTimeX() - time;
 //  shell_printf("Total time: %dms (write %d byte/sec)\r\n", time/10, (LCD_WIDTH*LCD_HEIGHT*sizeof(uint16_t)+sizeof(bmp_header_v4))*10000/time);
-  ili9341_fill(LCD_WIDTH/2-96, LCD_HEIGHT/2-30, 96*2, 60, config.menu_normal_color);
-  ili9341_set_foreground(DEFAULT_MENU_TEXT_COLOR);
-  ili9341_set_background(config.menu_normal_color);
-  ili9341_drawstring("SCREENSHOT", LCD_WIDTH/2-5*FONT_WIDTH, LCD_HEIGHT/2-20);
-  ili9341_drawstring(res == FR_OK ? fs_filename : "  Fail write  ", LCD_WIDTH/2-76, LCD_HEIGHT/2);
+  drawMessageBox("SCREENSHOT", res == FR_OK ? fs_filename : "  Fail write  ", 2000);
   request_to_redraw_grid();
-  chThdSleepMilliseconds(2000);
   return TRUE;
 }
 #endif

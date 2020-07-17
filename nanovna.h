@@ -36,9 +36,10 @@
 #define STOP_MAX                 2700000000U
 // Frequency threshold (max frequency for si5351, harmonic mode after)
 #define FREQUENCY_THRESHOLD      300000100U
-// Frequency offset (sin_cos table in dsp.c generated for 6k, 8k, 10k, if change need create new table )
+// See AUDIO_ADC_FREQ settings, on change possible need adjust sweep timings in si5351.c for better speed
+// Frequency offset for 96k ADC (sin_cos table in dsp.c generated for 6k, 8k, 10k, 12k if change need create new table )
 #define FREQUENCY_OFFSET         8000
-//For 48kHz
+// Frequency offset for 48k ADC (sin_cos table in dsp.c generated for 3k, 4k, 5k, 6k, if change need create new table )
 //#define FREQUENCY_OFFSET         5000
 // Use real time build table (undef for use constant)
 //#define USE_VARIABLE_OFFSET
@@ -47,12 +48,15 @@
 // pi const
 #define VNA_PI                   3.14159265358979323846
 
-// Optional sweep point
+// Maximum sweep point count (limit by flash and RAM size)
+#define POINTS_COUNT     101
+
+// Optional sweep point (in UI menu)
 #define POINTS_SET_51     51
 #define POINTS_SET_101   101
-//#define POINTS_SET_201   201
-// Maximum sweep point count
-#define POINTS_COUNT     101
+#if POINTS_COUNT >= 201
+#define POINTS_SET_201   201
+#endif
 
 extern float measured[2][POINTS_COUNT][2];
 extern uint32_t frequencies[POINTS_COUNT];
@@ -128,7 +132,7 @@ extern const char *info_about[];
 // Define aic3204 source clock frequency (for 8MHz used fractional multiplier, and possible little phase error)
 #define AUDIO_CLOCK_REF       ( 8000000U)
 //#define AUDIO_CLOCK_REF       (10752000U)
-// Disable AIC PLL clock, use input as CODEC_CLKIN
+// Disable AIC PLL clock, use input as CODEC_CLKIN (not stable on some devices, on long work)
 //#define AUDIO_CLOCK_REF       (86016000U)
 
 // Define ADC sample rate
@@ -240,6 +244,9 @@ extern int16_t area_height;
 #define MENU_BUTTON_HEIGHT     29
 #define MENU_BUTTON_BORDER      1
 #define KEYBOARD_BUTTON_BORDER  2
+
+// Define message box width
+#define MESSAGE_BOX_WIDTH     180
 
 // Height of numerical input field (at bottom)
 #define NUM_INPUT_HEIGHT   32
@@ -422,6 +429,8 @@ extern volatile uint8_t redraw_request;
 #define DEFAULT_NORMAL_BAT_COLOR    RGB565( 31,227,  0)
 #define DEFAULT_LOW_BAT_COLOR       RGB565(255,  0,  0)
 #define DEFAULT_SPEC_INPUT_COLOR    RGB565(128,255,128);
+#define DEFAULT_RISE_EDGE_COLOR     RGB565(255,255,255);
+#define DEFAULT_FALLEN_EDGE_COLOR   RGB565(196,196,196);
 
 extern uint16_t foreground_color;
 extern uint16_t background_color;

@@ -577,8 +577,7 @@ static UI_FUNCTION_CALLBACK(menu_recall_cb)
 {
   (void)item;
   load_properties(data);
-//  menu_move_back();
-//  ui_mode_normal();
+//  menu_move_back(true);
   update_grid();
   draw_cal_status();
 }
@@ -669,18 +668,28 @@ static UI_FUNCTION_ADV_CALLBACK(menu_trace_acb)
   draw_menu();
 }
 
-static UI_FUNCTION_CALLBACK(menu_format_cb)
+static UI_FUNCTION_ADV_CALLBACK(menu_format_acb)
 {
   (void)item;
+  if (b){
+    if (uistat.current_trace >=0 && trace[uistat.current_trace].type == data)
+      b->icon = BUTTON_ICON_CHECK;
+    return;
+  }
   set_trace_type(uistat.current_trace, data);
   request_to_redraw_grid();
   ui_mode_normal();
   //redraw_all();
 }
 
-static UI_FUNCTION_CALLBACK(menu_channel_cb)
+static UI_FUNCTION_ADV_CALLBACK(menu_channel_acb)
 {
   (void)item;
+  if (b){
+    if (uistat.current_trace >=0 && trace[uistat.current_trace].channel == data)
+      b->icon = BUTTON_ICON_CHECK;
+    return;
+  }
   set_trace_channel(uistat.current_trace, data);
   menu_move_back(true);
 }
@@ -780,8 +789,7 @@ static UI_FUNCTION_ADV_CALLBACK(menu_pause_acb)
     return;
   }
   toggle_sweep();
-  //menu_move_back();
-  //ui_mode_normal();
+  //menu_move_back(true);
   draw_menu();
 }
 
@@ -1079,26 +1087,24 @@ const menuitem_t menu_trace[] = {
 };
 
 const menuitem_t menu_format2[] = {
-  { MT_CALLBACK, TRC_POLAR, "POLAR", menu_format_cb },
-  { MT_CALLBACK, TRC_LINEAR, "LINEAR", menu_format_cb },
-  { MT_CALLBACK, TRC_REAL, "REAL", menu_format_cb },
-  { MT_CALLBACK, TRC_IMAG, "IMAG", menu_format_cb },
-  { MT_CALLBACK, TRC_R, "RESISTANCE", menu_format_cb },
-  { MT_CALLBACK, TRC_X, "REACTANCE", menu_format_cb },
-  { MT_CALLBACK, TRC_Q, "Q FACTOR", menu_format_cb },
+  { MT_ADV_CALLBACK, TRC_POLAR, "POLAR", menu_format_acb },
+  { MT_ADV_CALLBACK, TRC_LINEAR, "LINEAR", menu_format_acb },
+  { MT_ADV_CALLBACK, TRC_REAL, "REAL", menu_format_acb },
+  { MT_ADV_CALLBACK, TRC_IMAG, "IMAG", menu_format_acb },
+  { MT_ADV_CALLBACK, TRC_R, "RESISTANCE", menu_format_acb },
+  { MT_ADV_CALLBACK, TRC_X, "REACTANCE", menu_format_acb },
+  { MT_ADV_CALLBACK, TRC_Q, "Q FACTOR", menu_format_acb },
   { MT_CANCEL, 0, S_LARROW" BACK", NULL },
   { MT_NONE, 0, NULL, NULL } // sentinel
 };
 
 const menuitem_t menu_format[] = {
-  { MT_CALLBACK, TRC_LOGMAG, "LOGMAG", menu_format_cb },
-  { MT_CALLBACK, TRC_PHASE, "PHASE", menu_format_cb },
-  { MT_CALLBACK, TRC_DELAY, "DELAY", menu_format_cb },
-  { MT_CALLBACK, TRC_SMITH, "SMITH", menu_format_cb },
-  { MT_CALLBACK, TRC_SWR, "SWR", menu_format_cb },
+  { MT_ADV_CALLBACK, TRC_LOGMAG, "LOGMAG", menu_format_acb },
+  { MT_ADV_CALLBACK, TRC_PHASE, "PHASE", menu_format_acb },
+  { MT_ADV_CALLBACK, TRC_DELAY, "DELAY", menu_format_acb },
+  { MT_ADV_CALLBACK, TRC_SMITH, "SMITH", menu_format_acb },
+  { MT_ADV_CALLBACK, TRC_SWR, "SWR", menu_format_acb },
   { MT_SUBMENU, 0, S_RARROW" MORE", menu_format2 },
-  //{ MT_CALLBACK, TRC_LINEAR, "LINEAR", menu_format_cb },
-  //{ MT_CALLBACK, TRC_SWR, "SWR", menu_format_cb },
   { MT_CANCEL, 0, S_LARROW" BACK", NULL },
   { MT_NONE, 0, NULL, NULL } // sentinel
 };
@@ -1112,8 +1118,8 @@ const menuitem_t menu_scale[] = {
 };
 
 const menuitem_t menu_channel[] = {
-  { MT_CALLBACK, 0, "CH0\nREFLECT", menu_channel_cb },
-  { MT_CALLBACK, 1, "CH1\nTHROUGH", menu_channel_cb },
+  { MT_ADV_CALLBACK, 0, "CH0\nREFLECT", menu_channel_acb },
+  { MT_ADV_CALLBACK, 1, "CH1\nTHROUGH", menu_channel_acb },
   { MT_CANCEL, 0, S_LARROW" BACK", NULL },
   { MT_NONE, 0, NULL, NULL } // sentinel
 };

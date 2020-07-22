@@ -1,21 +1,41 @@
 /*
- * Font size 5x7 pixels
- * most font glyph have width 5 pixels
+ * Copyright (c) 2019-2020, Dmitry (DiSlord) dislordlive@gmail.com
+ * All rights reserved.
+ *
+ * This is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 3, or (at your option)
+ * any later version.
+ *
+ * The software is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with GNU Radio; see the file COPYING.  If not, write to
+ * the Free Software Foundation, Inc., 51 Franklin Street,
+ * Boston, MA 02110-1301, USA.
  */
 
 #include <stdint.h>
+#include "nanovna.h"
 
 /*
- * Check 1 byte of char bitmap data for get width
+ * Most font glyph have width 5 pixels
+ * Check 0 byte of char bitmap data for get width
  */
 
-// Font definitions
-#define FONT_GET_DATA(ch)   (&x5x7_bits[ch*7])
-#define FONT_GET_WIDTH(ch)  (8-(x5x7_bits[ch*7]&7))
+#if 0
+// Font definitions for header
+#define FONT_START_CHAR  0x17
 #define FONT_MAX_WIDTH      7
 #define FONT_WIDTH          5
 #define FONT_GET_HEIGHT     7
 #define FONT_STR_HEIGHT     8
+#define FONT_GET_DATA(ch)   (  &x5x7_bits[(ch-FONT_START_CHAR)*FONT_GET_HEIGHT])
+#define FONT_GET_WIDTH(ch)  (8-(x5x7_bits[(ch-FONT_START_CHAR)*FONT_GET_HEIGHT]&7))
+#endif
 
 #define CHAR5x7_WIDTH_1px  0x07
 #define CHAR5x7_WIDTH_2px  0x06
@@ -26,10 +46,14 @@
 #define CHAR5x7_WIDTH_7px  0x01
 #define CHAR5x7_WIDTH_8px  0x00
 
-/* Font character bitmap data. */
-const uint8_t x5x7_bits[127*7] =
-{
+#if FONT_START_CHAR!=0x17
+#error "Need set correct offset in x5x7_bits font"
+#endif
 
+// Font character bitmap data.
+const uint8_t x5x7_bits[] =
+{
+#if 0
   /* Character (0x00):
      width=5
      +--------+
@@ -107,23 +131,23 @@ const uint8_t x5x7_bits[127*7] =
   0b00100000,
 
   /* Character (0x04):
-     width=6
+     width=5
      +--------+
-     |        |
-     |  *     |
-     |  *     |
-     | * *    |
-     | * *    |
-     |*   *   |
-     |*****   |
+     |   **   |
+     |  ***   |
+     |  ***   |
+     |  ***   |
+     |  ***   |
+     |  ***   |
+     |   **   |
      +--------+ */
-  0b00000000|CHAR5x7_WIDTH_6px,
+  0b00100000|CHAR5x7_WIDTH_5px,
   0b00100000,
   0b00100000,
-  0b01010000,
-  0b01010000,
-  0b10001000,
-  0b11111000,
+  0b11100000,
+  0b00100000,
+  0b00100000,
+  0b00100000,
 
   /* Character (0x05):
      width=5
@@ -449,25 +473,6 @@ const uint8_t x5x7_bits[127*7] =
   0b00100000,
 
   /* Character (0x16):
-     width=5
-     +--------+
-     |   **   |
-     |  ***   |
-     |  ***   |
-     |  ***   |
-     |  ***   |
-     |  ***   |
-     |   **   |
-     +--------+ */
-  0b00100000|CHAR5x7_WIDTH_5px,
-  0b00100000,
-  0b00100000,
-  0b11100000,
-  0b00100000,
-  0b00100000,
-  0b00100000,
-
-  /* Character (0x17):
      width=6
      +--------+
      |        |
@@ -485,6 +490,26 @@ const uint8_t x5x7_bits[127*7] =
   0b11110000,
   0b11000000,
   0b00000000,
+#endif
+// FONT_START_CHAR = 0x17
+  /* Character (0x17):
+     width=6
+     +--------+
+     |        |
+     |  *     |
+     |  *     |
+     | * *    |
+     | * *    |
+     |*   *   |
+     |*****   |
+     +--------+ */
+  0b00000000|CHAR5x7_WIDTH_6px,
+  0b00100000,
+  0b00100000,
+  0b01010000,
+  0b01010000,
+  0b10001000,
+  0b11111000,
 
   /* Character (0x18):
      width=5

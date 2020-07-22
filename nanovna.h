@@ -190,18 +190,43 @@ void tlv320aic3204_write_reg(uint8_t page, uint8_t reg, uint8_t data);
 #define LCD_HEIGHT                  240
 
 // Used font settings
-extern const uint8_t x5x7_bits [];
-#define FONT_GET_DATA(ch)   (&x5x7_bits[ch*7])
-#define FONT_GET_WIDTH(ch)  (8-(x5x7_bits[ch*7]&7))
-#define FONT_MAX_WIDTH      7
-#define FONT_WIDTH          5
-#define FONT_GET_HEIGHT     7
-#define FONT_STR_HEIGHT     8
+#define _USE_FONT_           0
 
-extern const uint16_t numfont16x22[];
-#define NUM_FONT_GET_DATA(ch)   (&numfont16x22[ch*22])
+#if _USE_FONT_ == 0
+extern const uint8_t x5x7_bits[];
+#define FONT_START_CHAR   0x17
+#define FONT_MAX_WIDTH       7
+#define FONT_WIDTH           5
+#define FONT_GET_HEIGHT      7
+#define FONT_STR_HEIGHT      8
+#define FONT_GET_DATA(ch)    (  &x5x7_bits[(ch-FONT_START_CHAR)*FONT_GET_HEIGHT])
+#define FONT_GET_WIDTH(ch)   (8-(x5x7_bits[(ch-FONT_START_CHAR)*FONT_GET_HEIGHT]&7))
+
+#elif _USE_FONT_ == 1
+extern const uint8_t x7x11b_bits[];
+#define FONT_START_CHAR   0x17
+#define FONT_MAX_WIDTH       8
+#define FONT_WIDTH           7
+#define FONT_GET_HEIGHT     11
+#define FONT_STR_HEIGHT     11
+#define FONT_GET_DATA(ch)   (  &x7x11b_bits[(ch-FONT_START_CHAR)*FONT_GET_HEIGHT])
+#define FONT_GET_WIDTH(ch)  (8-(x7x11b_bits[(ch-FONT_START_CHAR)*FONT_GET_HEIGHT]&7))
+
+#elif _USE_FONT_ == 2
+extern const uint8_t x10x14_bits[];
+#define FONT_START_CHAR   0x17
+#define FONT_MAX_WIDTH      12
+#define FONT_GET_HEIGHT     14
+#define FONT_STR_HEIGHT     16
+#define FONT_GET_DATA(ch)   (   &x10x14_bits[(ch-FONT_START_CHAR)*2*FONT_GET_HEIGHT  ])
+#define FONT_GET_WIDTH(ch)  (14-(x10x14_bits[(ch-FONT_START_CHAR)*2*FONT_GET_HEIGHT+1]&0x7))
+#endif
+
+extern const uint8_t numfont16x22[];
 #define NUM_FONT_GET_WIDTH      16
 #define NUM_FONT_GET_HEIGHT     22
+#define NUM_FONT_GET_DATA(ch)   (&numfont16x22[ch*2*NUM_FONT_GET_HEIGHT])
+
 
 // Offset of plot area (size of additional info at left side)
 #define OFFSETX 10
@@ -267,15 +292,15 @@ extern int16_t area_height;
 #endif
 
 // Additional chars in fonts
-#define S_DELTA "\004"
-#define S_DEGREE "\037"
-#define S_SARROW "\030"
-#define S_INFINITY "\031"
-#define S_LARROW "\032"
-#define S_RARROW "\033"
-#define S_PI    "\034"
-#define S_MICRO "\035"
-#define S_OHM   "\036"
+#define S_DELTA    "\027"  // hex 0x17
+#define S_SARROW   "\030"  // hex 0x18
+#define S_INFINITY "\031"  // hex 0x19
+#define S_LARROW   "\032"  // hex 0x1A
+#define S_RARROW   "\033"  // hex 0x1B
+#define S_PI       "\034"  // hex 0x1C
+#define S_MICRO    "\035"  // hex 0x1D
+#define S_OHM      "\036"  // hex 0x1E
+#define S_DEGREE   "\037"  // hex 0x1F
 
 // trace 
 #define MAX_TRACE_TYPE 13
@@ -437,6 +462,12 @@ extern uint16_t background_color;
 
 extern uint16_t spi_buffer[SPI_BUFFER_SIZE];
 
+// Used for easy define big Bitmap as 0bXXXXXXXXX image
+#define _BMP8(d)                                                        ((d)&0xFF)
+#define _BMP16(d)                                      (((d)>>8)&0xFF), ((d)&0xFF)
+#define _BMP24(d)                    (((d)>>16)&0xFF), (((d)>>8)&0xFF), ((d)&0xFF)
+#define _BMP32(d)  (((d)>>24)&0xFF), (((d)>>16)&0xFF), (((d)>>8)&0xFF), ((d)&0xFF)
+
 void ili9341_init(void);
 void ili9341_test(int mode);
 void ili9341_bulk(int x, int y, int w, int h);
@@ -444,8 +475,7 @@ void ili9341_fill(int x, int y, int w, int h, uint16_t color);
 void ili9341_set_foreground(uint16_t fg);
 void ili9341_set_background(uint16_t fg);
 void ili9341_clear_screen(void);
-void blit8BitWidthBitmap(uint16_t x, uint16_t y, uint16_t width, uint16_t height, const uint8_t *bitmap);
-void blit16BitWidthBitmap(uint16_t x, uint16_t y, uint16_t width, uint16_t height, const uint16_t *bitmap);
+void ili9341_blitBitmap(uint16_t x, uint16_t y, uint16_t width, uint16_t height, const uint8_t *bitmap);
 void ili9341_drawchar(uint8_t ch, int x, int y);
 void ili9341_drawstring(const char *str, int x, int y);
 void ili9341_drawstringV(const char *str, int x, int y);

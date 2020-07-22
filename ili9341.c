@@ -593,20 +593,24 @@ void ili9341_set_rotation(uint8_t r)
   send_command(ILI9341_MEMORY_ACCESS_CONTROL, 1, &r);
 }
 
-void blit8BitWidthBitmap(uint16_t x, uint16_t y, uint16_t width, uint16_t height,
-                         const uint8_t *bitmap)
+static uint8_t bit_align = 0;
+void ili9341_blitBitmap(uint16_t x, uint16_t y, uint16_t width, uint16_t height,
+                         const uint8_t *b)
 {
   uint16_t *buf = spi_buffer;
+  uint8_t bits = 0;
   for (uint16_t c = 0; c < height; c++) {
-    uint8_t bits = *bitmap++;
     for (uint16_t r = 0; r < width; r++) {
+      if ((r&7) == 0) bits = *b++;
       *buf++ = (0x80 & bits) ? foreground_color : background_color;
       bits <<= 1;
     }
+    if (bit_align) b+=bit_align;
   }
   ili9341_bulk(x, y, width, height);
 }
 
+#if 0
 void blit16BitWidthBitmap(uint16_t x, uint16_t y, uint16_t width, uint16_t height,
                                  const uint16_t *bitmap)
 {
@@ -620,10 +624,11 @@ void blit16BitWidthBitmap(uint16_t x, uint16_t y, uint16_t width, uint16_t heigh
   }
   ili9341_bulk(x, y, width, height);
 }
+#endif
 
 void ili9341_drawchar(uint8_t ch, int x, int y)
 {
-  blit8BitWidthBitmap(x, y, FONT_GET_WIDTH(ch), FONT_GET_HEIGHT, FONT_GET_DATA(ch));
+  ili9341_blitBitmap(x, y, FONT_GET_WIDTH(ch), FONT_GET_HEIGHT, FONT_GET_DATA(ch));
 }
 
 void ili9341_drawstring(const char *str, int x, int y)
@@ -634,7 +639,7 @@ void ili9341_drawstring(const char *str, int x, int y)
     if (ch == '\n') {x = x_pos; y+=FONT_STR_HEIGHT; continue;}
     const uint8_t *char_buf = FONT_GET_DATA(ch);
     uint16_t w = FONT_GET_WIDTH(ch);
-    blit8BitWidthBitmap(x, y, w, FONT_GET_HEIGHT, char_buf);
+    ili9341_blitBitmap(x, y, w, FONT_GET_HEIGHT, char_buf);
     x += w;
   }
 }
@@ -665,8 +670,7 @@ int ili9341_drawchar_size(uint8_t ch, int x, int y, uint8_t size)
 
 void ili9341_drawfont(uint8_t ch, int x, int y)
 {
-  blit16BitWidthBitmap(x, y, NUM_FONT_GET_WIDTH, NUM_FONT_GET_HEIGHT,
-                       NUM_FONT_GET_DATA(ch));
+  ili9341_blitBitmap(x, y, NUM_FONT_GET_WIDTH, NUM_FONT_GET_HEIGHT, NUM_FONT_GET_DATA(ch));
 }
 
 void ili9341_drawstring_size(const char *str, int x, int y, uint8_t size)

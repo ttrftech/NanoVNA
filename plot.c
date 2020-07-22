@@ -921,6 +921,38 @@ search_index_range_x(int x1, int x2, index_t index[POINTS_COUNT], int *i0, int *
   return TRUE;
 }
 
+static void
+cell_blit_bitmap(int x, int y, uint16_t w, uint16_t h, const uint8_t *bmp)
+{
+  if (x <= -w)
+    return;
+  uint8_t bits = 0;
+  int c = h+y, r;
+  for (; y < c; y++) {
+    for (r = 0; r < w; r++) {
+      if ((r&7)==0) bits = *bmp++;
+      if (y >= 0 && x+r >= 0 && y < CELLHEIGHT && x+r < CELLWIDTH && (0x80 & bits))
+        cell_buffer[y*CELLWIDTH + x + r] = foreground_color;
+      bits <<= 1;
+    }
+  }
+}
+
+static void
+cell_drawstring(char *str, int x, int y)
+{
+  if (y <= -FONT_GET_HEIGHT || y >= CELLHEIGHT)
+    return;
+  while (*str) {
+    if (x >= CELLWIDTH)
+      return;
+    uint8_t ch = *str++;
+    uint16_t w = FONT_GET_WIDTH(ch);
+    cell_blit_bitmap(x, y, w, FONT_GET_HEIGHT, FONT_GET_DATA(ch));
+    x += w;
+  }
+}
+
 #define REFERENCE_WIDTH    6
 #define REFERENCE_HEIGHT   5
 #define REFERENCE_X_OFFSET 5
@@ -928,102 +960,156 @@ search_index_range_x(int x1, int x2, index_t index[POINTS_COUNT], int *i0, int *
 
 // Reference bitmap
 static const uint8_t reference_bitmap[]={
-  0b11000000,
-  0b11110000,
-  0b11111100,
-  0b11110000,
-  0b11000000,
+  _BMP8(0b11000000),
+  _BMP8(0b11110000),
+  _BMP8(0b11111100),
+  _BMP8(0b11110000),
+  _BMP8(0b11000000),
 };
 
-static void
-draw_refpos(int x, int y, int c)
-{
-  int y0 = y, j;
-  for (j = 0; j < REFERENCE_HEIGHT; j++, y0++) {
-    if (y0 < 0 || y0 >= CELLHEIGHT) continue;
-    int x0 = x;
-    uint8_t bits = reference_bitmap[j];
-    while (bits) {
-      if (x0 >= 0 && x0 < CELLWIDTH)
-        cell_buffer[y0 * CELLWIDTH + x0] = (bits & 0x80) ? c : DEFAULT_BG_COLOR;
-      x0++;
-      bits <<= 1;
-    }
-  }
-}
-
-#define MARKER_WIDTH  7
-#define MARKER_HEIGHT 10
-#define X_MARKER_OFFSET 3
-#define Y_MARKER_OFFSET 10
+#if _USE_FONT_ == 0
+#define MARKER_WIDTH       7
+#define MARKER_HEIGHT     10
+#define X_MARKER_OFFSET    3
+#define Y_MARKER_OFFSET   10
+#define MARKER_BITMAP(i)  (&marker_bitmap[(i)*MARKER_HEIGHT])
 static const uint8_t marker_bitmap[]={
+// Marker Back plate
+  _BMP8(0b11111110),
+  _BMP8(0b11111110),
+  _BMP8(0b11111110),
+  _BMP8(0b11111110),
+  _BMP8(0b11111110),
+  _BMP8(0b11111110),
+  _BMP8(0b11111110),
+  _BMP8(0b01111100),
+  _BMP8(0b00111000),
+  _BMP8(0b00010000),
   // Marker 1
-  0b11111110,
-  0b11101110,
-  0b11001110,
-  0b11101110,
-  0b11101110,
-  0b11101110,
-  0b11000110,
-  0b01111100,
-  0b00111000,
-  0b00010000,
+  _BMP8(0b00000000),
+  _BMP8(0b00010000),
+  _BMP8(0b00110000),
+  _BMP8(0b00010000),
+  _BMP8(0b00010000),
+  _BMP8(0b00010000),
+  _BMP8(0b00111000),
+  _BMP8(0b00000000),
+  _BMP8(0b00000000),
+  _BMP8(0b00000000),
   // Marker 2
-  0b11111110,
-  0b11000110,
-  0b10111010,
-  0b11111010,
-  0b11000110,
-  0b10111110,
-  0b10000010,
-  0b01111100,
-  0b00111000,
-  0b00010000,
+  _BMP8(0b00000000),
+  _BMP8(0b00111000),
+  _BMP8(0b01000100),
+  _BMP8(0b00000100),
+  _BMP8(0b00111000),
+  _BMP8(0b01000000),
+  _BMP8(0b01111100),
+  _BMP8(0b00000000),
+  _BMP8(0b00000000),
+  _BMP8(0b00000000),
   // Marker 3
-  0b11111110,
-  0b11000110,
-  0b10111010,
-  0b11100110,
-  0b11111010,
-  0b10111010,
-  0b11000110,
-  0b01111100,
-  0b00111000,
-  0b00010000,
+  _BMP8(0b00000000),
+  _BMP8(0b00111000),
+  _BMP8(0b01000100),
+  _BMP8(0b00011000),
+  _BMP8(0b00000100),
+  _BMP8(0b01000100),
+  _BMP8(0b00111000),
+  _BMP8(0b00000000),
+  _BMP8(0b00000000),
+  _BMP8(0b00000000),
   // Marker 4
-  0b11111110,
-  0b11110110,
-  0b11100110,
-  0b11010110,
-  0b10110110,
-  0b10110110,
-  0b10000010,
-  0b01110100,
-  0b00111000,
-  0b00010000,
+  _BMP8(0b00000000),
+  _BMP8(0b00001000),
+  _BMP8(0b00011000),
+  _BMP8(0b00101000),
+  _BMP8(0b01001000),
+  _BMP8(0b01001000),
+  _BMP8(0b01111100),
+  _BMP8(0b00001000),
+  _BMP8(0b00000000),
+  _BMP8(0b00000000),
 };
 
-static void
-draw_marker(int x, int y, int c, int ch)
-{
-  int y0 = y, j;
-  for (j = 0; j < MARKER_HEIGHT; j++, y0++) {
-    int x0 = x;
-    uint8_t bits = marker_bitmap[ch * MARKER_HEIGHT + j];
-    bool force_color = false;
-    while (bits) {
-      if (bits & 0x80) force_color = true;
-      if (x0 >= 0 && x0 < CELLWIDTH && y0 >= 0 && y0 < CELLHEIGHT) {
-        if (bits & 0x80)
-          cell_buffer[y0 * CELLWIDTH + x0] = c;
-        else if (force_color)
-          cell_buffer[y0 * CELLWIDTH + x0] = DEFAULT_BG_COLOR;
-      }
-      x0++;
-      bits <<= 1;
-    }
-  }
-}
+#elif _USE_FONT_ == 1
+#define MARKER_WIDTH       10
+#define MARKER_HEIGHT      13
+#define X_MARKER_OFFSET     4
+#define Y_MARKER_OFFSET    13
+#define MARKER_BITMAP(i)   (&marker_bitmap[(i)*2*MARKER_HEIGHT])
+static const uint8_t marker_bitmap[]={
+  // Marker Back plate
+  _BMP16(0b1111111110000000),
+  _BMP16(0b1111111110000000),
+  _BMP16(0b1111111110000000),
+  _BMP16(0b1111111110000000),
+  _BMP16(0b1111111110000000),
+  _BMP16(0b1111111110000000),
+  _BMP16(0b1111111110000000),
+  _BMP16(0b1111111110000000),
+  _BMP16(0b1111111110000000),
+  _BMP16(0b0111111100000000),
+  _BMP16(0b0011111000000000),
+  _BMP16(0b0001110000000000),
+  _BMP16(0b0000100000000000),
+  // Marker 1
+  _BMP16(0b0000000000000000),
+  _BMP16(0b0000110000000000),
+  _BMP16(0b0001110000000000),
+  _BMP16(0b0010110000000000),
+  _BMP16(0b0000110000000000),
+  _BMP16(0b0000110000000000),
+  _BMP16(0b0000110000000000),
+  _BMP16(0b0000110000000000),
+  _BMP16(0b0000110000000000),
+  _BMP16(0b0001111000000000),
+  _BMP16(0b0000000000000000),
+  _BMP16(0b0000000000000000),
+  _BMP16(0b0000000000000000),
+  // Marker 2
+  _BMP16(0b0000000000000000),
+  _BMP16(0b0001111000000000),
+  _BMP16(0b0011001100000000),
+  _BMP16(0b0011001100000000),
+  _BMP16(0b0000011000000000),
+  _BMP16(0b0000110000000000),
+  _BMP16(0b0001100000000000),
+  _BMP16(0b0011000000000000),
+  _BMP16(0b0011111100000000),
+  _BMP16(0b0000000000000000),
+  _BMP16(0b0000000000000000),
+  _BMP16(0b0000000000000000),
+  _BMP16(0b0000000000000000),
+  // Marker 3
+  _BMP16(0b0000000000000000),
+  _BMP16(0b0011111000000000),
+  _BMP16(0b0110001100000000),
+  _BMP16(0b0110001100000000),
+  _BMP16(0b0000001100000000),
+  _BMP16(0b0000111000000000),
+  _BMP16(0b0000001100000000),
+  _BMP16(0b0110001100000000),
+  _BMP16(0b0110001100000000),
+  _BMP16(0b0011111000000000),
+  _BMP16(0b0000000000000000),
+  _BMP16(0b0000000000000000),
+  _BMP16(0b0000000000000000),
+  // Marker 4
+  _BMP16(0b0000000000000000),
+  _BMP16(0b0000011000000000),
+  _BMP16(0b0000111000000000),
+  _BMP16(0b0001111000000000),
+  _BMP16(0b0011011000000000),
+  _BMP16(0b0110011000000000),
+  _BMP16(0b0110011000000000),
+  _BMP16(0b0111111100000000),
+  _BMP16(0b0000011000000000),
+  _BMP16(0b0000011000000000),
+  _BMP16(0b0000000000000000),
+  _BMP16(0b0000000000000000),
+  _BMP16(0b0000000000000000),
+};
+#endif
 
 static void
 markmap_marker(int marker)
@@ -1328,8 +1414,15 @@ draw_cell(int m, int n)
       int y = CELL_Y(index) - y0 - Y_MARKER_OFFSET;
       // Check marker icon on cell
       if (x + MARKER_WIDTH >= 0 && x - MARKER_WIDTH < CELLWIDTH &&
-          y + MARKER_HEIGHT >= 0 && y - MARKER_HEIGHT < CELLHEIGHT)
-        draw_marker(x, y, config.trace_color[t], i);
+          y + MARKER_HEIGHT >= 0 && y - MARKER_HEIGHT < CELLHEIGHT){
+//        draw_marker(x, y, config.trace_color[t], i);
+    	  // Draw marker plate
+          ili9341_set_foreground(config.trace_color[t]);
+          cell_blit_bitmap(x, y, MARKER_WIDTH, MARKER_HEIGHT, MARKER_BITMAP(0));
+          // Draw marker number
+          ili9341_set_foreground(DEFAULT_BG_COLOR);
+          cell_blit_bitmap(x, y, MARKER_WIDTH, MARKER_HEIGHT, MARKER_BITMAP(i+1));
+      }
     }
   }
 #endif
@@ -1346,11 +1439,14 @@ draw_cell(int m, int n)
     uint32_t trace_type = (1 << trace[t].type);
     if (trace_type & ((1 << TRC_SMITH) | (1 << TRC_POLAR)))
       continue;
+
     int x = 0 - x0 + CELLOFFSETX - REFERENCE_X_OFFSET;
     if (x + REFERENCE_WIDTH >= 0 && x - REFERENCE_WIDTH < CELLWIDTH) {
       int y = HEIGHT - float2int((get_trace_refpos(t) * GRIDY)) - y0 - REFERENCE_Y_OFFSET;
-      if (y + REFERENCE_HEIGHT >= 0 && y - REFERENCE_HEIGHT < CELLHEIGHT)
-        draw_refpos(x, y, config.trace_color[t]);
+      if (y + REFERENCE_HEIGHT >= 0 && y - REFERENCE_HEIGHT < CELLHEIGHT){
+        ili9341_set_foreground(config.trace_color[t]);
+        cell_blit_bitmap(x , y, REFERENCE_WIDTH, REFERENCE_HEIGHT, reference_bitmap);
+      }
     }
   }
 // Need right clip cell render (25 system ticks for all screen calls)
@@ -1441,42 +1537,6 @@ request_to_draw_cells_behind_numeric_input(void)
   // Values Hardcoded from ui.c
   invalidate_rect(0, LCD_HEIGHT-NUM_INPUT_HEIGHT, LCD_WIDTH-1, LCD_HEIGHT-1);
   redraw_request |= REDRAW_CELLS;
-}
-
-static int
-cell_drawchar(uint8_t ch, int x, int y)
-{
-  uint8_t bits;
-  int c, r, ch_size;
-  const uint8_t *char_buf = FONT_GET_DATA(ch);
-  ch_size = FONT_GET_WIDTH(ch);
-  //  if (y <= -FONT_GET_HEIGHT || y >= CELLHEIGHT || x <= -ch_size || x >= CELLWIDTH)
-  //    return ch_size;
-  if (x <= -ch_size)
-    return ch_size;
-  for (c = 0; c < FONT_GET_HEIGHT; c++) {
-    bits = *char_buf++;
-    if ((y + c) < 0 || (y + c) >= CELLHEIGHT)
-      continue;
-    for (r = 0; r < ch_size; r++) {
-      if ((x+r) >= 0 && (x+r) < CELLWIDTH && (0x80 & bits))
-        cell_buffer[(y+c)*CELLWIDTH + (x+r)] = foreground_color;
-      bits <<= 1;
-    }
-  }
-  return ch_size;
-}
-
-static void
-cell_drawstring(char *str, int x, int y)
-{
-  if (y <= -FONT_GET_HEIGHT || y >= CELLHEIGHT)
-    return;
-  while (*str) {
-    if (x >= CELLWIDTH)
-      return;
-    x += cell_drawchar(*str++, x, y);
-  }
 }
 
 static void
@@ -1701,7 +1761,7 @@ static void draw_battery_status(void)
   string_buf[x++] = 0b10000001;
   string_buf[x++] = 0b11111111;
   // Draw battery
-  blit8BitWidthBitmap(1, 1, 8, x, string_buf);
+  ili9341_blitBitmap(1, 1, 8, x, string_buf);
 }
 
 void

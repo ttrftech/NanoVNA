@@ -646,7 +646,8 @@ static UI_FUNCTION_ADV_CALLBACK(menu_trace_acb)
     if (trace[data].enabled){
       b->bg = config.trace_color[data];
       if (data == selection) b->fg = ~config.trace_color[data];
-      b->icon = BUTTON_ICON_CHECK;
+      if (uistat.current_trace == data)
+        b->icon = BUTTON_ICON_CHECK;
     }
     return;
   }
@@ -866,18 +867,17 @@ static UI_FUNCTION_CALLBACK(menu_marker_search_cb)
     break;
   case 2: /* search Left */
     i = marker_search_left(markers[active_marker].index);
-    uistat.marker_tracking = false;
     break;
   case 3: /* search right */
     i = marker_search_right(markers[active_marker].index);
-    uistat.marker_tracking = false;
     break;
   }
   if (i != -1)
     markers[active_marker].index = i;
-  draw_menu();
+  uistat.marker_tracking = false;
   redraw_marker(active_marker);
   select_lever_mode(LM_SEARCH);
+  draw_menu();
 }
 
 static UI_FUNCTION_ADV_CALLBACK(menu_marker_tracking_acb)
@@ -960,14 +960,14 @@ static UI_FUNCTION_ADV_CALLBACK(menu_marker_sel_acb)
 
 static const char s1_file_header[] =
   "!File created by NanoVNA\r\n"\
-  "# HZ S RI R 50\r\n";
+  "# Hz S RI R 50\r\n";
 
 static const char s1_file_param[] =
   "%10d % f % f\r\n";
 
 static const char s2_file_header[] =
   "!File created by NanoVNA\r\n"\
-  "# HZ S RI R 50\r\n";
+  "# Hz S RI R 50\r\n";
 
 static const char s2_file_param[] =
   "%10d % f % f % f % f 0 0 0 0\r\n";
@@ -1647,54 +1647,54 @@ menu_item_modify_attribute(const menuitem_t *menu, int item, button_t *b)
 
 #define ICON_WIDTH        16
 #define ICON_HEIGHT       11
-static const uint16_t check_box[] = {
-  0b0011111111110000,
-  0b0010000000010000,
-  0b0010000000010000,
-  0b0010000000010000,
-  0b0010000000010000,
-  0b0010000000010000,
-  0b0010000000010000,
-  0b0010000000010000,
-  0b0010000000010000,
-  0b0010000000010000,
-  0b0011111111110000,
+static const uint8_t check_box[] = {
+  _BMP16(0b0011111111110000),
+  _BMP16(0b0010000000010000),
+  _BMP16(0b0010000000010000),
+  _BMP16(0b0010000000010000),
+  _BMP16(0b0010000000010000),
+  _BMP16(0b0010000000010000),
+  _BMP16(0b0010000000010000),
+  _BMP16(0b0010000000010000),
+  _BMP16(0b0010000000010000),
+  _BMP16(0b0010000000010000),
+  _BMP16(0b0011111111110000),
 
-  0b0011111111110000,
-  0b0010000000001000,
-  0b0010000000011000,
-  0b0010000000110000,
-  0b0010000001100000,
-  0b0010100011010000,
-  0b0010110110010000,
-  0b0010011100010000,
-  0b0010001000010000,
-  0b0010000000010000,
-  0b0011111111110000,
+  _BMP16(0b0011111111110000),
+  _BMP16(0b0010000000001000),
+  _BMP16(0b0010000000011000),
+  _BMP16(0b0010000000110000),
+  _BMP16(0b0010000001100000),
+  _BMP16(0b0010100011010000),
+  _BMP16(0b0010110110010000),
+  _BMP16(0b0010011100010000),
+  _BMP16(0b0010001000010000),
+  _BMP16(0b0010000000010000),
+  _BMP16(0b0011111111110000),
 
-  0b0000000000000000,
-  0b0000001111000000,
-  0b0000010000100000,
-  0b0000100000010000,
-  0b0001000000001000,
-  0b0001000000001000,
-  0b0001000000001000,
-  0b0001000000001000,
-  0b0000100000010000,
-  0b0000010000100000,
-  0b0000001111000000,
+  _BMP16(0b0000000000000000),
+  _BMP16(0b0000011110000000),
+  _BMP16(0b0000100001000000),
+  _BMP16(0b0001000000100000),
+  _BMP16(0b0010000000010000),
+  _BMP16(0b0010000000010000),
+  _BMP16(0b0010000000010000),
+  _BMP16(0b0010000000010000),
+  _BMP16(0b0001000000100000),
+  _BMP16(0b0000100001000000),
+  _BMP16(0b0000011110000000),
 
-  0b0000000000000000,
-  0b0000001111000000,
-  0b0000010000100000,
-  0b0000100110010000,
-  0b0001001111001000,
-  0b0001011111101000,
-  0b0001011111101000,
-  0b0001001111001000,
-  0b0000100110010000,
-  0b0000010000100000,
-  0b0000001111000000,
+  _BMP16(0b0000000000000000),
+  _BMP16(0b0000011110000000),
+  _BMP16(0b0000100001000000),
+  _BMP16(0b0001001100100000),
+  _BMP16(0b0010011110010000),
+  _BMP16(0b0010111111010000),
+  _BMP16(0b0010111111010000),
+  _BMP16(0b0010011110010000),
+  _BMP16(0b0001001100100000),
+  _BMP16(0b0000100001000000),
+  _BMP16(0b0000011110000000),
 };
 
 static void
@@ -1731,7 +1731,7 @@ draw_menu_buttons(const menuitem_t *menu)
 
 
     if (button.icon >=0){
-      blit16BitWidthBitmap(LCD_WIDTH-MENU_BUTTON_WIDTH+MENU_BUTTON_BORDER + 1, y+(MENU_BUTTON_HEIGHT-ICON_HEIGHT)/2, ICON_WIDTH, ICON_HEIGHT, &check_box[button.icon*ICON_HEIGHT]);
+      ili9341_blitBitmap(LCD_WIDTH-MENU_BUTTON_WIDTH+MENU_BUTTON_BORDER + 1, y+(MENU_BUTTON_HEIGHT-ICON_HEIGHT)/2, ICON_WIDTH, ICON_HEIGHT, &check_box[button.icon*2*ICON_HEIGHT]);
       text_offs=LCD_WIDTH-MENU_BUTTON_WIDTH+MENU_BUTTON_BORDER+1+ICON_WIDTH;
     }
     int lines = menu_is_multiline(menu[i].label);

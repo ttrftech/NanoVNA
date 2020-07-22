@@ -326,6 +326,39 @@ static void send_command(uint8_t cmd, uint8_t len, const uint8_t *data)
   //LCD_CS_HIGH;
 }
 
+// Disable inline for this function
+uint32_t lcd_send_command(uint8_t cmd, uint8_t len, const uint8_t *data)
+{
+// Uncomment on low speed SPI (possible get here before previous tx complete)
+  while (SPI_IN_TX_RX(LCD_SPI));
+  // Set read speed (if need different)
+  SPI_BR_SET(LCD_SPI, SPI_BR_DIV256);
+  LCD_CS_LOW;
+  LCD_DC_CMD;
+  SPI_WRITE_8BIT(LCD_SPI, cmd);
+  // Need wait transfer complete and set data bit
+  while (SPI_IN_TX_RX(LCD_SPI))
+    ;
+  // Send command data (if need)
+  LCD_DC_DATA;
+  while (len-- > 0) {
+    while (SPI_TX_IS_NOT_EMPTY(LCD_SPI))
+      ;
+    SPI_WRITE_8BIT(LCD_SPI, *data++);
+  }
+
+  // Skip data from rx buffer
+  spi_DropRx();
+  uint32_t ret = 0;
+  ret|= spi_RxByte();ret<<=8;
+  ret|= spi_RxByte();ret<<=8;
+  ret|= spi_RxByte();ret<<=8;
+  ret|= spi_RxByte();
+  LCD_CS_HIGH;
+  SPI_BR_SET(LCD_SPI, LCD_SPI_SPEED);
+  return ret;
+}
+
 static const uint8_t ili9341_init_seq[] = {
   // cmd, len, data...,
   // SW reset

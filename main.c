@@ -69,7 +69,14 @@ static volatile vna_shellcmd_t  shell_function = 0;
 #define ENABLE_COLOR_COMMAND
 // Enable I2C command for send data to AIC3204, used for debug
 //#define ENABLE_I2C_COMMAND
+// Enable LCD command for send data to LCD screen, used for debug
 //#define ENABLE_LCD_COMMAND
+// Enable output debug data on screen on hard fault
+//#define ENABLE_HARD_FAULT_HANDLER_DEBUG
+// Enable stat command, used for debug
+//#define ENABLE_STAT_COMMAND
+// Enable gain command, used for debug
+//#define ENABLE_GAIN_COMMAND
 
 static void apply_CH0_error_term_at(int i);
 static void apply_CH1_error_term_at(int i);
@@ -77,15 +84,12 @@ static void apply_edelay(void);
 
 static uint16_t get_sweep_mode(void);
 static void cal_interpolate(int s);
-static void update_frequencies(void);
+static void update_frequencies(bool interpolate);
 static void set_frequencies(uint32_t start, uint32_t stop, uint16_t points);
 static bool sweep(bool break_on_operation, uint16_t sweep_mode);
 static void transform_domain(void);
 static  int32_t my_atoi(const char *p);
 static uint32_t my_atoui(const char *p);
-
-// Obsolete, always use interpolate
-#define  cal_auto_interpolate  TRUE
 
 static uint8_t drive_strength = SI5351_CLK_DRIVE_STRENGTH_8MA;
 int8_t sweep_mode = SWEEP_ENABLE;
@@ -93,7 +97,7 @@ volatile uint8_t redraw_request = 0; // contains REDRAW_XXX flags
 
 // sweep operation variables
 volatile uint16_t wait_count = 0;
-
+// current sweep point (used for continue sweep if user break)
 static uint16_t p_sweep = 0;
 // ChibiOS i2s buffer must be 2x size (for process one while next buffer filled by DMA)
 static int16_t rx_buffer[AUDIO_BUFFER_LEN * 2];
@@ -302,10 +306,7 @@ VNA_SHELL_FUNCTION(cmd_resume)
   (void)argv;
 
   // restore frequencies array and cal
-  update_frequencies();
-  if (cal_auto_interpolate && (cal_status & CALSTAT_APPLY))
-    cal_interpolate(lastsaveid);
-
+  update_frequencies(cal_status & CALSTAT_APPLY);
   resume_sweep();
 }
 
@@ -332,7 +333,11 @@ VNA_SHELL_FUNCTION(cmd_reset)
     ;
 }
 
+#ifdef ENABLE_GAIN_COMMAND
+static uint8_t gain_table[][2] = {
+#else
 static const uint8_t gain_table[][2] = {
+#endif
     {  0,  0 },     // 1st:    0 ~  300MHz
     { 50, 50 },     // 2nd:  300 ~  900MHz
     { 75, 75 },     // 3th:  900 ~ 1500MHz
@@ -765,7 +770,7 @@ void load_default_properties(void)
 
 int load_properties(uint32_t id){
   int r = caldata_recall(id);
-  update_frequencies();
+  update_frequencies(false);
   return r;
 }
 
@@ -915,10 +920,8 @@ void set_sweep_points(uint16_t points){
     return;
 
   sweep_points = points;
-  update_frequencies();
+  update_frequencies(cal_status & CALSTAT_APPLY);
 
-  if (cal_auto_interpolate && (cal_status & CALSTAT_APPLY))
-    cal_interpolate(lastsaveid);
 }
 
 VNA_SHELL_FUNCTION(cmd_scan)
@@ -952,7 +955,7 @@ VNA_SHELL_FUNCTION(cmd_scan)
     sweep_mode = (mask>>1)&3;
   }
   set_frequencies(start, stop, points);
-  if (cal_auto_interpolate && (cal_status & CALSTAT_APPLY))
+  if (cal_status & CALSTAT_APPLY)
     cal_interpolate(lastsaveid);
   pause_sweep();
   sweep(false, sweep_mode);
@@ -1018,7 +1021,7 @@ set_frequencies(uint32_t start, uint32_t stop, uint16_t points)
 }
 
 static void
-update_frequencies(void)
+update_frequencies(bool interpolate)
 {
   uint32_t start, stop;
   start = get_sweep_frequency(ST_START);
@@ -1026,11 +1029,11 @@ update_frequencies(void)
 
   set_frequencies(start, stop, sweep_points);
   // operation_requested|= OP_FREQCHANGE;
-
   update_marker_index();
-
   // set grid layout
   update_grid();
+  if (interpolate)
+    cal_interpolate(lastsaveid);
   RESET_SWEEP;
 }
 
@@ -1100,9 +1103,7 @@ set_sweep_frequency(int type, uint32_t freq)
       }
       break;
   }
-  update_frequencies();
-  if (cal_auto_interpolate && cal_applied)
-    cal_interpolate(lastsaveid);
+  update_frequencies(cal_applied);
 }
 
 uint32_t
@@ -1578,8 +1579,8 @@ VNA_SHELL_FUNCTION(cmd_cal)
     return;
   }
   redraw_request|=REDRAW_CAL_STATUS;
-  //                                     0    1     2    3     4    5  6   7     8    9 10
-  static const char cmd_cal_list[] = "load|open|short|thru|isoln|done|on|off|reset|data|in";
+  //                                     0    1     2    3     4    5  6   7     8
+  static const char cmd_cal_list[] = "load|open|short|thru|isoln|done|on|off|reset";
   switch (get_str_index(argv[0], cmd_cal_list)) {
     case 0:
       cal_collect(CAL_LOAD);
@@ -1607,16 +1608,6 @@ VNA_SHELL_FUNCTION(cmd_cal)
       return;
     case 8:
       cal_status = 0;
-      return;
-    case 9:
-      shell_printf("%f %f\r\n", cal_data[CAL_LOAD][0][0], cal_data[CAL_LOAD][0][1]);
-      shell_printf("%f %f\r\n", cal_data[CAL_OPEN][0][0], cal_data[CAL_OPEN][0][1]);
-      shell_printf("%f %f\r\n", cal_data[CAL_SHORT][0][0], cal_data[CAL_SHORT][0][1]);
-      shell_printf("%f %f\r\n", cal_data[CAL_THRU][0][0], cal_data[CAL_THRU][0][1]);
-      shell_printf("%f %f\r\n", cal_data[CAL_ISOLN][0][0], cal_data[CAL_ISOLN][0][1]);
-      return;
-    case 10:
-      cal_interpolate((argc > 1) ? my_atoi(argv[1]) : 0);
       return;
     default:
       break;
@@ -1908,9 +1899,7 @@ VNA_SHELL_FUNCTION(cmd_touchtest)
 {
   (void)argc;
   (void)argv;
-  do {
-    touch_draw_test();
-  } while (argc);
+  touch_draw_test();
 }
 
 VNA_SHELL_FUNCTION(cmd_frequencies)
@@ -2046,23 +2035,24 @@ VNA_SHELL_FUNCTION(cmd_test)
 #endif
 }
 
+#ifdef ENABLE_GAIN_COMMAND
 VNA_SHELL_FUNCTION(cmd_gain)
 {
   int rvalue = 0;
   int lvalue = 0;
-  int idx = 0;
   if (argc < 1 && argc > 3) {
     shell_printf("usage: gain idx {lgain(0-95)} [rgain(0-95)]\r\n");
     return;
   }
-  idx = my_atoui(argv[0]);
+  int idx = my_atoui(argv[0]);
   lvalue = rvalue = my_atoui(argv[1]);
   if (argc == 3)
     rvalue = my_atoui(argv[2]);
   tlv320aic3204_set_gain(lvalue, rvalue);
-//  gain_table[idx][0] = lvalue;
-//  gain_table[idx][1] = rvalue;
+  gain_table[idx][0] = lvalue;
+  gain_table[idx][1] = rvalue;
 }
+#endif
 
 VNA_SHELL_FUNCTION(cmd_port)
 {
@@ -2075,6 +2065,7 @@ VNA_SHELL_FUNCTION(cmd_port)
   tlv320aic3204_select(port);
 }
 
+#ifdef ENABLE_STAT_COMMAND
 VNA_SHELL_FUNCTION(cmd_stat)
 {
   int16_t *p = &rx_buffer[0];
@@ -2129,6 +2120,7 @@ VNA_SHELL_FUNCTION(cmd_stat)
 //  extern int awd_count;
 //  shell_printf("awd: %d\r\n", awd_count);
 }
+#endif
 
 #ifndef VERSION
 #define VERSION "unknown"
@@ -2309,8 +2301,12 @@ static const VNAShellCommand commands[] =
 #endif
     {"frequencies" , cmd_frequencies , 0},
     {"port"        , cmd_port        , 0},
+#ifdef ENABLE_STAT_COMMAND
     {"stat"        , cmd_stat        , CMD_WAIT_MUTEX},
+#endif
+#ifdef ENABLE_GAIN_COMMAND
     {"gain"        , cmd_gain        , CMD_WAIT_MUTEX},
+#endif
     {"power"       , cmd_power       , 0},
     {"sample"      , cmd_sample      , 0},
 //  {"gamma"       , cmd_gamma       , 0},
@@ -2625,7 +2621,7 @@ void HardFault_Handler(void)
 
 void hard_fault_handler_c(uint32_t *sp) 
 {
-#if 0
+#ifdef ENABLE_HARD_FAULT_HANDLER_DEBUG
   uint32_t r0  = sp[0];
   uint32_t r1  = sp[1];
   uint32_t r2  = sp[2];

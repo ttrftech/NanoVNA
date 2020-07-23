@@ -58,7 +58,7 @@ static char *shell_args[VNA_SHELL_MAX_ARGUMENTS + 1];
 static uint16_t shell_nargs;
 static volatile vna_shellcmd_t  shell_function = 0;
 
-//#define ENABLED_DUMP
+//#define ENABLED_DUMP_COMMAND
 // Allow get threads debug info
 //#define ENABLE_THREADS_COMMAND
 // Enable vbat_offset command, allow change battery voltage correction in config
@@ -73,10 +73,14 @@ static volatile vna_shellcmd_t  shell_function = 0;
 //#define ENABLE_LCD_COMMAND
 // Enable output debug data on screen on hard fault
 //#define ENABLE_HARD_FAULT_HANDLER_DEBUG
+// Enable test command, used for debug
+//#define ENABLE_TEST_COMMAND
 // Enable stat command, used for debug
 //#define ENABLE_STAT_COMMAND
 // Enable gain command, used for debug
 //#define ENABLE_GAIN_COMMAND
+// Enable port command, used for debug
+//#define ENABLE_PORT_COMMAND
 
 static void apply_CH0_error_term_at(int i);
 static void apply_CH1_error_term_at(int i);
@@ -631,7 +635,7 @@ usage:
   shell_printf("usage: data [array]\r\n");
 }
 
-#ifdef ENABLED_DUMP
+#ifdef ENABLED_DUMP_COMMAND
 VNA_SHELL_FUNCTION(cmd_dump)
 {
   int i, j;
@@ -786,12 +790,9 @@ ensure_edit_config(void)
   cal_status = 0;
 }
 
-#ifdef ENABLED_DUMP
+#ifdef ENABLED_DUMP_COMMAND
 int16_t dump_buffer[AUDIO_BUFFER_LEN];
 int16_t dump_selection = 0;
-#endif
-
-#ifdef ENABLED_DUMP
 static void
 duplicate_buffer_to_dump(int16_t *p)
 {
@@ -816,7 +817,7 @@ void i2s_end_callback(I2SDriver *i2sp, size_t offset, size_t n)
         reset_dsp_accumerator();
       dsp_process(p, n);
     }
-#ifdef ENABLED_DUMP
+#ifdef ENABLED_DUMP_COMMAND
     duplicate_buffer_to_dump(p);
 #endif
     --wait_count;
@@ -1981,6 +1982,7 @@ usage:
   shell_printf("usage: transform {%s} [...]\r\n", cmd_transform_list);
 }
 
+#ifdef ENABLE_TEST_COMMAND
 VNA_SHELL_FUNCTION(cmd_test)
 {
   (void)argc;
@@ -2037,6 +2039,7 @@ VNA_SHELL_FUNCTION(cmd_test)
   }
 #endif
 }
+#endif
 
 #ifdef ENABLE_GAIN_COMMAND
 VNA_SHELL_FUNCTION(cmd_gain)
@@ -2057,6 +2060,7 @@ VNA_SHELL_FUNCTION(cmd_gain)
 }
 #endif
 
+#ifdef ENABLE_PORT_COMMAND
 VNA_SHELL_FUNCTION(cmd_port)
 {
   int port;
@@ -2067,6 +2071,7 @@ VNA_SHELL_FUNCTION(cmd_port)
   port = my_atoi(argv[0]);
   tlv320aic3204_select(port);
 }
+#endif
 
 #ifdef ENABLE_STAT_COMMAND
 VNA_SHELL_FUNCTION(cmd_stat)
@@ -2287,9 +2292,12 @@ typedef struct {
 #define CMD_WAIT_MUTEX  1
 static const VNAShellCommand commands[] =
 {
-    {"version"     , cmd_version     , 0},
-    {"reset"       , cmd_reset       , 0},
+    {"scan"        , cmd_scan        , CMD_WAIT_MUTEX},
+    {"data"        , cmd_data        , 0},
+    {"frequencies" , cmd_frequencies , 0},
     {"freq"        , cmd_freq        , CMD_WAIT_MUTEX},
+    {"sweep"       , cmd_sweep       , CMD_WAIT_MUTEX},
+    {"reset"       , cmd_reset       , 0},
     {"offset"      , cmd_offset      , CMD_WAIT_MUTEX},
     {"bandwidth"   , cmd_bandwidth   , 0},
 #ifdef __USE_RTC__
@@ -2298,12 +2306,12 @@ static const VNAShellCommand commands[] =
     {"dac"         , cmd_dac         , 0},
     {"saveconfig"  , cmd_saveconfig  , 0},
     {"clearconfig" , cmd_clearconfig , 0},
-    {"data"        , cmd_data        , CMD_WAIT_MUTEX},
-#ifdef ENABLED_DUMP
+#ifdef ENABLED_DUMP_COMMAND
     {"dump"        , cmd_dump        , 0},
 #endif
-    {"frequencies" , cmd_frequencies , 0},
+#ifdef ENABLE_PORT_COMMAND
     {"port"        , cmd_port        , 0},
+#endif
 #ifdef ENABLE_STAT_COMMAND
     {"stat"        , cmd_stat        , CMD_WAIT_MUTEX},
 #endif
@@ -2312,10 +2320,9 @@ static const VNAShellCommand commands[] =
 #endif
     {"power"       , cmd_power       , 0},
     {"sample"      , cmd_sample      , 0},
-//  {"gamma"       , cmd_gamma       , 0},
-    {"scan"        , cmd_scan        , CMD_WAIT_MUTEX},
-    {"sweep"       , cmd_sweep       , 0},
+#ifdef ENABLE_TEST_COMMAND
     {"test"        , cmd_test        , 0},
+#endif
     {"touchcal"    , cmd_touchcal    , CMD_WAIT_MUTEX},
     {"touchtest"   , cmd_touchtest   , CMD_WAIT_MUTEX},
     {"pause"       , cmd_pause       , 0},
@@ -2337,6 +2344,7 @@ static const VNAShellCommand commands[] =
 #ifdef ENABLE_INFO_COMMAND
     {"info"        , cmd_info        , 0},
 #endif
+    {"version"     , cmd_version     , 0},
 #ifdef ENABLE_COLOR_COMMAND
     {"color"       , cmd_color       , 0},
 #endif

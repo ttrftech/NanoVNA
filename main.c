@@ -1834,6 +1834,7 @@ VNA_SHELL_FUNCTION(cmd_edelay)
 
 VNA_SHELL_FUNCTION(cmd_marker)
 {
+  static const char cmd_marker_list[] = "on|off";
   int t;
   if (argc == 0) {
     for (t = 0; t < MARKERS_MAX; t++) {
@@ -1844,10 +1845,12 @@ VNA_SHELL_FUNCTION(cmd_marker)
     return;
   }
   redraw_request |= REDRAW_MARKER;
-  if (strcmp(argv[0], "off") == 0) {
-    active_marker = -1;
+  // Marker on|off command
+  int enable = get_str_index(argv[0], cmd_marker_list);
+  if (enable>=1) {
+    active_marker = enable == 0 ? -1 : 1;
     for (t = 0; t < MARKERS_MAX; t++)
-      markers[t].enabled = FALSE;
+      markers[t].enabled = enable > 0;
     return;
   }
   t = my_atoi(argv[0])-1;
@@ -1860,7 +1863,7 @@ VNA_SHELL_FUNCTION(cmd_marker)
     markers[t].enabled = TRUE;
     return;
   }
-  static const char cmd_marker_list[] = "on|off";
+
   switch (get_str_index(argv[1], cmd_marker_list)) {
     case 0: markers[t].enabled = TRUE; active_marker = t; return;
     case 1: markers[t].enabled =FALSE; if (active_marker == t) active_marker = -1; return;

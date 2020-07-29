@@ -931,8 +931,8 @@ bool sweep(bool break_on_operation, uint16_t sweep_mode)
   return p_sweep == sweep_points;
 }
 
-uint32_t get_bandwidth_frequency(void){
-  return (AUDIO_ADC_FREQ/AUDIO_SAMPLES_COUNT)/(config.bandwidth+1);
+uint32_t get_bandwidth_frequency(uint16_t bw_freq){
+  return (AUDIO_ADC_FREQ/AUDIO_SAMPLES_COUNT)/(bw_freq+1);
 }
 
 VNA_SHELL_FUNCTION(cmd_bandwidth)
@@ -941,7 +941,7 @@ VNA_SHELL_FUNCTION(cmd_bandwidth)
     goto result;
   config.bandwidth = my_atoui(argv[0])&0xFF;
 result:
-  shell_printf("bandwidth %d (%uHz)\r\n", config.bandwidth, get_bandwidth_frequency());
+  shell_printf("bandwidth %d (%uHz)\r\n", config.bandwidth, get_bandwidth_frequency(config.bandwidth));
 }
 
 void set_sweep_points(uint16_t points){

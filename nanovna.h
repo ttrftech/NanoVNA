@@ -114,7 +114,7 @@ enum stimulus_type {
 
 void set_sweep_frequency(int type, uint32_t frequency);
 uint32_t get_sweep_frequency(int type);
-uint32_t get_bandwidth_frequency(void);
+uint32_t get_bandwidth_frequency(uint16_t bw_freq);
 
 double my_atof(const char *p);
 
@@ -131,7 +131,6 @@ extern const char *info_about[];
 /*
  * dsp.c
  */
-// 5ms @ 96kHz
 // Define aic3204 source clock frequency (for 8MHz used fractional multiplier, and possible little phase error)
 #define AUDIO_CLOCK_REF       ( 8000000U)
 //#define AUDIO_CLOCK_REF       (10752000U)
@@ -147,8 +146,10 @@ extern const char *info_about[];
 #define AUDIO_BUFFER_LEN      (AUDIO_SAMPLES_COUNT*2)
 
 // Bandwidth depend from AUDIO_SAMPLES_COUNT and audio ADC frequency
-// for AUDIO_SAMPLES_COUNT = 48 and ADC = 96kHz one measure give 96000/48=2000Hz
-// define additional measure count
+// for AUDIO_SAMPLES_COUNT = 48 and ADC =  48kHz one measure give  48000/48=1000Hz
+// for AUDIO_SAMPLES_COUNT = 48 and ADC =  96kHz one measure give  96000/48=2000Hz
+// for AUDIO_SAMPLES_COUNT = 48 and ADC = 192kHz one measure give 192000/48=4000Hz
+// Define additional measure count for menus
 #if AUDIO_ADC_FREQ/AUDIO_SAMPLES_COUNT == 4000
 #define BANDWIDTH_4000            (  1 - 1)
 #define BANDWIDTH_2000            (  2 - 1)

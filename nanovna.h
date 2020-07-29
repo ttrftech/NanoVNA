@@ -41,6 +41,9 @@
 #define FREQUENCY_OFFSET         8000
 // Frequency offset for 48k ADC (sin_cos table in dsp.c generated for 3k, 4k, 5k, 6k, if change need create new table )
 //#define FREQUENCY_OFFSET         5000
+// Apply calibration after made sweep, if set to 1, calibration move out from sweep cycle
+// On fast CPU it slow down sweep, on slow CPU can made faster (not need wait additional measure time)
+#define APPLY_CALIBRATION_AFTER_SWEEP 0
 // Use real time build table (undef for use constant)
 //#define USE_VARIABLE_OFFSET
 // Speed of light const
@@ -146,7 +149,14 @@ extern const char *info_about[];
 // Bandwidth depend from AUDIO_SAMPLES_COUNT and audio ADC frequency
 // for AUDIO_SAMPLES_COUNT = 48 and ADC = 96kHz one measure give 96000/48=2000Hz
 // define additional measure count
-#if AUDIO_ADC_FREQ/AUDIO_SAMPLES_COUNT == 2000
+#if AUDIO_ADC_FREQ/AUDIO_SAMPLES_COUNT == 4000
+#define BANDWIDTH_4000            (  1 - 1)
+#define BANDWIDTH_2000            (  2 - 1)
+#define BANDWIDTH_1000            (  4 - 1)
+#define BANDWIDTH_333             ( 12 - 1)
+#define BANDWIDTH_100             ( 40 - 1)
+#define BANDWIDTH_30              (132 - 1)
+#elif AUDIO_ADC_FREQ/AUDIO_SAMPLES_COUNT == 2000
 #define BANDWIDTH_2000            (  1 - 1)
 #define BANDWIDTH_1000            (  2 - 1)
 #define BANDWIDTH_333             (  6 - 1)

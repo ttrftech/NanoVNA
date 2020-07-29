@@ -472,7 +472,8 @@ si5351_set_frequency(uint32_t freq, uint8_t drive_strength)
   if (current_band != band) {
     si5351_reset_pll(SI5351_PLL_RESET_A | SI5351_PLL_RESET_B);
     // Possibly not need add delay now
-    chThdSleepMicroseconds(DELAY_RESET_PLL_BEFORE);
+    if (DELAY_RESET_PLL_BEFORE)
+      chThdSleepMicroseconds(DELAY_RESET_PLL_BEFORE);
   }
   static const uint8_t band_setting[] = {1, PLL_N_1, PLL_N_2, 8, 6, 4};
   switch (band) {
@@ -483,18 +484,14 @@ si5351_set_frequency(uint32_t freq, uint8_t drive_strength)
       if (current_band != band) {
         si5351_setupPLL(SI5351_REG_PLL_A,   pll_n, 0, 1);
         si5351_setupPLL(SI5351_REG_PLL_B, PLL_N_2, 0, 1);
-        si5351_set_frequency_fixedpll(
-            2, XTALFREQ * PLL_N_2, CLK2_FREQUENCY, SI5351_R_DIV_1,
-            SI5351_CLK_DRIVE_STRENGTH_2MA | SI5351_CLK_PLL_SELECT_B);
+        si5351_set_frequency_fixedpll(2, XTALFREQ * PLL_N_2, CLK2_FREQUENCY, SI5351_R_DIV_1, SI5351_CLK_DRIVE_STRENGTH_2MA | SI5351_CLK_PLL_SELECT_B);
         delay = DELAY_BANDCHANGE_1_2;
       } else {
         delay = DELAY_BAND_1_2;
       }
       // Calculate and set CH0 and CH1 divider
-      si5351_set_frequency_fixedpll(0, (uint64_t)omul * XTALFREQ * pll_n, ofreq, rdiv,
-                                    drive_strength | SI5351_CLK_PLL_SELECT_A);
-      si5351_set_frequency_fixedpll(1, (uint64_t)mul * XTALFREQ * pll_n, freq, rdiv,
-                                    drive_strength | SI5351_CLK_PLL_SELECT_A);
+      si5351_set_frequency_fixedpll(0, (uint64_t)omul * XTALFREQ * pll_n, ofreq, rdiv, drive_strength | SI5351_CLK_PLL_SELECT_A);
+      si5351_set_frequency_fixedpll(1, (uint64_t) mul * XTALFREQ * pll_n,  freq, rdiv, drive_strength | SI5351_CLK_PLL_SELECT_A);
       break;
     case 3:  // fdiv = 8, f 100-130   PLL 800-1040
     case 4:  // fdiv = 6, f 130-170   PLL 780-1050
@@ -503,29 +500,24 @@ si5351_set_frequency(uint32_t freq, uint8_t drive_strength)
 
       // Setup CH0 and CH1 constant fdiv divider at change
       if (current_band != band) {
-        si5351_setupMultisynth(0, fdiv, 0, 1, SI5351_R_DIV_1,
-                               drive_strength | SI5351_CLK_PLL_SELECT_A);
-        si5351_setupMultisynth(1, fdiv, 0, 1, SI5351_R_DIV_1,
-                               drive_strength | SI5351_CLK_PLL_SELECT_B);
+        si5351_setupMultisynth(0, fdiv, 0, 1, SI5351_R_DIV_1, drive_strength | SI5351_CLK_PLL_SELECT_A);
+        si5351_setupMultisynth(1, fdiv, 0, 1, SI5351_R_DIV_1, drive_strength | SI5351_CLK_PLL_SELECT_B);
         delay= DELAY_BANDCHANGE_3_4;
       } else {
        delay= DELAY_BAND_3_4;
       }
       // Calculate and set CH0 and CH1 PLL freq
-      si5351_setupPLL_freq(SI5351_REG_PLL_A, ofreq, fdiv,
-                           omul);  // set PLLA freq = (ofreq/omul)*fdiv
-      si5351_setupPLL_freq(SI5351_REG_PLL_B, freq, fdiv,
-                           mul);  // set PLLB freq = ( freq/ mul)*fdiv
+      si5351_setupPLL_freq(SI5351_REG_PLL_A, ofreq, fdiv, omul);  // set PLLA freq = (ofreq/omul)*fdiv
+      si5351_setupPLL_freq(SI5351_REG_PLL_B,  freq, fdiv,  mul);  // set PLLB freq = ( freq/ mul)*fdiv
       // Calculate CH2 freq = CLK2_FREQUENCY, depend from calculated before CH1 PLLB = (freq/mul)*fdiv
-      si5351_set_frequency_fixedpll(
-          2, (uint64_t)freq * fdiv, CLK2_FREQUENCY * mul, SI5351_R_DIV_1,
-          SI5351_CLK_DRIVE_STRENGTH_2MA | SI5351_CLK_PLL_SELECT_B);
+      si5351_set_frequency_fixedpll(2, (uint64_t)freq * fdiv, CLK2_FREQUENCY * mul, SI5351_R_DIV_1, SI5351_CLK_DRIVE_STRENGTH_2MA | SI5351_CLK_PLL_SELECT_B);
       break;
   }
 
   if (current_band != band) {
     // Possibly not need add delay now
-    chThdSleepMicroseconds(DELAY_RESET_PLL_AFTER);
+    if (DELAY_RESET_PLL_AFTER)
+      chThdSleepMicroseconds(DELAY_RESET_PLL_AFTER);
     si5351_reset_pll(SI5351_PLL_RESET_A|SI5351_PLL_RESET_B);
     current_band = band;
   }

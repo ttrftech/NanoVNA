@@ -81,6 +81,8 @@ static volatile vna_shellcmd_t  shell_function = 0;
 //#define ENABLE_GAIN_COMMAND
 // Enable port command, used for debug
 //#define ENABLE_PORT_COMMAND
+// Enable si5351 timing command, used for debug
+#define ENABLE_SI5351_TIMINGS
 
 static void apply_CH0_error_term_at(int i);
 static void apply_CH1_error_term_at(int i);
@@ -362,6 +364,25 @@ adjust_gain(uint32_t newfreq)
   }
   return 0;
 }
+
+#ifdef ENABLE_GAIN_COMMAND
+VNA_SHELL_FUNCTION(cmd_gain)
+{
+  int rvalue = 0;
+  int lvalue = 0;
+  if (argc < 1 && argc > 3) {
+    shell_printf("usage: gain idx {lgain(0-95)} [rgain(0-95)]\r\n");
+    return;
+  }
+  int idx = my_atoui(argv[0]);
+  lvalue = rvalue = my_atoui(argv[1]);
+  if (argc == 3)
+    rvalue = my_atoui(argv[2]);
+  tlv320aic3204_set_gain(lvalue, rvalue);
+  gain_table[idx][0] = lvalue;
+  gain_table[idx][1] = rvalue;
+}
+#endif
 
 int set_frequency(uint32_t freq)
 {
@@ -836,7 +857,7 @@ static const I2SConfig i2sconfig = {
 };
 
 #define DSP_START(delay) {wait_count = delay + config.bandwidth;}
-#define DSP_WAIT_READY   while (wait_count) {if (operation_requested && break_on_operation) return false; __WFI();}
+#define DSP_WAIT_READY   while (wait_count) {__WFI();}
 #define DSP_WAIT         while (wait_count) {__WFI();}
 #define RESET_SWEEP      {p_sweep = 0;}
 #define DELAY_CHANNEL_CHANGE 2
@@ -863,7 +884,7 @@ bool sweep(bool break_on_operation, uint16_t sweep_mode)
   if (p_sweep>=sweep_points || break_on_operation == false) RESET_SWEEP;
   if (break_on_operation && sweep_mode == 0)
     return false;
-
+  uint16_t start_sweep = p_sweep;
   // blink LED while scanning
   palClearPad(GPIOC, GPIOC_LED);
   // Power stabilization after LED off, before measure
@@ -880,7 +901,7 @@ bool sweep(bool break_on_operation, uint16_t sweep_mode)
       //================================================
       DSP_WAIT_READY;
       (*sample_func)(measured[0][p_sweep]);      // calculate reflection coefficient
-      if (cal_status & CALSTAT_APPLY)
+      if (!APPLY_CALIBRATION_AFTER_SWEEP && cal_status & CALSTAT_APPLY)
         apply_CH0_error_term_at(p_sweep);
     }
     if (sweep_mode & SWEEP_CH1_MEASURE){
@@ -891,16 +912,23 @@ bool sweep(bool break_on_operation, uint16_t sweep_mode)
       //================================================
       DSP_WAIT_READY;
       (*sample_func)(measured[1][p_sweep]);      // calculate transmission coefficient
-      if (cal_status & CALSTAT_APPLY)
+      if (!APPLY_CALIBRATION_AFTER_SWEEP && cal_status & CALSTAT_APPLY)
         apply_CH1_error_term_at(p_sweep);
     }
+    if (operation_requested && break_on_operation) break;
     st_delay = 0;
 // Display SPI made noise on measurement (can see in CW mode)
 //    ili9341_fill(OFFSETX+CELLOFFSETX, OFFSETY, (p_sweep * WIDTH)/(sweep_points-1), 1, RGB565(0,0,255));
   }
+  if (APPLY_CALIBRATION_AFTER_SWEEP && (cal_status & CALSTAT_APPLY)){
+    for (;start_sweep<=p_sweep;start_sweep++){
+      if (sweep_mode & SWEEP_CH0_MEASURE) apply_CH0_error_term_at(start_sweep);
+      if (sweep_mode & SWEEP_CH1_MEASURE) apply_CH1_error_term_at(start_sweep);
+    }
+  }
   // blink LED while scanning
   palSetPad(GPIOC, GPIOC_LED);
-  return true;
+  return p_sweep == sweep_points;
 }
 
 uint32_t get_bandwidth_frequency(void){
@@ -1840,7 +1868,7 @@ VNA_SHELL_FUNCTION(cmd_marker)
   if (argc == 0) {
     for (t = 0; t < MARKERS_MAX; t++) {
       if (markers[t].enabled) {
-        shell_printf("%d %d %d\r\n", t+1, markers[t].index, markers[t].frequency);
+        shell_printf("%d %d %u\r\n", t+1, markers[t].index, markers[t].frequency);
       }
     }
     return;
@@ -1858,7 +1886,7 @@ VNA_SHELL_FUNCTION(cmd_marker)
   if (t < 0 || t >= MARKERS_MAX)
     goto usage;
   if (argc == 1) {
-    shell_printf("%d %d %d\r\n", t+1, markers[t].index, markers[t].frequency);
+    shell_printf("%d %d %u\r\n", t+1, markers[t].index, markers[t].frequency);
     active_marker = t;
     // select active marker
     markers[t].enabled = TRUE;
@@ -2041,25 +2069,6 @@ VNA_SHELL_FUNCTION(cmd_test)
 }
 #endif
 
-#ifdef ENABLE_GAIN_COMMAND
-VNA_SHELL_FUNCTION(cmd_gain)
-{
-  int rvalue = 0;
-  int lvalue = 0;
-  if (argc < 1 && argc > 3) {
-    shell_printf("usage: gain idx {lgain(0-95)} [rgain(0-95)]\r\n");
-    return;
-  }
-  int idx = my_atoui(argv[0]);
-  lvalue = rvalue = my_atoui(argv[1]);
-  if (argc == 3)
-    rvalue = my_atoui(argv[2]);
-  tlv320aic3204_set_gain(lvalue, rvalue);
-  gain_table[idx][0] = lvalue;
-  gain_table[idx][1] = rvalue;
-}
-#endif
-
 #ifdef ENABLE_PORT_COMMAND
 VNA_SHELL_FUNCTION(cmd_port)
 {
@@ -2158,6 +2167,22 @@ VNA_SHELL_FUNCTION(cmd_vbat_offset)
     return;
   }
   config.vbat_offset = (int16_t)my_atoi(argv[0]);
+}
+#endif
+
+#ifdef ENABLE_SI5351_TIMINGS
+VNA_SHELL_FUNCTION(cmd_si5351time)
+{
+  (void)argc;
+//  si5351_set_timing(my_atoui(argv[0]), my_atoui(argv[1]));
+
+  uint32_t tim =  STM32_TIMINGR_PRESC(0U)  |
+                  STM32_TIMINGR_SCLDEL(my_atoui(argv[0])) | STM32_TIMINGR_SDADEL(my_atoui(argv[1])) |
+                  STM32_TIMINGR_SCLH(my_atoui(argv[2])) | STM32_TIMINGR_SCLL(my_atoui(argv[3]));
+  I2CD1.i2c->CR1 &=~I2C_CR1_PE;
+  I2CD1.i2c->TIMINGR = tim;
+  I2CD1.i2c->CR1 |= I2C_CR1_PE;
+
 }
 #endif
 
@@ -2356,6 +2381,9 @@ static const VNAShellCommand commands[] =
 #endif
 #ifdef ENABLE_THREADS_COMMAND
     {"threads"     , cmd_threads     , 0},
+#endif
+#ifdef ENABLE_SI5351_TIMINGS
+    {"t"           , cmd_si5351time  , CMD_WAIT_MUTEX},
 #endif
     {NULL          , NULL            , 0}
 };

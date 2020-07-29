@@ -963,14 +963,14 @@ static const char s1_file_header[] =
   "# Hz S RI R 50\r\n";
 
 static const char s1_file_param[] =
-  "%10d % f % f\r\n";
+  "%10u % f % f\r\n";
 
 static const char s2_file_header[] =
   "!File created by NanoVNA\r\n"\
   "# Hz S RI R 50\r\n";
 
 static const char s2_file_param[] =
-  "%10d % f % f % f % f 0 0 0 0\r\n";
+  "%10u % f % f % f % f 0 0 0 0\r\n";
 
 static UI_FUNCTION_CALLBACK(menu_sdcard_cb)
 {
@@ -1144,6 +1144,9 @@ const menuitem_t menu_transform[] = {
 };
 
 const menuitem_t menu_bandwidth[] = {
+#ifdef BANDWIDTH_4000
+  { MT_ADV_CALLBACK, BANDWIDTH_4000, "4 kHz", menu_bandwidth_acb },
+#endif
 #ifdef BANDWIDTH_2000
   { MT_ADV_CALLBACK, BANDWIDTH_2000, "2 kHz", menu_bandwidth_acb },
 #endif
@@ -1151,7 +1154,9 @@ const menuitem_t menu_bandwidth[] = {
   { MT_ADV_CALLBACK, BANDWIDTH_333, "333 Hz", menu_bandwidth_acb },
   { MT_ADV_CALLBACK, BANDWIDTH_100, "100 Hz", menu_bandwidth_acb },
   { MT_ADV_CALLBACK, BANDWIDTH_30,   "30 Hz", menu_bandwidth_acb },
+#ifdef BANDWIDTH_10
   { MT_ADV_CALLBACK, BANDWIDTH_10,   "10 Hz", menu_bandwidth_acb },
+#endif
   { MT_CANCEL, 255, S_LARROW" BACK", NULL },
   { MT_NONE, 0, NULL, NULL } // sentinel
 };

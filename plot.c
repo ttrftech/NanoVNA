@@ -967,7 +967,7 @@ static const uint8_t reference_bitmap[]={
   _BMP8(0b11000000),
 };
 
-#if _USE_FONT_ == 0
+#if _USE_BIG_MARKER_ == 0
 #define MARKER_WIDTH       7
 #define MARKER_HEIGHT     10
 #define X_MARKER_OFFSET    3
@@ -1031,7 +1031,7 @@ static const uint8_t marker_bitmap[]={
   _BMP8(0b00000000),
 };
 
-#elif _USE_FONT_ == 1
+#elif _USE_BIG_MARKER_ == 1
 #define MARKER_WIDTH       10
 #define MARKER_HEIGHT      13
 #define X_MARKER_OFFSET     4

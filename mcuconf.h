@@ -52,7 +52,6 @@
 #define STM32_ADCSW                         STM32_ADCSW_HSI14
 #define STM32_ADCPRE                        STM32_ADCPRE_DIV4
 #define STM32_MCOSEL                        STM32_MCOSEL_PLLDIV2
-#define STM32_ADCPRE                        STM32_ADCPRE_DIV4
 #define STM32_ADCSW                         STM32_ADCSW_HSI14
 #define STM32_USBSW                         STM32_USBSW_HSI48
 #define STM32_CECSW                         STM32_CECSW_HSI

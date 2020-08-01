@@ -83,13 +83,15 @@ static volatile vna_shellcmd_t  shell_function = 0;
 //#define ENABLE_PORT_COMMAND
 // Enable si5351 timing command, used for debug
 #define ENABLE_SI5351_TIMINGS
+// Enable i2c timing command, used for debug
+#define ENABLE_I2C_TIMINGS
 
 static void apply_CH0_error_term_at(int i);
 static void apply_CH1_error_term_at(int i);
 static void apply_edelay(void);
 
 static uint16_t get_sweep_mode(void);
-static void cal_interpolate(int s);
+static void cal_interpolate(void);
 static void update_frequencies(bool interpolate);
 static void set_frequencies(uint32_t start, uint32_t stop, uint16_t points);
 static bool sweep(bool break_on_operation, uint16_t sweep_mode);
@@ -985,7 +987,7 @@ VNA_SHELL_FUNCTION(cmd_scan)
   }
   set_frequencies(start, stop, points);
   if (cal_status & CALSTAT_APPLY)
-    cal_interpolate(lastsaveid);
+    cal_interpolate();
   pause_sweep();
   sweep(false, sweep_mode);
   // Output data after if set (faster data recive)
@@ -1062,7 +1064,7 @@ update_frequencies(bool interpolate)
   // set grid layout
   update_grid();
   if (interpolate)
-    cal_interpolate(lastsaveid);
+    cal_interpolate();
   RESET_SWEEP;
 }
 
@@ -1510,9 +1512,9 @@ cal_done(void)
 }
 
 static void
-cal_interpolate(int s)
+cal_interpolate(void)
 {
-  const properties_t *src = caldata_ref(s);
+  const properties_t *src = caldata_reference();
   uint32_t i, j;
   int eterm;
   if (src == NULL)
@@ -2174,8 +2176,17 @@ VNA_SHELL_FUNCTION(cmd_vbat_offset)
 VNA_SHELL_FUNCTION(cmd_si5351time)
 {
   (void)argc;
-//  si5351_set_timing(my_atoui(argv[0]), my_atoui(argv[1]));
+  int idx = my_atoui(argv[0]);
+  uint16_t value = my_atoui(argv[1]);
+  si5351_set_timing(idx, value);
+}
+#endif
 
+
+#ifdef ENABLE_I2C_TIMINGS
+VNA_SHELL_FUNCTION(cmd_i2ctime)
+{
+  (void)argc;
   uint32_t tim =  STM32_TIMINGR_PRESC(0U)  |
                   STM32_TIMINGR_SCLDEL(my_atoui(argv[0])) | STM32_TIMINGR_SDADEL(my_atoui(argv[1])) |
                   STM32_TIMINGR_SCLH(my_atoui(argv[2])) | STM32_TIMINGR_SCLL(my_atoui(argv[3]));
@@ -2385,6 +2396,9 @@ static const VNAShellCommand commands[] =
 #ifdef ENABLE_SI5351_TIMINGS
     {"t"           , cmd_si5351time  , CMD_WAIT_MUTEX},
 #endif
+#ifdef ENABLE_I2C_TIMINGS
+    {"i"           , cmd_i2ctime     , CMD_WAIT_MUTEX},
+#endif
     {NULL          , NULL            , 0}
 };
 
@@ -2531,10 +2545,10 @@ static const I2CConfig i2ccfg = {
 //  STM32_TIMINGR_PRESC(5U)  |
 //  STM32_TIMINGR_SCLDEL(3U) | STM32_TIMINGR_SDADEL(3U) |
 //  STM32_TIMINGR_SCLH(3U)   | STM32_TIMINGR_SCLL(9U),
-  // 600kHz @ SYSCLK 48MHz, manually get values, x1.5 I2C speed, but need calc timings
-  STM32_TIMINGR_PRESC(3U)  |
-  STM32_TIMINGR_SCLDEL(2U) | STM32_TIMINGR_SDADEL(2U) |
-  STM32_TIMINGR_SCLH(4U)   | STM32_TIMINGR_SCLL(4U),
+  // 600kHz @ SYSCLK 48MHz, manually get values, x1.5 I2C speed
+  STM32_TIMINGR_PRESC(0U)  |
+  STM32_TIMINGR_SCLDEL(10U) | STM32_TIMINGR_SDADEL(10U) |
+  STM32_TIMINGR_SCLH(30U)   | STM32_TIMINGR_SCLL(50U),
 #else
 #error "Need Define STM32_I2C1SW and set correct TIMINGR settings"
 #endif

@@ -41,8 +41,7 @@
 #define FREQUENCY_OFFSET         8000
 // Frequency offset for 48k ADC (sin_cos table in dsp.c generated for 3k, 4k, 5k, 6k, if change need create new table )
 //#define FREQUENCY_OFFSET         5000
-// Apply calibration after made sweep, if set to 1, calibration move out from sweep cycle
-// On fast CPU it slow down sweep, on slow CPU can made faster (not need wait additional measure time)
+// Apply calibration after made sweep, (if set 1, then calibration move out from sweep cycle)
 #define APPLY_CALIBRATION_AFTER_SWEEP 0
 // Use real time build table (undef for use constant)
 //#define USE_VARIABLE_OFFSET
@@ -131,8 +130,9 @@ extern const char *info_about[];
 /*
  * dsp.c
  */
-// Define aic3204 source clock frequency (for 8MHz used fractional multiplier, and possible little phase error)
+// Define aic3204 source clock frequency (on 8MHz used fractional multiplier, and possible little phase error)
 #define AUDIO_CLOCK_REF       ( 8000000U)
+// Define aic3204 source clock frequency (on 10752000U used integer multiplier)
 //#define AUDIO_CLOCK_REF       (10752000U)
 // Disable AIC PLL clock, use input as CODEC_CLKIN (not stable on some devices, on long work)
 //#define AUDIO_CLOCK_REF       (86016000U)
@@ -200,6 +200,8 @@ void tlv320aic3204_write_reg(uint8_t page, uint8_t reg, uint8_t data);
 #define LCD_WIDTH                   320
 #define LCD_HEIGHT                  240
 
+// Used marker size settings
+#define _USE_BIG_MARKER_     0
 // Used font settings
 #define _USE_FONT_           0
 
@@ -226,7 +228,8 @@ extern const uint8_t x7x11b_bits[];
 #elif _USE_FONT_ == 2
 extern const uint8_t x10x14_bits[];
 #define FONT_START_CHAR   0x17
-#define FONT_MAX_WIDTH      12
+#define FONT_MAX_WIDTH      14
+#define FONT_WIDTH          11
 #define FONT_GET_HEIGHT     14
 #define FONT_STR_HEIGHT     16
 #define FONT_GET_DATA(ch)   (   &x10x14_bits[(ch-FONT_START_CHAR)*2*FONT_GET_HEIGHT  ])
@@ -287,6 +290,7 @@ extern int16_t area_height;
 #define NUM_INPUT_HEIGHT   32
 
 // On screen keyboard button size
+// Use full screen keyboard
 #if 1
 #define KP_WIDTH                  ((LCD_WIDTH) / 4)                     // numeric keypad button width
 #define KP_HEIGHT                 ((LCD_HEIGHT - NUM_INPUT_HEIGHT) / 4) // numeric keypad button height
@@ -294,6 +298,7 @@ extern int16_t area_height;
 #define KP_GET_X(posx)            ((posx) * KP_WIDTH)                   // numeric keypad left
 #define KP_GET_Y(posy)            ((posy) * KP_HEIGHT)                  // numeric keypad top
 #else
+// Use less size keyboard
 #define KP_WIDTH     48
 #define KP_HEIGHT    48
 // Key x, y position (0 - 15) on screen
@@ -555,7 +560,7 @@ void rtc_set_time(uint32_t dr, uint32_t tr);
 
 #define CONFIG_MAGIC 0x434f4e45 /* 'CONF' */
 
-extern int16_t lastsaveid;
+extern uint16_t lastsaveid;
 
 #define frequency0 current_props._frequency0
 #define frequency1 current_props._frequency1
@@ -578,7 +583,7 @@ extern int16_t lastsaveid;
 
 int caldata_save(uint32_t id);
 int caldata_recall(uint32_t id);
-const properties_t *caldata_ref(uint32_t id);
+const properties_t *caldata_reference(void);
 
 int config_save(void);
 int config_recall(void);

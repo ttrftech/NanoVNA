@@ -1722,7 +1722,7 @@ static const uint8_t check_box[] = {
 static void
 draw_menu_buttons(const menuitem_t *menu)
 {
-  int i = 0, y = 0;
+  int i = 0, y = 1;
   for (i = 0; i < MENU_BUTTON_MAX; i++, y+=MENU_BUTTON_HEIGHT) {
     if (menu[i].type == MT_NONE)
       break;
@@ -2459,33 +2459,39 @@ touch_pickup_marker(int touch_x, int touch_y)
 }
 
 #ifdef __USE_SD_CARD__
-//*****************************************************************************
-// Bitmap file header for 320x240 image 16bpp (v4 format allow set RGB mask)
-//*****************************************************************************
+//*******************************************************************************************
+// Bitmap file header for LCD_WIDTH x LCD_HEIGHT image 16bpp (v4 format allow set RGB mask)
+//*******************************************************************************************
+#define BMP_UINT32(val)  ((val)>>0)&0xFF, ((val)>>8)&0xFF, ((val)>>16)&0xFF, ((val)>>24)&0xFF
+#define BMP_H1_SIZE      (14)                        // BMP header 14 bytes
+#define BMP_V4_SIZE      (56)                        // v4  header 56 bytes
+#define BMP_HEAD_SIZE    (BMP_H1_SIZE + BMP_V4_SIZE) // Size of all headers
+#define BMP_SIZE         (2*LCD_WIDTH*LCD_HEIGHT)    // Bitmap size = 2*w*h
+#define BMP_FILE_SIZE    (BMP_SIZE + BMP_HEAD_SIZE)  // File size = headers + bitmap
 static const uint8_t bmp_header_v4[14+56] = {
 // BITMAPFILEHEADER (14 byte size)
-  0x42, 0x4D,             // BM signature
-  0x46, 0x58, 0x02, 0x00, // File size = 320*240*2 + 14 + 56 = 0x00025846
-  0x00, 0x00,             // reserved
-  0x00, 0x00,             // reserved
-  0x46, 0x00, 0x00, 0x00, // Size of all headers = 14+56
+  0x42, 0x4D,                // BM signature
+  BMP_UINT32(BMP_FILE_SIZE), // File size (h + v4 + bitmap)
+  0x00, 0x00,                // reserved
+  0x00, 0x00,                // reserved
+  BMP_UINT32(BMP_HEAD_SIZE), // Size of all headers (h + v4)
 // BITMAPINFOv4 (56 byte size)
-  0x38, 0x00, 0x00, 0x00, // Data offset after this point (56 = 0x38)
-  0x40, 0x01, 0x00, 0x00, // Width  = 320 = 0x00000140
-  0xF0, 0x00, 0x00, 0x00, // Height = 240 = 0x000000F0
-  0x01, 0x00,             // Planes
-  0x10, 0x00,             // 16bpp
-  0x03, 0x00, 0x00, 0x00, // Compression (BI_BITFIELDS)
-  0x00, 0x58, 0x02, 0x00, // Bitmap size = 320*240*2 = 0x00025800
-  0xC4, 0x0E, 0x00, 0x00, // x Resolution (96 DPI = 96 * 39.3701 inches per metre = 0x0EC4)
-  0xC4, 0x0E, 0x00, 0x00, // y Resolution (96 DPI = 96 * 39.3701 inches per metre = 0x0EC4)
-  0x00, 0x00, 0x00, 0x00, // Palette size
-  0x00, 0x00, 0x00, 0x00, // Palette used
+  BMP_UINT32(BMP_V4_SIZE),   // Data offset after this point (v4 size)
+  BMP_UINT32(LCD_WIDTH),     // Width
+  BMP_UINT32(LCD_HEIGHT),    // Height
+  0x01, 0x00,                // Planes
+  0x10, 0x00,                // 16bpp
+  0x03, 0x00, 0x00, 0x00,    // Compression (BI_BITFIELDS)
+  BMP_UINT32(BMP_SIZE),      // Bitmap size (w*h*2)
+  0xC4, 0x0E, 0x00, 0x00,    // x Resolution (96 DPI = 96 * 39.3701 inches per metre = 0x0EC4)
+  0xC4, 0x0E, 0x00, 0x00,    // y Resolution (96 DPI = 96 * 39.3701 inches per metre = 0x0EC4)
+  0x00, 0x00, 0x00, 0x00,    // Palette size
+  0x00, 0x00, 0x00, 0x00,    // Palette used
 // Extend v4 header data (color mask for RGB565)
-  0x00, 0xF8, 0x00, 0x00, // R mask = 0b11111000 00000000
-  0xE0, 0x07, 0x00, 0x00, // G mask = 0b00000111 11100000
-  0x1F, 0x00, 0x00, 0x00, // B mask = 0b00000000 00011111
-  0x00, 0x00, 0x00, 0x00  // A mask = 0b00000000 00000000
+  0x00, 0xF8, 0x00, 0x00,    // R mask = 0b11111000 00000000
+  0xE0, 0x07, 0x00, 0x00,    // G mask = 0b00000111 11100000
+  0x1F, 0x00, 0x00, 0x00,    // B mask = 0b00000000 00011111
+  0x00, 0x00, 0x00, 0x00     // A mask = 0b00000000 00000000
 };
 
 static int

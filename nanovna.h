@@ -646,7 +646,7 @@ void enter_dfu(void);
 
 void adc_init(void);
 uint16_t adc_single_read(uint32_t chsel);
-void adc_start_analog_watchdogd(uint32_t chsel);
+void adc_start_analog_watchdogd(void);
 void adc_stop(void);
 int16_t adc_vbat_read(void);
 

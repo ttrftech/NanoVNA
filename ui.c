@@ -338,7 +338,7 @@ void
 touch_start_watchdog(void)
 {
   touch_prepare_sense();
-  adc_start_analog_watchdogd(ADC_TOUCH_Y);
+  adc_start_analog_watchdogd();
 }
 
 static inline int

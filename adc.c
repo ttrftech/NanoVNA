@@ -108,14 +108,14 @@ int16_t adc_vbat_read(void)
   return vbat_raw + config.vbat_offset;
 }
 
-void adc_start_analog_watchdogd(uint32_t chsel)
+void adc_start_analog_watchdogd(void)
 {
   // ADC setup, if it is defined a callback for the analog watch dog then it is enabled.
   VNA_ADC->ISR    = VNA_ADC->ISR;
   VNA_ADC->IER    = ADC_IER_AWDIE;
   VNA_ADC->TR     = ADC_TR(0, TOUCH_THRESHOLD);
   VNA_ADC->SMPR   = ADC_SMPR_SMP_1P5;
-  VNA_ADC->CHSELR = chsel;
+  VNA_ADC->CHSELR = ADC_TOUCH_Y;
 
   /* ADC configuration and start.*/
   VNA_ADC->CFGR1  = ADC_CFGR1_RES_12BIT | ADC_CFGR1_AWDEN

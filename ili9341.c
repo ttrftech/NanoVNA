@@ -430,6 +430,7 @@ void ili9341_init(void)
     p += 2 + p[1];
     chThdSleepMilliseconds(5);
   }
+  ili9341_clear_screen();
 }
 
 void ili9341_bulk_8bit(int x, int y, int w, int h, uint16_t *palette)

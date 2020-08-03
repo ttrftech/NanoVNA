@@ -41,33 +41,29 @@ static int32_t  current_offset = FREQUENCY_OFFSET;
 // Use cache for this reg, not update if not change
 static uint8_t  clk_cache[3] = {0, 0, 0};
 
-#if 1
-// Minimum value is 2, freq change apply at next dsp measure, and need skip it
-#define DELAY_NORMAL          2
-// Delay for bands (depend set band 1 more fast (can change before next dsp buffer ready, need wait additional interval)
-#define DELAY_BAND_1_2        2
-#define DELAY_BAND_3_4        2
-// Band changes need set additional delay after reset PLL
-#define DELAY_BANDCHANGE_1_2  3
-#define DELAY_BANDCHANGE_3_4  4
-// Delay after set new PLL values, and send reset (on band 1 unstable if less then 900, on 2000-5000 no amplitude spike on change)
-#define DELAY_RESET_PLL_BEFORE    1000
-#define DELAY_RESET_PLL_AFTER     3500
+// Generator ready delays, values in x100 us
+#if 0
+  uint16_t timings[16]={  3,  3, 10, 10, 0, 0, 30,  3, 25}; // For H  device timings
+//uint16_t timings[16]={  2,  2, 10, 10, 0, 0, 30,  3, 25}; // For H4 device timings
+void si5351_set_timing(int i, int v) {timings[i]=v;}
+#define DELAY_BAND_1_2           timings[0]   // Delay for bands
+#define DELAY_BAND_3_4           timings[1]   // Delay for bands
+#define DELAY_BANDCHANGE_1_2     timings[2]   // Band changes need set additional delay after reset PLL
+#define DELAY_BANDCHANGE_3_4     timings[3]   // Band changes need set additional delay after reset PLL
+#define DELAY_RESET_PLL_BEFORE   timings[4]   // Delay after set new PLL values
+#define DELAY_RESET_PLL_AFTER    timings[5]   // Delay after set new PLL values
+//#define DELAY_GAIN_CHANGE      timings[6]   // defined in main.c change gain delay
+//#define DELAY_CHANNEL_CHANGE   timings[7]   // defined in main.c switch channel delay
+//#define DELAY_SWEEP_START      timings[8]   // defined in main.c delay at sweep start
 
 #else
-// Debug timer set
-uint16_t timings[8]={2,2,2,3,4,1000, 3500};
-void si5351_set_timing(int i, int v) {timings[i]=v;}
-#define DELAY_NORMAL          timings[0]
-// Delay for bands (depend set band 1 more fast (can change before next dsp buffer ready, need wait additional interval)
-#define DELAY_BAND_1_2        timings[1]
-#define DELAY_BAND_3_4        timings[2]
-// Band changes need set additional delay after reset PLL
-#define DELAY_BANDCHANGE_1_2  timings[3]
-#define DELAY_BANDCHANGE_3_4  timings[4]
-// Delay after set new PLL values, and send reset (on band 1-2 unstable if less then 900, on 2000-5000 no amplitude spike on change)
-#define DELAY_RESET_PLL_BEFORE      timings[5]
-#define DELAY_RESET_PLL_AFTER       timings[6]
+#define DELAY_BAND_1_2           3    // Delay for bands 1-2
+#define DELAY_BAND_3_4           3    // Delay for bands 3-4
+#define DELAY_BANDCHANGE_1_2    10    // Band changes need set additional delay after reset PLL
+#define DELAY_BANDCHANGE_3_4    10    // Band changes need set additional delay after reset PLL
+// Delay after set new PLL values, and send reset
+#define DELAY_RESET_PLL_BEFORE   0    // 1000 possibly not need it if align freq
+#define DELAY_RESET_PLL_AFTER    0    // 3500 possibly not need it if align freq
 #endif
 
 uint32_t si5351_get_frequency(void)
@@ -147,6 +143,8 @@ si5351_init(void)
     si5351_bulk_write(p, len);
     p += len;
   }
+  // Set any (let it be 32MHz) frequency for AIC can run
+  si5351_set_frequency(32000000U, 0);
 }
 
 static const uint8_t disable_output[] = {
@@ -418,9 +416,6 @@ int
 si5351_set_frequency(uint32_t freq, uint8_t drive_strength)
 {
   uint8_t band;
-  if (freq == current_freq)
-    return DELAY_NORMAL;
-
   int delay;
   uint32_t ofreq = freq + current_offset;
 
@@ -450,6 +445,8 @@ si5351_set_frequency(uint32_t freq, uint8_t drive_strength)
     omul = 5;
   }
 #endif
+  if (freq == current_freq)
+    return 0;
   // Select optimal band for prepared freq
   if (freq <  10000U) {
      rdiv = SI5351_R_DIV_128;

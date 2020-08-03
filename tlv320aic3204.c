@@ -119,11 +119,11 @@ static const uint8_t conf_data[] = {
 //                     P
 #if AUDIO_CLOCK_REF == 8000000U
   // MCLK = 8.000MHz * 10.7520 = 86.016MHz,
-  0x04, 0x03,     // PLL Clock Low (80MHz - 137MHz), MCLK pin is input to PLL, PLL as CODEC_CLKIN
-  0x05, 0x91,     // Power up PLL, P=1,R=1
-  0x06, 0x0a,     // J=10
-  0x07, 0x1D,     // D=7520 = 0x1D60
-  0x08, 0x60,
+  0x04, 0x03,           // PLL Clock Low (80MHz - 137MHz), MCLK pin is input to PLL, PLL as CODEC_CLKIN
+  0x05, 0x91,           // Power up PLL, P=1,R=1
+  0x06, 10,             // J=10
+  0x07, (7520>>8)&0xFF, // D=7520 = 0x1D60
+  0x08, (7520>>0)&0xFF,
 #elif AUDIO_CLOCK_REF == 10752000U
   // MCLK = 10.752MHz * 4 * 2.0 / 1 = 86.016MHz
   0x04, 0x03,     // PLL Clock Low (80MHz - 137MHz),MCLK pin is input to PLL, PLL as CODEC_CLKIN

@@ -93,6 +93,7 @@ static void apply_edelay(void);
 static uint16_t get_sweep_mode(void);
 static void cal_interpolate(void);
 static void update_frequencies(bool interpolate);
+static int  set_frequency(uint32_t freq);
 static void set_frequencies(uint32_t start, uint32_t stop, uint16_t points);
 static bool sweep(bool break_on_operation, uint16_t sweep_mode);
 static void transform_domain(void);
@@ -341,59 +342,6 @@ VNA_SHELL_FUNCTION(cmd_reset)
     ;
 }
 
-#ifdef ENABLE_GAIN_COMMAND
-static uint8_t gain_table[][2] = {
-#else
-static const uint8_t gain_table[][2] = {
-#endif
-    {  0,  0 },     // 1st:    0 ~  300MHz
-    { 50, 50 },     // 2nd:  300 ~  900MHz
-    { 75, 75 },     // 3th:  900 ~ 1500MHz
-    { 85, 85 },     // 4th: 1500 ~ 2100MHz
-    { 95, 95 },     // 5th: 2100 ~ 2700MHz
-};
-
-#define DELAY_GAIN_CHANGE 4
-
-static int
-adjust_gain(uint32_t newfreq)
-{
-  int new_order = si5351_get_harmonic_lvl(newfreq);
-  int old_order = si5351_get_harmonic_lvl(si5351_get_frequency());
-  if (new_order != old_order) {
-    tlv320aic3204_set_gain(gain_table[new_order][0], gain_table[new_order][1]);
-    return DELAY_GAIN_CHANGE;
-  }
-  return 0;
-}
-
-#ifdef ENABLE_GAIN_COMMAND
-VNA_SHELL_FUNCTION(cmd_gain)
-{
-  int rvalue = 0;
-  int lvalue = 0;
-  if (argc < 1 && argc > 3) {
-    shell_printf("usage: gain idx {lgain(0-95)} [rgain(0-95)]\r\n");
-    return;
-  }
-  int idx = my_atoui(argv[0]);
-  lvalue = rvalue = my_atoui(argv[1]);
-  if (argc == 3)
-    rvalue = my_atoui(argv[2]);
-  tlv320aic3204_set_gain(lvalue, rvalue);
-  gain_table[idx][0] = lvalue;
-  gain_table[idx][1] = rvalue;
-}
-#endif
-
-int set_frequency(uint32_t freq)
-{
-  int delay = adjust_gain(freq);
-  uint8_t ds = drive_strength;
-  delay += si5351_set_frequency(freq, ds);
-  return delay;
-}
-
 // Use macro, std isdigit more big
 #define _isdigit(c) (c >= '0' && c <= '9')
 // Rewrite universal standart str to value functions to more compact
@@ -625,18 +573,6 @@ VNA_SHELL_FUNCTION(cmd_clearconfig)
                "Do reset manually to take effect. Then do touch cal and save.\r\n");
 }
 
-static struct {
-  int16_t rms[2];
-  int16_t ave[2];
-  int callback_count;
-
-#if 0
-  int32_t last_counter_value;
-  int32_t interval_cycles;
-  int32_t busy_cycles;
-#endif
-} stat;
-
 VNA_SHELL_FUNCTION(cmd_data)
 {
   int i;
@@ -830,22 +766,22 @@ duplicate_buffer_to_dump(int16_t *p)
 //
 // DMA i2s callback function, called on get 'half' and 'full' buffer size data
 // need for process data, while DMA fill next buffer
+static volatile systime_t ready_time = 0;
+
 void i2s_end_callback(I2SDriver *i2sp, size_t offset, size_t n)
 {
   int16_t *p = &rx_buffer[offset];
   (void)i2sp;
-  if (wait_count > 0){
-    if (wait_count <= config.bandwidth+1){
-      if (wait_count == config.bandwidth+1)
-        reset_dsp_accumerator();
-      dsp_process(p, n);
-    }
+  if (wait_count == 0 || chVTGetSystemTimeX() < ready_time) return;
+  if (wait_count == config.bandwidth+2)      // At this moment in buffer exist noise data, reset and wait next clean buffer
+    reset_dsp_accumerator();
+  else if (wait_count <= config.bandwidth+1) // Clean data ready, process it
+    dsp_process(p, n);
 #ifdef ENABLED_DUMP_COMMAND
-    duplicate_buffer_to_dump(p);
+  duplicate_buffer_to_dump(p);
 #endif
-    --wait_count;
-  }
-  stat.callback_count++;
+  --wait_count;
+//  stat.callback_count++;
 }
 
 static const I2SConfig i2sconfig = {
@@ -858,11 +794,22 @@ static const I2SConfig i2sconfig = {
   0                       // i2spr
 };
 
-#define DSP_START(delay) {wait_count = delay + config.bandwidth;}
-#define DSP_WAIT_READY   while (wait_count) {__WFI();}
+#ifdef ENABLE_SI5351_TIMINGS
+extern uint16_t timings[16];
+#define DELAY_GAIN_CHANGE     timings[6]
+#define DELAY_CHANNEL_CHANGE  timings[7]
+#define DELAY_SWEEP_START     timings[8]
+
+#else
+// Use x 100us settings
+#define DELAY_SWEEP_START     25    // Sweep start delay, allow remove noise at 1 point
+#define DELAY_CHANNEL_CHANGE   3    // Delay for switch ADC channel
+#define DELAY_GAIN_CHANGE     30    // Delay for change gain (and band)
+#endif
+
+#define DSP_START(delay) {ready_time = chVTGetSystemTimeX() + delay; wait_count = config.bandwidth+2;}
 #define DSP_WAIT         while (wait_count) {__WFI();}
 #define RESET_SWEEP      {p_sweep = 0;}
-#define DELAY_CHANNEL_CHANGE 2
 
 #define SWEEP_CH0_MEASURE   1
 #define SWEEP_CH1_MEASURE   2
@@ -886,51 +833,108 @@ bool sweep(bool break_on_operation, uint16_t sweep_mode)
   if (p_sweep>=sweep_points || break_on_operation == false) RESET_SWEEP;
   if (break_on_operation && sweep_mode == 0)
     return false;
-  uint16_t start_sweep = p_sweep;
-  // blink LED while scanning
+  // Blink LED while scanning
   palClearPad(GPIOC, GPIOC_LED);
-  // Power stabilization after LED off, before measure
-  int st_delay = 3;
-  for (; p_sweep < sweep_points; p_sweep++) {         // 5300
+//  START_PROFILE;
+  // Wait some time for stable power
+  int st_delay = DELAY_SWEEP_START;
+  for (; p_sweep < sweep_points; p_sweep++) {
     if (frequencies[p_sweep] == 0) break;
     delay = set_frequency(frequencies[p_sweep]);
+    // CH0:REFLECTION, reset and begin measure
     if (sweep_mode & SWEEP_CH0_MEASURE){
-      tlv320aic3204_select(0);                   // CH0:REFLECTION, reset and begin measure
+      tlv320aic3204_select(0);
       DSP_START(delay+st_delay);
       delay = DELAY_CHANNEL_CHANGE;
       //================================================
       // Place some code thats need execute while delay
       //================================================
-      DSP_WAIT_READY;
+      DSP_WAIT;
       (*sample_func)(measured[0][p_sweep]);      // calculate reflection coefficient
-      if (!APPLY_CALIBRATION_AFTER_SWEEP && cal_status & CALSTAT_APPLY)
+      if (APPLY_CALIBRATION_AFTER_SWEEP == 0 && cal_status & CALSTAT_APPLY)
         apply_CH0_error_term_at(p_sweep);
     }
+    // CH1:TRANSMISSION, reset and begin measure
     if (sweep_mode & SWEEP_CH1_MEASURE){
-      tlv320aic3204_select(1);                   // CH1:TRANSMISSION, reset and begin measure
+      tlv320aic3204_select(1);
       DSP_START(delay+st_delay);
       //================================================
       // Place some code thats need execute while delay
       //================================================
-      DSP_WAIT_READY;
-      (*sample_func)(measured[1][p_sweep]);      // calculate transmission coefficient
-      if (!APPLY_CALIBRATION_AFTER_SWEEP && cal_status & CALSTAT_APPLY)
+      DSP_WAIT;
+      (*sample_func)(measured[1][p_sweep]);      // Measure transmission coefficient
+      if (APPLY_CALIBRATION_AFTER_SWEEP == 0 && cal_status & CALSTAT_APPLY)
         apply_CH1_error_term_at(p_sweep);
     }
     if (operation_requested && break_on_operation) break;
     st_delay = 0;
 // Display SPI made noise on measurement (can see in CW mode)
-//    ili9341_fill(OFFSETX+CELLOFFSETX, OFFSETY, (p_sweep * WIDTH)/(sweep_points-1), 1, RGB565(0,0,255));
+    if (config.bandwidth >= BANDWIDTH_100)
+      ili9341_fill(OFFSETX+CELLOFFSETX, OFFSETY, (p_sweep * WIDTH)/(sweep_points-1), 1, RGB565(0,0,255));
   }
-  if (APPLY_CALIBRATION_AFTER_SWEEP && (cal_status & CALSTAT_APPLY)){
-    for (;start_sweep<=p_sweep;start_sweep++){
+  // Apply calibration at end if need
+  if (APPLY_CALIBRATION_AFTER_SWEEP && (cal_status & CALSTAT_APPLY) && p_sweep == sweep_points){
+    uint16_t start_sweep;
+    for (start_sweep = 0; start_sweep < p_sweep; start_sweep++){
       if (sweep_mode & SWEEP_CH0_MEASURE) apply_CH0_error_term_at(start_sweep);
       if (sweep_mode & SWEEP_CH1_MEASURE) apply_CH1_error_term_at(start_sweep);
     }
   }
+//  STOP_PROFILE;
   // blink LED while scanning
   palSetPad(GPIOC, GPIOC_LED);
   return p_sweep == sweep_points;
+}
+
+#ifdef ENABLE_GAIN_COMMAND
+static uint8_t gain_table[][2] = {
+#else
+static const uint8_t gain_table[][2] = {
+#endif
+    {  0,  0 },     // 1st:    0 ~  300MHz
+    { 50, 50 },     // 2nd:  300 ~  900MHz
+    { 75, 75 },     // 3th:  900 ~ 1500MHz
+    { 85, 85 },     // 4th: 1500 ~ 2100MHz
+    { 95, 95 },     // 5th: 2100 ~ 2700MHz
+};
+
+static int
+adjust_gain(uint32_t newfreq)
+{
+  int new_order = si5351_get_harmonic_lvl(newfreq);
+  int old_order = si5351_get_harmonic_lvl(si5351_get_frequency());
+  if (new_order != old_order) {
+    tlv320aic3204_set_gain(gain_table[new_order][0], gain_table[new_order][1]);
+    return DELAY_GAIN_CHANGE;
+  }
+  return 0;
+}
+
+#ifdef ENABLE_GAIN_COMMAND
+VNA_SHELL_FUNCTION(cmd_gain)
+{
+  int rvalue = 0;
+  int lvalue = 0;
+  if (argc < 1 && argc > 3) {
+    shell_printf("usage: gain idx {lgain(0-95)} [rgain(0-95)]\r\n");
+    return;
+  }
+  int idx = my_atoui(argv[0]);
+  lvalue = rvalue = my_atoui(argv[1]);
+  if (argc == 3)
+    rvalue = my_atoui(argv[2]);
+  tlv320aic3204_set_gain(lvalue, rvalue);
+  gain_table[idx][0] = lvalue;
+  gain_table[idx][1] = rvalue;
+}
+#endif
+
+static int set_frequency(uint32_t freq)
+{
+  int delay = adjust_gain(freq);
+  uint8_t ds = drive_strength;
+  delay += si5351_set_frequency(freq, ds);
+  return delay;
 }
 
 void set_bandwidth(uint16_t bw_count){
@@ -2090,6 +2094,17 @@ VNA_SHELL_FUNCTION(cmd_port)
 #endif
 
 #ifdef ENABLE_STAT_COMMAND
+static struct {
+  int16_t rms[2];
+  int16_t ave[2];
+#if 0
+  int callback_count;
+  int32_t last_counter_value;
+  int32_t interval_cycles;
+  int32_t busy_cycles;
+#endif
+} stat;
+
 VNA_SHELL_FUNCTION(cmd_stat)
 {
   int16_t *p = &rx_buffer[0];
@@ -2547,13 +2562,13 @@ static const I2CConfig i2ccfg = {
 #elif  STM32_I2C1SW == STM32_I2C1SW_SYSCLK
   // STM32_I2C1SW == STM32_I2C1SW_SYSCLK  (SYSCLK = 48MHz)
   // 400kHz @ SYSCLK 48MHz (Use 26.4.10 I2C_TIMINGR register configuration examples from STM32 RM0091 Reference manual)
-//  STM32_TIMINGR_PRESC(5U)  |
-//  STM32_TIMINGR_SCLDEL(3U) | STM32_TIMINGR_SDADEL(3U) |
-//  STM32_TIMINGR_SCLH(3U)   | STM32_TIMINGR_SCLL(9U),
+  STM32_TIMINGR_PRESC(5U)  |
+  STM32_TIMINGR_SCLDEL(3U) | STM32_TIMINGR_SDADEL(3U) |
+  STM32_TIMINGR_SCLH(3U)   | STM32_TIMINGR_SCLL(9U),
   // 600kHz @ SYSCLK 48MHz, manually get values, x1.5 I2C speed
-  STM32_TIMINGR_PRESC(0U)  |
-  STM32_TIMINGR_SCLDEL(10U) | STM32_TIMINGR_SDADEL(10U) |
-  STM32_TIMINGR_SCLH(30U)   | STM32_TIMINGR_SCLL(50U),
+//  STM32_TIMINGR_PRESC(0U)  |
+//  STM32_TIMINGR_SCLDEL(10U) | STM32_TIMINGR_SDADEL(10U) |
+//  STM32_TIMINGR_SCLH(30U)   | STM32_TIMINGR_SCLL(50U),
   // 900kHz @ SYSCLK 48MHz, manually get values, x2 I2C speed
 //  STM32_TIMINGR_PRESC(0U)  |
 //  STM32_TIMINGR_SCLDEL(10U) | STM32_TIMINGR_SDADEL(10U) |
@@ -2566,8 +2581,8 @@ static const I2CConfig i2ccfg = {
 };
 
 static DACConfig dac1cfg1 = {
-  //init:         2047U,
-  init:         1922U,
+  //init:         1922U,
+  init:         0,
   datamode:     DAC_DHRM_12BIT_RIGHT
 };
 
@@ -2580,6 +2595,13 @@ int main(void)
 {
   halInit();
   chSysInit();
+
+/*
+ * Starting DAC1 driver, setting up the output pin as analog as suggested
+ * by the Reference Manual.
+ */
+  dacStart(&DACD2, &dac1cfg1);
+
 #ifdef __USE_RTC__
   rtc_init(); // Initialize RTC library
 #endif
@@ -2587,11 +2609,6 @@ int main(void)
 #ifdef USE_VARIABLE_OFFSET
   generate_DSP_Table(FREQUENCY_OFFSET);
 #endif
-  //palSetPadMode(GPIOB, 8, PAL_MODE_ALTERNATE(1) | PAL_STM32_OTYPE_OPENDRAIN);
-  //palSetPadMode(GPIOB, 9, PAL_MODE_ALTERNATE(1) | PAL_STM32_OTYPE_OPENDRAIN);
-  i2cStart(&I2CD1, &i2ccfg);
-  si5351_init();
-
   // MCO on PA8
   //palSetPadMode(GPIOA, 8, PAL_MODE_ALTERNATE(0));
 /*
@@ -2616,20 +2633,26 @@ int main(void)
 
 /* restore config */
   config_recall();
+
 /* restore frequencies and calibration 0 slot properties from flash memory */
   load_properties(0);
 
-  dac1cfg1.init = config.dac_value;
 /*
- * Starting DAC1 driver, setting up the output pin as analog as suggested
- * by the Reference Manual.
+ * I2C bus
  */
-  dacStart(&DACD2, &dac1cfg1);
+  //palSetPadMode(GPIOB, 8, PAL_MODE_ALTERNATE(1) | PAL_STM32_OTYPE_OPENDRAIN);
+  //palSetPadMode(GPIOB, 9, PAL_MODE_ALTERNATE(1) | PAL_STM32_OTYPE_OPENDRAIN);
+  i2cStart(&I2CD1, &i2ccfg);
 
+/*
+ * Start si5351
+ */
+  si5351_init();
 
 /*
  * I2S Initialize
  */
+  chThdSleepMilliseconds(100);
   tlv320aic3204_init();
   i2sInit();
   i2sObjectInit(&I2SD2);
@@ -2640,6 +2663,10 @@ int main(void)
   //Initialize graph plotting
   plot_init();
   redraw_frame();
+
+  // Set config DAC value
+  dacPutChannelX(&DACD2, 0, config.dac_value);
+
   chThdCreateStatic(waThread1, sizeof(waThread1), NORMALPRIO-1, Thread1, NULL);
 
   while (1) {

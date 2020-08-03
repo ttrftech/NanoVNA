@@ -82,9 +82,9 @@ static volatile vna_shellcmd_t  shell_function = 0;
 // Enable port command, used for debug
 //#define ENABLE_PORT_COMMAND
 // Enable si5351 timing command, used for debug
-#define ENABLE_SI5351_TIMINGS
+//#define ENABLE_SI5351_TIMINGS
 // Enable i2c timing command, used for debug
-#define ENABLE_I2C_TIMINGS
+//#define ENABLE_I2C_TIMINGS
 
 static void apply_CH0_error_term_at(int i);
 static void apply_CH1_error_term_at(int i);
@@ -933,6 +933,11 @@ bool sweep(bool break_on_operation, uint16_t sweep_mode)
   return p_sweep == sweep_points;
 }
 
+void set_bandwidth(uint16_t bw_count){
+  config.bandwidth = bw_count&0xFF;
+  redraw_request|=REDRAW_FREQUENCY;
+}
+
 uint32_t get_bandwidth_frequency(uint16_t bw_freq){
   return (AUDIO_ADC_FREQ/AUDIO_SAMPLES_COUNT)/(bw_freq+1);
 }
@@ -941,7 +946,7 @@ VNA_SHELL_FUNCTION(cmd_bandwidth)
 {
   if (argc != 1)
     goto result;
-  config.bandwidth = my_atoui(argv[0])&0xFF;
+  set_bandwidth(my_atoui(argv[0]));
 result:
   shell_printf("bandwidth %d (%uHz)\r\n", config.bandwidth, get_bandwidth_frequency(config.bandwidth));
 }

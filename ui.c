@@ -754,8 +754,7 @@ static UI_FUNCTION_ADV_CALLBACK(menu_bandwidth_acb)
     b->p1.u = get_bandwidth_frequency(data);
     return;
   }
-  config.bandwidth = data;
-  draw_frequencies();
+  set_bandwidth(data);
   draw_menu();
 }
 

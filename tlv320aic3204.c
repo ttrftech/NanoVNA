@@ -154,8 +154,8 @@ static const uint8_t conf_data[] = {
   0x0e, 0x80,     // DAC OSR Setting Register 2 (LSB)
   0x3c, 0x01,     // Set the DAC Mode to PRB_P1
   0x25, 0x00,     // DAC power down
-
-  0x12, 0x82,     // Power up the NADC divider with value 2
+// ADC output sample rate depend from DAC, but internal use this settings
+  0x12, 0x81,     // Power up the NADC divider with value 1
   0x13, 0x87,     // Power up the MADC divider with value 7
   0x14, 0x80,     // ADC Oversampling (AOSR) Program the OSR of ADC to 128
   0x3d, 0x01,     // Select ADC PRB_R1
@@ -171,8 +171,27 @@ static const uint8_t conf_data[] = {
   0x0d, 0x00,     // DAC OSR Setting Register 1 (MSB)  Program the OSR of DAC to 64
   0x0e, 0x40,     // DAC OSR Setting Register 2 (LSB)
   0x3c, 0x01,     // Set the DAC Mode to PRB_P1
-  0x25, 0x00,     // DAC power up
+  0x25, 0x00,     // DAC power down
+// ADC output sample rate depend from DAC, but internal use this settings
+  0x12, 0x81,     // Power up the NADC divider with value 1
+  0x13, 0x87,     // Power up the MADC divider with value 7
+  0x14, 0x80,     // ADC Oversampling (AOSR) set OSR of ADC to 128
+  0x3d, 0x01,     // Select ADC PRB_R1 (AOSR = 64 (Use with PRB_R1 to PRB_R12, ADC Filter Type A or B))
+  0x24, 0xee,     // ADC power up
 
+  0x1b, 0x0c,     // Set the BCLK,WCLK as output
+  0x1e, 0x80 + 14,// Enable the BCLKN divider with value 14 (I2S clock = 86.016MHz/(NDAC*14) = 96kHz * (16+16)
+#elif AUDIO_ADC_FREQ == 192000
+// Clock config, default fs=192kHz
+// from PLL 86.016MHz/(2*7*32) = 192kHz
+// DAC setting, need only for set ADC sample rate output
+  0x0b, 0x82,     // Power up the NDAC divider with value 2
+  0x0c, 0x87,     // Power up the MDAC divider with value 7
+  0x0d, 0x00,     // DAC OSR Setting Register 1 (MSB)  Program the OSR of DAC to 32
+  0x0e, 0x20,     // DAC OSR Setting Register 2 (LSB)
+  0x3c, 0x01,     // Set the DAC Mode to PRB_P1
+  0x25, 0x00,     // DAC power down
+// ADC output sample rate depend from DAC, but internal use this settings
   0x12, 0x81,     // Power up the NADC divider with value 1
   0x13, 0x87,     // Power up the MADC divider with value 7
   0x14, 0x40,     // ADC Oversampling (AOSR) set OSR of ADC to 64
@@ -180,7 +199,7 @@ static const uint8_t conf_data[] = {
   0x24, 0xee,     // ADC power up
 
   0x1b, 0x0c,     // Set the BCLK,WCLK as output
-  0x1e, 0x80 + 14,// Enable the BCLKN divider with value 14 (I2S clock = 86.016MHz/(NDAC*14) = 96kHz * (16+16)
+  0x1e, 0x80 + 7,// Enable the BCLKN divider with value 14 (I2S clock = 86.016MHz/(NDAC*7) = 192kHz * (16+16)
 #else
 #error "Need set correct ADC clock for aic3204"
 #endif
@@ -192,6 +211,7 @@ static const uint8_t conf_data[] = {
   0x7b, 0x01,     // Set the REF charging time to 40ms
   0x14, 0x25,     // HP soft stepping settings for optimal pop performance at power up Rpop used is 6k with N = 6 and soft step = 20usec. This should work with 47uF coupling capacitor. Can try N=5,6 or 7 time constants as well. Trade-off delay vs “pop” sound.
   0x0a, 0x33,     // Set the Input Common Mode to 0.9V and Output Common Mode for Headphone to 1.65V
+//  0x0a, 0x40,     // Set the Input Common Mode to 0.75V and Output Common Mode for Headphone to 1.65V
 
   0x3d, 0x00,     // Select ADC PTM_R4 */
 //  0x3d, 0xB6,     // Select ADC PTM_R2 */

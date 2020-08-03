@@ -36,17 +36,35 @@
 #define STOP_MAX                 2700000000U
 // Frequency threshold (max frequency for si5351, harmonic mode after)
 #define FREQUENCY_THRESHOLD      300000100U
-// See AUDIO_ADC_FREQ settings, on change possible need adjust sweep timings in si5351.c for better speed
-// Frequency offset for 96k ADC (sin_cos table in dsp.c generated for 6k, 8k, 10k, 12k if change need create new table )
-#define FREQUENCY_OFFSET         8000
-// Frequency offset for 48k ADC (sin_cos table in dsp.c generated for 3k, 4k, 5k, 6k, if change need create new table )
-//#define FREQUENCY_OFFSET         5000
+
+// Define ADC sample rate (can be 48k, 96k, or 192k)
+//#define AUDIO_ADC_FREQ        (192000)
+#define AUDIO_ADC_FREQ        (96000)
+//#define AUDIO_ADC_FREQ        (48000)
+
+// Frequency offset, depend from AUDIO_ADC_FREQ settings (need aligned table)
+// Use real time build table (undef for use constant, see comments)
+//#define USE_VARIABLE_OFFSET
+// For 192k ADC (sin_cos table in dsp.c generated for 8k, 12k if change need create new table )
+//#define FREQUENCY_OFFSET          8000
+#define FREQUENCY_OFFSET           12000
+// For 96k ADC (sin_cos table in dsp.c generated for 6k, 8k, 10k, 12k if change need create new table )
+//#define FREQUENCY_OFFSET          6000
+//#define FREQUENCY_OFFSET          8000
+//#define FREQUENCY_OFFSET         10000
+//#define FREQUENCY_OFFSET         12000
+// For 48k ADC (sin_cos table in dsp.c generated for 3k, 4k, 5k, 6k, if change need create new table )
+//#define FREQUENCY_OFFSET          3000
+//#define FREQUENCY_OFFSET          4000
+//#define FREQUENCY_OFFSET          5000
+//#define FREQUENCY_OFFSET          6000
+
 // Apply calibration after made sweep, (if set 1, then calibration move out from sweep cycle)
 #define APPLY_CALIBRATION_AFTER_SWEEP 0
-// Use real time build table (undef for use constant)
-//#define USE_VARIABLE_OFFSET
+
 // Speed of light const
 #define SPEED_OF_LIGHT           299792458
+
 // pi const
 #define VNA_PI                   3.14159265358979323846
 
@@ -132,15 +150,12 @@ extern const char *info_about[];
  * dsp.c
  */
 // Define aic3204 source clock frequency (on 8MHz used fractional multiplier, and possible little phase error)
-#define AUDIO_CLOCK_REF       ( 8000000U)
+//#define AUDIO_CLOCK_REF       ( 8000000U)
 // Define aic3204 source clock frequency (on 10752000U used integer multiplier)
-//#define AUDIO_CLOCK_REF       (10752000U)
+#define AUDIO_CLOCK_REF       (10752000U)
 // Disable AIC PLL clock, use input as CODEC_CLKIN (not stable on some devices, on long work)
 //#define AUDIO_CLOCK_REF       (86016000U)
 
-// Define ADC sample rate
-#define AUDIO_ADC_FREQ        (96000)
-//#define AUDIO_ADC_FREQ        (48000)
 // Define sample count for one step measure
 #define AUDIO_SAMPLES_COUNT   (48)
 // Buffer contain left and right channel samples (need x2)

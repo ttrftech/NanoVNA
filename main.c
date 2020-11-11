@@ -198,31 +198,45 @@ transform_domain(void)
   // and calculate ifft for time domain
   float* tmp = (float*)spi_buffer;
 
+  // correct IFFT window and zero-padding loss
+  // assuming a 2*POINT_COUNT window
+  float wincorr = 1.0f;
+  float beta = 0.0;
+  switch (domain_mode & TD_WINDOW) {
+    case TD_WINDOW_MINIMUM:
+      beta = 0.0; // this is rectangular
+      // loss by zero-padding 202 to 256 points
+      wincorr = (float)FFT_SIZE / (float)(2*POINTS_COUNT);
+      break;
+    case TD_WINDOW_NORMAL:
+      beta = 6.0;
+      // additional window loss: 1/mean(kaiser(202,6)) = 2.01
+      wincorr = (float)FFT_SIZE / (float)(2*POINTS_COUNT) * 2.01f;
+      break;
+    case TD_WINDOW_MAXIMUM:
+      beta = 13;
+      // additional window loss: 1/mean(kaiser(202,13)) = 2.92
+      wincorr = (float)FFT_SIZE / (float)(2*POINTS_COUNT) * 2.92f;
+      break;
+  }
+
   uint8_t window_size = POINTS_COUNT, offset = 0;
   uint8_t is_lowpass = FALSE;
   switch (domain_mode & TD_FUNC) {
     case TD_FUNC_BANDPASS:
       offset = 0;
       window_size = POINTS_COUNT;
+      // window size is half the size as assumed above => twice the IFFT loss
+      wincorr *= 2.0f;
       break;
-    case TD_FUNC_LOWPASS_IMPULSE:
     case TD_FUNC_LOWPASS_STEP:
+      // no IFFT losses need to be considered to calculate the step response
+      wincorr = 1.0f;
+      // fall-through
+    case TD_FUNC_LOWPASS_IMPULSE:
       is_lowpass = TRUE;
       offset = POINTS_COUNT;
       window_size = POINTS_COUNT * 2;
-      break;
-  }
-
-  float beta = 0.0;
-  switch (domain_mode & TD_WINDOW) {
-    case TD_WINDOW_MINIMUM:
-      beta = 0.0;  // this is rectangular
-      break;
-    case TD_WINDOW_NORMAL:
-      beta = 6.0;
-      break;
-    case TD_WINDOW_MAXIMUM:
-      beta = 13;
       break;
   }
 
@@ -230,8 +244,8 @@ transform_domain(void)
     memcpy(tmp, measured[ch], sizeof(measured[0]));
     for (int i = 0; i < POINTS_COUNT; i++) {
       float w = kaiser_window(i + offset, window_size, beta);
-      tmp[i * 2 + 0] *= w;
-      tmp[i * 2 + 1] *= w;
+      tmp[i * 2 + 0] *= w * wincorr;
+      tmp[i * 2 + 1] *= w * wincorr;
     }
     for (int i = POINTS_COUNT; i < FFT_SIZE; i++) {
       tmp[i * 2 + 0] = 0.0;
